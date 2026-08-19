@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,8 +17,19 @@ from numra_api.middleware.security import (
     RequestBodyLimitMiddleware,
     SecurityHeadersMiddleware,
 )
-from numra_api.routes import account, auth, calculations, health, people, relationships, reports
+from numra_api.routes import (
+    account,
+    auth,
+    calculations,
+    exports,
+    health,
+    people,
+    relationships,
+    reports,
+)
 from numra_api.services.errors import ApplicationError
+from numra_api.services.pdf_client import PdfServiceClient
+from numra_api.storage.exports import LocalExportStorage
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -35,6 +47,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app = FastAPI(title="NUMRA API", version="1.0.0", lifespan=lifespan)
     app.state.settings = resolved_settings
+    app.state.export_storage = LocalExportStorage(Path(resolved_settings.export_storage_dir))
+    app.state.pdf_client = PdfServiceClient(
+        base_url=resolved_settings.pdf_internal_url or "",
+        internal_token=resolved_settings.pdf_internal_token,
+        timeout_seconds=resolved_settings.pdf_render_timeout_seconds,
+    )
 
     # Middleware chain — order matters (outermost first, applied last-in-first-out by
     # Starlette so the LAST .add_middleware call runs FIRST on the request path).
@@ -68,6 +86,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(calculations.router)
     app.include_router(relationships.router)
     app.include_router(reports.router)
+    app.include_router(exports.router)
     app.include_router(account.router)
 
     return app

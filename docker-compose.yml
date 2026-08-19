@@ -48,7 +48,11 @@ services:
       NUMRA_LLM_MODEL_PREMIUM: ${NUMRA_LLM_MODEL_PREMIUM:-deepseek-v4-pro:cloud}
       NUMRA_LLM_MODEL_FAST: ${NUMRA_LLM_MODEL_FAST:-deepseek-v4-flash:cloud}
       PDF_INTERNAL_URL: http://pdf:4300
+      PDF_INTERNAL_TOKEN: ${PDF_INTERNAL_TOKEN:?PDF_INTERNAL_TOKEN is required}
+      EXPORT_STORAGE_DIR: /app/data/exports
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - numra_exports_data:/app/data/exports
     depends_on:
       postgres:
         condition: service_healthy
@@ -104,3 +108,4 @@ services:
 
 volumes:
   numra_postgres_data:
+  numra_exports_data:

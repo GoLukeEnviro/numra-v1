@@ -290,7 +290,11 @@ class Export(Base):
     )
     export_type: Mapped[ExportType] = mapped_column(String(20))
     status: Mapped[ExportStatus] = mapped_column(String(20), default=ExportStatus.PENDING)
+    #: Opaque storage reference returned by ExportStorage.save() — never a
+    #: client-controllable path (see numra_api/storage/exports.py).
     file_ref: Mapped[str | None] = mapped_column(Text, nullable=True)
+    file_size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    error_code: Mapped[str | None] = mapped_column(String(80), nullable=True)
     created_at: Mapped[dt.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

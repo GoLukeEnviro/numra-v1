@@ -37,10 +37,17 @@ class Settings(BaseSettings):
     numra_llm_timeout_seconds: int = 120
 
     pdf_internal_token: str = "dev-only-insecure-pdf-token"
-    #: Base URL of the internal PDF rendering service, used only for the truthful
-    #: health check (GET {pdf_internal_url}/health/ready). None means "no PDF service
-    #: configured" (health reports "disabled", never "unhealthy").
+    #: Base URL of the internal PDF rendering service — used both for the truthful
+    #: health check (GET {pdf_internal_url}/health/ready) and for actual export
+    #: rendering dispatch (POST {pdf_internal_url}/render/report). None means "no PDF
+    #: service configured" (health reports "disabled"; export creation fails with a
+    #: clear error rather than attempting a request to nothing).
     pdf_internal_url: str | None = None
+    pdf_render_timeout_seconds: float = 60.0
+
+    #: Local filesystem directory export files (rendered PDFs) are written to. Only
+    #: meaningful with the (only, in V1) LocalExportStorage backend.
+    export_storage_dir: str = "./data/exports"
 
     health_check_timeout_seconds: float = 2.0
     health_ready_cache_ttl_seconds: float = 5.0

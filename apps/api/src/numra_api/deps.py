@@ -13,6 +13,8 @@ from numra_api.models import User
 from numra_api.repositories.sessions import get_active_session_by_token_hash
 from numra_api.repositories.users import get_user_by_id
 from numra_api.services.errors import CsrfValidationFailed, NotAuthenticated
+from numra_api.services.pdf_client import PdfServiceClient
+from numra_api.storage.exports import ExportStorage
 
 
 async def get_db(request: Request) -> AsyncIterator[AsyncSession]:
@@ -25,6 +27,16 @@ async def get_db(request: Request) -> AsyncIterator[AsyncSession]:
 def get_settings_dep(request: Request) -> Settings:
     settings: Settings = request.app.state.settings
     return settings
+
+
+def get_export_storage(request: Request) -> ExportStorage:
+    storage: ExportStorage = request.app.state.export_storage
+    return storage
+
+
+def get_pdf_client(request: Request) -> PdfServiceClient:
+    client: PdfServiceClient = request.app.state.pdf_client
+    return client
 
 
 async def get_current_user(

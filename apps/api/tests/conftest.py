@@ -18,13 +18,26 @@ TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL",
     "postgresql+asyncpg://numra:numra_dev_password@127.0.0.1:5432/numra_test",
 )
+#: A real (not mocked) apps/pdf instance, started separately for the test run (see
+#: specs/evidence -- CI/local dev starts one on this port/token). Tests that need PDF
+#: rendering exercise it for real; if it isn't reachable those specific tests fail with
+#: a clear connection error rather than silently skipping.
+TEST_PDF_URL = os.environ.get("TEST_PDF_URL", "http://127.0.0.1:4300")
+TEST_PDF_TOKEN = os.environ.get("TEST_PDF_TOKEN", "test-token")
 
 
 @pytest_asyncio.fixture
-async def settings() -> Settings:
+async def settings(tmp_path) -> Settings:
     # Tests opt into the mock provider explicitly (never relying on an implicit
     # default) — this is exactly the pattern production must never fall back to.
-    return Settings(database_url=TEST_DATABASE_URL, environment="test", numra_llm_provider="mock")
+    return Settings(
+        database_url=TEST_DATABASE_URL,
+        environment="test",
+        numra_llm_provider="mock",
+        pdf_internal_url=TEST_PDF_URL,
+        pdf_internal_token=TEST_PDF_TOKEN,
+        export_storage_dir=str(tmp_path / "exports"),
+    )
 
 
 @pytest_asyncio.fixture

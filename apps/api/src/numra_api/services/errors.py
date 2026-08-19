@@ -34,3 +34,13 @@ class SelfSignupDisabled(ApplicationError):
 class CsrfValidationFailed(ApplicationError):
     code = "CSRF_VALIDATION_FAILED"
     status_code = 403
+
+
+class ReportNotReady(ApplicationError):
+    code = "REPORT_NOT_READY"
+    status_code = 409
+
+
+class ExportRenderFailed(ApplicationError):
+    code = "EXPORT_RENDER_FAILED"
+    status_code = 502
