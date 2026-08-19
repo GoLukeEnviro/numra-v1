@@ -3,7 +3,7 @@ name = "numra-interpretation"
 version = "0.1.0"
 description = "NUMRA rule-based, traceable interpretation composition (Canonical Profile + Knowledge -> structured interpretation). No calculation logic."
 requires-python = ">=3.11"
-dependencies = ["pydantic>=2.6", "numra-numerology", "pyyaml>=6.0"]
+dependencies = ["pydantic>=2.6", "numra-numerology", "pyyaml>=6.0", "httpx>=0.27"]
 
 [build-system]
 requires = ["hatchling"]

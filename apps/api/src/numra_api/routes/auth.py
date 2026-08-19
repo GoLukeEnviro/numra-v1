@@ -1,0 +1,99 @@
+from __future__ import annotations
+
+import datetime as dt
+
+from fastapi import APIRouter, Depends, Request, Response
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from numra_api.auth.csrf import CSRF_COOKIE_NAME, generate_csrf_token
+from numra_api.auth.passwords import hash_password, verify_password
+from numra_api.auth.sessions import generate_session_token, hash_session_token
+from numra_api.config import Settings
+from numra_api.deps import get_current_user, get_db, get_settings_dep
+from numra_api.models import User
+from numra_api.repositories.sessions import create_session, revoke_session
+from numra_api.repositories.users import create_user, get_user_by_email
+from numra_api.schemas.auth import LoginRequest, UserOut
+from numra_api.services.errors import InvalidCredentials, SelfSignupDisabled
+
+router = APIRouter(prefix="/v1/auth", tags=["auth"])
+
+
+def _set_auth_cookies(
+    response: Response, *, session_token: str, secure: bool, ttl_hours: int
+) -> None:
+    max_age = ttl_hours * 3600
+    response.set_cookie(
+        "numra_session",
+        session_token,
+        max_age=max_age,
+        httponly=True,
+        secure=secure,
+        samesite="lax",
+        path="/",
+    )
+    response.set_cookie(
+        CSRF_COOKIE_NAME,
+        generate_csrf_token(),
+        max_age=max_age,
+        httponly=False,
+        secure=secure,
+        samesite="lax",
+        path="/",
+    )
+
+
+@router.post("/register", response_model=UserOut, status_code=201)
+async def register(
+    body: LoginRequest,
+    db: AsyncSession = Depends(get_db),
+    settings: Settings = Depends(get_settings_dep),
+) -> UserOut:
+    if not settings.allow_self_signup:
+        raise SelfSignupDisabled("self-signup is disabled (ALLOW_SELF_SIGNUP=false)")
+    user = await create_user(db, email=body.email, password_hash=hash_password(body.password))
+    return UserOut(id=str(user.id), email=user.email)
+
+
+@router.post("/login", response_model=UserOut)
+async def login(
+    body: LoginRequest,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+    settings: Settings = Depends(get_settings_dep),
+) -> UserOut:
+    user = await get_user_by_email(db, email=body.email)
+    if user is None or not verify_password(user.password_hash, body.password):
+        raise InvalidCredentials("invalid email or password")
+
+    token = generate_session_token()
+    expires_at = dt.datetime.now(dt.UTC) + dt.timedelta(hours=settings.session_ttl_hours)
+    await create_session(
+        db, user_id=user.id, token_hash=hash_session_token(token), expires_at=expires_at
+    )
+
+    _set_auth_cookies(
+        response,
+        session_token=token,
+        secure=settings.cookies_secure,
+        ttl_hours=settings.session_ttl_hours,
+    )
+    return UserOut(id=str(user.id), email=user.email)
+
+
+@router.post("/logout", status_code=204)
+async def logout(
+    request: Request,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    token = request.cookies.get("numra_session")
+    if token:
+        await revoke_session(db, token_hash=hash_session_token(token), now=dt.datetime.now(dt.UTC))
+    response.delete_cookie("numra_session", path="/")
+    response.delete_cookie(CSRF_COOKIE_NAME, path="/")
+
+
+@router.get("/me", response_model=UserOut)
+async def me(user: User = Depends(get_current_user)) -> UserOut:
+    return UserOut(id=str(user.id), email=user.email)

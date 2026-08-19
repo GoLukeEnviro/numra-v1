@@ -1,0 +1,16 @@
+{
+  "name": "numra-v1",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "generate-schema": "pnpm --filter @numra/schema generate",
+    "web:dev": "pnpm --filter @numra/web dev",
+    "web:build": "pnpm --filter @numra/web build",
+    "web:lint": "pnpm --filter @numra/web lint",
+    "web:typecheck": "pnpm --filter @numra/web typecheck",
+    "web:test": "pnpm --filter @numra/web test"
+  }
+}

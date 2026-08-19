@@ -1,0 +1,16 @@
+{
+  "name": "@numra/schema",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Generated TypeScript client for the NUMRA API (from openapi/numra-v1.json). Do not edit generated files by hand.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "generate": "openapi-typescript ../../openapi/numra-v1.json -o ./src/generated/schema.d.ts"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.4.0",
+    "typescript": "^5.6.0"
+  }
+}
