@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import datetime as dt
+import re
 from pathlib import Path
 
 import pytest
 
+from numra_interpretation.errors import InvalidReportSection
 from numra_interpretation.knowledge_loader import load_knowledge_base
 from numra_interpretation.llm.mock_provider import MockLLMProvider
 from numra_interpretation.llm.types import (
@@ -14,6 +16,7 @@ from numra_interpretation.llm.types import (
     ProviderHealth,
     StructuredGenerationRequest,
 )
+from numra_interpretation.llm.validator import build_metric_display_value_index
 from numra_interpretation.report import (
     REPORT_TYPE_WORD_RANGES,
     build_manifest,
@@ -21,7 +24,12 @@ from numra_interpretation.report import (
     lint_report,
 )
 from numra_interpretation.report.pipeline import ReportGenerationError
-from numra_interpretation.report.schemas import GeneratedSectionContent, StructuredReportSection
+from numra_interpretation.report.schemas import (
+    GeneratedSectionContent,
+    ReportOutline,
+    ReportOutlineEntry,
+    StructuredReportSection,
+)
 from numra_numerology.engine import calculate_profile
 from numra_numerology.models.person import PersonInput
 
@@ -251,3 +259,195 @@ def test_lint_report_detects_duplicate_headings(sample_profile) -> None:
     result = lint_report(manifest, sections, sample_profile)
     assert not result.is_valid
     assert any("DuplicateHeadings" in e for e in result.errors)
+
+
+def _target_length_filler(section_id: str, target_word_count: int) -> str:
+    """Section-varying, roughly target-length filler text — same approach as
+    `FlakyProvider` above — so a fake provider's output doesn't itself trip the global
+    lint's DuplicateParagraphDetection/WordCountValidation checks, which are unrelated
+    to whatever this particular fake provider is testing."""
+    words = (f"platzhaltertext für {section_id}".split() * (target_word_count // 3 + 1))[
+        :target_word_count
+    ]
+    return " ".join(words)
+
+
+async def test_generate_report_rejects_bare_numeric_literal_from_real_provider(
+    sample_profile, knowledge_base
+) -> None:
+    """P1 numeric-claim hardening: a non-mock provider that types a profile's own
+    numerology value as a bare digit instead of citing it via {{metric:ID}} is
+    rejected on the first attempt; a compliant repair attempt then succeeds. Mock
+    output is exempt from this check (see pipeline.py's `is_mock_provider` gate) so
+    this test deliberately reports itself as a non-mock provider."""
+    index = build_metric_display_value_index(sample_profile)
+    metric_id, bare_digit = next(
+        (mid, d) for mid, value in index.items() for d in re.findall(r"\d+", value) if len(d) >= 2
+    )
+
+    class RealFakeProvider:
+        async def health(self) -> ProviderHealth:
+            return ProviderHealth(
+                status="healthy", provider="ollama_cloud", checked_at=dt.datetime.now(dt.UTC)
+            )
+
+        async def generate(self, request: GenerationRequest) -> GenerationResult:
+            raise AssertionError("not used")
+
+        async def generate_structured(self, request: StructuredGenerationRequest, schema: type):  # type: ignore[no-untyped-def]
+            section_id = request.metadata["section_id"]
+            attempt = request.metadata.get("attempt")
+            target = int(request.metadata["target_word_count"])
+            filler = _target_length_filler(section_id, target)
+            if attempt == "1":
+                text = f"Buchstäblich {bare_digit} ohne Platzhalter. {filler}"
+            else:
+                text = f"Siehe {{{{metric:{metric_id}}}}}. {filler}"
+            return GeneratedSectionContent(
+                title=section_id, text=text, numeric_claims=(), summary="s"
+            )
+
+    manifest = build_manifest(report_type="QUICK", calculation_id="calc-1")
+    report = await generate_report(
+        profile=sample_profile,
+        knowledge=knowledge_base,
+        manifest=manifest,
+        llm=RealFakeProvider(),
+    )
+    assert len(report.sections) == len(manifest.sections)
+
+
+async def test_generate_report_bare_literal_on_repair_attempt_also_raises(
+    sample_profile, knowledge_base
+) -> None:
+    """Documents the existing one-repair-attempt limit interacting with the new check:
+    if the repair attempt also types a bare literal, the pipeline's single permitted
+    repair is already spent, so the raw InvalidReportSection propagates (generate_report
+    only wraps the *lint-after-assembly* failure path into ReportGenerationError, not a
+    second per-section retry — see pipeline.py's per-section try/except)."""
+    index = build_metric_display_value_index(sample_profile)
+    bare_digit = next(
+        d for value in index.values() for d in re.findall(r"\d+", value) if len(d) >= 2
+    )
+
+    class AlwaysBareProvider:
+        async def health(self) -> ProviderHealth:
+            return ProviderHealth(
+                status="healthy", provider="ollama_cloud", checked_at=dt.datetime.now(dt.UTC)
+            )
+
+        async def generate(self, request: GenerationRequest) -> GenerationResult:
+            raise AssertionError("not used")
+
+        async def generate_structured(self, request: StructuredGenerationRequest, schema: type):  # type: ignore[no-untyped-def]
+            section_id = request.metadata["section_id"]
+            target = int(request.metadata["target_word_count"])
+            filler = _target_length_filler(section_id, target)
+            text = f"Immer wieder buchstäblich {bare_digit}, nie ein Platzhalter. {filler}"
+            return GeneratedSectionContent(
+                title=section_id, text=text, numeric_claims=(), summary="s"
+            )
+
+    manifest = build_manifest(report_type="QUICK", calculation_id="calc-1")
+    with pytest.raises(InvalidReportSection):
+        await generate_report(
+            profile=sample_profile,
+            knowledge=knowledge_base,
+            manifest=manifest,
+            llm=AlwaysBareProvider(),
+        )
+
+
+async def test_generate_report_mock_provider_is_exempt_from_bare_literal_check(
+    sample_profile, knowledge_base
+) -> None:
+    """Sanity check for the exemption itself: MockLLMProvider's deterministic output
+    (which echoes raw grounding facts, including bare digits, by design) must not be
+    rejected by the unauthorized-literal check."""
+    manifest = build_manifest(report_type="QUICK", calculation_id="calc-1")
+    report = await generate_report(
+        profile=sample_profile, knowledge=knowledge_base, manifest=manifest, llm=MockLLMProvider()
+    )
+    assert len(report.sections) == len(manifest.sections)
+
+
+async def test_generate_report_full_type_runs_outline_step(sample_profile, knowledge_base) -> None:
+    """P1: 'a true outline step for FULL/ULTIMATE' — a single upfront
+    generate_structured(ReportOutline) call precedes per-section generation, and a
+    planned focus it returns is threaded into that section's own context."""
+    manifest = build_manifest(report_type="FULL", calculation_id="calc-1")
+    schema_calls: list[str] = []
+    seen_outline_focus_for: list[str] = []
+    first_section_id = manifest.sections[0].section_id
+
+    class OutlineTrackingProvider:
+        async def health(self) -> ProviderHealth:
+            return ProviderHealth(
+                status="healthy", provider="ollama_cloud", checked_at=dt.datetime.now(dt.UTC)
+            )
+
+        async def generate(self, request: GenerationRequest) -> GenerationResult:
+            raise AssertionError("not used")
+
+        async def generate_structured(self, request: StructuredGenerationRequest, schema: type):  # type: ignore[no-untyped-def]
+            schema_calls.append(schema.__name__)
+            if schema is ReportOutline:
+                return ReportOutline(
+                    entries=(
+                        ReportOutlineEntry(
+                            section_id=first_section_id, planned_focus="Betone Klarheit."
+                        ),
+                    )
+                )
+            section_id = request.metadata["section_id"]
+            target = int(request.metadata["target_word_count"])
+            if any(b.label == "outline_focus" for b in request.context_blocks):
+                seen_outline_focus_for.append(section_id)
+            return GeneratedSectionContent(
+                title=section_id,
+                text=_target_length_filler(section_id, target),
+                numeric_claims=(),
+                summary="s",
+            )
+
+    report = await generate_report(
+        profile=sample_profile,
+        knowledge=knowledge_base,
+        manifest=manifest,
+        llm=OutlineTrackingProvider(),
+    )
+    assert schema_calls[0] == "ReportOutline"
+    assert seen_outline_focus_for == [first_section_id]
+    assert len(report.sections) == len(manifest.sections)
+
+
+async def test_generate_report_quick_type_skips_outline_step(
+    sample_profile, knowledge_base
+) -> None:
+    manifest = build_manifest(report_type="QUICK", calculation_id="calc-1")
+    schema_calls: list[str] = []
+
+    class TrackingProvider:
+        async def health(self) -> ProviderHealth:
+            return ProviderHealth(
+                status="healthy", provider="ollama_cloud", checked_at=dt.datetime.now(dt.UTC)
+            )
+
+        async def generate(self, request: GenerationRequest) -> GenerationResult:
+            raise AssertionError("not used")
+
+        async def generate_structured(self, request: StructuredGenerationRequest, schema: type):  # type: ignore[no-untyped-def]
+            schema_calls.append(schema.__name__)
+            section_id = request.metadata["section_id"]
+            target = int(request.metadata["target_word_count"])
+            return GeneratedSectionContent(
+                title=section_id,
+                text=_target_length_filler(section_id, target),
+                numeric_claims=(),
+                summary="s",
+            )
+
+    await generate_report(
+        profile=sample_profile, knowledge=knowledge_base, manifest=manifest, llm=TrackingProvider()
+    )
+    assert "ReportOutline" not in schema_calls

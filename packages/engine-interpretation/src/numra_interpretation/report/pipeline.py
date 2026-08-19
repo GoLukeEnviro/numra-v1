@@ -22,6 +22,8 @@ from numra_interpretation.llm.types import (
 from numra_interpretation.llm.types import LLMProvider as LLMProviderProtocol
 from numra_interpretation.llm.validator import (
     build_metric_display_value_index,
+    build_special_claim_index,
+    find_unauthorized_numeric_literals,
     validate_numeric_claims,
 )
 from numra_interpretation.report.content_padding import deterministic_elaboration
@@ -29,6 +31,7 @@ from numra_interpretation.report.linter import lint_report
 from numra_interpretation.report.manifest import ReportManifest, ReportSectionSpec
 from numra_interpretation.report.schemas import (
     GeneratedSectionContent,
+    ReportOutline,
     StructuredReport,
     StructuredReportSection,
 )
@@ -44,8 +47,23 @@ _SYSTEM_INSTRUCTIONS = (
     "unavailable, state that it is unavailable. All numerological claims must be "
     "grounded in the provided Canonical Profile and Knowledge documents. Reference "
     "every numeric fact using the metric-placeholder syntax you were given, naming a "
-    "known metric id, rather than typing digits yourself."
+    "known metric id for a single scalar fact or a known special id for a non-scalar "
+    "fact such as hidden passion or karmic lessons, rather than typing digits "
+    "yourself. Never type a numerology value as a literal digit."
 )
+
+_OUTLINE_SYSTEM_INSTRUCTIONS = (
+    "Plan a short focus statement for each report section listed below. Do not write "
+    "the sections themselves and do not state any numerological value, literal or "
+    "otherwise — this is a structural outline only, grounded purely in which themes "
+    "each section should emphasize given the Canonical Profile facts provided."
+)
+
+#: Report types long enough to benefit from an upfront structural outline (master
+#: prompt §102-ish "AgentWrite" planning step) before per-section generation begins.
+#: QUICK reports are short enough that the manifest's own section list is already the
+#: outline.
+_OUTLINE_REPORT_TYPES = ("FULL", "ULTIMATE")
 
 
 class ReportGenerationError(Exception):
@@ -53,23 +71,25 @@ class ReportGenerationError(Exception):
     the one permitted repair attempt (master prompt §100)."""
 
 
-_PLACEHOLDER_PATTERN = re.compile(r"\{\{\s*metric\s*:\s*([a-zA-Z0-9_]+)\s*\}\}")
+_PLACEHOLDER_PATTERN = re.compile(r"\{\{\s*(metric|special)\s*:\s*([a-zA-Z0-9_]+)\s*\}\}")
 
 
 def _resolve_placeholders(text: str, profile: CanonicalProfile) -> str:
-    """The renderer step from master prompt §99: replace every ``{{metric:ID}}``
-    placeholder with the Canonical Profile's own display value for that metric — never
-    with anything the LLM said. An unknown metric id is a hard failure, not a silent
-    drop (`InvalidReportSection`, retried once by the caller)."""
+    """The renderer step from master prompt §99: replace every ``{{metric:ID}}``/
+    ``{{special:ID}}`` placeholder with the Canonical Profile's own value — never with
+    anything the LLM said. An unknown id is a hard failure, not a silent drop
+    (`InvalidReportSection`, retried once by the caller)."""
     index = build_metric_display_value_index(profile)
+    special_index = build_special_claim_index(profile)
 
     def _replace(match: re.Match[str]) -> str:
-        metric_id = match.group(1)
-        if metric_id not in index:
+        namespace, identifier = match.group(1), match.group(2)
+        source = index if namespace == "metric" else special_index
+        if identifier not in source:
             raise InvalidReportSection(
-                f"Unknown metric_id referenced by placeholder: {metric_id!r}"
+                f"Unknown {namespace} id referenced by placeholder: {identifier!r}"
             )
-        return index[metric_id]
+        return source[identifier]
 
     return _PLACEHOLDER_PATTERN.sub(_replace, text)
 
@@ -188,6 +208,8 @@ async def _generate_section(
     llm: LLMProviderProtocol,
     global_summaries: tuple[str, ...],
     attempt: int,
+    is_mock_provider: bool,
+    planned_focus: str | None,
 ) -> StructuredReportSection:
     context_blocks = list(_gather_context_blocks(profile, knowledge, spec))
 
@@ -200,28 +222,59 @@ async def _generate_section(
             )
         )
 
+    if planned_focus:
+        context_blocks.append(
+            ContextBlock(
+                role="instruction_supplement", label="outline_focus", content=planned_focus
+            )
+        )
+
+    # Real prompt text, not just request metadata: a concrete provider (ollama_provider)
+    # never puts `request.metadata` into the actual chat messages it sends, so a target
+    # word count living only in `metadata` would never reach a real LLM's prompt at
+    # all — this block is what makes the target length an instruction the model
+    # actually sees.
+    context_blocks.append(
+        ContextBlock(
+            role="instruction_supplement",
+            label="word_count_target",
+            content=(
+                f"Target length for this section: approximately {spec.target_word_count} "
+                "words. Do not pad with repetition to reach this length."
+            ),
+        )
+    )
+
     numeric_claims = _numeric_claims_for_spec(profile, spec)
 
-    # Estimate the word count the composed text will already carry from the system
-    # line, grounding blocks, and numeric-claim lines (MockLLMProvider's _compose_text
-    # format: "[role:label] content" per block, "{{metric:ID}} = value" per claim), so
-    # the elaboration filler tops the section up to ~target_word_count instead of
-    # stacking on top of it.
-    overhead_words = len(f"[system] {_SYSTEM_INSTRUCTIONS}".split())
-    overhead_words += sum(len(f"[{b.role}:{b.label}] {b.content}".split()) for b in context_blocks)
-    overhead_words += 3 * len(numeric_claims)
+    if is_mock_provider:
+        # Deterministic, network-free filler so MockLLMProvider-driven tests can
+        # exercise realistic section lengths (including ULTIMATE-scale, 15,000+ words)
+        # without a real model. Never sent to a real provider — see the module
+        # docstring and the `is_mock_provider` branch this guards: injecting synthetic
+        # filler text into a *real* LLM's prompt would just be prompt noise a real
+        # model has no reason to reproduce, and risks being echoed back verbatim.
+        overhead_words = len(f"[system] {_SYSTEM_INSTRUCTIONS}".split())
+        overhead_words += sum(
+            len(f"[{b.role}:{b.label}] {b.content}".split()) for b in context_blocks
+        )
+        overhead_words += 3 * len(numeric_claims)
 
-    # Always lead with the section's own id/title so sections whose grounding facts
-    # happen to overlap (e.g. executive_profile/development/calculation_appendix all
-    # cite the same core metrics) still produce distinct elaboration text — otherwise
-    # the global lint's DuplicateParagraphDetection would (correctly) flag genuinely
-    # identical output.
-    seed_phrases = (spec.section_id, spec.title) + tuple(block.content for block in context_blocks)
-    elaboration_target = max(5, spec.target_word_count - overhead_words)
-    elaboration = deterministic_elaboration(seed_phrases, elaboration_target)
-    context_blocks.append(
-        ContextBlock(role="instruction_supplement", label="elaboration_seed", content=elaboration)
-    )
+        # Always lead with the section's own id/title so sections whose grounding
+        # facts happen to overlap (e.g. executive_profile/development/
+        # calculation_appendix all cite the same core metrics) still produce distinct
+        # elaboration text — otherwise the global lint's DuplicateParagraphDetection
+        # would (correctly) flag genuinely identical output.
+        seed_phrases = (spec.section_id, spec.title) + tuple(
+            block.content for block in context_blocks
+        )
+        elaboration_target = max(5, spec.target_word_count - overhead_words)
+        elaboration = deterministic_elaboration(seed_phrases, elaboration_target)
+        context_blocks.append(
+            ContextBlock(
+                role="instruction_supplement", label="elaboration_seed", content=elaboration
+            )
+        )
 
     request = StructuredGenerationRequest(
         system_instructions=_SYSTEM_INSTRUCTIONS,
@@ -240,7 +293,22 @@ async def _generate_section(
 
     validate_numeric_claims(result.numeric_claims, profile)
 
-    text = _resolve_placeholders(result.text, profile)
+    # template_text (still carrying {{metric:ID}}/{{special:ID}} placeholders) is
+    # linted BEFORE placeholder resolution — the unauthorized-literal check only means
+    # anything against the model's own raw wording, not against the profile's own
+    # values that resolution will substitute in. Mock output is exempt: MockLLMProvider
+    # deliberately echoes raw grounding facts (including bare digits) as part of how it
+    # fabricates deterministic content, which is not "the model inventing a claim".
+    template_text = result.text
+    if not is_mock_provider:
+        unauthorized = find_unauthorized_numeric_literals(template_text, profile)
+        if unauthorized:
+            raise InvalidReportSection(
+                f"UnauthorizedNumericLiteral: section {spec.section_id!r} contains bare "
+                f"digit(s) {unauthorized!r} not referenced via a metric/special placeholder"
+            )
+
+    text = _resolve_placeholders(template_text, profile)
     word_count = len(text.split())
 
     return StructuredReportSection(
@@ -250,6 +318,44 @@ async def _generate_section(
         text=text,
         word_count=word_count,
         summary=result.summary or f"{spec.title}: {word_count} words generated.",
+    )
+
+
+async def _generate_outline(
+    *,
+    profile: CanonicalProfile,
+    manifest: ReportManifest,
+    llm: LLMProviderProtocol,
+) -> ReportOutline:
+    """The AgentWrite planning step (master prompt §102-ish): one upfront structured
+    call asking for a short planned focus per section, run only for the longer report
+    types (`_OUTLINE_REPORT_TYPES`) where a QUICK report's own section list isn't
+    already the outline. Grounded in every core metric so the plan can reference real
+    facts; never asked to state a numeric value itself (`_OUTLINE_SYSTEM_INSTRUCTIONS`)
+    — the outline's job is structure, not content, so it carries no numeric-claim
+    surface of its own to validate."""
+    context_blocks = [
+        ContextBlock(
+            role="instruction_supplement",
+            label="sections",
+            content=", ".join(f"{spec.section_id} ({spec.title})" for spec in manifest.sections),
+        )
+    ]
+    for metric_id in CORE_METRIC_IDS:
+        block = _generic_metric_block(profile, metric_id)
+        if block is not None:
+            context_blocks.append(block)
+
+    request = StructuredGenerationRequest(
+        system_instructions=_OUTLINE_SYSTEM_INSTRUCTIONS,
+        context_blocks=tuple(context_blocks),
+        target_schema_name="ReportOutline",
+    )
+    outline = await llm.generate_structured(request, ReportOutline)
+    assert isinstance(outline, ReportOutline)
+    known_section_ids = {spec.section_id for spec in manifest.sections}
+    return ReportOutline(
+        entries=tuple(entry for entry in outline.entries if entry.section_id in known_section_ids)
     )
 
 
@@ -265,11 +371,22 @@ async def generate_report(
     health = await llm.health()
     if health.status in ("unavailable", "disabled"):
         raise ReportGenerationError(f"LLM_UNAVAILABLE: provider={health.provider}")
+    is_mock_provider = health.provider == "mock"
+
+    outline_by_section: dict[str, str] = {}
+    if manifest.report_type in _OUTLINE_REPORT_TYPES:
+        outline = await _generate_outline(profile=profile, manifest=manifest, llm=llm)
+        outline_by_section = {
+            entry.section_id: entry.planned_focus
+            for entry in outline.entries
+            if entry.planned_focus
+        }
 
     sections: list[StructuredReportSection] = []
     summaries: list[str] = []
 
     for spec in manifest.sections:
+        planned_focus = outline_by_section.get(spec.section_id)
         try:
             section = await _generate_section(
                 profile=profile,
@@ -278,6 +395,8 @@ async def generate_report(
                 llm=llm,
                 global_summaries=tuple(summaries),
                 attempt=1,
+                is_mock_provider=is_mock_provider,
+                planned_focus=planned_focus,
             )
         except InvalidReportSection:
             # One controlled repair attempt (master prompt §100) — regenerate once.
@@ -288,6 +407,8 @@ async def generate_report(
                 llm=llm,
                 global_summaries=tuple(summaries),
                 attempt=2,
+                is_mock_provider=is_mock_provider,
+                planned_focus=planned_focus,
             )
         sections.append(section)
         summaries.append(section.summary)
