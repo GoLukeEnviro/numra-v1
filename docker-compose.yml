@@ -47,12 +47,15 @@ services:
       OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
       NUMRA_LLM_MODEL_PREMIUM: ${NUMRA_LLM_MODEL_PREMIUM:-deepseek-v4-pro:cloud}
       NUMRA_LLM_MODEL_FAST: ${NUMRA_LLM_MODEL_FAST:-deepseek-v4-flash:cloud}
+      PDF_INTERNAL_URL: http://pdf:4300
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     depends_on:
       postgres:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+      pdf:
+        condition: service_started
     ports:
       - "8000:8000"
 

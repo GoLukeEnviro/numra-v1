@@ -37,6 +37,13 @@ class Settings(BaseSettings):
     numra_llm_timeout_seconds: int = 120
 
     pdf_internal_token: str = "dev-only-insecure-pdf-token"
+    #: Base URL of the internal PDF rendering service, used only for the truthful
+    #: health check (GET {pdf_internal_url}/health/ready). None means "no PDF service
+    #: configured" (health reports "disabled", never "unhealthy").
+    pdf_internal_url: str | None = None
+
+    health_check_timeout_seconds: float = 2.0
+    health_ready_cache_ttl_seconds: float = 5.0
 
     log_level: str = "INFO"
     report_max_words: int = 30_000
