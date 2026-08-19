@@ -13,9 +13,11 @@ export type BirthPlace = components["schemas"]["BirthPlace"];
 export type BirthTime = components["schemas"]["BirthTime"];
 export type BirthTimePrecision = components["schemas"]["BirthTimePrecision"];
 
-const API_BASE_URL =
-  (typeof process !== "undefined" && process.env.NEXT_PUBLIC_API_BASE_URL) ||
-  "http://localhost:8000";
+// Same-origin only: every request goes to /api/*, which next.config.mjs's rewrite
+// forwards server-side to API_INTERNAL_URL (a runtime, non-NEXT_PUBLIC_ env var — see
+// that file's comment). The browser never needs to know the real backend origin, and
+// no build-time-baked API URL means the same built image works across environments.
+const API_PREFIX = "/api";
 
 /**
  * Structured API error. The API surfaces business errors as `{code, message}`
@@ -60,7 +62,8 @@ interface RequestOptions {
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const method = options.method ?? "GET";
-  const url = new URL(path, API_BASE_URL);
+  const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost";
+  const url = new URL(`${API_PREFIX}${path}`, origin);
   if (options.query) {
     for (const [key, value] of Object.entries(options.query)) {
       if (value !== undefined) url.searchParams.set(key, value);

@@ -25,14 +25,13 @@ export default defineConfig({
     },
   ],
   webServer: {
-    // Build with the API base pointed at this same origin so the fully-mocked
-    // journey below (page.route) never has to deal with cross-origin/CORS
-    // preflight semantics — there is no live backend in this sandbox to test
-    // against (see apps/web/e2e/golden-journey.spec.ts for the real contract
-    // this exercises via route interception). NEXT_PUBLIC_* vars are inlined
-    // at build time, so both the build and the start need it set.
-    command:
-      "NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:4173 pnpm build && NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:4173 npx next start -p 4173",
+    // API_INTERNAL_URL is a runtime (server-only) env var read at `next start`, not a
+    // NEXT_PUBLIC_ build-time one — the build step itself needs no API-related env at
+    // all now (see next.config.mjs's rewrites()). Requests the browser makes to
+    // same-origin /api/* are proxied to whatever API_INTERNAL_URL says; when a test
+    // uses page.route() to intercept those instead (see golden-journey.spec.ts), the
+    // proxy target is never actually reached.
+    command: "pnpm build && API_INTERNAL_URL=http://127.0.0.1:4173 npx next start -p 4173",
     url: "http://127.0.0.1:4173",
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,

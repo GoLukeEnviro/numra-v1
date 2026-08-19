@@ -122,7 +122,10 @@ services:
       dockerfile: docker/web.Dockerfile
     restart: unless-stopped
     environment:
-      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
+      # Server-only (not NEXT_PUBLIC_-prefixed): read once at `next start`, never baked
+      # into the client bundle — see next.config.mjs's rewrites(). The browser only
+      # ever calls same-origin /api/*.
+      API_INTERNAL_URL: http://api:8000
     depends_on:
       - api
     ports:
