@@ -1,0 +1,47 @@
+[project]
+name = "numra-v1-workspace"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.uv.workspace]
+members = ["packages/engine-numerology", "packages/engine-interpretation", "packages/engine-astrology"]
+
+[dependency-groups]
+dev = [
+  "ruff>=0.6",
+  "mypy>=1.11",
+  "pytest>=8.0",
+  "pytest-cov>=5.0",
+  "hypothesis>=6.100",
+  "jsonschema>=4.22",
+]
+
+[tool.uv.sources]
+numra-numerology = { workspace = true }
+numra-interpretation = { workspace = true }
+numra-astrology = { workspace = true }
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["numra_numerology", "numra_interpretation", "numra_astrology"]
+
+[tool.mypy]
+strict = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+markers = [
+  "golden: pinned reference-value tests",
+  "integration: tests touching external systems",
+  "property: hypothesis property-based tests",
+  "unit: fast isolated unit tests",
+]
+testpaths = ["packages"]

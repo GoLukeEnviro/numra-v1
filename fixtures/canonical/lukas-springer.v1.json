@@ -1,0 +1,312 @@
+{
+  "schema_version": "1.0.0",
+  "calculation_system": "numra-canonical",
+  "calculation_version": "1.0.0",
+  "person": {
+    "birth_first_names": "Lukas",
+    "birth_last_name": "Springer",
+    "birth_date": "1986-07-18",
+    "birth_time": { "value": "06:00:00", "precision": "exact" },
+    "birth_place": { "display_name": "Meerbusch", "country_code": "DE" }
+  },
+  "normalization": {
+    "original": "Lukas Springer",
+    "components": ["LUKAS", "SPRINGER"],
+    "calculation_string": "LUKASSPRINGER"
+  },
+  "core_numbers": {
+    "life_path": {
+      "metric_id": "life_path",
+      "system": "numra-canonical",
+      "method": "segmented_v1",
+      "source_value": null,
+      "raw_value": 22,
+      "root_value": 4,
+      "master_number": 22,
+      "effective_value": 22,
+      "display_value": "22/4",
+      "calculation_trace": {
+        "input_refs": ["birth_date"],
+        "normalization": { "day_segment": 18, "month_segment": 7, "year_segment": 1986 },
+        "operations": [
+          { "type": "segment_reduce", "segment": "day", "source_value": 18, "raw_value": 18, "steps": [18, 9], "effective": 9 },
+          { "type": "segment_reduce", "segment": "month", "source_value": 7, "raw_value": 7, "steps": [7], "effective": 7 },
+          { "type": "segment_reduce", "segment": "year", "source_value": 1986, "raw_value": 24, "steps": [24, 6], "effective": 6 },
+          { "type": "sum", "operands": [9, 7, 6], "result": 22 },
+          { "type": "reduce", "steps": [22] }
+        ]
+      },
+      "flags": []
+    },
+    "birthday": {
+      "metric_id": "birthday",
+      "system": "numra-canonical",
+      "method": "segmented_v1",
+      "source_value": 18,
+      "raw_value": 18,
+      "root_value": 9,
+      "master_number": null,
+      "effective_value": 9,
+      "display_value": "18/9",
+      "calculation_trace": {
+        "input_refs": ["birth_date"],
+        "operations": [{ "type": "reduce", "operand": 18, "steps": [18, 9] }]
+      },
+      "flags": []
+    },
+    "attitude": {
+      "metric_id": "attitude",
+      "system": "numra-canonical",
+      "method": "segmented_v1",
+      "source_value": null,
+      "raw_value": 25,
+      "root_value": 7,
+      "master_number": null,
+      "effective_value": 7,
+      "display_value": "25/7",
+      "calculation_trace": {
+        "input_refs": ["birth_date"],
+        "operations": [
+          { "type": "sum", "operands": [7, 18], "result": 25 },
+          { "type": "reduce", "steps": [25, 7] }
+        ]
+      },
+      "flags": []
+    },
+    "expression": {
+      "metric_id": "expression",
+      "system": "pythagorean",
+      "method": "full_name_sum_v1",
+      "source_value": null,
+      "raw_value": 62,
+      "root_value": 8,
+      "master_number": null,
+      "effective_value": 8,
+      "display_value": "62/8",
+      "calculation_trace": {
+        "input_refs": ["birth_first_names", "birth_last_name"],
+        "normalization": { "components": ["LUKAS", "SPRINGER"], "calculation_string": "LUKASSPRINGER" },
+        "operations": [
+          { "type": "letter_mapping", "values": [3, 3, 2, 1, 1, 1, 7, 9, 9, 5, 7, 5, 9] },
+          { "type": "sum", "operands": [3, 3, 2, 1, 1, 1, 7, 9, 9, 5, 7, 5, 9], "result": 62 },
+          { "type": "reduce", "steps": [62, 8] }
+        ]
+      },
+      "flags": []
+    },
+    "soul_urge": {
+      "metric_id": "soul_urge",
+      "system": "pythagorean",
+      "method": "vowel_sum_v1",
+      "source_value": null,
+      "raw_value": 18,
+      "root_value": 9,
+      "master_number": null,
+      "effective_value": 9,
+      "display_value": "18/9",
+      "calculation_trace": {
+        "input_refs": ["birth_first_names", "birth_last_name"],
+        "normalization": { "calculation_string": "LUKASSPRINGER", "vowels_extracted": ["U", "A", "I", "E"] },
+        "operations": [
+          { "type": "letter_mapping", "values": [3, 1, 9, 5] },
+          { "type": "sum", "operands": [3, 1, 9, 5], "result": 18 },
+          { "type": "reduce", "steps": [18, 9] }
+        ]
+      },
+      "flags": []
+    },
+    "personality": {
+      "metric_id": "personality",
+      "system": "pythagorean",
+      "method": "consonant_sum_v1",
+      "source_value": null,
+      "raw_value": 44,
+      "root_value": 8,
+      "master_number": null,
+      "effective_value": 8,
+      "display_value": "44/8",
+      "calculation_trace": {
+        "input_refs": ["birth_first_names", "birth_last_name"],
+        "normalization": { "calculation_string": "LUKASSPRINGER", "consonants_extracted": ["L", "K", "S", "S", "P", "R", "N", "G", "R"] },
+        "operations": [
+          { "type": "letter_mapping", "values": [3, 2, 1, 1, 7, 9, 5, 7, 9] },
+          { "type": "sum", "operands": [3, 2, 1, 1, 7, 9, 5, 7, 9], "result": 44 },
+          { "type": "reduce", "steps": [44, 8] }
+        ]
+      },
+      "flags": []
+    },
+    "maturity": {
+      "metric_id": "maturity",
+      "system": "numra-canonical",
+      "method": "root_sum_v1",
+      "source_value": null,
+      "raw_value": 12,
+      "root_value": 3,
+      "master_number": null,
+      "effective_value": 3,
+      "display_value": "12/3",
+      "calculation_trace": {
+        "input_refs": ["life_path", "expression"],
+        "operations": [
+          { "type": "sum", "operands": [4, 8], "result": 12 },
+          { "type": "reduce", "steps": [12, 3] }
+        ]
+      },
+      "flags": []
+    },
+    "balance": {
+      "metric_id": "balance",
+      "system": "pythagorean",
+      "method": "first_letters_v1",
+      "source_value": null,
+      "raw_value": 4,
+      "root_value": 4,
+      "master_number": null,
+      "effective_value": 4,
+      "display_value": "4",
+      "calculation_trace": {
+        "input_refs": ["normalization.components"],
+        "normalization": { "components": ["LUKAS", "SPRINGER"], "first_letters": ["L", "S"] },
+        "operations": [
+          { "type": "letter_mapping", "values": [3, 1] },
+          { "type": "sum", "operands": [3, 1], "result": 4 },
+          { "type": "reduce", "steps": [4] }
+        ]
+      },
+      "flags": []
+    },
+    "hidden_passion": {
+      "values": [1, 9],
+      "frequency": 3,
+      "calculation_trace": {
+        "input_refs": ["normalization.calculation_string"],
+        "operations": [
+          { "type": "frequency_count", "intensity_table": { "1": 3, "2": 1, "3": 2, "4": 0, "5": 2, "6": 0, "7": 2, "8": 0, "9": 3 } },
+          { "type": "max_select", "max_frequency": 3, "values": [1, 9] }
+        ]
+      }
+    },
+    "karmic_lessons": {
+      "values": [4, 6, 8],
+      "calculation_trace": {
+        "input_refs": ["normalization.calculation_string"],
+        "operations": [
+          { "type": "missing_values", "intensity_table": { "1": 3, "2": 1, "3": 2, "4": 0, "5": 2, "6": 0, "7": 2, "8": 0, "9": 3 }, "missing": [4, 6, 8] }
+        ]
+      }
+    },
+    "subconscious_self": {
+      "value": 6,
+      "calculation_trace": {
+        "input_refs": ["normalization.calculation_string"],
+        "operations": [
+          { "type": "distinct_count", "present_values": [1, 2, 3, 5, 7, 9], "count": 6 }
+        ]
+      }
+    },
+    "cornerstone": { "letter": "L", "value": 3 },
+    "capstone": { "letter": "R", "value": 9 },
+    "first_vowel": { "letter": "U", "value": 3 },
+    "intensity_table": { "1": 3, "2": 1, "3": 2, "4": 0, "5": 2, "6": 0, "7": 2, "8": 0, "9": 3 }
+  },
+  "cycles": {
+    "period_cycles": {
+      "period_1": { "source_value": 7, "raw_value": 7, "root_value": 7, "master_number": null, "effective_value": 7, "display_value": "7", "reduction_steps": [7] },
+      "period_2": { "source_value": 18, "raw_value": 18, "root_value": 9, "master_number": null, "effective_value": 9, "display_value": "18/9", "reduction_steps": [18, 9] },
+      "period_3": { "source_value": 1986, "raw_value": 24, "root_value": 6, "master_number": null, "effective_value": 6, "display_value": "24/6", "reduction_steps": [24, 6] }
+    },
+    "pinnacles": {
+      "pinnacle_1": { "source_value": null, "raw_value": 16, "root_value": 7, "master_number": null, "effective_value": 7, "display_value": "16/7", "reduction_steps": [16, 7] },
+      "pinnacle_2": { "source_value": null, "raw_value": 15, "root_value": 6, "master_number": null, "effective_value": 6, "display_value": "15/6", "reduction_steps": [15, 6] },
+      "pinnacle_3": { "source_value": null, "raw_value": 13, "root_value": 4, "master_number": null, "effective_value": 4, "display_value": "13/4", "reduction_steps": [13, 4] },
+      "pinnacle_4": { "source_value": null, "raw_value": 13, "root_value": 4, "master_number": null, "effective_value": 4, "display_value": "13/4", "reduction_steps": [13, 4] }
+    },
+    "challenges": { "challenge_1": 2, "challenge_2": 3, "challenge_3": 1, "challenge_4": 1 }
+  },
+  "timing": {
+    "as_of_date": "2026-08-19",
+    "universal_year": { "source_value": 2026, "raw_value": 10, "root_value": 1, "master_number": null, "effective_value": 1, "display_value": "10/1", "reduction_steps": [10, 1] },
+    "personal_year": {
+      "metric_id": "personal_year",
+      "system": "numra-canonical",
+      "method": "segmented_v1",
+      "source_value": 2026,
+      "raw_value": 17,
+      "root_value": 8,
+      "master_number": null,
+      "effective_value": 8,
+      "display_value": "17/8",
+      "calculation_trace": {
+        "input_refs": ["birth_date", "as_of_date"],
+        "operations": [
+          { "type": "sum", "operands": [7, 9, 1], "result": 17 },
+          { "type": "reduce", "steps": [17, 8] }
+        ]
+      },
+      "flags": []
+    },
+    "personal_month": {
+      "metric_id": "personal_month",
+      "system": "numra-canonical",
+      "method": "segmented_v1",
+      "source_value": 8,
+      "raw_value": 16,
+      "root_value": 7,
+      "master_number": null,
+      "effective_value": 7,
+      "display_value": "16/7",
+      "calculation_trace": {
+        "input_refs": ["personal_year", "as_of_date"],
+        "operations": [
+          { "type": "sum", "operands": [8, 8], "result": 16 },
+          { "type": "reduce", "steps": [16, 7] }
+        ]
+      },
+      "flags": []
+    },
+    "personal_day": {
+      "metric_id": "personal_day",
+      "system": "numra-canonical",
+      "method": "segmented_v1",
+      "source_value": 19,
+      "raw_value": 8,
+      "root_value": 8,
+      "master_number": null,
+      "effective_value": 8,
+      "display_value": "8",
+      "calculation_trace": {
+        "input_refs": ["personal_month", "as_of_date"],
+        "operations": [
+          { "type": "sum", "operands": [7, 1], "result": 8 },
+          { "type": "reduce", "steps": [8] }
+        ]
+      },
+      "flags": []
+    }
+  },
+  "diagnostics": {
+    "life_path": {
+      "alternative_methods": {
+        "direct_digit_sum": {
+          "method": "direct_digit_sum",
+          "source_value": "18071986",
+          "raw_value": 40,
+          "root_value": 4,
+          "master_number": null,
+          "effective_value": 4,
+          "display_value": "40/4",
+          "reduction_steps": [40, 4],
+          "operands": [1, 8, 0, 7, 1, 9, 8, 6]
+        }
+      }
+    },
+    "pinnacles": {
+      "alternative_methods": {
+        "pinnacle_1_historical": { "formula": "raw_month + raw_day", "raw_value": 25, "root_value": 7, "display_value": "25/7" },
+        "pinnacle_2_historical": { "formula": "raw_day + year_compound", "raw_value": 42, "root_value": 6, "display_value": "42/6" }
+      }
+    }
+  },
+  "warnings": []
+}

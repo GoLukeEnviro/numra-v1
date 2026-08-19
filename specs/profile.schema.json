@@ -1,0 +1,239 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://numra.dev/schema/profile.schema.json",
+  "title": "NUMRA Canonical Profile",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "calculation_system",
+    "calculation_version",
+    "person",
+    "normalization",
+    "core_numbers",
+    "cycles",
+    "timing",
+    "diagnostics",
+    "warnings"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "calculation_system": { "const": "numra-canonical" },
+    "calculation_version": { "const": "1.0.0" },
+    "deterministic_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "person": { "$ref": "#/$defs/PersonSummary" },
+    "normalization": { "$ref": "#/$defs/NameNormalization" },
+    "core_numbers": {
+      "type": "object",
+      "required": [
+        "life_path", "birthday", "attitude", "expression", "soul_urge",
+        "personality", "maturity", "balance", "hidden_passion",
+        "karmic_lessons", "subconscious_self", "cornerstone", "capstone",
+        "first_vowel", "intensity_table"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "life_path": { "$ref": "#/$defs/CalculationMetric" },
+        "birthday": { "$ref": "#/$defs/CalculationMetric" },
+        "attitude": { "$ref": "#/$defs/CalculationMetric" },
+        "expression": { "$ref": "#/$defs/CalculationMetric" },
+        "soul_urge": { "$ref": "#/$defs/CalculationMetric" },
+        "personality": { "$ref": "#/$defs/CalculationMetric" },
+        "maturity": { "$ref": "#/$defs/CalculationMetric" },
+        "balance": { "$ref": "#/$defs/CalculationMetric" },
+        "hidden_passion": { "$ref": "#/$defs/HiddenPassion" },
+        "karmic_lessons": { "$ref": "#/$defs/KarmicLessons" },
+        "subconscious_self": { "$ref": "#/$defs/SubconsciousSelf" },
+        "cornerstone": { "$ref": "#/$defs/LetterResult" },
+        "capstone": { "$ref": "#/$defs/LetterResult" },
+        "first_vowel": { "$ref": "#/$defs/LetterResult" },
+        "intensity_table": { "$ref": "#/$defs/IntensityTable" }
+      }
+    },
+    "cycles": {
+      "type": "object",
+      "required": ["period_cycles", "pinnacles", "challenges"],
+      "additionalProperties": false,
+      "properties": {
+        "period_cycles": { "$ref": "#/$defs/PeriodCycles" },
+        "pinnacles": { "$ref": "#/$defs/Pinnacles" },
+        "challenges": { "$ref": "#/$defs/Challenges" }
+      }
+    },
+    "timing": { "$ref": "#/$defs/Timing" },
+    "diagnostics": { "type": "object" },
+    "warnings": { "type": "array", "items": { "type": "string" } }
+  },
+  "$defs": {
+    "MetricFlag": {
+      "type": "object",
+      "required": ["code"],
+      "additionalProperties": false,
+      "properties": {
+        "code": { "type": "string" },
+        "value": { "type": ["string", "null"] },
+        "source_raw_value": { "type": ["integer", "null"] }
+      }
+    },
+    "ReductionResult": {
+      "type": "object",
+      "required": [
+        "source_value", "raw_value", "root_value", "master_number",
+        "effective_value", "display_value", "reduction_steps"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "source_value": { "type": ["integer", "string", "null"] },
+        "raw_value": { "type": "integer", "minimum": 0 },
+        "root_value": { "type": "integer", "minimum": 0, "maximum": 33 },
+        "master_number": { "enum": [null, 11, 22, 33] },
+        "effective_value": { "type": "integer", "minimum": 0 },
+        "display_value": { "type": "string" },
+        "reduction_steps": { "type": "array", "items": { "type": "integer" }, "minItems": 1 }
+      }
+    },
+    "CalculationTrace": {
+      "type": "object",
+      "required": ["input_refs", "operations"],
+      "additionalProperties": true,
+      "properties": {
+        "input_refs": { "type": "array", "items": { "type": "string" } },
+        "normalization": { "type": "object" },
+        "operations": { "type": "array", "items": { "type": "object" } }
+      }
+    },
+    "CalculationMetric": {
+      "type": "object",
+      "required": [
+        "metric_id", "system", "method", "source_value", "raw_value",
+        "root_value", "master_number", "effective_value", "display_value",
+        "calculation_trace", "flags"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "metric_id": { "type": "string" },
+        "system": { "type": "string" },
+        "method": { "type": "string" },
+        "source_value": { "type": ["integer", "string", "null"] },
+        "raw_value": { "type": "integer" },
+        "root_value": { "type": "integer" },
+        "master_number": { "enum": [null, 11, 22, 33] },
+        "effective_value": { "type": "integer" },
+        "display_value": { "type": "string" },
+        "calculation_trace": { "$ref": "#/$defs/CalculationTrace" },
+        "flags": { "type": "array", "items": { "$ref": "#/$defs/MetricFlag" } }
+      }
+    },
+    "LetterResult": {
+      "type": "object",
+      "required": ["letter", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "letter": { "type": ["string", "null"] },
+        "value": { "type": ["integer", "null"] }
+      }
+    },
+    "HiddenPassion": {
+      "type": "object",
+      "required": ["values", "frequency", "calculation_trace"],
+      "additionalProperties": false,
+      "properties": {
+        "values": { "type": "array", "items": { "type": "integer", "minimum": 1, "maximum": 9 } },
+        "frequency": { "type": "integer", "minimum": 0 },
+        "calculation_trace": { "$ref": "#/$defs/CalculationTrace" }
+      }
+    },
+    "KarmicLessons": {
+      "type": "object",
+      "required": ["values", "calculation_trace"],
+      "additionalProperties": false,
+      "properties": {
+        "values": { "type": "array", "items": { "type": "integer", "minimum": 1, "maximum": 9 } },
+        "calculation_trace": { "$ref": "#/$defs/CalculationTrace" }
+      }
+    },
+    "SubconsciousSelf": {
+      "type": "object",
+      "required": ["value", "calculation_trace"],
+      "additionalProperties": false,
+      "properties": {
+        "value": { "type": "integer", "minimum": 0, "maximum": 9 },
+        "calculation_trace": { "$ref": "#/$defs/CalculationTrace" }
+      }
+    },
+    "IntensityTable": {
+      "type": "object",
+      "required": ["1","2","3","4","5","6","7","8","9"],
+      "additionalProperties": false,
+      "properties": {
+        "1": {"type": "integer", "minimum": 0}, "2": {"type": "integer", "minimum": 0},
+        "3": {"type": "integer", "minimum": 0}, "4": {"type": "integer", "minimum": 0},
+        "5": {"type": "integer", "minimum": 0}, "6": {"type": "integer", "minimum": 0},
+        "7": {"type": "integer", "minimum": 0}, "8": {"type": "integer", "minimum": 0},
+        "9": {"type": "integer", "minimum": 0}
+      }
+    },
+    "PeriodCycles": {
+      "type": "object",
+      "required": ["period_1", "period_2", "period_3"],
+      "additionalProperties": false,
+      "properties": {
+        "period_1": { "$ref": "#/$defs/ReductionResult" },
+        "period_2": { "$ref": "#/$defs/ReductionResult" },
+        "period_3": { "$ref": "#/$defs/ReductionResult" }
+      }
+    },
+    "Pinnacles": {
+      "type": "object",
+      "required": ["pinnacle_1", "pinnacle_2", "pinnacle_3", "pinnacle_4"],
+      "additionalProperties": false,
+      "properties": {
+        "pinnacle_1": { "$ref": "#/$defs/ReductionResult" },
+        "pinnacle_2": { "$ref": "#/$defs/ReductionResult" },
+        "pinnacle_3": { "$ref": "#/$defs/ReductionResult" },
+        "pinnacle_4": { "$ref": "#/$defs/ReductionResult" }
+      }
+    },
+    "Challenges": {
+      "type": "object",
+      "required": ["challenge_1", "challenge_2", "challenge_3", "challenge_4"],
+      "additionalProperties": false,
+      "properties": {
+        "challenge_1": { "type": "integer", "minimum": 0 },
+        "challenge_2": { "type": "integer", "minimum": 0 },
+        "challenge_3": { "type": "integer", "minimum": 0 },
+        "challenge_4": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "Timing": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "as_of_date": { "type": "string", "format": "date" },
+        "universal_year": { "$ref": "#/$defs/ReductionResult" },
+        "personal_year": { "$ref": "#/$defs/CalculationMetric" },
+        "personal_month": { "$ref": "#/$defs/CalculationMetric" },
+        "personal_day": { "$ref": "#/$defs/CalculationMetric" }
+      }
+    },
+    "PersonSummary": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "birth_date": { "type": "string", "format": "date" },
+        "birth_time": { "type": ["object", "null"] },
+        "birth_place": { "type": ["object", "null"] }
+      }
+    },
+    "NameNormalization": {
+      "type": "object",
+      "required": ["original", "components", "calculation_string"],
+      "additionalProperties": false,
+      "properties": {
+        "original": { "type": "string" },
+        "components": { "type": "array", "items": { "type": "string" } },
+        "calculation_string": { "type": "string", "pattern": "^[A-Z]*$" }
+      }
+    }
+  }
+}

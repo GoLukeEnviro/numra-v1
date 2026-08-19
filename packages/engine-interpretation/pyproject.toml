@@ -1,0 +1,16 @@
+[project]
+name = "numra-interpretation"
+version = "0.1.0"
+description = "NUMRA rule-based, traceable interpretation composition (Canonical Profile + Knowledge -> structured interpretation). No calculation logic."
+requires-python = ">=3.11"
+dependencies = ["pydantic>=2.6", "numra-numerology", "pyyaml>=6.0"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/numra_interpretation"]
+
+[tool.uv.sources]
+numra-numerology = { workspace = true }
