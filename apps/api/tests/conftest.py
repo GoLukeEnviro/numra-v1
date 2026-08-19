@@ -11,6 +11,8 @@ from numra_api.app import create_app
 from numra_api.config import Settings
 from numra_api.db import build_engine, build_sessionmaker
 from numra_api.models import Base
+from numra_api.services.llm_factory import build_llm_provider
+from numra_interpretation.llm.types import LLMProvider
 
 TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL",
@@ -20,7 +22,9 @@ TEST_DATABASE_URL = os.environ.get(
 
 @pytest_asyncio.fixture
 async def settings() -> Settings:
-    return Settings(database_url=TEST_DATABASE_URL, environment="test")
+    # Tests opt into the mock provider explicitly (never relying on an implicit
+    # default) — this is exactly the pattern production must never fall back to.
+    return Settings(database_url=TEST_DATABASE_URL, environment="test", numra_llm_provider="mock")
 
 
 @pytest_asyncio.fixture
@@ -44,6 +48,15 @@ async def app(settings: Settings, db_engine):
 @pytest_asyncio.fixture
 async def sessionmaker(app):
     return app.state.sessionmaker
+
+
+@pytest_asyncio.fixture
+async def llm(settings: Settings) -> LLMProvider:
+    """The provider tests use when driving the worker directly (`run_one_cycle`).
+    Built via the same factory production uses, from the same `settings` fixture the
+    app itself was created with (which sets `numra_llm_provider="mock"`) — so this
+    exercises `build_llm_provider` itself rather than special-casing tests."""
+    return build_llm_provider(settings)
 
 
 @pytest_asyncio.fixture

@@ -162,9 +162,7 @@ class OllamaCloudProvider:
         self._model_premium = model_premium or os.environ.get(
             "NUMRA_LLM_MODEL_PREMIUM", _DEFAULT_MODEL_PREMIUM
         )
-        self._model_fast = model_fast or os.environ.get(
-            "NUMRA_LLM_MODEL_FAST", _DEFAULT_MODEL_FAST
-        )
+        self._model_fast = model_fast or os.environ.get("NUMRA_LLM_MODEL_FAST", _DEFAULT_MODEL_FAST)
         self._timeout_seconds = (
             timeout_seconds
             if timeout_seconds is not None

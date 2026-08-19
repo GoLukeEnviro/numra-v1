@@ -36,7 +36,7 @@ async def _create_person_and_calculation(client, headers, lukas_payload) -> str:
     return calc["id"]
 
 
-async def test_report_job_completes_via_worker(client, sessionmaker, lukas_payload) -> None:
+async def test_report_job_completes_via_worker(client, sessionmaker, llm, lukas_payload) -> None:
     headers = await _login(client, sessionmaker)
     calc_id = await _create_person_and_calculation(client, headers, lukas_payload)
 
@@ -51,7 +51,7 @@ async def test_report_job_completes_via_worker(client, sessionmaker, lukas_paylo
     job_response = await client.get(f"/v1/report-jobs/{job_id}", headers=headers)
     assert job_response.json()["status"] == "QUEUED"
 
-    claimed = await run_one_cycle(sessionmaker)
+    claimed = await run_one_cycle(sessionmaker, llm=llm)
     assert claimed is True
 
     final_job = (await client.get(f"/v1/report-jobs/{job_id}", headers=headers)).json()

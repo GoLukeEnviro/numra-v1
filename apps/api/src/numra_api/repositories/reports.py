@@ -23,6 +23,11 @@ _RECLAIMABLE_STATUSES = (
 
 MAX_ATTEMPTS = 3
 
+#: Exponential backoff base for retryable failures: attempt 1 -> 30s, attempt 2 -> 60s,
+#: attempt 3 -> 120s, ... (attempt_count is already post-increment when a failure is
+#: handled, so this indexes from the attempt that just failed).
+BACKOFF_BASE_SECONDS = 30
+
 
 async def get_report_job_by_idempotency_key(
     db: AsyncSession, *, user_id: uuid.UUID, idempotency_key: str
@@ -103,6 +108,7 @@ async def claim_next_job(
         .where(
             ReportJob.status.in_(_RECLAIMABLE_STATUSES),
             or_(ReportJob.lease_until.is_(None), ReportJob.lease_until < now),
+            or_(ReportJob.next_attempt_at.is_(None), ReportJob.next_attempt_at <= now),
             ReportJob.attempt_count < MAX_ATTEMPTS,
         )
         .order_by(ReportJob.created_at)
@@ -117,6 +123,7 @@ async def claim_next_job(
     job.status = ReportJobStatus.OUTLINE
     job.locked_at = now
     job.lease_until = now + dt.timedelta(seconds=lease_seconds)
+    job.next_attempt_at = None
     job.attempt_count += 1
     await db.flush()
     return job
@@ -140,10 +147,35 @@ async def mark_job_status(
     await db.flush()
 
 
-async def exceed_max_attempts_to_failed(db: AsyncSession, *, job: ReportJob) -> None:
-    job.status = ReportJobStatus.FAILED
-    job.error_code = "WORKER_RETRY_LIMIT_EXCEEDED"
+async def requeue_job_for_retry(
+    db: AsyncSession, *, job: ReportJob, now: dt.datetime, error_code: str
+) -> None:
+    """A retryable failure occurred and the job still has attempts left: put it back in
+    a reclaimable status (QUEUED) with exponential backoff, instead of FAILED — FAILED
+    is a terminal status `claim_next_job` never reclaims, so marking a job FAILED here
+    would silently prevent the retry that `attempt_count < MAX_ATTEMPTS` promises.
+    ``job.attempt_count`` was already incremented by the `claim_next_job` call that
+    handed this job to the caller, so it directly indexes the backoff schedule."""
+    backoff_seconds = BACKOFF_BASE_SECONDS * (2 ** max(0, job.attempt_count - 1))
+    job.status = ReportJobStatus.QUEUED
+    job.progress = 0
     job.lease_until = None
+    job.next_attempt_at = now + dt.timedelta(seconds=backoff_seconds)
+    job.error_code = error_code[:80]
+    job.last_error_at = now
+    await db.flush()
+
+
+async def fail_job_terminally(
+    db: AsyncSession, *, job: ReportJob, now: dt.datetime, error_code: str
+) -> None:
+    """A non-retryable failure, or a retryable one with no attempts left: FAILED is
+    terminal here, so `claim_next_job` will never pick this job up again."""
+    job.status = ReportJobStatus.FAILED
+    job.lease_until = None
+    job.next_attempt_at = None
+    job.error_code = error_code[:80]
+    job.last_error_at = now
     await db.flush()
 
 

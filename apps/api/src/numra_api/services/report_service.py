@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import logging
 import uuid
 from pathlib import Path
 
@@ -12,21 +13,24 @@ from numra_api.repositories.calculations import get_calculation_for_user
 from numra_api.repositories.reports import (
     MAX_ATTEMPTS,
     create_report_with_job,
-    exceed_max_attempts_to_failed,
+    fail_job_terminally,
     fail_report,
     finalize_report,
     get_report_for_user,
     get_report_job_by_idempotency_key,
     mark_job_status,
     persist_report_sections,
+    requeue_job_for_retry,
 )
 from numra_api.services.errors import NotFoundError
 from numra_interpretation.knowledge_loader import load_knowledge_base
-from numra_interpretation.llm.mock_provider import MockLLMProvider
+from numra_interpretation.llm.errors import LLMProviderError
 from numra_interpretation.llm.types import LLMProvider
 from numra_interpretation.report import build_manifest, generate_report
 from numra_interpretation.report.pipeline import ReportGenerationError
 from numra_numerology.models.profile import CanonicalProfile
+
+logger = logging.getLogger("numra_api.report_service")
 
 REPO_ROOT = Path(__file__).resolve().parents[5]
 KNOWLEDGE_ROOT = REPO_ROOT / "knowledge"
@@ -72,14 +76,35 @@ async def create_report_job(
     return report, job
 
 
+async def _handle_job_failure(
+    db: AsyncSession, *, job: ReportJob, report: Report, error_code: str, retryable: bool
+) -> None:
+    """Route a failed attempt to either a backoff-scheduled retry (job goes back to
+    QUEUED, a reclaimable status) or a terminal FAILED, depending on whether the
+    failure is retryable and whether attempts remain. Only a terminal FAILED also fails
+    the parent `Report` — a job still awaiting retry leaves the report PENDING, since
+    the job may yet succeed."""
+    now = dt.datetime.now(dt.UTC)
+    if retryable and job.attempt_count < MAX_ATTEMPTS:
+        await requeue_job_for_retry(db, job=job, now=now, error_code=error_code)
+    else:
+        await fail_job_terminally(db, job=job, now=now, error_code=error_code)
+        await fail_report(db, report=report)
+
+
 async def run_report_job(
-    db: AsyncSession, *, job: ReportJob, report: Report, llm: LLMProvider | None = None
+    db: AsyncSession, *, job: ReportJob, report: Report, llm: LLMProvider
 ) -> None:
     """Execute one report job end-to-end: OUTLINE -> GENERATING -> VALIDATING ->
-    ASSEMBLING -> COMPLETE/FAILED. Assumes the caller already claimed ``job`` (i.e.
-    ``claim_next_job`` was used, so this call is exclusive to one worker)."""
-    provider = llm or MockLLMProvider()
+    ASSEMBLING -> COMPLETE/FAILED (or back to QUEUED for a backoff-scheduled retry).
+    Assumes the caller already claimed ``job`` (i.e. ``claim_next_job`` was used, so
+    this call is exclusive to one worker).
 
+    ``llm`` must be an explicit provider chosen by the caller (see
+    ``numra_api.services.llm_factory.build_llm_provider``) — this function never
+    silently substitutes a mock. Every exception path below is caught and routed to
+    `_handle_job_failure`: a raw provider/network exception must never propagate out of
+    here and crash the worker loop (see `numra_api.worker.run_one_cycle`)."""
     try:
         await mark_job_status(db, job=job, status=ReportJobStatus.GENERATING, progress=10)
 
@@ -99,7 +124,7 @@ async def run_report_job(
         )
 
         structured_report = await generate_report(
-            profile=profile, knowledge=knowledge, manifest=manifest, llm=provider
+            profile=profile, knowledge=knowledge, manifest=manifest, llm=llm
         )
 
         await mark_job_status(db, job=job, status=ReportJobStatus.VALIDATING, progress=70)
@@ -135,10 +160,34 @@ async def run_report_job(
         await mark_job_status(db, job=job, status=ReportJobStatus.COMPLETE, progress=100)
 
     except ReportGenerationError as exc:
-        if job.attempt_count >= MAX_ATTEMPTS:
-            await exceed_max_attempts_to_failed(db, job=job)
-        else:
-            await mark_job_status(
-                db, job=job, status=ReportJobStatus.FAILED, error_code=str(exc)[:80]
-            )
-        await fail_report(db, report=report)
+        # Pipeline-level failures (LLM unavailable, lint/schema validation failed) are
+        # treated as retryable: a fresh generation attempt — possibly once transient
+        # provider trouble clears — may succeed where this one didn't.
+        await _handle_job_failure(
+            db,
+            job=job,
+            report=report,
+            error_code=f"REPORT_GENERATION_ERROR: {exc}",
+            retryable=True,
+        )
+    except LLMProviderError as exc:
+        # Any provider failure the pipeline didn't already normalize into a
+        # ReportGenerationError (e.g. a timeout/5xx raised mid-section-generation).
+        # `exc.retryable` — set by the provider's own error classification — decides
+        # backoff-and-retry vs. terminal failure.
+        await _handle_job_failure(
+            db,
+            job=job,
+            report=report,
+            error_code=f"LLM_PROVIDER_ERROR: {exc}",
+            retryable=exc.retryable,
+        )
+    except Exception as exc:  # noqa: BLE001 - last-resort guard, see docstring above
+        # An unexpected bug (not a known provider/pipeline failure type) must still
+        # never crash the worker's poll loop. Treated as non-retryable: an
+        # unclassified failure is not known to be transient, so retrying blind could
+        # spin through all attempts on a bug that will never succeed.
+        logger.exception("Unexpected error while running report job %s", job.id)
+        await _handle_job_failure(
+            db, job=job, report=report, error_code=f"UNEXPECTED_ERROR: {exc}", retryable=False
+        )

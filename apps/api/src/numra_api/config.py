@@ -1,8 +1,12 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from typing import Literal
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+LLMProviderName = Literal["ollama", "mock", "disabled"]
 
 
 class Settings(BaseSettings):
@@ -18,7 +22,13 @@ class Settings(BaseSettings):
     session_cookie_name: str = "numra_session"
     session_ttl_hours: int = 24 * 14
 
-    numra_llm_enabled: bool = False
+    # Explicit provider selection is the single source of truth for which LLM
+    # backend the worker uses. "disabled" (the default) means report generation
+    # fails fast with a clear LLM_UNAVAILABLE error rather than silently falling
+    # back to a mock. "mock" is only permitted outside production (see the
+    # validator below) — it exists for local dev/CI/E2E, never for real users.
+    numra_llm_provider: LLMProviderName = "disabled"
+    numra_llm_max_retries: int = 3
     ollama_base_url: str | None = None
     ollama_api_key: str | None = None
     numra_llm_model_premium: str = "deepseek-v4-pro:cloud"
@@ -38,6 +48,17 @@ class Settings(BaseSettings):
     @property
     def cookies_secure(self) -> bool:
         return self.environment == "production"
+
+    @model_validator(mode="after")
+    def _forbid_mock_llm_provider_in_production(self) -> Settings:
+        if self.environment == "production" and self.numra_llm_provider == "mock":
+            raise ValueError(
+                "NUMRA_LLM_PROVIDER=mock is not permitted when ENVIRONMENT=production "
+                "— a real user must never receive mock-generated report content. Set "
+                "NUMRA_LLM_PROVIDER=ollama (with OLLAMA_BASE_URL/OLLAMA_API_KEY) or "
+                "NUMRA_LLM_PROVIDER=disabled."
+            )
+        return self
 
 
 @lru_cache

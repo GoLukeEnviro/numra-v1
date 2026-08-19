@@ -263,7 +263,7 @@ async def generate_report(
     """Run the full AgentWrite pipeline. Raises ReportGenerationError if the assembled
     report fails the global lint even after the one permitted per-section repair."""
     health = await llm.health()
-    if health.status == "unavailable":
+    if health.status in ("unavailable", "disabled"):
         raise ReportGenerationError(f"LLM_UNAVAILABLE: provider={health.provider}")
 
     sections: list[StructuredReportSection] = []

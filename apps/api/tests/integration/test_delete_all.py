@@ -39,7 +39,7 @@ async def _login(client, sessionmaker, email: str) -> dict:
     return {"x-csrf-token": client.cookies["numra_csrf"]}
 
 
-async def test_delete_all_cascades_every_table(client, sessionmaker, lukas_payload) -> None:
+async def test_delete_all_cascades_every_table(client, sessionmaker, llm, lukas_payload) -> None:
     """master prompt §138: create a user, person, calculation, relationship, report,
     report job — then Delete All — and verify zero rows remain in every dependent
     table for that user, with no orphans."""
@@ -81,7 +81,7 @@ async def test_delete_all_cascades_every_table(client, sessionmaker, lukas_paylo
     # Run the job to completion so llm_generations / report_sections have a chance to
     # exist too (the pipeline itself doesn't write llm_generations rows in this phase —
     # see specs/evidence/phase-4.md — but report_sections and the completed report do).
-    await run_one_cycle(sessionmaker)
+    await run_one_cycle(sessionmaker, llm=llm)
 
     # Sanity: rows actually exist before deletion.
     assert await _count(sessionmaker, Person) >= 2
