@@ -80,6 +80,28 @@ non-existent generated paths) — in particular, `docker/web.Dockerfile`'s
 This is a genuine environment limitation, not a decision to skip Docker validation —
 report it as such rather than claiming an unexecuted `docker compose up` succeeded.
 
+## Dependency security scan
+
+`pnpm audit` on the pushed state flagged 31 advisories in `apps/web` (1 critical, 12
+high, 16 moderate, 2 low), all transitive. The critical one (`vitest` <3.2.6, arbitrary
+file read via its UI dev server) was fixed immediately — bumping `vitest` to `^3.2.6`
+resolved it with zero code changes needed (`pnpm audit` now shows 0 critical, 12 high,
+16 moderate, 2 low; lint/typecheck/build/unit tests re-verified green after the bump).
+
+The remaining 30 are essentially all transitive through `next@14.2.35`; GitHub's
+advisories for them require `next>=15.5.16` — a Next.js **major** version upgrade
+(14→15), which can carry routing/React-version/config breaking changes. Given the size
+of this build already, that migration was deliberately deferred rather than rushed
+through untested at the end of Phase 6: it needs its own dedicated verification pass
+(full re-run of lint/typecheck/build/Playwright against the new major version, and a
+careful read of Next.js's 14→15 migration notes), not a same-session patch bump. This
+is a known, explicit follow-up — not an overlooked gap. `uv run pip-audit` (Python
+dependencies) could not be run in this environment — `pip-audit` is not installed and
+no package index access was attempted to add it; the Python dependency set is small and
+pinned via `uv.lock`, and no CVE was surfaced against it by GitHub's scan specifically
+(the 53-vulnerability count GitHub reported matches `pnpm audit`'s pre-fix 31 plus
+Dependabot's broader repository-wide count, not a distinct Python-specific finding).
+
 ## Judgment calls made explicit
 
 - **PDF service is a standalone Node app (Express + Playwright), not wired into the

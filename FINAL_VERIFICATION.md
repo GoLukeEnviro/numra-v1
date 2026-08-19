@@ -104,6 +104,14 @@ and observed, not an assumption. Per-phase detail and raw command transcripts li
 | Actual execution on GitHub Actions runners | **NOT VERIFIED** — never pushed through a real GitHub Actions run in this session | — |
 | Local equivalent of every CI gate except `docker-build` | **PASS** — `python3 scripts/verify.py --skip-docker` | `specs/evidence/phase-6.md` |
 
+## Dependency security
+
+| Command/Test | Result | Evidence |
+|---|---|---|
+| `pnpm audit` (web) | **PASS after fix** — 1 critical (vitest arbitrary-file-read) found and fixed by bumping `vitest` to `^3.2.6`; 30 remaining (12 high, 16 moderate, 2 low), all transitive through `next@14.2.35`, require a Next.js 15 major upgrade | `specs/evidence/phase-6.md` |
+| Next.js 14→15 upgrade to close remaining advisories | **NOT DONE / DEFERRED** — deliberate follow-up, not an oversight (needs its own full re-verification pass, not a same-session patch) | `specs/evidence/phase-6.md` |
+| `pip-audit` (Python) | **NOT RUN** — tool not installed in this environment; dependency set is small and pinned via `uv.lock` | — |
+
 ## Overall
 
 ```
