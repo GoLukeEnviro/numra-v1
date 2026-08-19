@@ -49,8 +49,16 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U numra -d numra_test"
           --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       TEST_DATABASE_URL: postgresql+asyncpg://numra:numra_ci_password@localhost:5432/numra_test
+      TEST_PDF_URL: http://127.0.0.1:4300
+      TEST_PDF_TOKEN: ci-only-pdf-token
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v3
@@ -58,6 +66,27 @@ jobs:
           version: ${{ env.UV_VERSION }}
       - run: uv python install ${{ env.PYTHON_VERSION }}
       - run: uv sync --all-packages --all-groups
+      # apps/api/tests exercises a REAL apps/pdf instance (export creation, health
+      # checks) rather than mocking the PDF service -- see specs/evidence/phase-4.md
+      # and the export/PDF product integration work.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @numra/pdf exec playwright install --with-deps chromium
+      - name: Start apps/pdf in the background
+        run: |
+          PORT=4300 PDF_INTERNAL_TOKEN=${{ env.TEST_PDF_TOKEN }} \
+            nohup pnpm --filter @numra/pdf start > /tmp/pdf-service.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:4300/health/ready && break
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:4300/health/ready || (cat /tmp/pdf-service.log && exit 1)
       - name: Engine coverage gate (>=90%)
         run: |
           uv run pytest packages/engine-numerology/tests -q \
