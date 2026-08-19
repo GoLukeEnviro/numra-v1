@@ -45,3 +45,13 @@ export function recordRelationship(entry: Omit<CachedRelationship, "savedAt">): 
 export function getAllCachedRelationships(): CachedRelationship[] {
   return readAll();
 }
+
+/**
+ * The remembered labels for one comparison, if this browser is the one that created
+ * it. `RelationshipOut` carries only the two calculation ids — no names — so a
+ * comparison opened on another device legitimately has no labels, and callers must
+ * fall back to neutral wording rather than inventing who "Person A" is.
+ */
+export function getCachedRelationship(relationshipId: string): CachedRelationship | undefined {
+  return readAll().find((e) => e.relationshipId === relationshipId);
+}
