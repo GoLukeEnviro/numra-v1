@@ -10,12 +10,12 @@ separate, verified canon exists for it.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel
 
 
-class AstrologyFeatureStatus(str, Enum):
+class AstrologyFeatureStatus(StrEnum):
     FEATURE_DISABLED_NO_CANON = "FEATURE_DISABLED_NO_CANON"
 
 

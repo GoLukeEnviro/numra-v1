@@ -547,6 +547,7 @@ class MetricFlag(BaseModel):
     value: str | None = None
     source_raw_value: int | None = None
 
+
 class ReductionResult(BaseModel):
     source_value: int | None
     raw_value: int
@@ -555,6 +556,7 @@ class ReductionResult(BaseModel):
     effective_value: int
     display_value: str
     reduction_steps: list[int]
+
 
 class CalculationMetric(BaseModel):
     metric_id: str

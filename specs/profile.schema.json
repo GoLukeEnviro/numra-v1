@@ -98,7 +98,7 @@
       "additionalProperties": true,
       "properties": {
         "input_refs": { "type": "array", "items": { "type": "string" } },
-        "normalization": { "type": "object" },
+        "normalization": { "type": ["object", "null"] },
         "operations": { "type": "array", "items": { "type": "object" } }
       }
     },
@@ -183,15 +183,32 @@
         "period_3": { "$ref": "#/$defs/ReductionResult" }
       }
     },
+    "PinnacleWindow": {
+      "type": "object",
+      "required": ["start_date", "end_date", "start_age", "end_age"],
+      "additionalProperties": false,
+      "properties": {
+        "start_date": { "type": ["string", "null"], "format": "date" },
+        "end_date": { "type": ["string", "null"], "format": "date" },
+        "start_age": { "type": "integer", "minimum": 0 },
+        "end_age": { "type": ["integer", "null"], "minimum": 0 }
+      }
+    },
     "Pinnacles": {
       "type": "object",
-      "required": ["pinnacle_1", "pinnacle_2", "pinnacle_3", "pinnacle_4"],
+      "required": ["pinnacle_1", "pinnacle_2", "pinnacle_3", "pinnacle_4", "windows"],
       "additionalProperties": false,
       "properties": {
         "pinnacle_1": { "$ref": "#/$defs/ReductionResult" },
         "pinnacle_2": { "$ref": "#/$defs/ReductionResult" },
         "pinnacle_3": { "$ref": "#/$defs/ReductionResult" },
-        "pinnacle_4": { "$ref": "#/$defs/ReductionResult" }
+        "pinnacle_4": { "$ref": "#/$defs/ReductionResult" },
+        "windows": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": { "$ref": "#/$defs/PinnacleWindow" }
+        }
       }
     },
     "Challenges": {

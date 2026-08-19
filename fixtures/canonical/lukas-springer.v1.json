@@ -220,7 +220,13 @@
       "pinnacle_1": { "source_value": null, "raw_value": 16, "root_value": 7, "master_number": null, "effective_value": 7, "display_value": "16/7", "reduction_steps": [16, 7] },
       "pinnacle_2": { "source_value": null, "raw_value": 15, "root_value": 6, "master_number": null, "effective_value": 6, "display_value": "15/6", "reduction_steps": [15, 6] },
       "pinnacle_3": { "source_value": null, "raw_value": 13, "root_value": 4, "master_number": null, "effective_value": 4, "display_value": "13/4", "reduction_steps": [13, 4] },
-      "pinnacle_4": { "source_value": null, "raw_value": 13, "root_value": 4, "master_number": null, "effective_value": 4, "display_value": "13/4", "reduction_steps": [13, 4] }
+      "pinnacle_4": { "source_value": null, "raw_value": 13, "root_value": 4, "master_number": null, "effective_value": 4, "display_value": "13/4", "reduction_steps": [13, 4] },
+      "windows": [
+        { "start_date": "1986-07-18", "end_date": "2019-07-18", "start_age": 0, "end_age": 32 },
+        { "start_date": "2019-07-18", "end_date": "2028-07-18", "start_age": 33, "end_age": 41 },
+        { "start_date": "2028-07-18", "end_date": "2037-07-18", "start_age": 42, "end_age": 50 },
+        { "start_date": "2037-07-18", "end_date": null, "start_age": 51, "end_age": null }
+      ]
     },
     "challenges": { "challenge_1": 2, "challenge_2": 3, "challenge_3": 1, "challenge_4": 1 }
   },
