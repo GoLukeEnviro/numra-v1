@@ -17,6 +17,7 @@ from numra_api.middleware.security import (
     RequestBodyLimitMiddleware,
     SecurityHeadersMiddleware,
 )
+from numra_api.rate_limit import InMemoryRateLimiter, RateLimiter, RedisRateLimiter
 from numra_api.routes import (
     account,
     auth,
@@ -30,6 +31,14 @@ from numra_api.routes import (
 from numra_api.services.errors import ApplicationError
 from numra_api.services.pdf_client import PdfServiceClient
 from numra_api.storage.exports import LocalExportStorage
+
+
+def _build_rate_limiter(settings: Settings) -> RateLimiter:
+    if settings.rate_limit_backend == "redis":
+        from redis.asyncio import from_url
+
+        return RedisRateLimiter(from_url(settings.redis_url))
+    return InMemoryRateLimiter()
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -53,6 +62,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         internal_token=resolved_settings.pdf_internal_token,
         timeout_seconds=resolved_settings.pdf_render_timeout_seconds,
     )
+    app.state.rate_limiter = _build_rate_limiter(resolved_settings)
 
     # Middleware chain — order matters (outermost first, applied last-in-first-out by
     # Starlette so the LAST .add_middleware call runs FIRST on the request path).
@@ -75,9 +85,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.exception_handler(ApplicationError)
     async def handle_application_error(request: Request, exc: ApplicationError) -> JSONResponse:
+        headers = {}
+        retry_after_seconds = getattr(exc, "retry_after_seconds", None)
+        if retry_after_seconds is not None:
+            headers["Retry-After"] = str(retry_after_seconds)
         return JSONResponse(
             status_code=exc.status_code,
             content={"code": exc.code, "message": str(exc)},
+            headers=headers,
         )
 
     app.include_router(health.router)

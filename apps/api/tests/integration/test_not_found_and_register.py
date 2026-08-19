@@ -100,7 +100,8 @@ async def test_self_signup_when_enabled(db_engine) -> None:
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://testserver") as ac:
         response = await ac.post(
-            "/v1/auth/register", json={"email": "brandnew@example.com", "password": "abcdefgh123"}
+            "/v1/auth/register",
+            json={"email": "brandnew@example.com", "password": "abcdefgh12345"},
         )
         assert response.status_code == 201
         assert response.json()["email"] == "brandnew@example.com"

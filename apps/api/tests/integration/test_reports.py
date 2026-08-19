@@ -86,6 +86,39 @@ async def test_report_idempotency_key_returns_same_job(client, sessionmaker, luk
     assert first.json()["job_id"] == second.json()["job_id"]
 
 
+async def test_idempotency_key_is_scoped_per_user_not_global(
+    client, sessionmaker, lukas_payload
+) -> None:
+    """P1 hardening: report_jobs.idempotency_key uniqueness is UNIQUE(user_id,
+    idempotency_key), not a bare global UNIQUE(idempotency_key) -- two different users
+    reusing the same idempotency-key string (e.g. both clients generated "same-key")
+    must each get their own report, not collide with (or 500 on) the other's."""
+    # The shared `client` fixture has one cookie jar: logging in as user B overwrites
+    # user A's CSRF cookie, which would invalidate a header captured earlier from A's
+    # login -- so user A's whole request (login, setup, create) must complete before
+    # logging in as B.
+    headers_a = await _login(client, sessionmaker, email="idem-user-a@example.com")
+    calc_id_a = await _create_person_and_calculation(client, headers_a, lukas_payload)
+    shared_key = "shared-idempotency-key"
+    response_a = await client.post(
+        "/v1/reports",
+        json={"calculation_id": calc_id_a, "report_type": "QUICK"},
+        headers={**headers_a, "Idempotency-Key": shared_key},
+    )
+
+    headers_b = await _login(client, sessionmaker, email="idem-user-b@example.com")
+    calc_id_b = await _create_person_and_calculation(client, headers_b, lukas_payload)
+    response_b = await client.post(
+        "/v1/reports",
+        json={"calculation_id": calc_id_b, "report_type": "QUICK"},
+        headers={**headers_b, "Idempotency-Key": shared_key},
+    )
+    assert response_a.status_code == 201
+    assert response_b.status_code == 201
+    assert response_a.json()["id"] != response_b.json()["id"]
+    assert response_a.json()["job_id"] != response_b.json()["job_id"]
+
+
 async def test_worker_reclaims_job_with_expired_lease(sessionmaker) -> None:
     """Simulates a crashed worker: a job stuck in GENERATING with an expired lease must
     be reclaimable by another worker cycle (restart safety, master prompt §110)."""

@@ -50,6 +50,8 @@ services:
       PDF_INTERNAL_URL: http://pdf:4300
       PDF_INTERNAL_TOKEN: ${PDF_INTERNAL_TOKEN:?PDF_INTERNAL_TOKEN is required}
       EXPORT_STORAGE_DIR: /app/data/exports
+      RATE_LIMIT_BACKEND: ${RATE_LIMIT_BACKEND:-redis}
+      REDIS_URL: redis://redis:6379/0
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     volumes:
       - numra_exports_data:/app/data/exports
@@ -60,6 +62,8 @@ services:
         condition: service_completed_successfully
       pdf:
         condition: service_started
+      redis:
+        condition: service_healthy
     ports:
       - "8000:8000"
 
@@ -77,12 +81,30 @@ services:
       NUMRA_LLM_MAX_RETRIES: ${NUMRA_LLM_MAX_RETRIES:-3}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-}
       OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
+      # The worker doesn't itself rate-limit anything, but it constructs the same
+      # Settings model as the api service, whose production validator forbids
+      # RATE_LIMIT_BACKEND=memory regardless of which process is asking.
+      RATE_LIMIT_BACKEND: ${RATE_LIMIT_BACKEND:-redis}
+      REDIS_URL: redis://redis:6379/0
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     depends_on:
       postgres:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "6379:6379"
 
   pdf:
     build:

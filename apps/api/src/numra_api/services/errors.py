@@ -44,3 +44,12 @@ class ReportNotReady(ApplicationError):
 class ExportRenderFailed(ApplicationError):
     code = "EXPORT_RENDER_FAILED"
     status_code = 502
+
+
+class RateLimitExceeded(ApplicationError):
+    code = "RATE_LIMIT_EXCEEDED"
+    status_code = 429
+
+    def __init__(self, *, retry_after_seconds: int) -> None:
+        super().__init__(f"rate limit exceeded, retry after {retry_after_seconds}s")
+        self.retry_after_seconds = retry_after_seconds

@@ -10,6 +10,7 @@ from numra_api.deps import (
     get_db,
     get_export_storage,
     get_pdf_client,
+    rate_limit_by_user,
     require_csrf,
 )
 from numra_api.models import Export, User
@@ -35,7 +36,13 @@ def _export_to_out(export: Export) -> ExportOut:
 
 
 @router.post(
-    "/exports", response_model=ExportOut, status_code=201, dependencies=[Depends(require_csrf)]
+    "/exports",
+    response_model=ExportOut,
+    status_code=201,
+    dependencies=[
+        Depends(require_csrf),
+        Depends(rate_limit_by_user("exports:create", limit=30, window_seconds=3600)),
+    ],
 )
 async def create_export_route(
     body: ExportCreateRequest,

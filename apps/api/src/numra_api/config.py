@@ -7,6 +7,7 @@ from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 LLMProviderName = Literal["ollama", "mock", "disabled"]
+RateLimitBackend = Literal["memory", "redis"]
 
 
 class Settings(BaseSettings):
@@ -52,6 +53,13 @@ class Settings(BaseSettings):
     health_check_timeout_seconds: float = 2.0
     health_ready_cache_ttl_seconds: float = 5.0
 
+    #: "memory" (default) is a single-process, dev/test-only counter -- fine for local
+    #: dev and the test suite, wrong for any multi-instance deployment (each instance
+    #: would count independently, so the effective limit multiplies by instance count).
+    #: Not permitted when ENVIRONMENT=production (see the validator below).
+    rate_limit_backend: RateLimitBackend = "memory"
+    redis_url: str = "redis://localhost:6379/0"
+
     log_level: str = "INFO"
     report_max_words: int = 30_000
 
@@ -71,6 +79,17 @@ class Settings(BaseSettings):
                 "— a real user must never receive mock-generated report content. Set "
                 "NUMRA_LLM_PROVIDER=ollama (with OLLAMA_BASE_URL/OLLAMA_API_KEY) or "
                 "NUMRA_LLM_PROVIDER=disabled."
+            )
+        return self
+
+    @model_validator(mode="after")
+    def _forbid_memory_rate_limiter_in_production(self) -> Settings:
+        if self.environment == "production" and self.rate_limit_backend == "memory":
+            raise ValueError(
+                "RATE_LIMIT_BACKEND=memory is not permitted when ENVIRONMENT=production "
+                "— a multi-instance deployment needs a shared counter or each instance "
+                "enforces the limit independently, multiplying the effective limit by "
+                "the instance count. Set RATE_LIMIT_BACKEND=redis (with REDIS_URL)."
             )
         return self
 
