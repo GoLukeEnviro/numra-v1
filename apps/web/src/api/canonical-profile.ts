@@ -211,6 +211,33 @@ export function asCanonicalProfile(value: unknown): CanonicalProfile | null {
   return isCanonicalProfile(value) ? value : null;
 }
 
+function hasDisplayValue(value: unknown): boolean {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as { display_value?: unknown }).display_value === "string"
+  );
+}
+
+/**
+ * Structural guard for `GET /v1/people/{id}/timing`, which returns exactly the
+ * `timing` sub-object of a Canonical Profile (routes/calculations.py). Shallow by
+ * design, mirroring `isCanonicalProfile`: it only confirms the four values the
+ * Today view renders are present and carry a `display_value`, so a malformed
+ * payload produces an error state instead of a blank or, worse, a made-up number.
+ */
+export function asTiming(value: unknown): Timing | null {
+  if (typeof value !== "object" || value === null) return null;
+  const v = value as Record<string, unknown>;
+  const ok =
+    typeof v.as_of_date === "string" &&
+    hasDisplayValue(v.universal_year) &&
+    hasDisplayValue(v.personal_year) &&
+    hasDisplayValue(v.personal_month) &&
+    hasDisplayValue(v.personal_day);
+  return ok ? (value as Timing) : null;
+}
+
 /** Relationship comparison shape (RelationshipOut.comparison, openapi: additionalProperties). */
 export interface RelationshipMetricComparison {
   person_a: { display_value: string };

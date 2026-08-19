@@ -59,4 +59,45 @@
       transparent 60%
     );
   }
+
+  /* The same gold wash anchored to the top-left, used behind page heroes where the
+     decorative NumericWheel sits off the right edge — so the light reads as coming
+     from one consistent direction across the app. */
+  .sacred-wheel-bg-left {
+    background-image: radial-gradient(
+      ellipse at 0% 0%,
+      rgba(200, 169, 107, 0.1),
+      transparent 62%
+    );
+  }
+}
+
+@layer components {
+  /**
+   * Reading typography for generated long-form report sections.
+   *
+   * Report text is the only place in the app with real paragraphs, so it is the
+   * only place that needs a measure, looser leading and paragraph spacing.
+   * Headings are deliberately untouched: the `h1,h2,h3,h4` base rule already sets
+   * them serif + ivory, and restating that here would fork the type system.
+   */
+  .report-prose {
+    font-size: 1.0625rem;
+    line-height: 1.75;
+    color: #e8e3d8;
+  }
+
+  .report-prose p {
+    margin-bottom: 1.15em;
+  }
+
+  .report-prose p:last-child {
+    margin-bottom: 0;
+  }
+
+  /* A typographic lead-in for the opening paragraph — a reading cue, never a
+     semantic distinction between one paragraph's content and another's. */
+  .report-prose > p:first-of-type {
+    color: #f2ebdd;
+  }
 }

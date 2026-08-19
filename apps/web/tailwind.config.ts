@@ -37,15 +37,32 @@ const config: Config = {
       },
       boxShadow: {
         gold: "0 0 0 1px rgba(200,169,107,0.35)",
+        // Elevation for surfaces that sit above the page (hero, report sheet). Pure
+        // shadow, no border change, so it composes with the existing hairline borders.
+        elevated: "0 18px 40px -24px rgba(0,0,0,0.85)",
+      },
+      maxWidth: {
+        // Long-form reading measure for report prose. Slightly wider than Tailwind's
+        // built-in `prose` (65ch) because report body text is set at 1.0625rem.
+        reading: "68ch",
       },
       keyframes: {
         "fade-in": {
           from: { opacity: "0" },
           to: { opacity: "1" },
         },
+        // The ceiling for motion in this app: a few pixels of rise with the fade.
+        // Anything larger reads as decoration, on a product whose whole promise is
+        // that nothing on screen is embellished. Both are disabled wholesale by the
+        // prefers-reduced-motion block in globals.css.
+        "rise-in": {
+          from: { opacity: "0", transform: "translateY(4px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
       },
       animation: {
         "fade-in": "fade-in 200ms ease-out",
+        "rise-in": "rise-in 240ms ease-out both",
       },
     },
   },

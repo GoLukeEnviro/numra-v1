@@ -12,6 +12,15 @@ export type RelationshipOut = components["schemas"]["RelationshipOut"];
 export type BirthPlace = components["schemas"]["BirthPlace"];
 export type BirthTime = components["schemas"]["BirthTime"];
 export type BirthTimePrecision = components["schemas"]["BirthTimePrecision"];
+export type ReportCreateRequest = components["schemas"]["ReportCreateRequest"];
+export type ReportOut = components["schemas"]["ReportOut"];
+export type ReportJobOut = components["schemas"]["ReportJobOut"];
+export type ReportJobStatus = components["schemas"]["ReportJobStatus"];
+export type ReportType = components["schemas"]["ReportType"];
+export type ExportCreateRequest = components["schemas"]["ExportCreateRequest"];
+export type ExportOut = components["schemas"]["ExportOut"];
+export type ExportStatus = components["schemas"]["ExportStatus"];
+export type DeleteAccountRequest = components["schemas"]["DeleteAccountRequest"];
 
 // Same-origin only: every request goes to /api/*, which next.config.mjs's rewrite
 // forwards server-side to API_INTERNAL_URL (a runtime, non-NEXT_PUBLIC_ env var — see
@@ -58,6 +67,8 @@ interface RequestOptions {
   method?: string;
   body?: unknown;
   query?: Record<string, string | undefined>;
+  /** Extra request headers (e.g. `Idempotency-Key`). CSRF is still added automatically. */
+  headers?: Record<string, string>;
 }
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -70,7 +81,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     }
   }
 
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { ...options.headers };
   if (options.body !== undefined) headers["Content-Type"] = "application/json";
   if (MUTATING_METHODS.has(method)) {
     const csrf = readCookie("numra_csrf");
@@ -140,8 +151,15 @@ export const api = {
       request<PersonOut>(`/v1/people/${personId}`, { method: "PATCH", body }),
     remove: (personId: string) =>
       request<void>(`/v1/people/${personId}`, { method: "DELETE" }),
+    /**
+     * Ad-hoc timing lookup. The backend declares this endpoint as a bare dict
+     * (routes/calculations.py::get_timing_route returns `profile["timing"]`), so no
+     * response schema is generated for it — the payload is returned as `unknown` and
+     * narrowed by `asTiming()` in api/canonical-profile.ts, exactly like
+     * `canonical_profile` is narrowed by `asCanonicalProfile()`.
+     */
     timing: (personId: string, asOfDate: string) =>
-      request<Record<string, unknown>>(`/v1/people/${personId}/timing`, {
+      request<unknown>(`/v1/people/${personId}/timing`, {
         query: { as_of_date: asOfDate },
       }),
   },
@@ -159,5 +177,42 @@ export const api = {
       request<RelationshipOut>("/v1/relationships", { method: "POST", body }),
     get: (relationshipId: string) =>
       request<RelationshipOut>(`/v1/relationships/${relationshipId}`),
+  },
+  reports: {
+    /**
+     * Starts a long-form report generation job. `idempotencyKey` maps to the
+     * optional `Idempotency-Key` header the endpoint honours, so a double-submit
+     * (double click, retried request) reuses the first job instead of queueing a
+     * second identical generation.
+     */
+    create: (body: ReportCreateRequest, idempotencyKey?: string) =>
+      request<ReportOut>("/v1/reports", {
+        method: "POST",
+        body,
+        headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
+      }),
+    get: (reportId: string) => request<ReportOut>(`/v1/reports/${reportId}`),
+    getJob: (jobId: string) => request<ReportJobOut>(`/v1/report-jobs/${jobId}`),
+  },
+  exports: {
+    /**
+     * Synchronous: the API blocks until the PDF microservice has actually rendered
+     * the file, so callers must show a real pending state rather than polling.
+     */
+    create: (body: ExportCreateRequest) =>
+      request<ExportOut>("/v1/exports", { method: "POST", body }),
+    list: () => request<ExportOut[]>("/v1/exports"),
+    /**
+     * A real file download (raw PDF bytes + Content-Disposition), not a JSON call —
+     * this returns the same-origin path to link/navigate to directly, because routing
+     * binary content through `request()`'s JSON handling would corrupt it.
+     */
+    downloadUrl: (exportId: string) => `${API_PREFIX}/v1/exports/${exportId}/download`,
+  },
+  account: {
+    /** Irreversible: deletes every person, calculation, relationship, report and
+     * export file for the current user, then invalidates the session server-side. */
+    deleteAll: (body: DeleteAccountRequest) =>
+      request<void>("/v1/account/delete-all", { method: "POST", body }),
   },
 };
