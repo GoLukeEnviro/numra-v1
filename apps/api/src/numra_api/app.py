@@ -16,7 +16,7 @@ from numra_api.middleware.security import (
     RequestBodyLimitMiddleware,
     SecurityHeadersMiddleware,
 )
-from numra_api.routes import auth, calculations, health, people, relationships, reports
+from numra_api.routes import account, auth, calculations, health, people, relationships, reports
 from numra_api.services.errors import ApplicationError
 
 
@@ -68,6 +68,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(calculations.router)
     app.include_router(relationships.router)
     app.include_router(reports.router)
+    app.include_router(account.router)
 
     return app
 

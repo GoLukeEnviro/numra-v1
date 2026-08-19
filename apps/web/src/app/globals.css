@@ -1,0 +1,62 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  * {
+    @apply border-white/10;
+  }
+
+  html,
+  body {
+    @apply bg-background text-text;
+  }
+
+  body {
+    @apply font-sans antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-serif text-ivory;
+  }
+
+  /* Visible, on-brand focus ring everywhere — never strip outline without replacing it. */
+  :focus-visible {
+    outline: 2px solid #c8a96b;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  ::selection {
+    background-color: rgba(200, 169, 107, 0.35);
+    color: #f2ebdd;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer utilities {
+  .sacred-wheel-bg {
+    background-image: radial-gradient(
+      circle at 50% 0%,
+      rgba(200, 169, 107, 0.08),
+      transparent 60%
+    );
+  }
+}
