@@ -1,0 +1,16 @@
+{
+  "name": "@numra/pdf",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Internal NUMRA PDF rendering service — renders a StructuredReport JSON payload to PDF via Playwright/Chromium. Not a public/general URL renderer (no SSRF surface).",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test src/__tests__/render.test.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "playwright": "^1.56.1"
+  }
+}

@@ -1,0 +1,197 @@
+# NUMRA V1
+
+A deterministic, auditable numerology platform: a pure-Python calculation engine, a
+Postgres-backed FastAPI service, an LLM-assisted long-form report pipeline, a Next.js
+web app, and an internal PDF renderer.
+
+**Core principle: NUMRA does not guess.** Every numerological value comes from
+`packages/engine-numerology`, a network-free, database-free, LLM-free Python package
+with a fully documented formula for every metric it computes
+(`specs/canon-spec.md`). Anything not explicitly specified is marked
+`RESERVED_UNFROZEN` or `FEATURE_DISABLED_NO_CANON` and is never faked — see
+[docs/adr/006-unfrozen-features.md](docs/adr/006-unfrozen-features.md).
+
+## Project overview
+
+```
+Person input → normalization → deterministic engine → Canonical Profile (+ hash)
+  → knowledge resolution → interpretation composition → safety/claim validation
+  → CLI / API / long-form report pipeline / web / PDF
+```
+
+An LLM is used only to *explain* values the engine already computed — never to compute
+them. See [docs/adr/003-llm-not-calculator.md](docs/adr/003-llm-not-calculator.md).
+
+## Architecture
+
+| Path | Responsibility |
+|---|---|
+| `packages/engine-numerology` | Deterministic calculation core. No I/O of any kind. |
+| `packages/engine-interpretation` | Knowledge loader, rule-based interpretation composer, LLM provider interface (Mock + Ollama Cloud), long-form report pipeline (`report/`). |
+| `packages/engine-astrology` | Typed interface only — `FEATURE_DISABLED_NO_CANON`. |
+| `packages/schema` | Generated TypeScript client (`openapi-typescript`) from `openapi/numra-v1.json`. Do not hand-edit `src/generated/`. |
+| `apps/api` | Stateless FastAPI app: auth, people, calculations, relationships, reports, account deletion. |
+| `apps/api` (worker) | `python -m numra_api.worker` — the report job queue's poller, same codebase as the API, different entrypoint. |
+| `apps/web` | Next.js/React/TypeScript frontend. |
+| `apps/pdf` | Internal Playwright/Chromium PDF rendering service (no public URL surface). |
+| `knowledge/` | Versioned German interpretive content (`knowledge_version` in `manifest.yaml`). |
+| `specs/` | `canon-spec.md` (the formal calculation spec), `profile.schema.json`, per-phase evidence. |
+| `fixtures/canonical/lukas-springer.v1.json` | The golden reference profile (see below). |
+
+Import order is enforced pipeline-first: `numra_numerology → numra_interpretation →
+numra_api`. The engine has zero imports from any other NUMRA package.
+
+## Requirements
+
+- Python 3.11+, [`uv`](https://docs.astral.sh/uv/)
+- Node.js 20+, `pnpm` (`corepack enable` or `npm i -g pnpm`)
+- PostgreSQL 16 (local install or Docker)
+- Docker + Docker Compose (optional, for the full containerized stack)
+
+## Installation
+
+```bash
+uv sync --all-packages --all-groups
+pnpm install
+```
+
+## Environment
+
+Copy `.env.example` to `.env` and fill in real values. The app starts and stays
+healthy with `NUMRA_LLM_ENABLED=false` and no Ollama key — report generation degrades
+gracefully rather than crashing (`GET /v1/health/ready` reports `"llm": "degraded"`).
+
+## Local development
+
+```bash
+# Postgres (local install)
+sudo service postgresql start
+sudo -u postgres psql -c "CREATE USER numra WITH PASSWORD 'numra_dev_password' CREATEDB;"
+sudo -u postgres psql -c "CREATE DATABASE numra_dev OWNER numra;"
+
+# Database schema
+cd apps/api && uv run alembic upgrade head && cd ../..
+
+# API
+uv run uvicorn numra_api.app:app --reload --port 8000 --app-dir apps/api/src
+
+# Worker (separate terminal)
+uv run python -m numra_api.worker --app-dir apps/api/src  # or: cd apps/api/src && uv run python -m numra_api.worker
+
+# Web (separate terminal)
+pnpm --filter @numra/web dev   # http://localhost:3000, expects the API on :8000
+
+# PDF service (separate terminal)
+cd apps/pdf && PDF_INTERNAL_TOKEN=dev-token node src/server.js   # :4300
+```
+
+## Database migrations
+
+```bash
+cd apps/api
+uv run alembic upgrade head
+uv run alembic revision --autogenerate -m "description"   # after model changes
+uv run alembic downgrade base && uv run alembic upgrade head   # verify both directions
+```
+
+## Tests
+
+```bash
+# Python — from repo root
+uv run pytest packages/engine-numerology/tests -q \
+  --cov=packages/engine-numerology/src/numra_numerology --cov-fail-under=90
+uv run pytest packages apps/api/tests -q   # needs a running Postgres (TEST_DATABASE_URL
+                                            # or the apps/api/tests/conftest.py default)
+uv run ruff format --check . && uv run ruff check .
+uv run mypy apps/api/src packages/engine-numerology/src packages/engine-interpretation/src packages/engine-astrology/src
+
+# Web
+pnpm --filter @numra/web lint
+pnpm --filter @numra/web exec tsc --noEmit
+pnpm --filter @numra/web test -- --run
+pnpm --filter @numra/web build
+pnpm --filter @numra/web exec playwright test
+
+# PDF service
+cd apps/pdf && node --test src/__tests__/render.test.js
+```
+
+## Docker
+
+```bash
+cp .env.example .env   # fill SESSION_SECRET / PDF_INTERNAL_TOKEN at minimum
+docker compose config --quiet   # validate
+docker compose up --build
+curl --fail http://127.0.0.1:8000/v1/health/ready
+```
+
+Services: `postgres`, `migrate` (one-shot, runs Alembic then exits), `api`, `worker`,
+`pdf`, `web`. See `docker-compose.yml` and `docker/*.Dockerfile`.
+
+## LLM configuration (Ollama Cloud)
+
+Set `NUMRA_LLM_ENABLED=true`, `OLLAMA_BASE_URL`, `OLLAMA_API_KEY`. Model names
+(`NUMRA_LLM_MODEL_PREMIUM`/`NUMRA_LLM_MODEL_FAST`) are configuration defaults, not a
+guarantee of live availability — see `specs/evidence/phase-3.md` and
+`specs/evidence/phase-4.md` for what is and isn't verified against a real provider in
+this build. Without a key, the app runs fully on `MockLLMProvider` (deterministic, no
+network) for interpretation and report generation.
+
+## PDF service
+
+Internal-only; requires a bearer token (`PDF_INTERNAL_TOKEN`) and never accepts a
+caller-supplied URL (see [docs/adr/005-pdf-rendering.md](docs/adr/005-pdf-rendering.md)).
+`POST /render/report` with `{report, profile, person}` (the same JSON shapes the API
+returns) returns a PDF byte stream.
+
+## Golden reference
+
+`fixtures/canonical/lukas-springer.v1.json` — Lukas Springer, 1986-07-18, is the pinned
+reference profile every phase's tests check against (Life Path `22/4`, Expression
+`62/8`, Soul Urge `18/9`, Personality `44/8`, ...). Production code is statically
+checked to never special-case this person (`test_no_golden_leakage.py`).
+
+## Known unfrozen features
+
+Astrology, Essence, Name/Physical/Mental/Spiritual Transits, Planes of Expression,
+relationship compatibility percentages, and Period Cycle date-boundary transitions are
+**not implemented** — see
+[docs/adr/006-unfrozen-features.md](docs/adr/006-unfrozen-features.md) and
+`specs/canon-spec.md` §26/§32/§33.
+
+## Security notes
+
+- Argon2id password hashing; session tokens are cryptographically random, only their
+  SHA-256 hash is stored, cookies are `HttpOnly`/`SameSite=Lax`/`Secure` (in production).
+- CSRF via double-submit cookie (`numra_csrf` + `x-csrf-token` header) on every
+  state-changing request.
+- `ALLOW_SELF_SIGNUP` defaults to `false`.
+- Structured, machine-readable error codes everywhere (`services/errors.py`) — no
+  silent fallbacks (§156 of the original spec: `NUMRA` never catches an error and
+  returns a default/random value).
+- PII-safe logging: access logs and LLM-generation logs never contain names, birth
+  data, or full prompts — only IDs, status, latency (`middleware/security.py`,
+  `models/tables.py::LLMGeneration`).
+
+## Privacy notes
+
+`POST /v1/account/delete-all` requires password re-confirmation and CSRF, then deletes
+the `User` row; every dependent table (`people`, `name_identities`, `calculations`,
+`relationships`, `reports`, `report_sections`, `report_jobs`, `llm_generations`,
+`exports`, `sessions`) cascades at the database level (`ondelete="CASCADE"` on every
+relevant foreign key) — verified end-to-end in
+`apps/api/tests/integration/test_delete_all.py`.
+
+## Troubleshooting
+
+- **`alembic upgrade head` fails to connect** — check `DATABASE_URL`/`TEST_DATABASE_URL`
+  and that Postgres is actually running (`pg_isready`).
+- **`GET /v1/health/ready` shows `"llm": "degraded"`** — expected without
+  `NUMRA_LLM_ENABLED=true` + a real `OLLAMA_API_KEY`; report generation still works via
+  the mock provider.
+- **Playwright can't find Chromium** in a sandboxed/dev environment with a
+  non-standard install path — see `PLAYWRIGHT_CHROMIUM_PATH` in `apps/pdf/src/server.js`
+  and the `executablePath` override pattern in `apps/pdf/src/__tests__/render.test.js`
+  / `apps/web/playwright.config.ts`.
+- **`docker compose up` fails without a running Docker daemon** — this is an external
+  environment dependency, not a code issue; see `specs/evidence/phase-6.md`.

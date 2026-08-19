@@ -11,6 +11,9 @@
     "web:build": "pnpm --filter @numra/web build",
     "web:lint": "pnpm --filter @numra/web lint",
     "web:typecheck": "pnpm --filter @numra/web typecheck",
-    "web:test": "pnpm --filter @numra/web test"
+    "web:test": "pnpm --filter @numra/web test -- --run",
+    "web:e2e": "pnpm --filter @numra/web exec playwright test",
+    "pdf:test": "pnpm --filter @numra/pdf test",
+    "verify": "python3 scripts/verify.py"
   }
 }

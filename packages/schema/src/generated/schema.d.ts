@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/v1/account/delete-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Delete All Route */
+        post: operations["delete_all_route_v1_account_delete_all_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/auth/login": {
         parameters: {
             query?: never;
@@ -232,6 +249,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/report-jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Report Job Route */
+        get: operations["get_report_job_route_v1_report_jobs__job_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Report Route */
+        post: operations["create_report_route_v1_reports_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reports/{report_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Report Route */
+        get: operations["get_report_route_v1_reports__report_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -301,6 +369,15 @@ export interface components {
             person_id: string;
             /** Schema Version */
             schema_version: string;
+        };
+        /**
+         * DeleteAccountRequest
+         * @description Re-authentication is required to confirm irreversible account deletion
+         *     (master prompt §137).
+         */
+        DeleteAccountRequest: {
+            /** Password */
+            password: string;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -419,6 +496,75 @@ export interface components {
             /** Id */
             id: string;
         };
+        /** ReportCreateRequest */
+        ReportCreateRequest: {
+            /** Calculation Id */
+            calculation_id: string;
+            report_type: components["schemas"]["ReportType"];
+        };
+        /** ReportJobOut */
+        ReportJobOut: {
+            /** Attempt Count */
+            attempt_count: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Error Code */
+            error_code: string | null;
+            /** Id */
+            id: string;
+            /** Progress */
+            progress: number;
+            /** Report Id */
+            report_id: string;
+            status: components["schemas"]["ReportJobStatus"];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * ReportJobStatus
+         * @enum {string}
+         */
+        ReportJobStatus: "QUEUED" | "OUTLINE" | "GENERATING" | "VALIDATING" | "ASSEMBLING" | "COMPLETE" | "FAILED" | "CANCELLED";
+        /** ReportOut */
+        ReportOut: {
+            /** Calculation Id */
+            calculation_id: string;
+            /** Calculation Version */
+            calculation_version: string;
+            /** Content */
+            content: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Generated At */
+            generated_at: string | null;
+            /** Id */
+            id: string;
+            /** Job Id */
+            job_id: string;
+            /** Knowledge Version */
+            knowledge_version: string;
+            /** Prompt Version */
+            prompt_version: string;
+            report_type: components["schemas"]["ReportType"];
+            /** Status */
+            status: string;
+        };
+        /**
+         * ReportType
+         * @enum {string}
+         */
+        ReportType: "QUICK" | "FULL" | "ULTIMATE" | "CUSTOM";
         /** UserOut */
         UserOut: {
             /** Email */
@@ -448,6 +594,42 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    delete_all_route_v1_account_delete_all_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeleteAccountRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     login_v1_auth_login_post: {
         parameters: {
             query?: never;
@@ -951,6 +1133,111 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RelationshipOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_report_job_route_v1_report_jobs__job_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportJobOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_report_route_v1_reports_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+                "x-csrf-token"?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReportCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_report_route_v1_reports__report_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportOut"];
                 };
             };
             /** @description Validation Error */

@@ -1,4 +1,4 @@
 packages:
   - "apps/web"
+  - "apps/pdf"
   - "packages/schema"
-  - "packages/ui-core"

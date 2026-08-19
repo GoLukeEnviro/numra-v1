@@ -1,0 +1,101 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: numra
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-numra_dev_password}
+      POSTGRES_DB: numra
+    volumes:
+      - numra_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U numra -d numra"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5432:5432"
+
+  migrate:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+      target: api
+    command: ["alembic", "upgrade", "head"]
+    working_dir: /app/apps/api
+    environment:
+      DATABASE_URL: postgresql+asyncpg://numra:${POSTGRES_PASSWORD:-numra_dev_password}@postgres:5432/numra
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+      target: api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://numra:${POSTGRES_PASSWORD:-numra_dev_password}@postgres:5432/numra
+      APP_TIMEZONE: ${APP_TIMEZONE:-Europe/Berlin}
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
+      ALLOW_SELF_SIGNUP: ${ALLOW_SELF_SIGNUP:-false}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      NUMRA_LLM_ENABLED: ${NUMRA_LLM_ENABLED:-false}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-}
+      OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
+      NUMRA_LLM_MODEL_PREMIUM: ${NUMRA_LLM_MODEL_PREMIUM:-deepseek-v4-pro:cloud}
+      NUMRA_LLM_MODEL_FAST: ${NUMRA_LLM_MODEL_FAST:-deepseek-v4-flash:cloud}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "8000:8000"
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+      target: worker
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://numra:${POSTGRES_PASSWORD:-numra_dev_password}@postgres:5432/numra
+      APP_TIMEZONE: ${APP_TIMEZONE:-Europe/Berlin}
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
+      NUMRA_LLM_ENABLED: ${NUMRA_LLM_ENABLED:-false}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-}
+      OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  pdf:
+    build:
+      context: .
+      dockerfile: docker/pdf.Dockerfile
+    restart: unless-stopped
+    environment:
+      PDF_INTERNAL_TOKEN: ${PDF_INTERNAL_TOKEN:?PDF_INTERNAL_TOKEN is required}
+    ports:
+      - "4300:4300"
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/web.Dockerfile
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
+
+volumes:
+  numra_postgres_data:

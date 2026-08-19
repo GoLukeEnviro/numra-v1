@@ -32,7 +32,9 @@ async def _login(client, sessionmaker, email: str) -> dict:
     async with sessionmaker() as db:
         await create_user(db, email=email, password_hash=hash_password("password12345"))
         await db.commit()
-    response = await client.post("/v1/auth/login", json={"email": email, "password": "password12345"})
+    response = await client.post(
+        "/v1/auth/login", json={"email": email, "password": "password12345"}
+    )
     assert response.status_code == 200
     return {"x-csrf-token": client.cookies["numra_csrf"]}
 
@@ -70,7 +72,9 @@ async def test_delete_all_cascades_every_table(client, sessionmaker, lukas_paylo
     )
 
     report_response = await client.post(
-        "/v1/reports", json={"calculation_id": calc_a["id"], "report_type": "QUICK"}, headers=headers
+        "/v1/reports",
+        json={"calculation_id": calc_a["id"], "report_type": "QUICK"},
+        headers=headers,
     )
     assert report_response.status_code == 201
 
