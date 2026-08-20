@@ -66,7 +66,17 @@ live API, static assets copied alongside it exactly as `docker/web.Dockerfile` d
 
 ## Known follow-up (not part of this item)
 
-Two unrelated console errors observed during the above (a `401` from an
-eagerly-checked `/api/v1/auth/me` on an unauthenticated `/login` visit, and a `404`
-for a missing favicon) are pre-existing UX/asset gaps, not CSP or proxy regressions —
-left for the frontend redesign pass (P1 PRODUCT).
+One unrelated console error observed during the above (a `401` from an
+eagerly-checked `/api/v1/auth/me` on an unauthenticated `/login` visit) is a
+pre-existing UX artifact, not a CSP or proxy regression — the auth context's initial
+"am I logged in?" probe on an anonymous visit; left as-is since a 401 there is the
+expected, correct response, not a bug.
+
+The second console error this originally documented (a `404` for a missing favicon)
+turned out to share its root cause with a real Docker build failure: `apps/web/public`
+did not exist anywhere in the repository at all, which also breaks
+`docker/web.Dockerfile`'s `COPY --from=build /repo/apps/web/public ./apps/web/public`
+step outright. Fixed for both by adding `apps/web/public/robots.txt` (a private,
+auth-gated app with nothing that should ever be crawled) and a Next.js
+App-Router-convention `apps/web/src/app/icon.svg`, which Next.js serves automatically
+as the favicon without anything needed in `public/`.
