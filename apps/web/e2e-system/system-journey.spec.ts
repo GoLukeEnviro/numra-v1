@@ -1,0 +1,189 @@
+import { test, expect } from "@playwright/test";
+
+/**
+ * The REAL system journey — no page.route() interception anywhere in this file.
+ * Every request the browser makes goes through the real same-origin proxy
+ * (/api/[...path]/route.ts) to a real FastAPI instance, backed by a real Postgres
+ * database, with a real report worker consuming the job queue
+ * (NUMRA_LLM_PROVIDER=mock is the explicit, non-implicit provider choice for
+ * deterministic test content — see numra_api.services.llm_factory) and the real
+ * internal PDF microservice (Playwright/Chromium) rendering the exported file.
+ *
+ * Prerequisites this spec assumes are already running (see
+ * specs/evidence/system-e2e.md for the exact commands): Postgres, Redis, the PDF
+ * service, a FastAPI instance, and a worker process, all pointed at the same
+ * dedicated database. playwright.system.config.ts starts only the Next.js server
+ * itself, pointed at that FastAPI instance via API_INTERNAL_URL.
+ *
+ * One long, ordered journey (not many small tests) because most of it is
+ * necessarily sequential: nothing to compare exists before two people are created,
+ * nothing to export exists before a report completes, and delete-all is only
+ * meaningful to verify once everything above it exists.
+ */
+
+function uniqueEmail(): string {
+  return `system-e2e-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`;
+}
+
+const PASSWORD = "correct-horse-battery-staple-2026";
+
+test.setTimeout(120_000);
+
+test("real system journey: login through delete-all against the live stack", async ({ page }) => {
+  const email = uniqueEmail();
+
+  // 0. Register a fresh account directly against the real API (no registration UI
+  // exists — self-signup is enabled only for this dedicated e2e instance).
+  // page.request (not the standalone `request` fixture) so the session cookie the
+  // upcoming login sets is shared with every subsequent request.get()/post() call
+  // below — that shared cookie jar is what makes the post-delete auth checks mean
+  // anything.
+  const registerResponse = await page.request.post("/api/v1/auth/register", {
+    data: { email, password: PASSWORD },
+  });
+  expect(registerResponse.status(), await registerResponse.text()).toBe(201);
+
+  // 1. Log in through the real UI/API.
+  await page.goto("/login");
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Password").fill(PASSWORD);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+
+  // 2. Create the first person (Lukas Springer — the pinned golden fixture) and let
+  // its calculation run for real, through the deterministic engine.
+  await page.getByRole("link", { name: "New profile" }).first().click();
+  await expect(page).toHaveURL(/\/people\/new$/);
+
+  await page.getByLabel("First name(s) *").fill("Lukas");
+  await page.getByLabel("Last name *").fill("Springer");
+  await page.getByLabel("Birth date *").fill("1986-07-18");
+  await page.getByLabel("Birth time", { exact: true }).fill("06:00");
+  await page.getByLabel("Time precision").selectOption("exact");
+  await page.getByLabel("Birth place").fill("Meerbusch");
+  await page.getByLabel("Country code").fill("DE");
+  await page.getByRole("button", { name: /Create profile/i }).click();
+
+  await expect(page).toHaveURL(/\/analysis\/[0-9a-f-]{36}$/);
+  const calculationIdA = page.url().split("/analysis/")[1];
+  await expect(page.getByRole("heading", { name: "Lukas Springer" })).toBeVisible();
+
+  // Golden values (canon-spec.md, pinned) — genuinely computed by the real
+  // deterministic engine running behind the real API, not fixture data.
+  await expect(page.getByText("22/4", { exact: true }).first()).toBeVisible(); // Life Path
+  await expect(page.getByText("62/8", { exact: true }).first()).toBeVisible(); // Expression
+  await expect(page.getByText("18/9", { exact: true }).first()).toBeVisible(); // Soul Urge
+  await expect(page.getByText("44/8", { exact: true }).first()).toBeVisible(); // Personality
+  await expect(page.getByText(/Master Number 22/i).first()).toBeVisible();
+
+  await page.getByRole("tab", { name: "Calculation Inspector" }).click();
+  await expect(page.getByText("Day: 18 → 9")).toBeVisible();
+  await expect(page.getByText("9 + 7 + 6 = 22")).toBeVisible();
+
+  // 3. Dashboard and Today both load against the real backend without error.
+  await page.goto("/dashboard");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await page.goto("/today");
+  await expect(page.getByRole("heading", { name: "Today" })).toBeVisible();
+  // With exactly one profile so far, the timing view renders directly (no picker).
+  await expect(page.getByText(/Personal (Year|Month|Day)/i).first()).toBeVisible({
+    timeout: 15_000,
+  });
+
+  // 4. Generate a real long-form report: real job enqueued, real worker claims and
+  // processes it (NUMRA_LLM_PROVIDER=mock), real polling from the browser.
+  await page.goto(`/analysis/${calculationIdA}`);
+  await page.getByLabel("Quick", { exact: false }).first().check();
+  await page.getByRole("button", { name: "Generate report" }).click();
+
+  await expect(page).toHaveURL(/\/reports\/[0-9a-f-]{36}$/);
+  const reportId = page.url().split("/reports/")[1];
+
+  // The report reader only renders once the job is COMPLETE — this wait is the real
+  // proof the worker actually claimed and finished the job against a live database,
+  // not an instantaneous mocked response.
+  await expect(page.getByRole("heading", { name: "Export" })).toBeVisible({ timeout: 60_000 });
+
+  // 5. Export a real PDF: POST /v1/exports is synchronous and blocks on a genuine
+  // Playwright/Chromium render in the internal PDF service.
+  await page.getByRole("button", { name: "Export PDF" }).click();
+  await expect(page.getByRole("link", { name: /Download/i })).toBeVisible({ timeout: 30_000 });
+  const downloadHref = await page.getByRole("link", { name: /Download/i }).getAttribute("href");
+  expect(downloadHref).toBeTruthy();
+
+  const pdfResponse = await page.request.get(downloadHref!);
+  expect(pdfResponse.status()).toBe(200);
+  expect(pdfResponse.headers()["content-type"]).toContain("application/pdf");
+  const pdfBytes = await pdfResponse.body();
+  expect(pdfBytes.subarray(0, 5).toString("latin1")).toBe("%PDF-");
+  expect(pdfBytes.byteLength).toBeGreaterThan(1000);
+
+  // 6. Create a second person, with a current name and preferred name, to exercise
+  // the Identity Timeline as more than a single birth-name entry.
+  await page.goto("/people/new");
+  await page.getByLabel("First name(s) *").fill("Anna");
+  await page.getByLabel("Last name *").fill("Berger");
+  await page.getByLabel("Birth date *").fill("1990-03-14");
+  await page.getByLabel("Current first name(s)").fill("Anna");
+  await page.getByLabel("Current last name").fill("Weber");
+  await page.getByLabel("Preferred name").fill("Annie");
+  await page.getByRole("button", { name: /Create profile/i }).click();
+
+  await expect(page).toHaveURL(/\/analysis\/[0-9a-f-]{36}$/);
+  const calculationIdB = page.url().split("/analysis/")[1];
+  await expect(page.getByRole("heading", { name: "Anna Berger" })).toBeVisible();
+
+  await page.goto("/people");
+  // The People tile shows the preferred name ("Annie") when one is set, not the
+  // birth name — personDisplayName() prioritizes it deliberately.
+  await page.getByRole("link", { name: /Annie/i }).click();
+  await expect(page.getByRole("heading", { name: "Identity" })).toBeVisible();
+  await expect(page.getByText("Birth name", { exact: true })).toBeVisible();
+  await expect(page.getByText("Current name", { exact: true })).toBeVisible();
+  await expect(page.getByText("Preferred name", { exact: true })).toBeVisible();
+  await expect(page.getByRole("list").getByText("Annie", { exact: true })).toBeVisible();
+  await expect(page.getByText("Used for Core Numbers")).toBeVisible();
+
+  // 7. Relationship comparison: both calculations were viewed in this browser, so
+  // they are offered as recent selections (no manual ID pasting needed).
+  await page.goto("/relationships");
+  await page.getByLabel("Person A").selectOption(calculationIdA!);
+  await page.getByLabel("Person B").selectOption(calculationIdB!);
+  await page.getByRole("button", { name: "Compare" }).click();
+
+  await expect(page).toHaveURL(/\/relationships\/[0-9a-f-]{36}$/);
+  await expect(page.getByText(/does not compute a compatibility percentage/i)).toBeVisible();
+  // The canon-spec prohibition holds against the live comparison output too: no bare
+  // percentage sign appears anywhere on the rendered comparison.
+  await expect(page.locator("body")).not.toContainText("%");
+
+  // 8. Delete-All: real password-confirmed deletion against the live account.
+  await page.goto("/settings/privacy");
+  await page.getByRole("button", { name: "Delete my account" }).click();
+  await page.getByLabel("Confirm with your password").fill(PASSWORD);
+  await page.getByRole("button", { name: "Delete everything permanently" }).click();
+
+  await expect(page).toHaveURL(/\/login$/, { timeout: 15_000 });
+
+  // The server-side session must be genuinely gone, not just the client's local
+  // belief about it: the same session cookie (still held by this browser context)
+  // must now be rejected.
+  const meAfterDelete = await page.request.get("/api/v1/auth/me");
+  expect(meAfterDelete.status()).toBe(401);
+
+  // The now-deleted session can no longer authenticate a download either (the
+  // export row and its file itself are gone too — verified independently, directly
+  // on disk, by the shell script that runs this spec; an authenticated request
+  // could not tell "row gone" apart from "session gone" once both are true).
+  const downloadAfterDelete = await page.request.get(downloadHref!);
+  expect(downloadAfterDelete.status()).toBe(401);
+
+  // A second registration with the same email must succeed — proof the account row
+  // itself, not just its session, was removed.
+  const reRegisterResponse = await page.request.post("/api/v1/auth/register", {
+    data: { email, password: PASSWORD },
+  });
+  expect(reRegisterResponse.status(), await reRegisterResponse.text()).toBe(201);
+
+  console.log(`SYSTEM_E2E_REPORT_ID=${reportId}`);
+});
