@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from sqlalchemy import func, select
 
@@ -39,10 +41,13 @@ async def _login(client, sessionmaker, email: str) -> dict:
     return {"x-csrf-token": client.cookies["numra_csrf"]}
 
 
-async def test_delete_all_cascades_every_table(client, sessionmaker, lukas_payload) -> None:
+async def test_delete_all_cascades_every_table(
+    client, sessionmaker, llm, settings, lukas_payload
+) -> None:
     """master prompt §138: create a user, person, calculation, relationship, report,
-    report job — then Delete All — and verify zero rows remain in every dependent
-    table for that user, with no orphans."""
+    report job, PDF export — then Delete All — and verify zero rows remain in every
+    dependent table for that user, with no orphans, AND the export's physical file is
+    actually gone from disk (not just its DB row) — see routes/account.py."""
     email = "delete-me@example.com"
     headers = await _login(client, sessionmaker, email)
 
@@ -81,7 +86,16 @@ async def test_delete_all_cascades_every_table(client, sessionmaker, lukas_paylo
     # Run the job to completion so llm_generations / report_sections have a chance to
     # exist too (the pipeline itself doesn't write llm_generations rows in this phase —
     # see specs/evidence/phase-4.md — but report_sections and the completed report do).
-    await run_one_cycle(sessionmaker)
+    await run_one_cycle(sessionmaker, llm=llm)
+
+    export_response = await client.post(
+        "/v1/exports",
+        json={"report_id": report_response.json()["id"], "export_type": "pdf"},
+        headers=headers,
+    )
+    assert export_response.status_code == 201
+    export_file_path = Path(settings.export_storage_dir) / f"{export_response.json()['id']}.pdf"
+    assert export_file_path.is_file()
 
     # Sanity: rows actually exist before deletion.
     assert await _count(sessionmaker, Person) >= 2
@@ -90,6 +104,7 @@ async def test_delete_all_cascades_every_table(client, sessionmaker, lukas_paylo
     assert await _count(sessionmaker, Report) >= 1
     assert await _count(sessionmaker, ReportJob) >= 1
     assert await _count(sessionmaker, ReportSection) >= 1
+    assert await _count(sessionmaker, Export) >= 1
 
     delete_response = await client.post(
         "/v1/account/delete-all", json={"password": "password12345"}, headers=headers
@@ -106,6 +121,7 @@ async def test_delete_all_cascades_every_table(client, sessionmaker, lukas_paylo
     assert await _count(sessionmaker, ReportSection) == 0
     assert await _count(sessionmaker, LLMGeneration) == 0
     assert await _count(sessionmaker, Export) == 0
+    assert not export_file_path.exists()
 
     # Session cookie is now invalid — the API must not silently keep serving requests.
     me_response = await client.get("/v1/auth/me")

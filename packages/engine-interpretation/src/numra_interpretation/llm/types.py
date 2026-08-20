@@ -41,7 +41,7 @@ __all__ = [
 class ProviderHealth(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    status: Literal["healthy", "degraded", "unavailable"]
+    status: Literal["healthy", "degraded", "unavailable", "disabled"]
     provider: str
     checked_at: datetime
     detail: str | None = None

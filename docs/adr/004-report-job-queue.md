@@ -43,3 +43,17 @@ job instead of paying for generation twice.
   mid-section resume — a deliberate scope cut given the added complexity incremental
   checkpointing would need, weighed against "a stuck job eventually completes" being
   the actual requirement.
+
+## Update — retry/backoff correctness (production hardening pass)
+
+The original implementation had a real bug: a retryable failure was marked `FAILED`
+even when `attempt_count < MAX_ATTEMPTS` — `FAILED` was never in the reclaimable
+status set above, so a job that failed once could never actually be retried despite
+`MAX_ATTEMPTS=3` existing in the code. `report_jobs` gained a `next_attempt_at` column
+and `claim_next_job`'s query above gained an additional
+`AND (next_attempt_at IS NULL OR next_attempt_at <= now())` clause; a retryable
+failure now goes back to `QUEUED` with an exponentially increasing `next_attempt_at`
+(`requeue_job_for_retry`) instead of `FAILED`, and `FAILED` is now reserved for a
+non-retryable failure or one where `attempt_count` has actually been exhausted
+(`fail_job_terminally`). See `apps/api/tests/integration/test_report_retry.py` for the
+retry-state-machine test coverage this added.

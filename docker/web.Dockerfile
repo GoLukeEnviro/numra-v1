@@ -16,7 +16,6 @@ COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY openapi openapi
 COPY packages/schema packages/schema
 COPY apps/web apps/web
-ENV NEXT_PUBLIC_API_BASE_URL=""
 RUN pnpm --filter @numra/web build
 
 FROM base AS run

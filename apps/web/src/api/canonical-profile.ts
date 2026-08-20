@@ -139,10 +139,23 @@ export interface Timing {
   personal_day: CalculationMetric;
 }
 
-export interface DiagnosticAlternative extends ReductionResult {
+/**
+ * A `diagnostics.*.alternative_methods.*` entry. Not every diagnostic carries every
+ * `ReductionResult` field: the Life Path direct-digit-sum diagnostic does (see
+ * `date_metrics.diagnostic_payload`), but the pinnacle historical diagnostics are a
+ * single `reduce_compound` call with no intermediate steps or source/master/effective
+ * values recorded (see `cycles/pinnacles.py`) — those fields are legitimately absent
+ * there, not a contract violation.
+ */
+export interface DiagnosticAlternative
+  extends Pick<ReductionResult, "raw_value" | "root_value" | "display_value"> {
   method?: string;
   formula?: string;
   operands?: number[];
+  source_value?: number | string | null;
+  master_number?: number | null;
+  effective_value?: number;
+  reduction_steps?: number[];
 }
 
 export interface Diagnostics {
@@ -209,6 +222,33 @@ export function isCanonicalProfile(value: unknown): value is CanonicalProfile {
 
 export function asCanonicalProfile(value: unknown): CanonicalProfile | null {
   return isCanonicalProfile(value) ? value : null;
+}
+
+function hasDisplayValue(value: unknown): boolean {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as { display_value?: unknown }).display_value === "string"
+  );
+}
+
+/**
+ * Structural guard for `GET /v1/people/{id}/timing`, which returns exactly the
+ * `timing` sub-object of a Canonical Profile (routes/calculations.py). Shallow by
+ * design, mirroring `isCanonicalProfile`: it only confirms the four values the
+ * Today view renders are present and carry a `display_value`, so a malformed
+ * payload produces an error state instead of a blank or, worse, a made-up number.
+ */
+export function asTiming(value: unknown): Timing | null {
+  if (typeof value !== "object" || value === null) return null;
+  const v = value as Record<string, unknown>;
+  const ok =
+    typeof v.as_of_date === "string" &&
+    hasDisplayValue(v.universal_year) &&
+    hasDisplayValue(v.personal_year) &&
+    hasDisplayValue(v.personal_month) &&
+    hasDisplayValue(v.personal_day);
+  return ok ? (value as Timing) : null;
 }
 
 /** Relationship comparison shape (RelationshipOut.comparison, openapi: additionalProperties). */

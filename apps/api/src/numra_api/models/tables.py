@@ -4,7 +4,7 @@ import datetime as dt
 import uuid
 from typing import Any
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
@@ -209,6 +209,11 @@ class ReportSection(Base):
 
 class ReportJob(Base):
     __tablename__ = "report_jobs"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id", "idempotency_key", name="uq_report_jobs_user_id_idempotency_key"
+        ),
+    )
 
     id: Mapped[uuid.UUID] = _uuid_pk()
     report_id: Mapped[uuid.UUID] = mapped_column(
@@ -223,8 +228,17 @@ class ReportJob(Base):
     attempt_count: Mapped[int] = mapped_column(Integer, default=0)
     locked_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     lease_until: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    #: When a retryable failure occurs, the job is requeued (status reset to QUEUED)
+    #: but must not be reclaimed again until this timestamp (exponential backoff).
+    #: NULL means "immediately reclaimable" (fresh job / no backoff pending).
+    next_attempt_at: Mapped[dt.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    last_error_at: Mapped[dt.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     error_code: Mapped[str | None] = mapped_column(String(80), nullable=True)
-    idempotency_key: Mapped[str | None] = mapped_column(String(200), nullable=True, unique=True)
+    idempotency_key: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
     created_at: Mapped[dt.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
@@ -276,7 +290,11 @@ class Export(Base):
     )
     export_type: Mapped[ExportType] = mapped_column(String(20))
     status: Mapped[ExportStatus] = mapped_column(String(20), default=ExportStatus.PENDING)
+    #: Opaque storage reference returned by ExportStorage.save() — never a
+    #: client-controllable path (see numra_api/storage/exports.py).
     file_ref: Mapped[str | None] = mapped_column(Text, nullable=True)
+    file_size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    error_code: Mapped[str | None] = mapped_column(String(80), nullable=True)
     created_at: Mapped[dt.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

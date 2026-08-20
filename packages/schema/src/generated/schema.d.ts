@@ -106,6 +106,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/exports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Exports Route */
+        get: operations["list_exports_route_v1_exports_get"];
+        put?: never;
+        /** Create Export Route */
+        post: operations["create_export_route_v1_exports_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/exports/{export_id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download Export Route */
+        get: operations["download_export_route_v1_exports__export_id__download_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/health/live": {
         parameters: {
             query?: never;
@@ -379,6 +414,41 @@ export interface components {
             /** Password */
             password: string;
         };
+        /** ExportCreateRequest */
+        ExportCreateRequest: {
+            /** @default pdf */
+            export_type: components["schemas"]["ExportType"];
+            /** Report Id */
+            report_id: string;
+        };
+        /** ExportOut */
+        ExportOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Error Code */
+            error_code: string | null;
+            export_type: components["schemas"]["ExportType"];
+            /** File Size Bytes */
+            file_size_bytes: number | null;
+            /** Id */
+            id: string;
+            /** Report Id */
+            report_id: string | null;
+            status: components["schemas"]["ExportStatus"];
+        };
+        /**
+         * ExportStatus
+         * @enum {string}
+         */
+        ExportStatus: "pending" | "complete" | "failed";
+        /**
+         * ExportType
+         * @enum {string}
+         */
+        ExportType: "pdf" | "json";
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -470,6 +540,16 @@ export interface components {
             current_middle_names?: string | null;
             /** Preferred Name */
             preferred_name?: string | null;
+        };
+        /** RegisterRequest */
+        RegisterRequest: {
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+            /** Password */
+            password: string;
         };
         /** RelationshipCreateRequest */
         RelationshipCreateRequest: {
@@ -666,9 +746,13 @@ export interface operations {
     logout_v1_auth_logout_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
             path?: never;
-            cookie?: never;
+            cookie?: {
+                numra_csrf?: string | null;
+            };
         };
         requestBody?: never;
         responses: {
@@ -678,6 +762,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };
@@ -721,7 +814,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["LoginRequest"];
+                "application/json": components["schemas"]["RegisterRequest"];
             };
         };
         responses: {
@@ -765,6 +858,108 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CalculationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_exports_route_v1_exports_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_export_route_v1_exports_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExportCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_export_route_v1_exports__export_id__download_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                export_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

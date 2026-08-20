@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import re
 
 import pytest
 
@@ -8,7 +9,12 @@ from numra_interpretation.errors import InvalidReportSection
 from numra_interpretation.llm.types import NumericClaim
 from numra_interpretation.llm.validator import (
     build_metric_display_value_index,
+    build_special_claim_index,
     extract_placeholder_metric_ids,
+    extract_special_placeholder_ids,
+    find_unauthorized_numeric_literals,
+    format_hidden_passion,
+    format_karmic_lessons,
     validate_generation_result,
     validate_numeric_claims,
 )
@@ -98,3 +104,96 @@ def test_validate_generation_result_rejects_placeholder_ok_but_claim_wrong(sampl
     claims = (NumericClaim(metric_id="life_path", display_value="totally-wrong"),)
     with pytest.raises(InvalidReportSection, match="mismatch"):
         validate_generation_result(text, claims, sample_profile)
+
+
+def test_index_covers_expanded_metric_registry(sample_profile) -> None:
+    """P1 numeric-claim hardening: pinnacles/challenges/subconscious_self/cornerstone/
+    capstone/first_vowel/universal_year must all be citable via {{metric:ID}}, not just
+    the original eight core CalculationMetric fields."""
+    index = build_metric_display_value_index(sample_profile)
+    for metric_id in (
+        "pinnacle_1",
+        "pinnacle_2",
+        "pinnacle_3",
+        "pinnacle_4",
+        "challenge_1",
+        "challenge_2",
+        "challenge_3",
+        "challenge_4",
+        "subconscious_self",
+        "cornerstone",
+        "capstone",
+        "first_vowel",
+        "universal_year",
+    ):
+        assert metric_id in index
+        assert index[metric_id]
+
+
+def test_special_claim_index_covers_hidden_passion_and_karmic_lessons(sample_profile) -> None:
+    special_index = build_special_claim_index(sample_profile)
+    assert special_index["hidden_passion"] == format_hidden_passion(sample_profile)
+    assert special_index["karmic_lessons"] == format_karmic_lessons(sample_profile)
+    assert special_index["hidden_passion"]
+    assert special_index["karmic_lessons"]
+
+
+def test_extract_special_placeholder_ids_dedupes_and_preserves_order() -> None:
+    text = (
+        "{{special:hidden_passion}} und {{special:karmic_lessons}} und {{special:hidden_passion}}"
+    )
+    assert extract_special_placeholder_ids(text) == ("hidden_passion", "karmic_lessons")
+
+
+def test_validate_generation_result_accepts_known_special_placeholder(sample_profile) -> None:
+    text = "Deine verborgene Leidenschaft: {{special:hidden_passion}}."
+    validate_generation_result(text, (), sample_profile)  # must not raise
+
+
+def test_validate_generation_result_rejects_unknown_special_placeholder(sample_profile) -> None:
+    text = "{{special:not_a_real_special_id}}"
+    with pytest.raises(InvalidReportSection, match="Unknown special id referenced"):
+        validate_generation_result(text, (), sample_profile)
+
+
+def test_special_claim_validated_via_numeric_claims(sample_profile) -> None:
+    """A `NumericClaim` may reference a special (non-scalar) id too — validated against
+    the same merged index used by placeholder resolution."""
+    hidden_passion = format_hidden_passion(sample_profile)
+    claims = (NumericClaim(metric_id="hidden_passion", display_value=hidden_passion),)
+    validate_numeric_claims(claims, sample_profile)  # must not raise
+
+    wrong_claims = (NumericClaim(metric_id="hidden_passion", display_value="wrong"),)
+    with pytest.raises(InvalidReportSection, match="mismatch"):
+        validate_numeric_claims(wrong_claims, sample_profile)
+
+
+def test_find_unauthorized_numeric_literals_detects_bare_profile_value(sample_profile) -> None:
+    all_values = list(build_metric_display_value_index(sample_profile).values())
+    all_values += list(build_special_claim_index(sample_profile).values())
+    bare_digit = next(
+        (d for value in all_values for d in re.findall(r"\d+", value) if len(d) >= 2), None
+    )
+    assert bare_digit is not None, "expected at least one 2+ digit value in this profile"
+    text = f"Deine Lebenszahl ist buchstäblich {bare_digit}, ganz ohne Platzhalter."
+    found = find_unauthorized_numeric_literals(text, sample_profile)
+    assert bare_digit in found
+
+
+def test_find_unauthorized_numeric_literals_ignores_placeholder_content(sample_profile) -> None:
+    text = "Deine Lebenszahl ist {{metric:life_path}}."
+    assert find_unauthorized_numeric_literals(text, sample_profile) == ()
+
+
+def test_find_unauthorized_numeric_literals_ignores_single_digits(sample_profile) -> None:
+    """Single digits 1-9 are common in ordinary prose (list items, small counts) and are
+    deliberately excluded from the forbidden set — only 2+-digit runs are checked."""
+    text = "Es gibt 4 Herausforderungen und 3 wichtige Themen in diesem Abschnitt."
+    assert find_unauthorized_numeric_literals(text, sample_profile) == ()
+
+
+def test_find_unauthorized_numeric_literals_ignores_unrelated_numbers(sample_profile) -> None:
+    text = "Im Jahr 1970 begann eine neue Ära, weit weg von jeder Berechnung."
+    # 1970 is not derived from any of this profile's own canonical values, so it is not
+    # flagged even though it is a 4-digit number.
+    assert find_unauthorized_numeric_literals(text, sample_profile) == ()

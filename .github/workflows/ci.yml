@@ -49,8 +49,16 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U numra -d numra_test"
           --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       TEST_DATABASE_URL: postgresql+asyncpg://numra:numra_ci_password@localhost:5432/numra_test
+      TEST_PDF_URL: http://127.0.0.1:4300
+      TEST_PDF_TOKEN: ci-only-pdf-token
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v3
@@ -58,6 +66,25 @@ jobs:
           version: ${{ env.UV_VERSION }}
       - run: uv python install ${{ env.PYTHON_VERSION }}
       - run: uv sync --all-packages --all-groups
+      # apps/api/tests exercises a REAL apps/pdf instance (export creation, health
+      # checks) rather than mocking the PDF service -- see specs/evidence/phase-4.md
+      # and the export/PDF product integration work.
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @numra/pdf exec playwright install --with-deps chromium
+      - name: Start apps/pdf in the background
+        run: |
+          PORT=4300 PDF_INTERNAL_TOKEN=${{ env.TEST_PDF_TOKEN }} \
+            nohup pnpm --filter @numra/pdf start > /tmp/pdf-service.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:4300/health/ready && break
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:4300/health/ready || (cat /tmp/pdf-service.log && exit 1)
       - name: Engine coverage gate (>=90%)
         run: |
           uv run pytest packages/engine-numerology/tests -q \
@@ -75,6 +102,30 @@ jobs:
       - run: uv python install ${{ env.PYTHON_VERSION }}
       - run: uv sync --all-packages --all-groups
       - run: uv run pytest packages/engine-numerology/tests/unit/test_no_golden_leakage.py -q
+
+  dependency-security:
+    # Explicit release gate (not just a local `pnpm audit`/`pip-audit` run someone might
+    # forget): Critical or High-with-an-available-fix in production dependencies fails
+    # the build. --audit-level=high intentionally does not hard-fail on moderate/low
+    # findings that may have no upstream fix yet -- see specs/evidence/final-release-closure.md
+    # for the Next.js 14->15 migration this gate was added to guard against regressing.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: pnpm audit (production dependencies across the workspace, fail on high/critical)
+        run: pnpm audit --prod --audit-level=high
+      - uses: astral-sh/setup-uv@v3
+        with:
+          version: ${{ env.UV_VERSION }}
+      - run: uv python install ${{ env.PYTHON_VERSION }}
+      - name: pip-audit (Python dependencies)
+        run: uvx pip-audit
 
   schema-and-openapi-drift:
     runs-on: ubuntu-latest
@@ -97,8 +148,6 @@ jobs:
       - name: OpenAPI export has no drift
         run: uv run python3 scripts/export_openapi.py --check
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -114,8 +163,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -132,8 +179,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -147,8 +192,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -156,6 +199,95 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @numra/pdf exec playwright install --with-deps chromium
       - run: pnpm --filter @numra/pdf test
+
+  system-e2e:
+    # The REAL, non-mocked system journey (apps/web/e2e-system/system-journey.spec.ts) --
+    # unlike the `playwright` job above (golden-journey.spec.ts, every API call
+    # intercepted with page.route()), this stands up the full real stack -- Postgres,
+    # Redis, the real internal PDF service, a real FastAPI instance
+    # (NUMRA_LLM_PROVIDER=mock is an explicit, non-implicit provider choice), and a
+    # real report worker -- and drives the browser against it with zero mocking. See
+    # specs/evidence/system-e2e.md for the full rationale and the real bug this caught
+    # (a diagnostics-payload shape drift invisible to the mocked suite).
+    runs-on: ubuntu-latest
+    needs: web-lint-typecheck-build-test
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: numra
+          POSTGRES_PASSWORD: numra_ci_password
+          POSTGRES_DB: numra_e2e
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U numra -d numra_e2e"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql+asyncpg://numra:numra_ci_password@localhost:5432/numra_e2e
+      ENVIRONMENT: test
+      SESSION_SECRET: ci-only-system-e2e-secret-not-for-prod-0123456789
+      ALLOW_SELF_SIGNUP: "true"
+      NUMRA_LLM_PROVIDER: mock
+      PDF_INTERNAL_URL: http://127.0.0.1:4300
+      PDF_INTERNAL_TOKEN: ci-only-pdf-token
+      EXPORT_STORAGE_DIR: /tmp/numra-e2e-exports
+      RATE_LIMIT_BACKEND: redis
+      REDIS_URL: redis://localhost:6379/0
+      CORS_ALLOWED_ORIGINS: '["http://127.0.0.1:4180"]'
+      SYSTEM_E2E_WEB_PORT: "4180"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          version: ${{ env.UV_VERSION }}
+      - run: uv python install ${{ env.PYTHON_VERSION }}
+      - run: uv sync --all-packages --all-groups
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: uv run --directory apps/api alembic upgrade head
+      - run: pnpm --filter @numra/pdf exec playwright install --with-deps chromium
+      - name: Start the real PDF service in the background
+        run: |
+          PORT=4300 PDF_INTERNAL_TOKEN=${{ env.PDF_INTERNAL_TOKEN }} \
+            nohup pnpm --filter @numra/pdf start > /tmp/pdf-service.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:4300/health/ready && break
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:4300/health/ready || (cat /tmp/pdf-service.log && exit 1)
+      - name: Start a real FastAPI instance in the background
+        run: |
+          nohup uv run --directory apps/api uvicorn numra_api.app:app \
+            --host 127.0.0.1 --port 8010 > /tmp/api.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8010/v1/health/live && break
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:8010/v1/health/ready || (cat /tmp/api.log && exit 1)
+      - name: Start a real report worker in the background
+        run: nohup uv run --directory apps/api python -m numra_api.worker > /tmp/worker.log 2>&1 &
+      - run: pnpm --filter @numra/web exec playwright install --with-deps chromium
+      - name: Run the real system journey
+        working-directory: apps/web
+        env:
+          API_INTERNAL_SYSTEM_URL: http://127.0.0.1:8010
+        run: npx playwright test --config=playwright.system.config.ts
+      - name: Show service logs on failure
+        if: failure()
+        run: |
+          echo "--- PDF service ---"; cat /tmp/pdf-service.log || true
+          echo "--- API ---"; cat /tmp/api.log || true
+          echo "--- worker ---"; cat /tmp/worker.log || true
 
   docker-build:
     runs-on: ubuntu-latest
@@ -170,3 +302,80 @@ jobs:
       - run: docker build -f docker/api.Dockerfile --target worker .
       - run: docker build -f docker/pdf.Dockerfile .
       - run: docker build -f docker/web.Dockerfile .
+
+  docker-compose-e2e:
+    # Release-closure Gate C: docker-build above proves each image builds in
+    # isolation; this proves the actual `docker-compose.yml` topology comes up as a
+    # coherent deployment and serves a real, non-mocked browser journey through it --
+    # something no prior verification pass had exercised. This job's registry pulls
+    # cannot be reproduced in the sandbox this branch was developed in (org egress
+    # policy denies container-registry hosts there -- see
+    # specs/evidence/final-release-closure.md); GitHub Actions runners have full
+    # registry access, so this is where Docker Compose Up actually gets proven.
+    runs-on: ubuntu-latest
+    env:
+      POSTGRES_PASSWORD: ci-only-postgres-password
+      SESSION_SECRET: ci-only-release-closure-session-secret-0123456789
+      PDF_INTERNAL_TOKEN: ci-only-release-closure-pdf-token
+      ENVIRONMENT: test
+      NUMRA_LLM_PROVIDER: mock
+      ALLOW_SELF_SIGNUP: "true"
+      RATE_LIMIT_BACKEND: redis
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - run: docker compose build
+      - run: docker compose up -d
+      - name: Poll API liveness/readiness and web availability
+        run: |
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:8000/v1/health/live && break; sleep 2; done
+          curl -sf http://127.0.0.1:8000/v1/health/live || { docker compose logs; exit 1; }
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:8000/v1/health/ready && break; sleep 2; done
+          curl -sf http://127.0.0.1:8000/v1/health/ready || { docker compose logs; exit 1; }
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:3000/login && break; sleep 2; done
+          curl -sf http://127.0.0.1:3000/login || { docker compose logs; exit 1; }
+      # migrate's own exit code isn't re-checked explicitly: api/worker's
+      # depends_on migrate:service_completed_successfully means they could not have
+      # started at all (and thus could not have answered the health polls above) if
+      # migrate had exited non-zero.
+      - name: Service status
+        run: docker compose ps --all
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @numra/web exec playwright install --with-deps chromium
+      - name: Run the real system journey against the actual compose stack
+        working-directory: apps/web
+        run: npx playwright test --config=playwright.compose.config.ts
+      - name: Log and secret audit
+        if: always()
+        run: |
+          docker compose logs --no-color > /tmp/compose-logs.txt
+          status=0
+          echo "--- scanning for unhandled errors ---"
+          if grep -iE "Traceback|Unhandled|FATAL|panic" /tmp/compose-logs.txt; then
+            echo "!! unhandled-error pattern found in compose logs"
+            status=1
+          else
+            echo "none found"
+          fi
+          echo "--- confirming no secret VALUES leaked into logs ---"
+          if grep -qF "$SESSION_SECRET" /tmp/compose-logs.txt; then
+            echo "!! SESSION_SECRET value leaked into logs"
+            status=1
+          fi
+          if grep -qF "$PDF_INTERNAL_TOKEN" /tmp/compose-logs.txt; then
+            echo "!! PDF_INTERNAL_TOKEN value leaked into logs"
+            status=1
+          fi
+          [ "$status" -eq 0 ] && echo "clean"
+          exit $status
+      - name: Show compose logs on failure
+        if: failure()
+        run: docker compose logs --no-color
+      - name: Clean shutdown
+        if: always()
+        run: docker compose down -v --remove-orphans

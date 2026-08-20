@@ -13,6 +13,7 @@ from numra_numerology.metrics.date_metrics import (
     compute_life_path,
     compute_life_path_direct_diagnostic,
     compute_maturity,
+    diagnostic_payload,
 )
 from numra_numerology.metrics.intensity import build_intensity_table
 from numra_numerology.metrics.name_metrics import (
@@ -117,7 +118,7 @@ def calculate_profile(person: PersonInput, as_of_date: dt.date) -> CanonicalProf
     diagnostics = Diagnostics(
         life_path={
             "alternative_methods": {
-                "direct_digit_sum": life_path_diagnostic.model_dump(mode="json"),
+                "direct_digit_sum": diagnostic_payload(life_path_diagnostic),
             }
         },
         pinnacles={

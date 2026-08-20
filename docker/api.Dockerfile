@@ -20,10 +20,30 @@ COPY packages/engine-astrology packages/engine-astrology
 COPY apps/api apps/api
 COPY knowledge knowledge
 
-RUN uv sync --frozen --no-dev --package numra-api --package numra-numerology \
-      --package numra-interpretation --package numra-astrology
+# A bare `uv sync` at the workspace root only syncs the *root* project -- here an
+# empty placeholder (`dependencies = []` in the top-level pyproject.toml) -- NOT the
+# workspace members copied above. Confirmed the hard way: a real `docker compose up`
+# (release-closure Gate C) found `alembic`/`uvicorn` missing from $PATH and
+# `numra_api`/`fastapi` unimportable in the built image, because this line used to
+# read plain `uv sync --frozen --no-dev` with no member packages actually installed.
+# `--all-packages` is the real fix -- it syncs every workspace member's own
+# dependencies into the shared venv. (`uv sync --package` repeated per-package, the
+# very first form of this line, is also wrong for a different reason: uv 0.5.11
+# rejects passing `--package` more than once outright.)
+RUN uv sync --frozen --no-dev --all-packages
 
 RUN addgroup --system numra && adduser --system --ingroup numra numra
+
+# The compose `numra_exports_data` named volume mounts onto /app/data/exports. Docker
+# only initializes a named volume's ownership from what already exists at that path
+# in the image at first mount -- if the path doesn't pre-exist here, Docker still
+# auto-creates the mountpoint, but as root:root, which the non-root `numra` user below
+# then can't write into (LocalExportStorage's own `mkdir(exist_ok=True)` at startup
+# silently no-ops since the directory already exists, so it never surfaces a build-time
+# error, only a runtime PermissionError on the first export). Confirmed the hard way
+# via a real docker-compose-e2e run: POST /v1/exports 500'd with
+# "PermissionError: [Errno 13] Permission denied: '/app/data/exports/<id>.pdf'".
+RUN mkdir -p /app/data/exports && chown -R numra:numra /app/data
 USER numra
 
 ENV PATH="/app/.venv/bin:$PATH"

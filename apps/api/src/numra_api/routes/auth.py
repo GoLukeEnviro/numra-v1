@@ -9,11 +9,17 @@ from numra_api.auth.csrf import CSRF_COOKIE_NAME, generate_csrf_token
 from numra_api.auth.passwords import hash_password, verify_password
 from numra_api.auth.sessions import generate_session_token, hash_session_token
 from numra_api.config import Settings
-from numra_api.deps import get_current_user, get_db, get_settings_dep
+from numra_api.deps import (
+    get_current_user,
+    get_db,
+    get_settings_dep,
+    rate_limit_by_ip,
+    require_csrf,
+)
 from numra_api.models import User
 from numra_api.repositories.sessions import create_session, revoke_session
 from numra_api.repositories.users import create_user, get_user_by_email
-from numra_api.schemas.auth import LoginRequest, UserOut
+from numra_api.schemas.auth import LoginRequest, RegisterRequest, UserOut
 from numra_api.services.errors import InvalidCredentials, SelfSignupDisabled
 
 router = APIRouter(prefix="/v1/auth", tags=["auth"])
@@ -43,9 +49,14 @@ def _set_auth_cookies(
     )
 
 
-@router.post("/register", response_model=UserOut, status_code=201)
+@router.post(
+    "/register",
+    response_model=UserOut,
+    status_code=201,
+    dependencies=[Depends(rate_limit_by_ip("auth:register", limit=5, window_seconds=3600))],
+)
 async def register(
-    body: LoginRequest,
+    body: RegisterRequest,
     db: AsyncSession = Depends(get_db),
     settings: Settings = Depends(get_settings_dep),
 ) -> UserOut:
@@ -55,7 +66,11 @@ async def register(
     return UserOut(id=str(user.id), email=user.email)
 
 
-@router.post("/login", response_model=UserOut)
+@router.post(
+    "/login",
+    response_model=UserOut,
+    dependencies=[Depends(rate_limit_by_ip("auth:login", limit=10, window_seconds=60))],
+)
 async def login(
     body: LoginRequest,
     response: Response,
@@ -81,7 +96,7 @@ async def login(
     return UserOut(id=str(user.id), email=user.email)
 
 
-@router.post("/logout", status_code=204)
+@router.post("/logout", status_code=204, dependencies=[Depends(require_csrf)])
 async def logout(
     request: Request,
     response: Response,

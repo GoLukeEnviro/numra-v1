@@ -3,63 +3,154 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LinkButton } from "@/components/ui/link-button";
 import { LoadingState, ErrorState } from "@/components/ui/states";
-import { api, ApiError } from "@/api/client";
+import { NumericWheel } from "@/components/layout/numeric-wheel";
+import { IdentityTimeline } from "@/components/people/identity-timeline";
+import { api, ApiError, type PersonOut } from "@/api/client";
 import { useAsync } from "@/lib/use-async";
 import { recordCalculation, getLatestForPerson } from "@/lib/local-calculations";
+import { personDisplayName } from "@/lib/identity";
 import { formatIsoDate, todayIsoDate } from "@/lib/utils";
-import { Sparkles, Trash2 } from "lucide-react";
+import { Sparkles, Trash2, Sunrise, ArrowRight } from "lucide-react";
+
+function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="border-b border-white/5 py-3 last:border-0 first:pt-0 last:pb-0">
+      <dt className="text-xs uppercase tracking-wider text-muted">{label}</dt>
+      <dd className="mt-1 text-sm text-text">{children}</dd>
+    </div>
+  );
+}
+
+function BirthDataCard({ person }: { person: PersonOut }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Birth data</CardTitle>
+        <CardDescription>
+          The date drives Life Path, Birthday, Attitude and every cycle. Time and place are
+          stored as metadata only.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <dl>
+          <DetailRow label="Birth date">{formatIsoDate(person.birth_date)}</DetailRow>
+          <DetailRow label="Birth time">
+            {person.birth_time?.value ? (
+              <>
+                {person.birth_time.value}{" "}
+                <span className="text-muted">({person.birth_time.precision})</span>
+              </>
+            ) : (
+              <span className="text-muted">Not recorded</span>
+            )}
+          </DetailRow>
+          <DetailRow label="Birth place">
+            {person.birth_place?.display_name ? (
+              <>
+                {person.birth_place.display_name}
+                {person.birth_place.country_code && (
+                  <span className="text-muted"> · {person.birth_place.country_code}</span>
+                )}
+              </>
+            ) : (
+              <span className="text-muted">Not recorded</span>
+            )}
+          </DetailRow>
+        </dl>
+      </CardContent>
+    </Card>
+  );
+}
+
+function DangerZone({
+  onDelete,
+  deleting,
+}: {
+  onDelete: () => void;
+  deleting: boolean;
+}) {
+  const [confirming, setConfirming] = useState(false);
+
+  return (
+    <Card className="border-danger/25">
+      <CardHeader>
+        <CardTitle className="text-base">Delete this profile</CardTitle>
+        <CardDescription>
+          Removes the profile and everything calculated from it. This cannot be undone.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {confirming ? (
+          <div className="flex flex-wrap items-center gap-3">
+            <Button variant="danger" onClick={onDelete} loading={deleting}>
+              <Trash2 className="h-4 w-4" aria-hidden="true" />
+              Yes, delete permanently
+            </Button>
+            <Button variant="ghost" onClick={() => setConfirming(false)} disabled={deleting}>
+              Cancel
+            </Button>
+          </div>
+        ) : (
+          <Button variant="secondary" onClick={() => setConfirming(true)}>
+            <Trash2 className="h-4 w-4" aria-hidden="true" />
+            Delete profile
+          </Button>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 function PersonDetailContent({ personId }: { personId: string }) {
   const router = useRouter();
   const personState = useAsync(() => api.people.get(personId), [personId]);
-  const [calcStage, setCalcStage] = useState<"idle" | "running" | "error">("idle");
-  const [calcError, setCalcError] = useState<{ code: string; message: string } | null>(null);
+  const [calcRunning, setCalcRunning] = useState(false);
+  const [actionError, setActionError] = useState<{ code: string; message: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
   const cached = getLatestForPerson(personId);
 
+  function reportError(err: unknown) {
+    setActionError(
+      err instanceof ApiError
+        ? { code: err.code, message: err.message }
+        : { code: "NETWORK_ERROR", message: "Could not reach the server." },
+    );
+  }
+
   async function runCalculation() {
-    setCalcStage("running");
-    setCalcError(null);
+    setCalcRunning(true);
+    setActionError(null);
     try {
       const asOfDate = todayIsoDate();
       const calculation = await api.calculations.create(personId, { as_of_date: asOfDate });
       if (personState.status === "success") {
-        const p = personState.data;
         recordCalculation({
           calculationId: calculation.id,
           personId,
-          personLabel: p.preferred_name || `${p.birth_first_names} ${p.birth_last_name}`,
+          personLabel: personDisplayName(personState.data),
           asOfDate,
         });
       }
       router.push(`/analysis/${calculation.id}`);
     } catch (err) {
-      setCalcStage("error");
-      setCalcError(
-        err instanceof ApiError
-          ? { code: err.code, message: err.message }
-          : { code: "NETWORK_ERROR", message: "Could not reach the server." },
-      );
+      setCalcRunning(false);
+      reportError(err);
     }
   }
 
   async function handleDelete() {
-    if (!window.confirm("Delete this profile? This cannot be undone.")) return;
     setDeleting(true);
+    setActionError(null);
     try {
       await api.people.remove(personId);
       router.push("/people");
     } catch (err) {
       setDeleting(false);
-      setCalcError(
-        err instanceof ApiError
-          ? { code: err.code, message: err.message }
-          : { code: "NETWORK_ERROR", message: "Could not reach the server." },
-      );
+      reportError(err);
     }
   }
 
@@ -69,78 +160,56 @@ function PersonDetailContent({ personId }: { personId: string }) {
   }
 
   const person = personState.data;
-  const label = person.preferred_name || `${person.birth_first_names} ${person.birth_last_name}`;
+  const label = personDisplayName(person);
 
   return (
-    <div className="flex flex-col gap-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>{label}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
-            <div>
-              <dt className="text-muted">Birth name</dt>
-              <dd className="text-text">
-                {[person.birth_first_names, person.birth_middle_names, person.birth_last_name]
-                  .filter(Boolean)
-                  .join(" ")}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-muted">Birth date</dt>
-              <dd className="text-text">{formatIsoDate(person.birth_date)}</dd>
-            </div>
-            <div>
-              <dt className="text-muted">Birth time</dt>
-              <dd className="text-text">
-                {person.birth_time?.value ?? "—"}{" "}
-                {person.birth_time && (
-                  <span className="text-muted">({person.birth_time.precision})</span>
-                )}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-muted">Birth place</dt>
-              <dd className="text-text">{person.birth_place?.display_name ?? "—"}</dd>
-            </div>
-            {(person.current_first_names || person.current_last_name) && (
-              <div>
-                <dt className="text-muted">Current name</dt>
-                <dd className="text-text">
-                  {[person.current_first_names, person.current_middle_names, person.current_last_name]
-                    .filter(Boolean)
-                    .join(" ")}
-                </dd>
-              </div>
+    <div className="animate-rise-in">
+      <header className="sacred-wheel-bg-left relative mb-6 overflow-hidden rounded-xl border border-white/10 bg-surface p-6 shadow-elevated sm:p-8">
+        <NumericWheel className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 opacity-[0.12]" />
+        <div className="relative flex flex-wrap items-end justify-between gap-6">
+          <div className="min-w-0">
+            <p className="mb-2 text-xs uppercase tracking-wider text-bronze">Profile</p>
+            <h1 className="font-serif text-3xl text-ivory sm:text-4xl">{label}</h1>
+            <p className="mt-2 text-sm text-muted">Born {formatIsoDate(person.birth_date)}</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={runCalculation} loading={calcRunning}>
+              <Sparkles className="h-4 w-4" aria-hidden="true" />
+              Run calculation
+            </Button>
+            {cached && (
+              <LinkButton variant="secondary" href={`/analysis/${cached.calculationId}`}>
+                Last analysis <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </LinkButton>
             )}
-          </dl>
-        </CardContent>
-        <CardFooter className="flex flex-wrap items-center gap-3">
-          <Button onClick={runCalculation} loading={calcStage === "running"}>
-            <Sparkles className="h-4 w-4" aria-hidden="true" />
-            Run new calculation (as of today)
-          </Button>
-          {cached && (
-            <LinkButton variant="secondary" href={`/analysis/${cached.calculationId}`}>
-              View last analysis
+            <LinkButton variant="ghost" href="/today">
+              <Sunrise className="h-4 w-4" aria-hidden="true" />
+              Today
             </LinkButton>
-          )}
-          <Button variant="danger" onClick={handleDelete} loading={deleting} className="ml-auto">
-            <Trash2 className="h-4 w-4" aria-hidden="true" />
-            Delete profile
-          </Button>
-        </CardFooter>
-      </Card>
+          </div>
+        </div>
+      </header>
 
-      {calcError && (
-        <div role="alert" className="rounded-lg border border-danger/30 bg-danger-surface p-3 text-sm text-text">
-          <span className="mr-1.5 rounded bg-black/20 px-1.5 py-0.5 font-mono text-xs">
-            {calcError.code}
+      {actionError && (
+        <div
+          role="alert"
+          className="mb-6 rounded-lg border border-danger/30 bg-danger-surface p-3 text-sm text-text"
+        >
+          <span className="mr-1.5 rounded bg-black/25 px-1.5 py-0.5 font-mono text-xs">
+            {actionError.code}
           </span>
-          {calcError.message}
+          {actionError.message}
         </div>
       )}
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <IdentityTimeline person={person} />
+        <BirthDataCard person={person} />
+      </div>
+
+      <div className="mt-6 max-w-xl">
+        <DangerZone onDelete={handleDelete} deleting={deleting} />
+      </div>
     </div>
   );
 }
@@ -149,9 +218,6 @@ export default function PersonDetailPage() {
   const params = useParams<{ id: string }>();
   return (
     <AppShell>
-      <div className="mb-8">
-        <h1 className="font-serif text-3xl text-ivory">Profile</h1>
-      </div>
       <PersonDetailContent personId={params.id} />
     </AppShell>
   );

@@ -4,7 +4,36 @@ from pydantic import BaseModel, ConfigDict
 
 from numra_interpretation.llm.types import NumericClaim
 
-__all__ = ["GeneratedSectionContent", "StructuredReport", "StructuredReportSection"]
+__all__ = [
+    "GeneratedSectionContent",
+    "ReportOutline",
+    "ReportOutlineEntry",
+    "StructuredReport",
+    "StructuredReportSection",
+]
+
+
+class ReportOutlineEntry(BaseModel):
+    """One section's planned focus, from the outline step (FULL/ULTIMATE only — see
+    ``report/pipeline.py::_generate_outline``). Purely advisory context fed into that
+    section's own generation call; never a source of numeric facts itself."""
+
+    model_config = ConfigDict(frozen=True)
+
+    section_id: str
+    planned_focus: str = ""
+
+
+class ReportOutline(BaseModel):
+    """What the outline step asks the LLM to return: one planned focus per manifest
+    section. ``entries`` defaults to empty so a provider that cannot fill a nested list
+    (e.g. `MockLLMProvider`, which only knows a small set of conventional field names)
+    still constructs a valid, empty outline rather than failing — the outline step is
+    then a no-op for that generation, not an error."""
+
+    model_config = ConfigDict(frozen=True)
+
+    entries: tuple[ReportOutlineEntry, ...] = ()
 
 
 class GeneratedSectionContent(BaseModel):

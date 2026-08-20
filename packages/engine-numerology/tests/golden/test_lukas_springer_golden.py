@@ -48,10 +48,19 @@ def test_life_path(lukas_profile, golden_fixture) -> None:
     assert list(lp.calculation_trace.operations[-2]["operands"]) == [9, 7, 6]
 
 
-def test_life_path_direct_diagnostic(lukas_profile) -> None:
+def test_life_path_direct_diagnostic(lukas_profile, golden_fixture) -> None:
     diag = lukas_profile.diagnostics.life_path["alternative_methods"]["direct_digit_sum"]
     assert diag["raw_value"] == 40
     assert diag["display_value"] == "40/4"
+    # The diagnostic payload must be the lightweight, flat shape the API contract (and
+    # this pinned fixture) actually document -- not a serialized full CalculationMetric
+    # (with its internal calculation_trace/flags machinery), which has no
+    # `reduction_steps` field and previously crashed the frontend's Calculation
+    # Inspector on real (non-fixture) data.
+    expected = golden_fixture["diagnostics"]["life_path"]["alternative_methods"]["direct_digit_sum"]
+    assert diag == expected
+    assert diag["reduction_steps"] == [40, 4]
+    assert diag["operands"] == [1, 8, 0, 7, 1, 9, 8, 6]
 
 
 def test_birthday(lukas_profile, golden_fixture) -> None:

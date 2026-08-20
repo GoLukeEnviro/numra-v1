@@ -129,8 +129,13 @@ export function renderDiagnostic(alt: DiagnosticAlternative): TraceStep[] {
   } else {
     steps.push({ key: "source", text: `source: ${String(alt.source_value)} = ${alt.raw_value}` });
   }
-  if (alt.reduction_steps.length > 1) {
-    steps.push({ key: "reduce", text: alt.reduction_steps.join(" → ") });
+  // Not every alternative_methods entry carries a reduction chain worth showing — the
+  // pinnacle historical diagnostics are a single reduce_compound call with no
+  // intermediate steps recorded, so this field is legitimately absent there (see
+  // cycles/pinnacles.py) rather than a contract violation to guard defensively against.
+  const reductionSteps = alt.reduction_steps ?? [];
+  if (reductionSteps.length > 1) {
+    steps.push({ key: "reduce", text: reductionSteps.join(" → ") });
   }
   steps.push({ key: "final", text: `→ ${alt.display_value}` });
   return steps;

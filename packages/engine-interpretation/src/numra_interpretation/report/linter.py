@@ -12,7 +12,9 @@ import re
 
 from numra_interpretation.llm.validator import (
     build_metric_display_value_index,
+    build_special_claim_index,
     extract_placeholder_metric_ids,
+    extract_special_placeholder_ids,
 )
 from numra_interpretation.report.manifest import ReportManifest
 from numra_interpretation.report.schemas import StructuredReportSection
@@ -34,7 +36,7 @@ _UNSUPPORTED_CLAIM_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
     )
 )
 
-_PLACEHOLDER_PATTERN = re.compile(r"\{\{\s*metric\s*:\s*[a-zA-Z0-9_]+\s*\}\}")
+_PLACEHOLDER_PATTERN = re.compile(r"\{\{\s*(?:metric|special)\s*:\s*[a-zA-Z0-9_]+\s*\}\}")
 
 
 class ReportLintResult:
@@ -139,12 +141,19 @@ def _check_numerical_consistency(
     sections: tuple[StructuredReportSection, ...], profile: CanonicalProfile
 ) -> list[str]:
     index = build_metric_display_value_index(profile)
+    special_index = build_special_claim_index(profile)
     errors = []
     for section in sections:
         for metric_id in extract_placeholder_metric_ids(section.text):
             if metric_id not in index:
                 errors.append(
                     f"MetricReferenceIntegrity: unknown metric_id {metric_id!r} in "
+                    f"{section.section_id!r}"
+                )
+        for special_id in extract_special_placeholder_ids(section.text):
+            if special_id not in special_index:
+                errors.append(
+                    f"MetricReferenceIntegrity: unknown special id {special_id!r} in "
                     f"{section.section_id!r}"
                 )
     return errors

@@ -41,17 +41,29 @@ services:
       SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
       ALLOW_SELF_SIGNUP: ${ALLOW_SELF_SIGNUP:-false}
       ENVIRONMENT: ${ENVIRONMENT:-production}
-      NUMRA_LLM_ENABLED: ${NUMRA_LLM_ENABLED:-false}
+      NUMRA_LLM_PROVIDER: ${NUMRA_LLM_PROVIDER:-disabled}
+      NUMRA_LLM_MAX_RETRIES: ${NUMRA_LLM_MAX_RETRIES:-3}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-}
       OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
       NUMRA_LLM_MODEL_PREMIUM: ${NUMRA_LLM_MODEL_PREMIUM:-deepseek-v4-pro:cloud}
       NUMRA_LLM_MODEL_FAST: ${NUMRA_LLM_MODEL_FAST:-deepseek-v4-flash:cloud}
+      PDF_INTERNAL_URL: http://pdf:4300
+      PDF_INTERNAL_TOKEN: ${PDF_INTERNAL_TOKEN:?PDF_INTERNAL_TOKEN is required}
+      EXPORT_STORAGE_DIR: /app/data/exports
+      RATE_LIMIT_BACKEND: ${RATE_LIMIT_BACKEND:-redis}
+      REDIS_URL: redis://redis:6379/0
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - numra_exports_data:/app/data/exports
     depends_on:
       postgres:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+      pdf:
+        condition: service_started
+      redis:
+        condition: service_healthy
     ports:
       - "8000:8000"
 
@@ -65,15 +77,34 @@ services:
       DATABASE_URL: postgresql+asyncpg://numra:${POSTGRES_PASSWORD:-numra_dev_password}@postgres:5432/numra
       APP_TIMEZONE: ${APP_TIMEZONE:-Europe/Berlin}
       SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
-      NUMRA_LLM_ENABLED: ${NUMRA_LLM_ENABLED:-false}
+      NUMRA_LLM_PROVIDER: ${NUMRA_LLM_PROVIDER:-disabled}
+      NUMRA_LLM_MAX_RETRIES: ${NUMRA_LLM_MAX_RETRIES:-3}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-}
       OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
+      # The worker doesn't itself rate-limit anything, but it constructs the same
+      # Settings model as the api service, whose production validator forbids
+      # RATE_LIMIT_BACKEND=memory regardless of which process is asking.
+      RATE_LIMIT_BACKEND: ${RATE_LIMIT_BACKEND:-redis}
+      REDIS_URL: redis://redis:6379/0
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     depends_on:
       postgres:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "6379:6379"
 
   pdf:
     build:
@@ -82,6 +113,11 @@ services:
     restart: unless-stopped
     environment:
       PDF_INTERNAL_TOKEN: ${PDF_INTERNAL_TOKEN:?PDF_INTERNAL_TOKEN is required}
+    # Docker's default 64MB /dev/shm starves headless Chromium's renderer process --
+    # the --disable-dev-shm-usage launch arg (chromium-path.js) makes it fall back to
+    # /tmp instead of hanging/crash-looping, but a real shared-memory allocation is
+    # still faster and more robust than that fallback, so both are in place.
+    shm_size: "1gb"
     ports:
       - "4300:4300"
 
@@ -91,7 +127,10 @@ services:
       dockerfile: docker/web.Dockerfile
     restart: unless-stopped
     environment:
-      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
+      # Server-only (not NEXT_PUBLIC_-prefixed): read once at `next start`, never baked
+      # into the client bundle — see next.config.mjs's rewrites(). The browser only
+      # ever calls same-origin /api/*.
+      API_INTERNAL_URL: http://api:8000
     depends_on:
       - api
     ports:
@@ -99,3 +138,4 @@ services:
 
 volumes:
   numra_postgres_data:
+  numra_exports_data:

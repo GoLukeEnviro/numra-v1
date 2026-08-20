@@ -2,15 +2,16 @@
 
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Trash2 } from "lucide-react";
+import { DeleteAccountPanel } from "@/components/settings/delete-account-panel";
 
 function PrivacyContent() {
   return (
     <div className="max-w-2xl">
       <div className="mb-8">
         <h1 className="font-serif text-3xl text-ivory">Privacy &amp; data</h1>
-        <p className="mt-1 text-sm text-muted">What Numra stores, and what is coming next.</p>
+        <p className="mt-1 text-sm text-muted">
+          What Numra stores, what it never computes, and how to remove all of it.
+        </p>
       </div>
 
       <Card className="mb-4">
@@ -33,6 +34,11 @@ function PrivacyContent() {
             <li>
               <strong className="text-ivory">Relationship comparisons</strong> — the two
               calculation IDs you compared and the resulting per-metric comparison.
+            </li>
+            <li>
+              <strong className="text-ivory">Reports and exports</strong> — the text of any
+              long-form report you generate, and any PDF rendered from it (stored as a file
+              on the server until you delete it).
             </li>
             <li>
               <strong className="text-ivory">Your account</strong> — email address and session
@@ -58,27 +64,17 @@ function PrivacyContent() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="mb-4">
         <CardHeader>
-          <CardTitle className="text-base">Deleting your data</CardTitle>
+          <CardTitle className="text-base">Deleting a single profile</CardTitle>
           <CardDescription>
-            You can delete an individual profile (and it stops appearing in your dashboard) from
-            that profile&apos;s page today.
+            Any individual profile can be deleted from that profile&apos;s own page, which also
+            removes what was calculated from it.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="flex items-start gap-3 rounded-lg border border-white/10 bg-surface-2 p-4">
-            <Button variant="danger" disabled className="shrink-0">
-              <Trash2 className="h-4 w-4" aria-hidden="true" />
-              Delete my account
-            </Button>
-            <p className="text-sm text-muted">
-              Full account deletion is planned for a later phase — the backend does not yet expose
-              an endpoint for it, so this control is disabled rather than silently failing.
-            </p>
-          </div>
-        </CardContent>
       </Card>
+
+      <DeleteAccountPanel />
     </div>
   );
 }

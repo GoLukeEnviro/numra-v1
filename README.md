@@ -58,8 +58,10 @@ pnpm install
 ## Environment
 
 Copy `.env.example` to `.env` and fill in real values. The app starts and stays
-healthy with `NUMRA_LLM_ENABLED=false` and no Ollama key — report generation degrades
-gracefully rather than crashing (`GET /v1/health/ready` reports `"llm": "degraded"`).
+healthy with `NUMRA_LLM_PROVIDER=disabled` (the default) and no Ollama key — report
+generation fails fast with a clear `LLM_UNAVAILABLE` error rather than crashing
+(`GET /v1/health/ready` reports `"llm": "disabled"`). `NUMRA_LLM_PROVIDER=mock` is only
+permitted outside `ENVIRONMENT=production` — the app refuses to start otherwise.
 
 ## Local development
 
@@ -130,12 +132,21 @@ Services: `postgres`, `migrate` (one-shot, runs Alembic then exits), `api`, `wor
 
 ## LLM configuration (Ollama Cloud)
 
-Set `NUMRA_LLM_ENABLED=true`, `OLLAMA_BASE_URL`, `OLLAMA_API_KEY`. Model names
-(`NUMRA_LLM_MODEL_PREMIUM`/`NUMRA_LLM_MODEL_FAST`) are configuration defaults, not a
-guarantee of live availability — see `specs/evidence/phase-3.md` and
-`specs/evidence/phase-4.md` for what is and isn't verified against a real provider in
-this build. Without a key, the app runs fully on `MockLLMProvider` (deterministic, no
-network) for interpretation and report generation.
+`NUMRA_LLM_PROVIDER` is the single source of truth for which LLM backend the worker
+uses — `numra_api.services.llm_factory.build_llm_provider` is the only place a concrete
+provider class is chosen, and nothing falls back silently between providers:
+
+- `disabled` (default) — no LLM call is ever attempted; report generation fails fast
+  with `LLM_UNAVAILABLE`. Safe default; the app and worker stay healthy.
+- `ollama` — real Ollama Cloud calls. Also set `OLLAMA_BASE_URL`, `OLLAMA_API_KEY`.
+  Model names (`NUMRA_LLM_MODEL_PREMIUM`/`NUMRA_LLM_MODEL_FAST`) are configuration
+  defaults, not a guarantee of live availability — see `specs/evidence/phase-3.md` and
+  `specs/evidence/phase-4.md` for what is and isn't verified against a real provider in
+  this build.
+- `mock` — deterministic, network-free canned content (`MockLLMProvider`). Only
+  permitted when `ENVIRONMENT` is not `production`; the app refuses to start otherwise
+  (`Settings` validates this at construction time). Used by the test suite and local
+  dev, never served to a real user.
 
 ## PDF service
 
@@ -172,6 +183,10 @@ relationship compatibility percentages, and Period Cycle date-boundary transitio
 - PII-safe logging: access logs and LLM-generation logs never contain names, birth
   data, or full prompts — only IDs, status, latency (`middleware/security.py`,
   `models/tables.py::LLMGeneration`).
+- Dependency security audit: `pnpm audit --prod` (Node/web) and `uvx pip-audit`
+  (Python) — both run as an explicit CI gate (`dependency-security` job,
+  `.github/workflows/ci.yml`) that fails the build on a fixable Critical/High
+  production advisory.
 
 ## Privacy notes
 
@@ -186,9 +201,10 @@ relevant foreign key) — verified end-to-end in
 
 - **`alembic upgrade head` fails to connect** — check `DATABASE_URL`/`TEST_DATABASE_URL`
   and that Postgres is actually running (`pg_isready`).
-- **`GET /v1/health/ready` shows `"llm": "degraded"`** — expected without
-  `NUMRA_LLM_ENABLED=true` + a real `OLLAMA_API_KEY`; report generation still works via
-  the mock provider.
+- **`GET /v1/health/ready` shows `"llm": "disabled"`** — expected with the default
+  `NUMRA_LLM_PROVIDER=disabled`; report generation fails fast with `LLM_UNAVAILABLE`
+  until you set `NUMRA_LLM_PROVIDER=ollama` with real `OLLAMA_BASE_URL`/`OLLAMA_API_KEY`
+  credentials (or `NUMRA_LLM_PROVIDER=mock` outside production, for local dev/tests).
 - **Playwright can't find Chromium** in a sandboxed/dev environment with a
   non-standard install path — see `PLAYWRIGHT_CHROMIUM_PATH` in `apps/pdf/src/server.js`
   and the `executablePath` override pattern in `apps/pdf/src/__tests__/render.test.js`

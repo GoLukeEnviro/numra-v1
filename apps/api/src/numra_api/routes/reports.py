@@ -5,7 +5,7 @@ import uuid
 from fastapi import APIRouter, Depends, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from numra_api.deps import get_current_user, get_db, require_csrf
+from numra_api.deps import get_current_user, get_db, rate_limit_by_user, require_csrf
 from numra_api.models import Report, ReportJob, User
 from numra_api.repositories.reports import get_report_for_user, get_report_job_for_user
 from numra_api.schemas.report import ReportCreateRequest, ReportJobOut, ReportOut
@@ -45,7 +45,13 @@ def _job_to_out(job: ReportJob) -> ReportJobOut:
 
 
 @router.post(
-    "/reports", response_model=ReportOut, status_code=201, dependencies=[Depends(require_csrf)]
+    "/reports",
+    response_model=ReportOut,
+    status_code=201,
+    dependencies=[
+        Depends(require_csrf),
+        Depends(rate_limit_by_user("reports:create", limit=30, window_seconds=3600)),
+    ],
 )
 async def create_report_route(
     body: ReportCreateRequest,
