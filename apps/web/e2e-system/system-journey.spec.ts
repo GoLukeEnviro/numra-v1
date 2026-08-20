@@ -27,7 +27,10 @@ function uniqueEmail(): string {
 
 const PASSWORD = "correct-horse-battery-staple-2026";
 
-test.setTimeout(120_000);
+// Generous enough to cover both generous per-step waits (report generation and PDF
+// export can each take up to 60s) landing back-to-back in a worst case, plus every
+// other step, with real headroom left over.
+test.setTimeout(180_000);
 
 test("real system journey: login through delete-all against the live stack", async ({ page }) => {
   const email = uniqueEmail();
@@ -116,9 +119,14 @@ test("real system journey: login through delete-all against the live stack", asy
   await expect(page.getByRole("heading", { name: "Export" })).toBeVisible({ timeout: 60_000 });
 
   // 5. Export a real PDF: POST /v1/exports is synchronous and blocks on a genuine
-  // Playwright/Chromium render in the internal PDF service.
+  // Playwright/Chromium render in the internal PDF service -- including that
+  // service's own Chromium cold start on its first render of the run, which under
+  // real container-network latency (docker-compose-e2e's full multi-container
+  // topology, sharing one CI runner's CPU with five other services, vs. this same
+  // job's bare-process sibling) can genuinely take close to/over 30s. 60s matches
+  // the same generous allowance already given to report generation above.
   await page.getByRole("button", { name: "Export PDF" }).click();
-  await expect(page.getByRole("link", { name: /Download/i })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("link", { name: /Download/i })).toBeVisible({ timeout: 60_000 });
   const downloadHref = await page.getByRole("link", { name: /Download/i }).getAttribute("href");
   expect(downloadHref).toBeTruthy();
 

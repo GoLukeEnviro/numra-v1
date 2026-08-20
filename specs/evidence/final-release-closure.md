@@ -348,3 +348,46 @@ itself: real users visit a compose deployment at its published `localhost` addre
 not `127.0.0.1`, so `baseURL` now uses `http://localhost:3000` — which the API's
 own existing default already allows, matching docker-compose.yml's real web port.
 Fixed and pushed (`b8df216`).
+
+### Third real run: through login, past export creation, stuck waiting on the Download link
+
+Head `b8df216` got further still: registration and the real browser login both
+succeeded (confirming the Origin fix), and the journey proceeded through profile
+creation, the golden-value assertions, the Calculation Inspector, Dashboard, Today,
+and real report generation. It then failed waiting up to 30s for the "Download"
+link to appear after clicking "Export PDF" — even though the compose logs show
+`POST /v1/exports` genuinely returned `201 Created` and the following
+`GET /v1/exports` returned `200 OK`.
+
+Read `export_service.create_export` (`apps/api/src/numra_api/services/`) end to end
+to rule out a real backend bug before assuming a timing issue: it's genuinely
+synchronous — it `await`s the PDF client's render, then calls `mark_export_complete`
+(committing `status="complete"`), and only then returns; the route handler
+serializes that same object directly as the `201` response body. `ExportOut.status`
+and the frontend's `e.status === "complete"` filter (`export-panel.tsx`) use the
+exact same string. Nothing here is capable of the failure mode of "succeeds but the
+UI never notices."
+
+The timing evidence points at genuine resource contention instead: the whole test
+ran 36.55s in total (`Running 1 test` at `05:29:08.126` to the failure report at
+`05:29:44.681`) before failing on a step with its own 30s timeout — meaning
+everything before the export click (register, login, person creation, every
+assertion, dashboard, today, and report generation, all with the near-instant mock
+LLM) fit in roughly 6.5s, and the export step alone consumed the entire remaining
+30s budget. That's consistent with a genuine, one-time Chromium cold start inside
+the `pdf` container's very first render of the run, competing for CPU with five
+other containers (postgres/redis/api/worker/web) all built and started moments
+earlier on the same CI runner — a real condition the lighter-weight
+manually-orchestrated `system-e2e` job (bare processes, no competing Docker
+containers) doesn't encounter, which is exactly why Gate C's heavier, more
+realistic topology is worth having as its own job rather than assuming the
+existing one already covers it.
+
+Fixed by widening the two most contention-sensitive waits in
+`system-journey.spec.ts` — the shared spec file, so this also gives the
+pre-existing `system-e2e` job more headroom for free: the Download-link wait from
+30s to 60s (matching the precedent already set for report generation) and the
+overall `test.setTimeout` from 120s to 180s so the two 60s allowances have room to
+land back-to-back in a genuine worst case. Not a code change to the assertion's
+logic — the same real backend response is being waited for, just with a bound sized
+for the actual container topology being exercised.
