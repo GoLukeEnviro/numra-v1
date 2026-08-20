@@ -20,8 +20,11 @@ COPY packages/engine-astrology packages/engine-astrology
 COPY apps/api apps/api
 COPY knowledge knowledge
 
-RUN uv sync --frozen --no-dev --package numra-api --package numra-numerology \
-      --package numra-interpretation --package numra-astrology
+# The four packages copied above are the workspace's entire membership (see
+# [tool.uv.workspace] in pyproject.toml) -- a plain sync already covers exactly them;
+# `uv sync --package` cannot be repeated to name more than one (uv 0.5.11 rejects that
+# outright), which is what this line used to (incorrectly) attempt.
+RUN uv sync --frozen --no-dev
 
 RUN addgroup --system numra && adduser --system --ingroup numra numra
 USER numra
