@@ -263,3 +263,58 @@ This job's actual pass/fail result is recorded once GitHub Actions has run it fo
 real on the pushed HEAD (see the CI section below) — it is not fabricated here.
 `DOCKER_COMPOSE_UP` in the final status block reflects that real run's outcome, not
 an assumption.
+
+### The real run immediately found a severe, previously-invisible bug
+
+First `docker-compose-e2e` execution (head `1259ec3`) failed at `docker compose
+up -d`, before any health poll or Playwright step ran:
+
+```
+Error response from daemon: failed to create task for container: failed to create
+shim task: OCI runtime create failed: runc create failed: unable to start container
+process: error during container init: exec: "alembic": executable file not found
+in $PATH
+```
+
+Root cause, reproduced and confirmed locally (registries not needed for this —
+pure `uv` dependency resolution against the already-vendored lockfile):
+`docker/api.Dockerfile`'s `RUN uv sync --frozen --no-dev` (no `--all-packages`) at
+the workspace root only syncs the *root* project — an empty placeholder
+(`dependencies = []` in the top-level `pyproject.toml`) — not the workspace
+members. This line was rewritten earlier in this same production-hardening
+pass (see the `ec8291d` commit) to fix a different, real bug (`uv sync --package`
+cannot be repeated), but the replacement's own reasoning — "a plain sync already
+covers exactly [the workspace members]" — was itself wrong.
+
+```
+$ UV_PROJECT_ENVIRONMENT=/tmp/venv-test uv sync --frozen --no-dev   # the broken form
+Audited in 0.02ms
+$ /tmp/venv-test/bin/python -c "import numra_api"       ModuleNotFoundError
+$ /tmp/venv-test/bin/python -c "import fastapi"         ModuleNotFoundError
+$ /tmp/venv-test/bin/python -c "import alembic"         ModuleNotFoundError
+$ ls /tmp/venv-test/bin | grep -E "alembic|uvicorn"     (nothing)
+
+$ UV_PROJECT_ENVIRONMENT=/tmp/venv-test2 uv sync --frozen --no-dev --all-packages  # the fix
+$ /tmp/venv-test2/bin/python -c "import numra_api; import fastapi; import alembic; \
+    import numra_numerology; import numra_interpretation"   # all OK
+$ ls /tmp/venv-test2/bin | grep -E "alembic|uvicorn"    alembic, uvicorn
+```
+
+**This means the `api` and `worker` production Docker images were completely
+non-functional** — not just the `migrate` service. `uvicorn numra_api.app:app`
+(api's `CMD`) and `python -m numra_api.worker` (worker's `CMD`) would have failed
+identically to `migrate`'s `alembic` command, since none of `numra_api`, `fastapi`,
+`uvicorn`, `sqlalchemy`, `alembic`, or any other workspace-member dependency was
+actually present in the built image's venv. This was invisible to every
+verification pass before this one because `docker-build` CI only *builds* each
+image (`docker build -f docker/api.Dockerfile --target api .` etc.) — it never
+*runs* one. This is the first time in the project's history anything has actually
+executed a container built from this Dockerfile, and it found the images were
+non-functional on the very first attempt.
+
+Fixed with `uv sync --frozen --no-dev --all-packages` — confirmed by direct
+reproduction (above) that this installs every workspace member's own dependencies,
+not just the root placeholder's. Pushed as its own dedicated commit
+(`9bb7f88`, severity-first ordering ahead of documentation work); the
+`docker-compose-e2e` job's next run on this new HEAD is the real verification of
+the fix, recorded below once observed.
