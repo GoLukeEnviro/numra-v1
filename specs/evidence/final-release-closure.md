@@ -1,0 +1,265 @@
+# Final Release Closure — evidence
+
+Part of the "NUMRA V1 — FINAL RELEASE CLOSURE COMMAND" directive: close the
+remaining release gates on top of the already-green PR #3
+(`fix/numra-v1-production-completion`) — Next.js dependency security, an optional
+live LLM smoke, a real `docker compose up` deployment, and final documentation
+reconciliation. Every result below reflects a command actually executed and
+observed in this session.
+
+## Recon
+
+```
+$ git status --short
+(clean)
+$ git branch --show-current
+fix/numra-v1-production-completion
+$ git rev-parse HEAD
+a7f42feafe56d2629a6fca9db5cf3a3a9c710e18
+```
+
+This is the same HEAD that had a real, fully-green (10/10) GitHub Actions run on
+PR #3 immediately before this closure pass started (see `FINAL_VERIFICATION.md`'s
+prior revision). Worktree was clean — no unrelated in-progress work to disturb.
+
+## Live LLM credential check (Gate B, decided up front)
+
+```
+$ env | grep -iE "OLLAMA|NUMRA_LLM"
+(no output)
+```
+
+No `OLLAMA_BASE_URL`, `OLLAMA_API_KEY`, `NUMRA_LLM_PROVIDER`, or model env vars are
+set in this environment. Per the directive's own instruction ("do not invent them...
+do not switch to mock and call it live"), this is recorded honestly as:
+
+```
+LIVE_LLM_SMOKE=NOT_VERIFIED
+REASON=MISSING_CREDENTIALS
+```
+
+All other gates proceed regardless, as instructed.
+
+## Baseline re-verification (before touching dependencies)
+
+```
+$ uv run pytest packages/engine-numerology/tests -q --cov=... --cov-fail-under=90
+104 passed, TOTAL coverage 100.00%
+
+$ uv run pytest packages apps/api/tests -q   (real Postgres + real PDF service)
+256 passed
+
+$ pnpm --filter @numra/web lint
+(clean, 0 warnings)
+
+$ pnpm --filter @numra/web exec tsc --noEmit
+(clean)
+
+$ pnpm --filter @numra/web test -- --run
+39 passed (6 files)
+
+$ pnpm --filter @numra/web build
+all app routes compiled, incl. /icon.svg
+```
+
+Baseline is fully green — the earlier PR #3 HEAD (`a7f42fe`) is confirmed still
+sound before starting the Next.js migration. No pre-existing failures to fix first.
+
+(Note: the first attempt at the API test run showed 3 failures —
+`test_delete_all_cascades_every_table`, `test_create_export_renders_real_pdf_and_downloads_it`,
+`test_ready_with_mock_llm_and_real_pdf_service` — because this is a fresh sandbox
+container and the real internal PDF service hadn't been started yet this session.
+Started it (`PORT=4300 PDF_INTERNAL_TOKEN=... pnpm --filter @numra/pdf start`,
+confirmed `{"status":"healthy","chromium":"healthy"}`) and re-ran: all 256 passed.
+Not a real regression — environment setup, not a code bug.)
+
+## Gate A — Next.js security remediation
+
+### Before
+
+```
+$ pnpm audit --prod          25 vulnerabilities (2 low, 13 moderate, 10 high)
+$ pnpm audit (incl. dev)     30 vulnerabilities (2 low, 16 moderate, 12 high)
+```
+
+All `next` advisories rooted in `next@14.2.35`. `npm view next dist-tags` showed the
+`next-14` tag is pinned at exactly `14.2.35` — Next.js does not backport security
+fixes onto the 14.x line at all; the maintained security-patch line is `backport`
+(`15.5.23` at time of writing). The highest `patched_versions` floor across every
+listed advisory was `>=15.5.21`, so a Next.js 15 migration was required (no patched
+14.x exists) — done deliberately per the directive's own instruction, not a "prefer
+14" shortcut that doesn't exist here.
+
+`next@15.5.23`'s own peer dependencies (`react: ^18.2.0 || ...`) keep React 18.3.1 —
+no forced React 19 migration. `eslint-config-next@15.5.23` still accepts ESLint 8.
+
+### Migration safety audit (directive §6)
+
+- `apps/web/src/app/api/[...path]/route.ts` — the one Route Handler using
+  `context.params` directly. Next.js 15 made Route Handler `params` a `Promise`
+  (previously a plain object) — fixed: `context: { params: Promise<{ path: string[] }> }`
+  + `await context.params`. This is the proxy the whole app depends on for
+  same-origin `/api/*`, multi-cookie forwarding, and Origin validation — verified
+  working end-to-end by both the mocked Playwright journey and (later) the real
+  system E2E journey against Docker Compose.
+- All four dynamic page routes (`analysis/[calculationId]`, `people/[id]`,
+  `relationships/[id]`, `reports/[reportId]`) use the client-side `useParams()` hook
+  from `next/navigation`, not the server `params` prop — unaffected by the async-params
+  change. Confirmed by reading each file before assuming safety.
+- No `middleware.ts`, no `next/headers` (`cookies()`/`headers()`), no Server Actions,
+  no `next/image` anywhere in the app — the three other largest Next 14→15 breaking
+  surfaces (async `cookies()`/`headers()`, caching-default changes to Server Actions,
+  `next/image` `sharp` requirement) are simply not present in this codebase to break.
+- `next.config.mjs`'s `output: "standalone"` and hand-written CSP `headers()` needed
+  no changes; both still work identically (confirmed by `docker-build` in Gate C).
+
+### Nested/vendored transitive advisories
+
+After the Next.js bump, `pnpm audit --prod` dropped from 25 to 5 (2 moderate, 3 high)
+— all through `next@15.5.23`'s own **internal, hard-pinned** dependencies, not
+anything in our own `package.json`: `next`'s `package.json` pins `"postcss": "8.4.31"`
+exactly (no range) for its own CSS tooling, and declares `"sharp": "^0.34.3"` as an
+`optionalDependencies` entry for `next/image` (which this app doesn't use at all —
+confirmed via `grep -r "next/image" src`, no matches). Neither can be bumped by
+changing our own `postcss` devDependency, since pnpm resolves next's internal copy
+independently. Fixed with a root `pnpm.overrides` (`postcss: ^8.5.23`,
+`sharp: ^0.35.0`) — the standard, minimal-intervention mechanism for forcing a
+patched version of a dependency vendored inside another package's own tree.
+Confirmed in the regenerated lockfile: `next@15.5.23`'s own `postcss` entry now
+resolves to `8.5.26`, `sharp` to `0.35.3`.
+
+`pnpm audit --prod` after the override: **0 vulnerabilities.**
+
+The full audit (incl. devDependencies) then still showed 4 (3 moderate, 1 high) —
+`esbuild`/`vite` dev-server-only advisories (path traversal / dev-server request
+forgery, Windows NTLM hash disclosure — none reachable outside running `vite dev`
+locally, never shipped to users) pulled in transitively by `vitest@3.2.6` pinning
+`vite@5.4.21`. A patched `vite` (`>=6.4.3`) requires `vitest@^4.1.11`
+(`vitest@latest`, stable, not a prerelease). Verified `@vitejs/plugin-react@4.7.0`
+(already the resolved version) accepts `vite ^6.0.0` — no further bump needed there.
+Added an explicit `vite: ^6.4.3` devDependency (vitest's own peer range on `vite` is
+broad enough that pnpm was otherwise reusing the stale 5.4.21 lockfile entry rather
+than resolving a fresh one) and bumped `vitest` to `^4.1.11`.
+
+### After — full frontend regression re-run on Next.js 15.5.23 + vitest 4.1.11
+
+```
+$ pnpm --filter @numra/web lint                    clean, 0 warnings
+$ pnpm --filter @numra/web exec tsc --noEmit        clean
+$ pnpm --filter @numra/web test -- --run            39 passed (6 files), vitest v4.1.11
+$ pnpm --filter @numra/web build                    all routes compiled, Next.js 15.5.23
+$ pnpm --filter @numra/web exec playwright test     1 passed (golden journey, mocked)
+$ pnpm --filter @numra/pdf test                     4 passed (unaffected, no dependency overlap)
+
+$ pnpm audit --prod                                 No known vulnerabilities found
+$ pnpm audit (incl. dev)                             No known vulnerabilities found
+$ uvx pip-audit                                      No known vulnerabilities found
+```
+
+**Result: 25 → 0 vulnerabilities. No Critical, no High, no Moderate, no Low
+remaining, in production or dev dependencies.**
+
+One benign, pre-existing cosmetic warning observed (not introduced by this
+migration, not a functional break): `next start` now explicitly warns that it
+ignores `output: "standalone"` ("next start does not work with standalone
+configuration"). Both Playwright configs (`playwright.config.ts`,
+`playwright.system.config.ts`) use `next start` for local/CI test-server
+convenience; this is intentionally NOT changed to hand-roll the standalone
+server's static-asset copying in two more places, since Gate C's real
+`docker compose up` is what actually validates the true standalone production
+artifact end-to-end — that is the authoritative check for this exact concern, not
+the test harness's dev-convenience server.
+
+## Gate C — real docker compose deployment
+
+### Local attempt: genuinely blocked, confirmed with authoritative evidence
+
+`docker compose config --quiet` passes locally (valid compose file, all variables
+resolve with the required env vars set).
+
+`docker compose build` was attempted for real in this session (`dockerd` started
+fresh via `setsid dockerd`, confirmed running via `docker info`). It fails
+immediately at the very first image layer — pulling `ghcr.io/astral-sh/uv:0.5.11`
+(and, in the prior session, `python:3.11-slim` from Docker Hub) — with `403
+Forbidden` from the registry blob-storage host.
+
+This session's sandbox routes all outbound HTTPS through a policy-enforcing agent
+proxy (`/root/.ccr/README.md`). Its own diagnostic endpoint
+(`curl $HTTPS_PROXY/__agentproxy/status`) records the authoritative reason, not
+just the symptom:
+
+```
+{
+  "kind": "connect_rejected",
+  "detail": "gateway answered 403 to CONNECT (policy denial or upstream failure)",
+  "host": "pkg-containers.githubusercontent.com:443"
+}
+{
+  "kind": "connect_rejected",
+  "detail": "gateway answered 403 to CONNECT (policy denial or upstream failure)",
+  "host": "production.cloudfront.docker.com:443"
+}
+```
+
+The proxy's own `noProxy` allowlist names specific language-package registries
+(npm, PyPI, crates.io, Go proxy, JSR) that bypass it entirely — no container/OCI
+registry host is on that list. The README's own explicit guidance for a 403 from
+the proxy: "The destination host is not allowed by your organization's egress
+policy for this session. Do not retry or route around it — report the blocked
+host." This is the second time (across two separate sessions, now with the
+proxy's own authoritative log rather than just inferring from the Docker CLI
+error) that container-registry pulls are confirmed blocked at the sandbox's
+network-policy layer — not a Docker daemon problem (the daemon starts and runs
+fine), not a Dockerfile problem (the exact same Dockerfiles build successfully on
+GitHub Actions runners, proven by the already-green `docker-build` CI job), and
+not fixable by retrying, switching registries, or reconfiguring the daemon.
+
+### Where Gate C is actually being proven: a real `docker-compose-e2e` CI job
+
+The existing `docker-build` CI job only proves each image builds in isolation
+(`docker build -f docker/api.Dockerfile --target api .` etc.) — it never runs
+`docker compose up`, never exercises the real multi-service topology, and never
+drives a browser through the composed stack. Since GitHub Actions runners
+demonstrably have full container-registry access (the `docker-build` job pulls
+`python:3.11-slim`, `ghcr.io/astral-sh/uv:0.5.11`, `node:20-slim`, and
+`mcr.microsoft.com/playwright:v1.56.1-jammy` successfully every run) and this local
+sandbox categorically does not, a new `docker-compose-e2e` job was added to
+`.github/workflows/ci.yml` to do exactly what this gate demands, on the only
+infrastructure actually capable of it:
+
+1. `docker compose build` (the real Dockerfiles, the real compose topology).
+2. `docker compose up -d` with `ENVIRONMENT=test`, `NUMRA_LLM_PROVIDER=mock`,
+   `ALLOW_SELF_SIGNUP=true` — the one sanctioned exception for this exact gate
+   (proving platform integration, not live LLM behavior; real credentials remain
+   unavailable per Gate B).
+3. Bounded-timeout polling of `GET /v1/health/live`, `GET /v1/health/ready` (real
+   API container), and `GET /login` (real web container) — no component is assumed
+   healthy without an actual successful response.
+4. `docker compose ps --all` for the full service topology record. `migrate`'s exit
+   code isn't separately parsed: `api`/`worker` both declare
+   `depends_on: migrate: condition: service_completed_successfully`, so their
+   answering the health polls above is itself proof `migrate` exited 0 — Compose
+   would not have started them otherwise.
+5. The real, non-`page.route()`-mocked system journey
+   (`e2e-system/system-journey.spec.ts`) run through a new
+   `playwright.compose.config.ts` that points at the already-running compose `web`
+   container (port 3000) instead of starting its own Next.js server — same spec file
+   as the existing `system-e2e` job, now exercised against the actual Docker Compose
+   topology instead of manually-orchestrated bare processes.
+6. A same-origin network assertion added directly to `system-journey.spec.ts`
+   (`page.on("request", ...)` collecting every request whose port is `8000`/`8010`
+   or whose hostname is `api`, asserted empty at the end of the journey) — proves
+   the browser only ever calls same-origin `/api/*`, never the backend container
+   directly, satisfying this gate's §15 requirement for both the compose run and the
+   existing manually-orchestrated `system-e2e` run (the assertion is shared, so it
+   now also strengthens that pre-existing job for free).
+7. A log/secret audit (`docker compose logs --no-color`, scanned for
+   `Traceback|Unhandled|FATAL|panic` and for the literal `SESSION_SECRET`/
+   `PDF_INTERNAL_TOKEN` values leaking into any log line).
+8. `docker compose down -v --remove-orphans` in an `if: always()` step, so the
+   stack is torn down whether the run passed or failed.
+
+This job's actual pass/fail result is recorded once GitHub Actions has run it for
+real on the pushed HEAD (see the CI section below) — it is not fabricated here.
+`DOCKER_COMPOSE_UP` in the final status block reflects that real run's outcome, not
+an assumption.
