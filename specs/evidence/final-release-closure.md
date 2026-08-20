@@ -573,3 +573,45 @@ configuration (already the source of every `INFO: ... "GET ..." 200 OK` line
 already visible in these logs) propagates this `WARNING`-level message to stdout
 the same way, so the next real `docker-compose-e2e` run's captured logs should
 finally show the actual reason instead of only the fact that *something* failed.
+
+### Eighth real run: the logging worked — root cause found, unambiguous, fixed
+
+```
+api-1 | PDF export failed for export_id=... report_id=...: PDF service returned
+HTTP 500: {"code":"PDF_RENDER_FAILED","message":"Error: browserType.launch:
+Executable doesn't exist at /ms-playwright/chromium_headless_shell-1234/...
+Looks like Playwright was just updated to 1.62.
+```
+
+The real cause, finally visible: `docker/pdf.Dockerfile` builds from
+`mcr.microsoft.com/playwright:v1.56.1-jammy`, which pre-installs Chromium for
+*exactly* Playwright 1.56.1 — nothing else. Its `RUN npm install --omit=dev` step
+only ever sees `apps/pdf/package.json` (never `pnpm-lock.yaml` — that's a separate
+Docker build stage, disconnected from the workspace's own lockfile entirely), and
+`package.json` declared `"playwright": "^1.56.1"` — a floating range. By the time
+of this run, npm's registry had a newer `1.62.1` satisfying that range, and Docker
+resolved it fresh at build time. Playwright 1.62.1's own browser-management code
+looks for a *different* pre-installed revision folder than what `v1.56.1-jammy`
+actually has baked in, so `browserType.launch()` fails immediately with
+"Executable doesn't exist" — a genuine, fast (not slow) failure, which is exactly
+why every timeout increase across the previous three attempts changed nothing:
+the failure was never a matter of waiting long enough.
+
+This also explains, precisely, why no other job ever hit it: `system-e2e`,
+`pdf-service-tests`, and `unit-and-property-tests` all run
+`pnpm --filter @numra/pdf exec playwright install --with-deps chromium` as an
+explicit step immediately after `pnpm install` — so whatever Playwright version
+pnpm's own lockfile-driven resolution picks, a matching browser gets installed
+right alongside it, every time. The Docker image is the only path with no such
+reconciliation step; it depends entirely on the declared dependency version and
+the base image tag never drifting apart, and nothing enforced that.
+
+Fixed by pinning `apps/pdf/package.json`'s `"playwright"` to an exact `"1.56.1"`
+(no `^`), matching the Docker base image tag precisely, and regenerating
+`pnpm-lock.yaml` to match (confirmed via `pnpm why playwright` inside
+`apps/pdf`: resolves to exactly `1.56.1`). Strengthened `docker/pdf.Dockerfile`'s
+own comment to explain why this exact pin is load-bearing, so a future version
+bump has to touch both the tag and the dependency deliberately together instead
+of one silently drifting past the other again. Verified locally: `apps/pdf`'s own
+render test suite (4/4) still passes, and `docker compose config --quiet` remains
+valid.
