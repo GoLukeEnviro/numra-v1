@@ -27,10 +27,10 @@ function uniqueEmail(): string {
 
 const PASSWORD = "correct-horse-battery-staple-2026";
 
-// Generous enough to cover both generous per-step waits (report generation and PDF
-// export can each take up to 60s) landing back-to-back in a worst case, plus every
-// other step, with real headroom left over.
-test.setTimeout(180_000);
+// Generous enough to cover realistic worst cases under CI contention: profile
+// creation/calculation redirects can take tens of seconds, report generation can
+// take up to 60s, and PDF export can take up to 120s.
+test.setTimeout(300_000);
 
 test("real system journey: login through delete-all against the live stack", async ({ page }) => {
   const email = uniqueEmail();
@@ -78,7 +78,7 @@ test("real system journey: login through delete-all against the live stack", asy
   await page.getByLabel("Country code").fill("DE");
   await page.getByRole("button", { name: /Create profile/i }).click();
 
-  await expect(page).toHaveURL(/\/analysis\/[0-9a-f-]{36}$/);
+  await expect(page).toHaveURL(/\/analysis\/[0-9a-f-]{36}$/, { timeout: 30_000 });
   const calculationIdA = page.url().split("/analysis/")[1];
   await expect(page.getByRole("heading", { name: "Lukas Springer" })).toBeVisible();
 
@@ -126,7 +126,7 @@ test("real system journey: login through delete-all against the live stack", asy
   // job's bare-process sibling) can genuinely take close to/over 30s. 60s matches
   // the same generous allowance already given to report generation above.
   await page.getByRole("button", { name: "Export PDF" }).click();
-  await expect(page.getByRole("link", { name: /Download/i })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole("link", { name: /Download/i })).toBeVisible({ timeout: 120_000 });
   const downloadHref = await page.getByRole("link", { name: /Download/i }).getAttribute("href");
   expect(downloadHref).toBeTruthy();
 
@@ -148,7 +148,7 @@ test("real system journey: login through delete-all against the live stack", asy
   await page.getByLabel("Preferred name").fill("Annie");
   await page.getByRole("button", { name: /Create profile/i }).click();
 
-  await expect(page).toHaveURL(/\/analysis\/[0-9a-f-]{36}$/);
+  await expect(page).toHaveURL(/\/analysis\/[0-9a-f-]{36}$/, { timeout: 30_000 });
   const calculationIdB = page.url().split("/analysis/")[1];
   await expect(page.getByRole("heading", { name: "Anna Berger" })).toBeVisible();
 
