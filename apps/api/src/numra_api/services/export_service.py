@@ -6,6 +6,7 @@ rendering of an already-complete `Report`, never a source of new facts.
 
 from __future__ import annotations
 
+import logging
 import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,6 +25,8 @@ from numra_api.services.pdf_client import PdfServiceClient, PdfServiceUnavailabl
 from numra_api.storage.exports import ExportStorage
 
 _EXTENSION_BY_TYPE: dict[ExportType, str] = {ExportType.PDF: "pdf"}
+
+logger = logging.getLogger(__name__)
 
 
 async def create_export(
@@ -53,6 +56,15 @@ async def create_export(
             report=report.content_json, profile=report.profile_snapshot, person=person_payload
         )
     except PdfServiceUnavailable as exc:
+        # PdfServiceUnavailable's own message is already safe to log in full -- it
+        # never carries the internal bearer token or raw low-level exception
+        # internals (see its docstring) -- and a failed render being completely
+        # silent otherwise (nothing printed anywhere, only a DB column no one is
+        # looking at) makes this exact failure mode undiagnosable in production too,
+        # not just in CI.
+        logger.warning(
+            "PDF export failed for export_id=%s report_id=%s: %s", export.id, report.id, exc
+        )
         await mark_export_failed(db, export=export, error_code=f"PDF_RENDER_FAILED: {exc}")
         return export
 

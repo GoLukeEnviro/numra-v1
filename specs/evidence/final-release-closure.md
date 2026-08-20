@@ -540,3 +540,36 @@ recommendation for their Playwright Docker image). Verified locally:
 `docker compose config --quiet` still valid, and the PDF service's own render
 test suite (`node --test`, 4/4, including the "full render pipeline produces a
 valid multi-page PDF" case) still passes.
+
+### Seventh real run: the shm fix didn't clear it either — adding real observability instead of guessing again
+
+Re-ran with both the launch-arg and `shm_size` fixes in place. Failed a fourth
+time, identically, again at exactly the configured client timeout (150,000ms).
+`POST /v1/exports → 201 Created` is still the last export-related line before
+teardown, same as every prior run.
+
+At this point three independently-reasoned, independently-correct fixes (the
+read-after-write race, the timeout sizing, the `/dev/shm` starvation) have each
+addressed a real, verifiable issue without resolving this specific symptom — and
+the actual cause of the `PdfServiceUnavailable` (or whatever is really happening)
+has never been visible anywhere: a failed export's `error_code` is written to a
+database column nobody queries during this run and is never printed anywhere,
+`docker compose logs`'s uvicorn access-log lines carry no timestamps and no
+request/response bodies, and `docker compose logs` itself is only captured in a
+single burst at teardown (after the test has already failed), not streamed live —
+so there has been no way, across seven runs, to actually see *why* the render is
+failing rather than continuing to guess at increasingly specific plumbing issues.
+
+Rather than attempt an eighth blind fix, added real observability instead:
+`export_service.create_export` now logs the caught `PdfServiceUnavailable`'s
+message via `logger.warning` before marking the export failed
+(`apps/api/src/numra_api/services/export_service.py`). `PdfServiceUnavailable`'s
+own docstring already guarantees its message never carries the internal bearer
+token or raw low-level exception internals, so this is safe to log in full — and
+this is a genuine production observability gap being closed, not just a CI
+diagnostic: a failed PDF export is currently completely silent everywhere except
+one database column no code path surfaces. uvicorn's default logging
+configuration (already the source of every `INFO: ... "GET ..." 200 OK` line
+already visible in these logs) propagates this `WARNING`-level message to stdout
+the same way, so the next real `docker-compose-e2e` run's captured logs should
+finally show the actual reason instead of only the fact that *something* failed.
