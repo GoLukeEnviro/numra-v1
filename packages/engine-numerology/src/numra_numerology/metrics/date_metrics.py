@@ -98,6 +98,31 @@ def compute_life_path_direct_diagnostic(birth_date: dt.date) -> CalculationMetri
     )
 
 
+def diagnostic_payload(metric: CalculationMetric) -> dict[str, object]:
+    """Flatten a diagnostic `CalculationMetric` (as returned by
+    ``compute_life_path_direct_diagnostic``) into the lightweight
+    ``ReductionResult``-shaped dict the ``diagnostics.*.alternative_methods`` API
+    contract actually documents (canon-spec.md §9) — ``operands``/``reduction_steps``
+    pulled from the metric's own trace, never re-derived or invented. A diagnostic
+    entry is deliberately never the full `CalculationMetric` (with its internal
+    ``calculation_trace``/``flags`` machinery): that richer shape is for the canonical
+    core numbers, not a non-canonical diagnostic aside."""
+    ops_by_type = {op["type"]: op for op in metric.calculation_trace.operations}
+    payload: dict[str, object] = {
+        "method": metric.method,
+        "source_value": metric.source_value,
+        "raw_value": metric.raw_value,
+        "root_value": metric.root_value,
+        "master_number": metric.master_number,
+        "effective_value": metric.effective_value,
+        "display_value": metric.display_value,
+        "reduction_steps": ops_by_type["reduce"]["steps"] if "reduce" in ops_by_type else [],
+    }
+    if "sum" in ops_by_type:
+        payload["operands"] = ops_by_type["sum"]["operands"]
+    return payload
+
+
 def compute_birthday(birth_date: dt.date) -> CalculationMetric:
     reduction = reduce_compound(birth_date.day, source_value=birth_date.day)
     trace = CalculationTrace(
@@ -178,5 +203,6 @@ __all__ = [
     "compute_life_path",
     "compute_life_path_direct_diagnostic",
     "compute_maturity",
+    "diagnostic_payload",
     "digit_sum",
 ]

@@ -139,10 +139,23 @@ export interface Timing {
   personal_day: CalculationMetric;
 }
 
-export interface DiagnosticAlternative extends ReductionResult {
+/**
+ * A `diagnostics.*.alternative_methods.*` entry. Not every diagnostic carries every
+ * `ReductionResult` field: the Life Path direct-digit-sum diagnostic does (see
+ * `date_metrics.diagnostic_payload`), but the pinnacle historical diagnostics are a
+ * single `reduce_compound` call with no intermediate steps or source/master/effective
+ * values recorded (see `cycles/pinnacles.py`) — those fields are legitimately absent
+ * there, not a contract violation.
+ */
+export interface DiagnosticAlternative
+  extends Pick<ReductionResult, "raw_value" | "root_value" | "display_value"> {
   method?: string;
   formula?: string;
   operands?: number[];
+  source_value?: number | string | null;
+  master_number?: number | null;
+  effective_value?: number;
+  reduction_steps?: number[];
 }
 
 export interface Diagnostics {

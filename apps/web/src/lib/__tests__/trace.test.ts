@@ -48,4 +48,19 @@ describe("renderDiagnostic", () => {
     // Canonical Life Path is 22/4 — the diagnostic must never collide with it.
     expect(alt!.display_value).not.toBe(profile.core_numbers.life_path.display_value);
   });
+
+  it("does not crash when reduction_steps is absent (e.g. a pinnacle historical diagnostic)", () => {
+    // cycles/pinnacles.py's pinnacle_1_historical/pinnacle_2_historical are
+    // deliberately minimal dicts with no reduction_steps field at all — this must
+    // render, not throw (a real system E2E run against the live engine's own output,
+    // rather than the fixture above, is what caught this).
+    expect(() =>
+      renderDiagnostic({
+        formula: "raw_month + raw_day",
+        raw_value: 25,
+        root_value: 7,
+        display_value: "25/7",
+      }),
+    ).not.toThrow();
+  });
 });
