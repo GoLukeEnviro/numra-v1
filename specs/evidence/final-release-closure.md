@@ -388,6 +388,69 @@ Fixed by widening the two most contention-sensitive waits in
 pre-existing `system-e2e` job more headroom for free: the Download-link wait from
 30s to 60s (matching the precedent already set for report generation) and the
 overall `test.setTimeout` from 120s to 180s so the two 60s allowances have room to
-land back-to-back in a genuine worst case. Not a code change to the assertion's
-logic — the same real backend response is being waited for, just with a bound sized
-for the actual container topology being exercised.
+land back-to-back in a genuine worst case.
+
+**This diagnosis turned out to be wrong** — recorded here rather than silently
+rewritten, since the correction is itself part of the evidence. The fourth run
+(below) hit the *identical* failure again, with the wait maxed out at exactly 60s
+this time too — a resource-contention theory would predict the failure to clear
+once at *some* generous-enough bound, not reproduce in lock-step with whatever the
+timeout happens to be set to. That pattern means the awaited condition was never
+going to become true no matter how long the test waited, which is the signature of
+a real bug, not slowness.
+
+### Fourth real run: same failure at 60s — a real bug, not slowness
+
+Re-ran with the widened timeout. `docker compose logs` shows the full journey
+succeeding well past the previous run's blocker — registration, login,
+**`POST /v1/people/{id}/calculations` → 201** (proving the earlier `system-e2e`
+404, see below, isn't a systemic regression), report generation, and
+**`POST /v1/exports` → 201, `GET /v1/exports` → 200** — then the exact same
+Download-link wait, maxed out at 60s again ("(1.1m)" total test time, matching
+~6.5s of setup plus the full 60s budget exactly).
+
+Re-read `export_service.create_export` once more, this time all the way through:
+it calls `mark_export_complete`, which sets `export.status = ExportStatus.COMPLETE`
+**on the in-memory object** and `await db.flush()`s it — then `create_export`
+returns that same object directly, and the route serializes it as the `201`
+response body. That response is therefore *already* the fully up-to-date record;
+nothing a follow-up `GET /v1/exports` could return is more current. But
+`export-panel.tsx`'s `handleExport()` discarded that response and re-fetched the
+whole list instead (`await loadExports()`), then filtered for `status === "complete"`.
+If anything about that separate GET's view of the world doesn't yet reflect the
+write it's chasing — a real possibility once every hop between browser and
+database goes through Docker's virtual network and its own connection/keep-alive
+behavior, rather than bare loopback — the panel shows "No PDF has been rendered
+for this report yet" and, critically, **never retries**: there is no polling loop,
+so no amount of waiting fixes it once that single GET has already returned.
+
+Fixed at the actual defect: `handleExport()` now merges the `created` export
+(the POST response itself) directly into local state instead of re-fetching.
+This removes the round-trip that could race, is strictly fewer network calls, and
+is the correct fix regardless of whether the specific race is Docker-network
+timing, connection pooling, or something else — the POST response was always the
+authoritative answer.
+
+### The system-e2e `POST /v1/people/{id}/calculations` 404 — investigated, not fixed as a code change
+
+The other job (`system-e2e`) failed once on this same HEAD with
+`POST /v1/people/{id}/calculations` → **404** immediately after a successful
+`POST /v1/people` → 201, staying on `/people/new` instead of navigating to
+`/analysis/{id}`. Read `get_person`/`create_calculation_route`/
+`export_service`-adjacent code paths end to end and reproduced the identical
+sequence twice, independently:
+
+1. Directly against a freshly started API (curl, register → login → create
+   person → create calculation): succeeded, correct golden values (`22/4`,
+   `62/8`, `18/9`, `44/8`).
+2. Through the real Next.js proxy this time (curl against a locally built `next
+   start`, with a real `Origin` header): succeeded identically.
+
+Both reproductions rule out the backend and the proxy as the cause. The
+`docker-compose-e2e` run on this exact commit reached this same step and
+succeeded (`POST /v1/people/{id}/calculations` → 201) — the same code, same
+commit, different job. Combined with the two clean manual reproductions, this
+is treated as a one-off flake, not a regression, per this directive's own
+guidance not to chase single non-reproducing failures as root causes. Pushing the
+real export-panel fix re-exercises this step naturally on the next CI run, which
+doubles as the one permitted re-run to check whether it's genuinely reproducible.

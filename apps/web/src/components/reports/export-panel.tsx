@@ -59,7 +59,12 @@ export function ExportPanel({ reportId }: { reportId: string }) {
           message: "The PDF could not be rendered. You can try the export again.",
         });
       }
-      await loadExports();
+      // Use the just-created export directly instead of re-fetching the list: the
+      // POST response is already the fully up-to-date record (export_service sets
+      // status=COMPLETE before returning it), so there is nothing a follow-up GET
+      // could tell us that this response doesn't already have -- and no window for
+      // it to race against.
+      setExports((prev) => [created, ...(prev ?? []).filter((e) => e.id !== created.id)]);
     } catch (err) {
       setError(
         err instanceof ApiError
