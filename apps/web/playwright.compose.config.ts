@@ -13,6 +13,17 @@ const executablePath = fs.existsSync(localChromium) ? localChromium : undefined;
  * is already listening on COMPOSE_WEB_PORT (default 3000, matching docker-compose.yml)
  * by the time this runs. See specs/evidence/final-release-closure.md for the full
  * Gate C sequence this belongs to.
+ *
+ * baseURL deliberately uses `localhost`, not `127.0.0.1`: numra_api's
+ * OriginValidationMiddleware allows a request with no Origin header at all (how
+ * page.request.post reaches the API for registration) but rejects a real browser's
+ * Origin on a state-changing request unless it's in cors_allowed_origins -- whose
+ * default already includes exactly `http://localhost:3000` (config.py), matching
+ * docker-compose.yml's real web port. `127.0.0.1:3000` is not in that default list
+ * and docker-compose.yml has no override for it, so using `127.0.0.1` here would
+ * make the real browser's login/register-form submissions fail Origin validation
+ * against the actual compose stack -- a real deployment visited at
+ * `http://localhost:3000` (the compose default) hits none of this.
  */
 const port = Number(process.env.COMPOSE_WEB_PORT || 3000);
 
@@ -25,7 +36,7 @@ export default defineConfig({
   timeout: 120_000,
   reporter: [["list"]],
   use: {
-    baseURL: `http://127.0.0.1:${port}`,
+    baseURL: `http://localhost:${port}`,
     trace: "retain-on-failure",
   },
   projects: [
