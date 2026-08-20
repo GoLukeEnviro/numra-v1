@@ -315,6 +315,36 @@ non-functional on the very first attempt.
 Fixed with `uv sync --frozen --no-dev --all-packages` — confirmed by direct
 reproduction (above) that this installs every workspace member's own dependencies,
 not just the root placeholder's. Pushed as its own dedicated commit
-(`9bb7f88`, severity-first ordering ahead of documentation work); the
-`docker-compose-e2e` job's next run on this new HEAD is the real verification of
-the fix, recorded below once observed.
+(`9bb7f88`, severity-first ordering ahead of documentation work).
+
+### Second real run: the image fix held, a real Origin-validation gap surfaced next
+
+Head `9bb7f88`'s `docker-compose-e2e` run got much further: `docker compose build`
+and `up -d` both succeeded, `migrate` completed, and the health-poll step's own
+evidence is visible directly in the captured compose logs — `api-1` answered
+`GET /v1/health/live` and `GET /v1/health/ready` with `200 OK` repeatedly, `web-1`
+started ("✓ Ready"), confirming the critical image-build fix above is real and
+holds under an actual `docker compose up`.
+
+It then failed inside the real Playwright browser journey itself:
+
+```
+api-1  | INFO: ... "POST /v1/auth/register HTTP/1.1" 201 Created
+api-1  | INFO: ... "GET /v1/auth/me HTTP/1.1" 401 Unauthorized
+api-1  | INFO: ... "POST /v1/auth/login HTTP/1.1" 403 Forbidden
+```
+
+Root cause: `OriginValidationMiddleware` (`apps/api/src/numra_api/middleware/security.py`)
+allows a request through when its `Origin` header is *absent* entirely, but rejects
+one that's *present and not in `cors_allowed_origins`*. Registration in the spec
+goes through `page.request.post()`, which sends no `Origin` header at all — so it
+sailed through regardless of any mismatch. The real browser's login-form
+submission sends a real `Origin`, and `playwright.compose.config.ts`'s `baseURL`
+was `http://127.0.0.1:3000` — not in `cors_allowed_origins`'s default
+(`http://localhost:3000`, `http://localhost:5173`; `config.py`). `docker-compose.yml`
+has no env-var override for `cors_allowed_origins` at all, so there was nothing to
+fix by configuring the CI job differently — the correct fix was the test config
+itself: real users visit a compose deployment at its published `localhost` address,
+not `127.0.0.1`, so `baseURL` now uses `http://localhost:3000` — which the API's
+own existing default already allows, matching docker-compose.yml's real web port.
+Fixed and pushed (`b8df216`).
