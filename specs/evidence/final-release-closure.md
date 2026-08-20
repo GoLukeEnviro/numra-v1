@@ -497,3 +497,46 @@ own `timeout` defaults raised to match so neither is ever the tighter bound.
 Full local re-verification after this change: `tsc --noEmit`, `eslint`, and the
 full 256-test Python suite (incl. the real-PDF-service `apps/api/tests`) all
 clean.
+
+### Sixth real run: the timeout theory itself was wrong — the render never completes at all under Docker
+
+Re-ran with the 120s server / 150s client timeouts in place. Failed identically a
+third time — **at exactly 150,000ms**, the new client wait, total test time "(2.6m)"
+matching ~6s setup + the full 150s wait. This is the fact that finally rules out
+"slow render" for good: if the bottleneck were genuinely a slow-but-eventually-
+successful render landing somewhere under the old 60s/new 120s server timeout, a
+150s client wait (30s of real margin over the server's own 120s bound) should have
+let it succeed. It didn't — the failure duration tracks whatever the *client's* wait
+happens to be, not the server's actual timeout, which is the signature of a
+`toBeVisible()` poll faithfully waiting out its own budget for a condition that was
+already permanently false (a render that failed) — Playwright has no way to know
+early that the outcome is already decided; a `POST /v1/exports` that already
+returned `status: "failed"` well before the client timeout still leaves the
+Download-link assertion polling uselessly until its own bound expires. This is
+still consistent with the export-panel fix and the timeout increase both being
+correct changes -- neither was wrong, they just weren't addressing the actual
+defect underneath.
+
+Checked `apps/pdf/src/chromium-path.js`'s `resolveLaunchOptions`: no
+`--disable-dev-shm-usage` launch arg, and `docker-compose.yml`'s `pdf` service had
+no `shm_size` override either — Docker's default `/dev/shm` is 64MB, and headless
+Chromium's renderer process routinely wants more than that for real page content.
+Without the flag (or a larger shared-memory allocation), Chromium doesn't fail
+fast under memory pressure — it hangs or crash-loops, which from the calling
+`httpx` client's side is indistinguishable from "just needs more time," exactly
+matching every symptom observed across three consecutive timeout-only fix
+attempts. This is a well-documented, common failure mode for headless Chromium
+specifically inside a container (not something reachable by `system-e2e`'s
+bare-process PDF service, which runs directly on the CI runner's host OS with no
+such constraint — the root reason this bug was invisible to every verification
+pass before Gate C's real `docker compose up`).
+
+Fixed both layers: `--disable-dev-shm-usage` added to Chromium's launch args
+(makes it fall back to `/tmp` instead of hanging — correct and harmless outside a
+container too) and `shm_size: "1gb"` added to the `pdf` service in
+`docker-compose.yml` (a real shared-memory allocation is faster and more robust
+than the `/tmp` fallback when available, matching Microsoft's own documented
+recommendation for their Playwright Docker image). Verified locally:
+`docker compose config --quiet` still valid, and the PDF service's own render
+test suite (`node --test`, 4/4, including the "full render pipeline produces a
+valid multi-page PDF" case) still passes.

@@ -113,6 +113,11 @@ services:
     restart: unless-stopped
     environment:
       PDF_INTERNAL_TOKEN: ${PDF_INTERNAL_TOKEN:?PDF_INTERNAL_TOKEN is required}
+    # Docker's default 64MB /dev/shm starves headless Chromium's renderer process --
+    # the --disable-dev-shm-usage launch arg (chromium-path.js) makes it fall back to
+    # /tmp instead of hanging/crash-looping, but a real shared-memory allocation is
+    # still faster and more robust than that fallback, so both are in place.
+    shm_size: "1gb"
     ports:
       - "4300:4300"
 
