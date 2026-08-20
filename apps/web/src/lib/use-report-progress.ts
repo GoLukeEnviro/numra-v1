@@ -13,6 +13,18 @@ export const REPORT_POLL_INTERVAL_MS = 2500;
  */
 const MAX_CONSECUTIVE_POLL_FAILURES = 4;
 
+/** The initial load lands immediately after this same page's own `POST /v1/reports`
+ *  navigated here — a request that just barely missed a fully-settled backend (a
+ *  redeploy, a load balancer still draining a stale backend) is exactly as much of
+ *  a transient blip here as during polling, so it gets the same tolerance instead of
+ *  permanently failing the page on the very first hiccup. */
+const INITIAL_LOAD_MAX_ATTEMPTS = 3;
+const INITIAL_LOAD_RETRY_DELAY_MS = 500;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export type ReportProgress =
   | { phase: "loading" }
   | { phase: "error"; error: unknown }
@@ -104,14 +116,22 @@ export function useReportProgress(reportId: string): ReportProgress & { reload: 
 
     async function start() {
       setProgress({ phase: "loading" });
-      let report: ReportOut;
-      try {
-        report = await api.reports.get(reportId);
-      } catch (error) {
-        if (!cancelled) setProgress({ phase: "error", error });
-        return;
+      let report: ReportOut | undefined;
+      let lastError: unknown;
+      for (let attempt = 1; attempt <= INITIAL_LOAD_MAX_ATTEMPTS && !cancelled; attempt += 1) {
+        try {
+          report = await api.reports.get(reportId);
+          break;
+        } catch (error) {
+          lastError = error;
+          if (attempt < INITIAL_LOAD_MAX_ATTEMPTS) await delay(INITIAL_LOAD_RETRY_DELAY_MS);
+        }
       }
       if (cancelled) return;
+      if (report === undefined) {
+        setProgress({ phase: "error", error: lastError });
+        return;
+      }
 
       if (settleFromReport(report, null)) return;
 

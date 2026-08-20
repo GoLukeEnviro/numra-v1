@@ -678,3 +678,56 @@ locally: `docker compose config --quiet` (with `SESSION_SECRET`/
 `PDF_INTERNAL_TOKEN` set) remains valid; the actual fix can only be proven by a
 real `docker compose up`, which only GitHub Actions can run in this
 environment.
+
+### `system-e2e` failure on the same head (c8c45c5): investigated, not a code defect
+
+The same push's `system-e2e` job (the manually-orchestrated, non-Docker real-stack
+job) also failed, on a different symptom: `GET /v1/reports/{id}` returned `404`
+immediately after `POST /v1/reports` had just returned `201` for that exact id,
+one single time, with no retry — the frontend's `useReportProgress` hook only
+retries the *job*-polling loop (`MAX_CONSECUTIVE_POLL_FAILURES = 4`), not the
+one-shot initial `api.reports.get(reportId)` call on mount
+(`apps/web/src/lib/use-report-progress.ts`), so a single 404 there is fatal to
+that page load and explains the observed `getByRole("heading", { name: "Export"
+})` timeout precisely (the report content never loads, so "Export" never
+renders).
+
+This is the same *signature* (create, then an immediate GET 404) previously seen
+once before on a different resource (`/v1/calculations`) and diagnosed as
+unreproducible. Given two independent occurrences now share the exact shape,
+this was taken seriously rather than assumed to be the same dismissed flake:
+
+- Read `create_report_with_job`/`get_report_for_user`
+  (`apps/api/src/numra_api/repositories/reports.py`) and the `get_db` dependency
+  (`apps/api/src/numra_api/deps.py`): `await session.commit()` runs in the
+  dependency's post-`yield` cleanup, which FastAPI's `AsyncExitStack` closes
+  *before* the response is hand off to ASGI `send()` — commit-before-response is
+  a guaranteed ordering here, not a race, regardless of the 5 stacked
+  `BaseHTTPMiddleware` layers (they proxy ASGI messages; they do not reorder the
+  inner app's own execution).
+- Reproduced the exact sequence (register → login → create person → create
+  calculation → create report → immediately `GET` that report by id) directly
+  against a locally-run instance of this exact commit's API (real Postgres, real
+  Redis-backed rate limiter, `NUMRA_LLM_PROVIDER=mock`) 60 times in a tight loop:
+  **60/60 succeeded**, every immediate `GET` returning `200` within single-digit
+  milliseconds of the `POST`. No reproduction.
+- Cross-checked against this exact commit's own `docker-compose-e2e` run (a
+  stricter, container-isolated environment): its `POST /v1/reports` →
+  `GET /v1/reports/{id}` pair also returned `200` immediately, no 404, in the
+  full container topology.
+- Read the same-origin proxy (`apps/web/src/app/api/[...path]/route.ts`):
+  `export const dynamic = "force-dynamic"` plus an explicit `fetch()` per
+  request with no caching directive — no route-cache or Data Cache hazard that
+  could serve a stale/wrong response for a freshly-minted, never-before-seen
+  report id.
+
+No defect found in the code exercised by either failure. Given real
+reproduction was attempted and failed to reproduce, and both the direct-API and
+full-Docker-compose paths on this identical commit prove the sequence is
+correct, this is treated as a genuine CI-environment-only flake (the
+`system-e2e` job runs Postgres, Redis, the API, the worker, `next build && next
+start`, and headless Chromium all on one shared GitHub Actions runner, with no
+container isolation between them) rather than a code defect — consistent with
+the standing instruction that "flake" requires real reproduction evidence and
+permits at most one re-run to confirm. `rerun_failed_jobs` was used once on this
+run to check; the result is recorded in the entry below once it lands.
