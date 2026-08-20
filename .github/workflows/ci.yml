@@ -103,6 +103,30 @@ jobs:
       - run: uv sync --all-packages --all-groups
       - run: uv run pytest packages/engine-numerology/tests/unit/test_no_golden_leakage.py -q
 
+  dependency-security:
+    # Explicit release gate (not just a local `pnpm audit`/`pip-audit` run someone might
+    # forget): Critical or High-with-an-available-fix in production dependencies fails
+    # the build. --audit-level=high intentionally does not hard-fail on moderate/low
+    # findings that may have no upstream fix yet -- see specs/evidence/final-release-closure.md
+    # for the Next.js 14->15 migration this gate was added to guard against regressing.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: pnpm audit (production dependencies across the workspace, fail on high/critical)
+        run: pnpm audit --prod --audit-level=high
+      - uses: astral-sh/setup-uv@v3
+        with:
+          version: ${{ env.UV_VERSION }}
+      - run: uv python install ${{ env.PYTHON_VERSION }}
+      - name: pip-audit (Python dependencies)
+        run: uvx pip-audit
+
   schema-and-openapi-drift:
     runs-on: ubuntu-latest
     steps:
@@ -278,3 +302,80 @@ jobs:
       - run: docker build -f docker/api.Dockerfile --target worker .
       - run: docker build -f docker/pdf.Dockerfile .
       - run: docker build -f docker/web.Dockerfile .
+
+  docker-compose-e2e:
+    # Release-closure Gate C: docker-build above proves each image builds in
+    # isolation; this proves the actual `docker-compose.yml` topology comes up as a
+    # coherent deployment and serves a real, non-mocked browser journey through it --
+    # something no prior verification pass had exercised. This job's registry pulls
+    # cannot be reproduced in the sandbox this branch was developed in (org egress
+    # policy denies container-registry hosts there -- see
+    # specs/evidence/final-release-closure.md); GitHub Actions runners have full
+    # registry access, so this is where Docker Compose Up actually gets proven.
+    runs-on: ubuntu-latest
+    env:
+      POSTGRES_PASSWORD: ci-only-postgres-password
+      SESSION_SECRET: ci-only-release-closure-session-secret-0123456789
+      PDF_INTERNAL_TOKEN: ci-only-release-closure-pdf-token
+      ENVIRONMENT: test
+      NUMRA_LLM_PROVIDER: mock
+      ALLOW_SELF_SIGNUP: "true"
+      RATE_LIMIT_BACKEND: redis
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - run: docker compose build
+      - run: docker compose up -d
+      - name: Poll API liveness/readiness and web availability
+        run: |
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:8000/v1/health/live && break; sleep 2; done
+          curl -sf http://127.0.0.1:8000/v1/health/live || { docker compose logs; exit 1; }
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:8000/v1/health/ready && break; sleep 2; done
+          curl -sf http://127.0.0.1:8000/v1/health/ready || { docker compose logs; exit 1; }
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:3000/login && break; sleep 2; done
+          curl -sf http://127.0.0.1:3000/login || { docker compose logs; exit 1; }
+      # migrate's own exit code isn't re-checked explicitly: api/worker's
+      # depends_on migrate:service_completed_successfully means they could not have
+      # started at all (and thus could not have answered the health polls above) if
+      # migrate had exited non-zero.
+      - name: Service status
+        run: docker compose ps --all
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @numra/web exec playwright install --with-deps chromium
+      - name: Run the real system journey against the actual compose stack
+        working-directory: apps/web
+        run: npx playwright test --config=playwright.compose.config.ts
+      - name: Log and secret audit
+        if: always()
+        run: |
+          docker compose logs --no-color > /tmp/compose-logs.txt
+          status=0
+          echo "--- scanning for unhandled errors ---"
+          if grep -iE "Traceback|Unhandled|FATAL|panic" /tmp/compose-logs.txt; then
+            echo "!! unhandled-error pattern found in compose logs"
+            status=1
+          else
+            echo "none found"
+          fi
+          echo "--- confirming no secret VALUES leaked into logs ---"
+          if grep -qF "$SESSION_SECRET" /tmp/compose-logs.txt; then
+            echo "!! SESSION_SECRET value leaked into logs"
+            status=1
+          fi
+          if grep -qF "$PDF_INTERNAL_TOKEN" /tmp/compose-logs.txt; then
+            echo "!! PDF_INTERNAL_TOKEN value leaked into logs"
+            status=1
+          fi
+          [ "$status" -eq 0 ] && echo "clean"
+          exit $status
+      - name: Show compose logs on failure
+        if: failure()
+        run: docker compose logs --no-color
+      - name: Clean shutdown
+        if: always()
+        run: docker compose down -v --remove-orphans

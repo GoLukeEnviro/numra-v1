@@ -32,6 +32,17 @@ test.setTimeout(120_000);
 test("real system journey: login through delete-all against the live stack", async ({ page }) => {
   const email = uniqueEmail();
 
+  // Same-origin proof (release-closure Gate C §15): the browser must never call the
+  // backend directly -- only same-origin /api/* through the Next.js proxy. Collected
+  // for the whole journey below, asserted once at the end.
+  const offOriginRequests: string[] = [];
+  page.on("request", (req) => {
+    const url = new URL(req.url());
+    if (url.port === "8000" || url.hostname === "api" || url.port === "8010") {
+      offOriginRequests.push(req.url());
+    }
+  });
+
   // 0. Register a fresh account directly against the real API (no registration UI
   // exists — self-signup is enabled only for this dedicated e2e instance).
   // page.request (not the standalone `request` fixture) so the session cookie the
@@ -184,6 +195,11 @@ test("real system journey: login through delete-all against the live stack", asy
     data: { email, password: PASSWORD },
   });
   expect(reRegisterResponse.status(), await reRegisterResponse.text()).toBe(201);
+
+  expect(
+    offOriginRequests,
+    "the browser must never call the backend directly -- only same-origin /api/* through the Next.js proxy",
+  ).toEqual([]);
 
   console.log(`SYSTEM_E2E_REPORT_ID=${reportId}`);
 });
