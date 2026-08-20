@@ -186,6 +186,97 @@ jobs:
       - run: pnpm --filter @numra/pdf exec playwright install --with-deps chromium
       - run: pnpm --filter @numra/pdf test
 
+  system-e2e:
+    # The REAL, non-mocked system journey (apps/web/e2e-system/system-journey.spec.ts) --
+    # unlike the `playwright` job above (golden-journey.spec.ts, every API call
+    # intercepted with page.route()), this stands up the full real stack -- Postgres,
+    # Redis, the real internal PDF service, a real FastAPI instance
+    # (NUMRA_LLM_PROVIDER=mock is an explicit, non-implicit provider choice), and a
+    # real report worker -- and drives the browser against it with zero mocking. See
+    # specs/evidence/system-e2e.md for the full rationale and the real bug this caught
+    # (a diagnostics-payload shape drift invisible to the mocked suite).
+    runs-on: ubuntu-latest
+    needs: web-lint-typecheck-build-test
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: numra
+          POSTGRES_PASSWORD: numra_ci_password
+          POSTGRES_DB: numra_e2e
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U numra -d numra_e2e"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql+asyncpg://numra:numra_ci_password@localhost:5432/numra_e2e
+      ENVIRONMENT: test
+      SESSION_SECRET: ci-only-system-e2e-secret-not-for-prod-0123456789
+      ALLOW_SELF_SIGNUP: "true"
+      NUMRA_LLM_PROVIDER: mock
+      PDF_INTERNAL_URL: http://127.0.0.1:4300
+      PDF_INTERNAL_TOKEN: ci-only-pdf-token
+      EXPORT_STORAGE_DIR: /tmp/numra-e2e-exports
+      RATE_LIMIT_BACKEND: redis
+      REDIS_URL: redis://localhost:6379/0
+      CORS_ALLOWED_ORIGINS: '["http://127.0.0.1:4180"]'
+      SYSTEM_E2E_WEB_PORT: "4180"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          version: ${{ env.UV_VERSION }}
+      - run: uv python install ${{ env.PYTHON_VERSION }}
+      - run: uv sync --all-packages --all-groups
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: uv run --directory apps/api alembic upgrade head
+      - run: pnpm --filter @numra/pdf exec playwright install --with-deps chromium
+      - name: Start the real PDF service in the background
+        run: |
+          PORT=4300 PDF_INTERNAL_TOKEN=${{ env.PDF_INTERNAL_TOKEN }} \
+            nohup pnpm --filter @numra/pdf start > /tmp/pdf-service.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:4300/health/ready && break
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:4300/health/ready || (cat /tmp/pdf-service.log && exit 1)
+      - name: Start a real FastAPI instance in the background
+        run: |
+          nohup uv run --directory apps/api uvicorn numra_api.app:app \
+            --host 127.0.0.1 --port 8010 > /tmp/api.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8010/v1/health/live && break
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:8010/v1/health/ready || (cat /tmp/api.log && exit 1)
+      - name: Start a real report worker in the background
+        run: nohup uv run --directory apps/api python -m numra_api.worker > /tmp/worker.log 2>&1 &
+      - run: pnpm --filter @numra/web exec playwright install --with-deps chromium
+      - name: Run the real system journey
+        working-directory: apps/web
+        env:
+          API_INTERNAL_SYSTEM_URL: http://127.0.0.1:8010
+        run: npx playwright test --config=playwright.system.config.ts
+      - name: Show service logs on failure
+        if: failure()
+        run: |
+          echo "--- PDF service ---"; cat /tmp/pdf-service.log || true
+          echo "--- API ---"; cat /tmp/api.log || true
+          echo "--- worker ---"; cat /tmp/worker.log || true
+
   docker-build:
     runs-on: ubuntu-latest
     steps:
