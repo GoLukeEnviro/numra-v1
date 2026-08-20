@@ -15,5 +15,11 @@
     "web:e2e": "pnpm --filter @numra/web exec playwright test",
     "pdf:test": "pnpm --filter @numra/pdf test",
     "verify": "python3 scripts/verify.py"
+  },
+  "pnpm": {
+    "overrides": {
+      "postcss": "^8.5.23",
+      "sharp": "^0.35.0"
+    }
   }
 }

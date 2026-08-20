@@ -22,10 +22,11 @@ const HOP_BY_HOP_RESPONSE_HEADERS = new Set(["content-encoding", "content-length
 
 async function proxy(
   request: NextRequest,
-  context: { params: { path: string[] } },
+  context: { params: Promise<{ path: string[] }> },
 ): Promise<NextResponse> {
   const apiInternalUrl = process.env.API_INTERNAL_URL || "http://api:8000";
-  const path = context.params.path.join("/");
+  const { path: pathSegments } = await context.params;
+  const path = pathSegments.join("/");
   const targetUrl = new URL(`/${path}${request.nextUrl.search}`, apiInternalUrl);
 
   const requestHeaders = new Headers();
