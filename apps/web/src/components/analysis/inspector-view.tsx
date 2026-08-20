@@ -94,7 +94,7 @@ export function InspectorView({
             <CardDescription>
               canon-spec.md §9: concatenates every digit of the ISO birth date and sums
               directly, without per-segment reduction. Stored under{" "}
-              <code className="font-mono text-xs">
+              <code className="font-mono text-xs break-all">
                 diagnostics.life_path.alternative_methods.direct_digit_sum
               </code>{" "}
               — this is never a second Life Path.
