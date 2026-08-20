@@ -20,11 +20,17 @@ COPY packages/engine-astrology packages/engine-astrology
 COPY apps/api apps/api
 COPY knowledge knowledge
 
-# The four packages copied above are the workspace's entire membership (see
-# [tool.uv.workspace] in pyproject.toml) -- a plain sync already covers exactly them;
-# `uv sync --package` cannot be repeated to name more than one (uv 0.5.11 rejects that
-# outright), which is what this line used to (incorrectly) attempt.
-RUN uv sync --frozen --no-dev
+# A bare `uv sync` at the workspace root only syncs the *root* project -- here an
+# empty placeholder (`dependencies = []` in the top-level pyproject.toml) -- NOT the
+# workspace members copied above. Confirmed the hard way: a real `docker compose up`
+# (release-closure Gate C) found `alembic`/`uvicorn` missing from $PATH and
+# `numra_api`/`fastapi` unimportable in the built image, because this line used to
+# read plain `uv sync --frozen --no-dev` with no member packages actually installed.
+# `--all-packages` is the real fix -- it syncs every workspace member's own
+# dependencies into the shared venv. (`uv sync --package` repeated per-package, the
+# very first form of this line, is also wrong for a different reason: uv 0.5.11
+# rejects passing `--package` more than once outright.)
+RUN uv sync --frozen --no-dev --all-packages
 
 RUN addgroup --system numra && adduser --system --ingroup numra numra
 USER numra
