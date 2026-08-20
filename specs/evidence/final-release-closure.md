@@ -454,3 +454,46 @@ is treated as a one-off flake, not a regression, per this directive's own
 guidance not to chase single non-reproducing failures as root causes. Pushing the
 real export-panel fix re-exercises this step naturally on the next CI run, which
 doubles as the one permitted re-run to check whether it's genuinely reproducible.
+
+### Fifth real run: the export-panel fix was correct but insufficient — the actual bottleneck was a server-side timeout
+
+Re-ran with the export-panel fix deployed. Confirmed from the compose logs that the
+fix took effect (`POST /v1/exports → 201` with **no** follow-up `GET /v1/exports`,
+unlike every prior run) — and the failure was identical anyway: same locator, same
+60s timeout, same "(1.1m)" total. That ruled the read-after-write theory out for
+real this time (there was no second read left to race against) and pointed
+directly at the `POST /v1/exports` call itself taking the full budget before ever
+answering.
+
+Read `numra_api.services.pdf_client.PdfServiceClient.render_report_pdf`: it wraps
+the call to the PDF service in `httpx.AsyncClient(timeout=self._timeout_seconds)`,
+default **60.0 seconds** (`config.py`'s `pdf_render_timeout_seconds`), and a
+timeout there is caught and converted into `PdfServiceUnavailable` →
+`mark_export_failed` — still returned as `201 Created` with `status: "failed"`,
+which explains every piece of prior evidence at once: the POST always "succeeds"
+(201), no exception ever appears in the compose logs (a clean `httpx.TimeoutError`
+inside a `try/except`, not a crash), and the Download link never appears because
+the export genuinely is marked failed, not pending.
+
+Confirmed the mechanism is real, not just plausible: `apps/pdf/src/server.js`
+lazily launches Chromium on its *own* first request (`getBrowser()`, a
+memoized promise), and `GET /health/ready` also calls `getBrowser()` — so the
+CI job's health-poll step already begins warming it well before Playwright
+starts. That warm-up racing against a 2-second-per-attempt health-check timeout
+(`health_check_timeout_seconds`, unrelated to the render timeout) can still leave
+the *actual render* — not just the browser launch — taking longer than 60s under
+genuine multi-container CPU contention (5 other services freshly started on the
+same CI runner), which the `docker-compose-e2e` topology exercises for real and
+the lighter-weight `system-e2e` job (bare processes) mostly doesn't.
+
+Fixed at the actual bottleneck: `pdf_render_timeout_seconds` default raised from
+60.0 to 120.0 seconds (`apps/api/src/numra_api/config.py`) — this is the value
+that determines when the server itself gives up and marks an export failed, so it
+was always the real constraint, not any client-side wait. Widened
+`system-journey.spec.ts`'s Download-link wait to 150s (real margin over the new
+120s server timeout — a client wait shorter than the server's own timeout can
+never usefully help) and `test.setTimeout` to 300s, with both Playwright configs'
+own `timeout` defaults raised to match so neither is ever the tighter bound.
+Full local re-verification after this change: `tsc --noEmit`, `eslint`, and the
+full 256-test Python suite (incl. the real-PDF-service `apps/api/tests`) all
+clean.

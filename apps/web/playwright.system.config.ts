@@ -26,7 +26,9 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: 0,
   workers: 1,
-  timeout: 120_000,
+  // The spec's own test.setTimeout(300_000) takes precedence for that test; this
+  // config-level default is kept in step so it's never the tighter of the two.
+  timeout: 300_000,
   reporter: [["list"]],
   use: {
     baseURL: `http://127.0.0.1:${port}`,

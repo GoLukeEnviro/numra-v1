@@ -44,7 +44,12 @@ class Settings(BaseSettings):
     #: service configured" (health reports "disabled"; export creation fails with a
     #: clear error rather than attempting a request to nothing).
     pdf_internal_url: str | None = None
-    pdf_render_timeout_seconds: float = 60.0
+    #: Generous enough to cover the PDF service's own one-time Chromium cold start
+    #: (lazily launched on its first request, see apps/pdf/src/server.js) landing
+    #: inside the same request this client is waiting on, not just steady-state
+    #: render time -- verified via a real docker-compose-e2e run where the previous
+    #: 60s default was reliably exceeded under genuine multi-container CI load.
+    pdf_render_timeout_seconds: float = 120.0
 
     #: Local filesystem directory export files (rendered PDFs) are written to. Only
     #: meaningful with the (only, in V1) LocalExportStorage backend.
