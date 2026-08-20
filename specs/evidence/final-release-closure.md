@@ -615,3 +615,66 @@ bump has to touch both the tag and the dependency deliberately together instead
 of one silently drifting past the other again. Verified locally: `apps/pdf`'s own
 render test suite (4/4) still passes, and `docker compose config --quiet` remains
 valid.
+
+### Ninth real run: a second, independent bug the first one was hiding
+
+The Playwright pin fix worked exactly as diagnosed — the PDF render itself now
+succeeds against the live stack. The `docker-compose-e2e` job still failed,
+but on a *different* line, which is itself confirmation that root cause #8 was
+correctly identified and fully fixed (nothing above `storage.save()` in the
+call chain is failing anymore):
+
+```
+api-1 | INFO: "POST /v1/exports HTTP/1.1" 500 Internal Server Error
+api-1 | ...
+api-1 |   File "/app/apps/api/src/numra_api/storage/exports.py", line 54, in save
+api-1 |     await asyncio.to_thread(path.write_bytes, content)
+api-1 |   File "/usr/local/lib/python3.11/pathlib.py", line 1067, in write_bytes
+api-1 |     with self.open(mode='wb') as f:
+api-1 | PermissionError: [Errno 13] Permission denied:
+'/app/data/exports/0c833193-9146-4449-976a-f94e4279e8b5.pdf'
+```
+
+Playwright's own log confirms this is the *only* thing that changed: the same
+`system-journey.spec.ts:131` `Download` link `toBeVisible` timeout as every
+previous run, still tracking its configured client timeout exactly (150000ms) —
+because `create_export` still returns HTTP 500 with no export ever reaching
+`COMPLETE`, the frontend still never renders a Download link. `GET /v1/health/ready`
+was `200 OK` throughout this entire run (checked explicitly, in response to the
+`pdf: "unhealthy"` reading from an earlier, pre-fix run raised as an investigative
+lead) — that reading was a symptom of root cause #8 (the PDF service's own render
+path, and by extension whatever probes it, failing under the version-mismatched
+Chromium), not a separate health-cache/TTL bug. With #8 fixed, health/ready is
+consistently healthy across this entire run with no unhealthy or stale reading
+at any point, so the TTL-staleness lead is closed: it was the same root cause,
+already fixed, not an independent problem.
+
+Root cause: `docker-compose.yml` mounts the named volume `numra_exports_data` at
+`/app/data/exports` inside the `api` container. `docker/api.Dockerfile` never
+created that path before `USER numra` took effect, so Docker auto-created the
+volume's mount point itself on first `up` — as `root:root`, per Docker's own
+documented behavior for a mount point with no pre-existing directory in the
+image. `LocalExportStorage.__init__`'s own `self._base_dir.mkdir(parents=True,
+exist_ok=True)` (`apps/api/src/numra_api/storage/exports.py`) then runs at
+application startup as the non-root `numra` user against an already-existing
+(root-owned) directory — `exist_ok=True` means no error is raised at startup,
+so this never surfaced as a build- or boot-time failure, only as a runtime
+`PermissionError` on the very first write. FastAPI's existing generic exception
+handler (`apps/api/src/numra_api/app.py`) caught it and returned a safe generic
+500 with no internals leaked to the client — a real defense-in-depth working
+exactly as intended — but the export itself still legitimately failed.
+
+Fixed in `docker/api.Dockerfile`: added `RUN mkdir -p /app/data/exports &&
+chown -R numra:numra /app/data` between creating the `numra` user and the
+`USER numra` switch, so the directory pre-exists in the image with the correct
+owner before the named volume ever mounts onto it. Docker initializes a named
+volume's contents *and ownership* from whatever already exists at the mount
+path in the image at first creation, so the volume itself now inherits
+`numra:numra` ownership instead of defaulting to `root:root`. This is the same
+class of bug as root cause #7 (`uv sync --all-packages`): a `docker compose up`
+runtime concern invisible to `docker-build` CI, since that job only builds the
+image and never runs a container against a real named-volume mount. Verified
+locally: `docker compose config --quiet` (with `SESSION_SECRET`/
+`PDF_INTERNAL_TOKEN` set) remains valid; the actual fix can only be proven by a
+real `docker compose up`, which only GitHub Actions can run in this
+environment.

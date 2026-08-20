@@ -33,6 +33,17 @@ COPY knowledge knowledge
 RUN uv sync --frozen --no-dev --all-packages
 
 RUN addgroup --system numra && adduser --system --ingroup numra numra
+
+# The compose `numra_exports_data` named volume mounts onto /app/data/exports. Docker
+# only initializes a named volume's ownership from what already exists at that path
+# in the image at first mount -- if the path doesn't pre-exist here, Docker still
+# auto-creates the mountpoint, but as root:root, which the non-root `numra` user below
+# then can't write into (LocalExportStorage's own `mkdir(exist_ok=True)` at startup
+# silently no-ops since the directory already exists, so it never surfaces a build-time
+# error, only a runtime PermissionError on the first export). Confirmed the hard way
+# via a real docker-compose-e2e run: POST /v1/exports 500'd with
+# "PermissionError: [Errno 13] Permission denied: '/app/data/exports/<id>.pdf'".
+RUN mkdir -p /app/data/exports && chown -R numra:numra /app/data
 USER numra
 
 ENV PATH="/app/.venv/bin:$PATH"
