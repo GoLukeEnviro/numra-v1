@@ -118,3 +118,26 @@ A `401` from an eagerly-checked `/api/v1/auth/me` on an unauthenticated page vis
 a `404` for a missing favicon appear in the browser console during the run — both are
 the same pre-existing, benign artifacts already documented in
 `web-api-proxy-and-csp.md`, not related to anything this spec tests.
+
+## CI status
+
+This journey runs as the `system-e2e` job in `.github/workflows/ci.yml` on every PR,
+using the exact prerequisite sequence above (Postgres/Redis as GitHub Actions
+services, the PDF service and API/worker started as background steps, `next build &&
+next start` as the Playwright `webServer`). As of PR #3's merged head (`498c2a0`), it
+is green.
+
+One transient failure was investigated during closure: a single run's initial
+`GET /v1/reports/{id}` returned `404` immediately after that report's own
+`POST /v1/reports` had returned `201`, which the frontend's `useReportProgress` hook
+(at the time) treated as fatal on the very first load with no retry. Real
+reproduction was attempted — 60 repeated runs of the identical
+register→login→create-person→create-calculation→create-report→immediate-GET sequence
+against a locally-run instance of the exact same commit's API, and a cross-check
+against that same commit's `docker-compose-e2e` run — found no defect in the backend
+commit ordering or the same-origin proxy; see
+`specs/evidence/final-release-closure.md` for the full investigation. Rather than
+dismiss it as an unexplained flake, `useReportProgress`'s initial fetch was given the
+same small-retry tolerance the job-polling loop already had (mirroring
+`MAX_CONSECUTIVE_POLL_FAILURES`), closing a real robustness gap regardless of the
+CI-only failure's exact cause.
