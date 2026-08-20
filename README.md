@@ -183,6 +183,10 @@ relationship compatibility percentages, and Period Cycle date-boundary transitio
 - PII-safe logging: access logs and LLM-generation logs never contain names, birth
   data, or full prompts — only IDs, status, latency (`middleware/security.py`,
   `models/tables.py::LLMGeneration`).
+- Dependency security audit: `pnpm audit --prod` (Node/web) and `uvx pip-audit`
+  (Python) — both run as an explicit CI gate (`dependency-security` job,
+  `.github/workflows/ci.yml`) that fails the build on a fixable Critical/High
+  production advisory.
 
 ## Privacy notes
 
