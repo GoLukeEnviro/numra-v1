@@ -8,7 +8,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Check, Minus } from "lucide-react";
 
-const METRIC_LABELS: Record<RelationshipMetricKey, string> = {
+export const METRIC_LABELS: Record<RelationshipMetricKey, string> = {
   life_path: "Life Path",
   expression: "Expression",
   soul_urge: "Soul Urge",

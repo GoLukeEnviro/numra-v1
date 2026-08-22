@@ -680,6 +680,30 @@ export interface components {
             /** Person B Id */
             person_b_id?: string | null;
         };
+        /**
+         * RelationshipInsightOut
+         * @description V1.5 Epic F: a structured, knowledge-sourced qualitative note for one metric --
+         *     never a compatibility percentage or any other invented score (canon-spec.md §33,
+         *     RESERVED_UNFROZEN). Every theme string is drawn verbatim from
+         *     `knowledge/numbers/*.yaml` / `knowledge/master-numbers/*.yaml`, so it changes only
+         *     when the knowledge package itself is re-versioned, not per-request.
+         */
+        RelationshipInsightOut: {
+            /** Knowledge Refs */
+            knowledge_refs: string[];
+            /** Metric Id */
+            metric_id: string;
+            /** Person A Number */
+            person_a_number: number;
+            /** Person A Relationship Themes */
+            person_a_relationship_themes: string[];
+            /** Person B Number */
+            person_b_number: number;
+            /** Person B Relationship Themes */
+            person_b_relationship_themes: string[];
+            /** Shared Number */
+            shared_number: boolean;
+        };
         /** RelationshipOut */
         RelationshipOut: {
             /** Calculation A Id */
@@ -697,6 +721,8 @@ export interface components {
             created_at: string;
             /** Id */
             id: string;
+            /** Insights */
+            insights: components["schemas"]["RelationshipInsightOut"][];
             person_a: components["schemas"]["PersonRefOut"];
             person_b: components["schemas"]["PersonRefOut"];
         };

@@ -33,6 +33,22 @@ class RelationshipCreateRequest(BaseModel):
         return self
 
 
+class RelationshipInsightOut(BaseModel):
+    """V1.5 Epic F: a structured, knowledge-sourced qualitative note for one metric --
+    never a compatibility percentage or any other invented score (canon-spec.md §33,
+    RESERVED_UNFROZEN). Every theme string is drawn verbatim from
+    `knowledge/numbers/*.yaml` / `knowledge/master-numbers/*.yaml`, so it changes only
+    when the knowledge package itself is re-versioned, not per-request."""
+
+    metric_id: str
+    person_a_number: int
+    person_b_number: int
+    shared_number: bool
+    person_a_relationship_themes: tuple[str, ...]
+    person_b_relationship_themes: tuple[str, ...]
+    knowledge_refs: tuple[str, ...]
+
+
 class RelationshipOut(BaseModel):
     id: str
     calculation_a_id: str
@@ -40,6 +56,7 @@ class RelationshipOut(BaseModel):
     person_a: PersonRefOut
     person_b: PersonRefOut
     comparison: dict[str, Any]
+    insights: tuple[RelationshipInsightOut, ...]
     created_at: dt.datetime
 
 

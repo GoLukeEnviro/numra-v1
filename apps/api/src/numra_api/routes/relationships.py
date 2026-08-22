@@ -18,11 +18,15 @@ from numra_api.repositories.relationships import (
 from numra_api.schemas.person_ref import PersonRefOut, person_display_name
 from numra_api.schemas.relationship import (
     RelationshipCreateRequest,
+    RelationshipInsightOut,
     RelationshipOut,
     RelationshipSummaryOut,
 )
 from numra_api.services.errors import NotFoundError
-from numra_api.services.relationship_service import build_relationship_comparison
+from numra_api.services.relationship_service import (
+    build_relationship_comparison,
+    build_relationship_insights,
+)
 
 router = APIRouter(prefix="/v1/relationships", tags=["relationships"])
 
@@ -46,6 +50,9 @@ def _to_out(rel: RelationshipComparison, person_a: Person, person_b: Person) -> 
         person_a=_person_ref(person_a),
         person_b=_person_ref(person_b),
         comparison=rel.comparison_json,
+        insights=tuple(
+            RelationshipInsightOut.model_validate(insight) for insight in rel.insights_json
+        ),
         created_at=rel.created_at,
     )
 
@@ -97,11 +104,15 @@ async def create_relationship_route(
     comparison = build_relationship_comparison(
         calc_a.canonical_profile_json, calc_b.canonical_profile_json
     )
+    insights = build_relationship_insights(
+        calc_a.canonical_profile_json, calc_b.canonical_profile_json
+    )
     relationship = RelationshipComparison(
         user_id=user.id,
         calculation_a_id=calc_a.id,
         calculation_b_id=calc_b.id,
         comparison_json=comparison,
+        insights_json=insights,
     )
     db.add(relationship)
     await db.flush()

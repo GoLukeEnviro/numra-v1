@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
 import { LoadingState, ErrorState } from "@/components/ui/states";
 import { ComparisonTable } from "@/components/relationships/comparison-table";
+import { RelationshipInsights } from "@/components/relationships/relationship-insights";
 import { NumericWheel } from "@/components/layout/numeric-wheel";
 import { api } from "@/api/client";
 import { asRelationshipComparison } from "@/api/canonical-profile";
@@ -85,6 +86,8 @@ function RelationshipContent({ relationshipId }: { relationshipId: string }) {
         defensible deterministic method for one, so inventing a number would undermine
         everything else on this page.
       </div>
+
+      <RelationshipInsights insights={relationship.insights} labelA={labelA} labelB={labelB} />
 
       <ComparisonTable comparison={comparison} labelA={labelA} labelB={labelB} />
     </div>

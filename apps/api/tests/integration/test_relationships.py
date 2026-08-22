@@ -69,6 +69,75 @@ async def test_relationship_comparison_no_percentage(client, sessionmaker, lukas
     assert detail["person_b"]["display_name"] == "Anna Beispiel"
 
 
+async def test_relationship_insights_have_no_score_and_cite_knowledge(
+    client, sessionmaker, lukas_payload
+) -> None:
+    """V1.5 Epic F: relationship intelligence is structured and knowledge-sourced --
+    never a compatibility percentage or any other invented numeric match score
+    (canon-spec.md §33, RESERVED_UNFROZEN)."""
+    headers = await _login(client, sessionmaker, email="insights@example.com")
+
+    person_a = (await client.post("/v1/people", json=lukas_payload, headers=headers)).json()
+    other_payload = {**lukas_payload, "birth_first_names": "Anna", "birth_last_name": "Beispiel"}
+    person_b = (await client.post("/v1/people", json=other_payload, headers=headers)).json()
+
+    calc_a = (
+        await client.post(
+            f"/v1/people/{person_a['id']}/calculations",
+            json={"as_of_date": "2026-01-01"},
+            headers=headers,
+        )
+    ).json()
+    calc_b = (
+        await client.post(
+            f"/v1/people/{person_b['id']}/calculations",
+            json={"as_of_date": "2026-01-01"},
+            headers=headers,
+        )
+    ).json()
+
+    response = await client.post(
+        "/v1/relationships",
+        json={"calculation_a_id": calc_a["id"], "calculation_b_id": calc_b["id"]},
+        headers=headers,
+    )
+    assert response.status_code == 201
+    body = response.json()
+    insights = body["insights"]
+
+    assert {i["metric_id"] for i in insights} == {
+        "life_path",
+        "expression",
+        "soul_urge",
+        "personality",
+    }
+    for insight in insights:
+        assert set(insight.keys()) == {
+            "metric_id",
+            "person_a_number",
+            "person_b_number",
+            "shared_number",
+            "person_a_relationship_themes",
+            "person_b_relationship_themes",
+            "knowledge_refs",
+        }
+        # Hard failure condition: no compatibility percentage/match score anywhere.
+        assert "score" not in insight
+        assert "percentage" not in insight
+        assert "match" not in insight
+        assert len(insight["person_a_relationship_themes"]) > 0
+        assert len(insight["person_b_relationship_themes"]) > 0
+        assert insight["shared_number"] == (
+            insight["person_a_number"] == insight["person_b_number"]
+        )
+        for ref in insight["knowledge_refs"]:
+            assert ref.startswith("numbers/")
+
+    get_response = await client.get(f"/v1/relationships/{body['id']}")
+    assert get_response.status_code == 200
+    assert get_response.json()["insights"] == insights
+
+
 async def test_list_relationships_resolves_person_names(
     client, sessionmaker, lukas_payload
 ) -> None:

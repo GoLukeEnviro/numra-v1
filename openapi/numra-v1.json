@@ -844,6 +844,59 @@
         "title": "RelationshipCreateRequest",
         "type": "object"
       },
+      "RelationshipInsightOut": {
+        "description": "V1.5 Epic F: a structured, knowledge-sourced qualitative note for one metric --\nnever a compatibility percentage or any other invented score (canon-spec.md \u00a733,\nRESERVED_UNFROZEN). Every theme string is drawn verbatim from\n`knowledge/numbers/*.yaml` / `knowledge/master-numbers/*.yaml`, so it changes only\nwhen the knowledge package itself is re-versioned, not per-request.",
+        "properties": {
+          "knowledge_refs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Knowledge Refs",
+            "type": "array"
+          },
+          "metric_id": {
+            "title": "Metric Id",
+            "type": "string"
+          },
+          "person_a_number": {
+            "title": "Person A Number",
+            "type": "integer"
+          },
+          "person_a_relationship_themes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Person A Relationship Themes",
+            "type": "array"
+          },
+          "person_b_number": {
+            "title": "Person B Number",
+            "type": "integer"
+          },
+          "person_b_relationship_themes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Person B Relationship Themes",
+            "type": "array"
+          },
+          "shared_number": {
+            "title": "Shared Number",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "metric_id",
+          "person_a_number",
+          "person_b_number",
+          "shared_number",
+          "person_a_relationship_themes",
+          "person_b_relationship_themes",
+          "knowledge_refs"
+        ],
+        "title": "RelationshipInsightOut",
+        "type": "object"
+      },
       "RelationshipOut": {
         "properties": {
           "calculation_a_id": {
@@ -868,6 +921,13 @@
             "title": "Id",
             "type": "string"
           },
+          "insights": {
+            "items": {
+              "$ref": "#/components/schemas/RelationshipInsightOut"
+            },
+            "title": "Insights",
+            "type": "array"
+          },
           "person_a": {
             "$ref": "#/components/schemas/PersonRefOut"
           },
@@ -882,6 +942,7 @@
           "person_a",
           "person_b",
           "comparison",
+          "insights",
           "created_at"
         ],
         "title": "RelationshipOut",

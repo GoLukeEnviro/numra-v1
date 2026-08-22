@@ -13,6 +13,7 @@ export type CalculationSummaryOut = components["schemas"]["CalculationSummaryOut
 export type RelationshipCreateRequest = components["schemas"]["RelationshipCreateRequest"];
 export type RelationshipOut = components["schemas"]["RelationshipOut"];
 export type RelationshipSummaryOut = components["schemas"]["RelationshipSummaryOut"];
+export type RelationshipInsightOut = components["schemas"]["RelationshipInsightOut"];
 export type PersonRefOut = components["schemas"]["PersonRefOut"];
 export type BirthPlace = components["schemas"]["BirthPlace"];
 export type BirthTime = components["schemas"]["BirthTime"];
