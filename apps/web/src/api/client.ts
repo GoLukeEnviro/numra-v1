@@ -30,6 +30,9 @@ export type ExportCreateRequest = components["schemas"]["ExportCreateRequest"];
 export type ExportOut = components["schemas"]["ExportOut"];
 export type ExportStatus = components["schemas"]["ExportStatus"];
 export type DeleteAccountRequest = components["schemas"]["DeleteAccountRequest"];
+export type ChangePasswordRequest = components["schemas"]["ChangePasswordRequest"];
+export type SessionOut = components["schemas"]["SessionOut"];
+export type SystemInfoOut = components["schemas"]["SystemInfoOut"];
 
 // Same-origin only: every request goes to /api/*, which next.config.mjs's rewrite
 // forwards server-side to API_INTERNAL_URL (a runtime, non-NEXT_PUBLIC_ env var — see
@@ -151,6 +154,18 @@ export const api = {
       request<UserOut>("/v1/auth/register", { method: "POST", body }),
     logout: () => request<void>("/v1/auth/logout", { method: "POST" }),
     me: () => request<UserOut>("/v1/auth/me"),
+    /** V1.5 Epic N. Revokes every other active session; the caller's own session
+     *  stays valid, so this never signs the caller themselves out. */
+    changePassword: (body: ChangePasswordRequest) =>
+      request<void>("/v1/auth/change-password", { method: "POST", body }),
+    /** V1.5 Epic N. Every currently active session for this user, newest first. */
+    sessions: () => request<SessionOut[]>("/v1/auth/sessions"),
+    /** V1.5 Epic N. "Log out other devices" -- revokes every session but this one. */
+    revokeOtherSessions: () =>
+      request<void>("/v1/auth/sessions/revoke-others", { method: "POST" }),
+  },
+  systemInfo: {
+    get: () => request<SystemInfoOut>("/v1/system-info"),
   },
   people: {
     list: () => request<PersonOut[]>("/v1/people"),

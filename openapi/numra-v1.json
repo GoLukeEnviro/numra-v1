@@ -202,6 +202,26 @@
         "title": "CalculationSummaryOut",
         "type": "object"
       },
+      "ChangePasswordRequest": {
+        "description": "V1.5 Epic N. Same minimum-length rule as registration; the current password is\nalways required (never trust a signed-in session alone to authorize a password\nchange \u2014 a hijacked/left-open session should not be enough).",
+        "properties": {
+          "current_password": {
+            "title": "Current Password",
+            "type": "string"
+          },
+          "new_password": {
+            "minLength": 12,
+            "title": "New Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "current_password",
+          "new_password"
+        ],
+        "title": "ChangePasswordRequest",
+        "type": "object"
+      },
       "DailyBriefOut": {
         "description": "Deterministic Daily Brief for one person on one `as_of_date`: identical\ninputs (person + date + knowledge version) always produce a byte-identical\nresponse -- there is no LLM call and no randomness anywhere in this path.",
         "properties": {
@@ -1270,6 +1290,76 @@
         "title": "ReportType",
         "type": "string"
       },
+      "SessionOut": {
+        "description": "One active session (V1.5 Epic N). No IP address or device identifier is\nstored or returned \u2014 sessions carry only a token hash, timestamps, and the\nowning user (see models.tables.Session).",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "is_current": {
+            "title": "Is Current",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "created_at",
+          "expires_at",
+          "is_current"
+        ],
+        "title": "SessionOut",
+        "type": "object"
+      },
+      "SystemInfoOut": {
+        "description": "Sanitized system info for the signed-in user's Settings page (V1.5 Epic N).\nDeliberately excludes every secret (session_secret, pdf_internal_token,\nollama_api_key, database_url) -- only operational facts a user could otherwise\ninfer from how the app behaves.",
+        "properties": {
+          "app_timezone": {
+            "title": "App Timezone",
+            "type": "string"
+          },
+          "environment": {
+            "title": "Environment",
+            "type": "string"
+          },
+          "llm_provider": {
+            "title": "Llm Provider",
+            "type": "string"
+          },
+          "pdf_export_enabled": {
+            "title": "Pdf Export Enabled",
+            "type": "boolean"
+          },
+          "self_signup_enabled": {
+            "title": "Self Signup Enabled",
+            "type": "boolean"
+          },
+          "session_ttl_hours": {
+            "title": "Session Ttl Hours",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "environment",
+          "app_timezone",
+          "session_ttl_hours",
+          "self_signup_enabled",
+          "llm_provider",
+          "pdf_export_enabled"
+        ],
+        "title": "SystemInfoOut",
+        "type": "object"
+      },
       "UserOut": {
         "properties": {
           "email": {
@@ -1417,6 +1507,91 @@
         "summary": "Delete All Route",
         "tags": [
           "account"
+        ]
+      }
+    },
+    "/v1/auth/change-password": {
+      "post": {
+        "description": "V1.5 Epic N: requires the current password even though the caller already has\na valid session (a left-open or hijacked session should not be enough on its\nown). On success every *other* active session for this user is revoked -- the\ncaller's own session (the one making this request) stays valid, so they are not\nlogged out by changing their own password.",
+        "operationId": "change_password_v1_auth_change_password_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-csrf-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_csrf",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Csrf"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Change Password",
+        "tags": [
+          "auth"
         ]
       }
     },
@@ -1604,6 +1779,135 @@
           }
         },
         "summary": "Register",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/sessions": {
+      "get": {
+        "description": "V1.5 Epic N: every device/browser currently signed in as this user. No IP\naddress or device identifier is stored anywhere (see models.tables.Session), so\nthere is nothing to redact here beyond simply not having it.",
+        "operationId": "list_sessions_v1_auth_sessions_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SessionOut"
+                  },
+                  "title": "Response List Sessions V1 Auth Sessions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Sessions",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/sessions/revoke-others": {
+      "post": {
+        "description": "V1.5 Epic N: \"Log out other devices\" -- revokes every active session for this\nuser except the one making this request.",
+        "operationId": "revoke_other_sessions_v1_auth_sessions_revoke_others_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-csrf-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_csrf",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Csrf"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Revoke Other Sessions",
         "tags": [
           "auth"
         ]
@@ -3257,6 +3561,56 @@
         "summary": "Get Report Route",
         "tags": [
           "reports"
+        ]
+      }
+    },
+    "/v1/system-info": {
+      "get": {
+        "description": "V1.5 Epic N: sanitized system info for the Settings page. Auth-required (not\na public endpoint) but still deliberately excludes every secret -- see\nSystemInfoOut's own docstring for exactly what is and isn't included.",
+        "operationId": "get_system_info_v1_system_info_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemInfoOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get System Info",
+        "tags": [
+          "system-info"
         ]
       }
     }

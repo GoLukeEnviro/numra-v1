@@ -21,6 +21,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/auth/change-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Change Password
+         * @description V1.5 Epic N: requires the current password even though the caller already has
+         *     a valid session (a left-open or hijacked session should not be enough on its
+         *     own). On success every *other* active session for this user is revoked -- the
+         *     caller's own session (the one making this request) stays valid, so they are not
+         *     logged out by changing their own password.
+         */
+        post: operations["change_password_v1_auth_change_password_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/auth/login": {
         parameters: {
             query?: never;
@@ -83,6 +107,49 @@ export interface paths {
         put?: never;
         /** Register */
         post: operations["register_v1_auth_register_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Sessions
+         * @description V1.5 Epic N: every device/browser currently signed in as this user. No IP
+         *     address or device identifier is stored anywhere (see models.tables.Session), so
+         *     there is nothing to redact here beyond simply not having it.
+         */
+        get: operations["list_sessions_v1_auth_sessions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/sessions/revoke-others": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revoke Other Sessions
+         * @description V1.5 Epic N: "Log out other devices" -- revokes every active session for this
+         *     user except the one making this request.
+         */
+        post: operations["revoke_other_sessions_v1_auth_sessions_revoke_others_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -379,6 +446,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/system-info": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get System Info
+         * @description V1.5 Epic N: sanitized system info for the Settings page. Auth-required (not
+         *     a public endpoint) but still deliberately excludes every secret -- see
+         *     SystemInfoOut's own docstring for exactly what is and isn't included.
+         */
+        get: operations["get_system_info_v1_system_info_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -475,6 +564,18 @@ export interface components {
             person_id: string;
             /** Schema Version */
             schema_version: string;
+        };
+        /**
+         * ChangePasswordRequest
+         * @description V1.5 Epic N. Same minimum-length rule as registration; the current password is
+         *     always required (never trust a signed-in session alone to authorize a password
+         *     change — a hijacked/left-open session should not be enough).
+         */
+        ChangePasswordRequest: {
+            /** Current Password */
+            current_password: string;
+            /** New Password */
+            new_password: string;
         };
         /**
          * DailyBriefOut
@@ -895,6 +996,49 @@ export interface components {
          * @enum {string}
          */
         ReportType: "QUICK" | "FULL" | "ULTIMATE" | "CUSTOM";
+        /**
+         * SessionOut
+         * @description One active session (V1.5 Epic N). No IP address or device identifier is
+         *     stored or returned — sessions carry only a token hash, timestamps, and the
+         *     owning user (see models.tables.Session).
+         */
+        SessionOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Id */
+            id: string;
+            /** Is Current */
+            is_current: boolean;
+        };
+        /**
+         * SystemInfoOut
+         * @description Sanitized system info for the signed-in user's Settings page (V1.5 Epic N).
+         *     Deliberately excludes every secret (session_secret, pdf_internal_token,
+         *     ollama_api_key, database_url) -- only operational facts a user could otherwise
+         *     infer from how the app behaves.
+         */
+        SystemInfoOut: {
+            /** App Timezone */
+            app_timezone: string;
+            /** Environment */
+            environment: string;
+            /** Llm Provider */
+            llm_provider: string;
+            /** Pdf Export Enabled */
+            pdf_export_enabled: boolean;
+            /** Self Signup Enabled */
+            self_signup_enabled: boolean;
+            /** Session Ttl Hours */
+            session_ttl_hours: number;
+        };
         /** UserOut */
         UserOut: {
             /** Email */
@@ -939,6 +1083,42 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["DeleteAccountRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    change_password_v1_auth_change_password_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePasswordRequest"];
             };
         };
         responses: {
@@ -1076,6 +1256,69 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["UserOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_sessions_v1_auth_sessions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_other_sessions_v1_auth_sessions_revoke_others_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -1858,6 +2101,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReportOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_system_info_v1_system_info_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SystemInfoOut"];
                 };
             };
             /** @description Validation Error */

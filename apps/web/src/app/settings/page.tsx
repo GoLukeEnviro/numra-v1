@@ -4,11 +4,13 @@ import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { LinkButton } from "@/components/ui/link-button";
 import { Button } from "@/components/ui/button";
+import { SecurityCard } from "@/components/settings/security-card";
+import { SystemInfoCard } from "@/components/settings/system-info-card";
 import { useAuth } from "@/lib/auth-context";
 import { useLocale } from "@/i18n/context";
 import { SUPPORTED_LOCALES, type Locale } from "@/i18n/catalog";
 import { cn } from "@/lib/utils";
-import { ShieldCheck, Languages } from "lucide-react";
+import { Database, Languages } from "lucide-react";
 
 const LOCALE_LABEL_KEY: Record<Locale, "settings.languageGerman" | "settings.languageEnglish"> = {
   de: "settings.languageGerman",
@@ -65,10 +67,13 @@ function SettingsContent() {
           </CardHeader>
         </Card>
         <LanguageCard />
+        <div className="sm:col-span-2">
+          <SecurityCard />
+        </div>
         <Card>
           <CardHeader>
             <div className="mb-1 flex items-center gap-2">
-              <ShieldCheck className="h-5 w-5 text-gold" aria-hidden="true" />
+              <Database className="h-5 w-5 text-gold" aria-hidden="true" />
               <CardTitle className="text-base">{t("settings.privacyData")}</CardTitle>
             </div>
             <CardDescription>{t("settings.privacyDataDescription")}</CardDescription>
@@ -79,6 +84,7 @@ function SettingsContent() {
             </LinkButton>
           </CardContent>
         </Card>
+        <SystemInfoCard />
       </div>
     </div>
   );

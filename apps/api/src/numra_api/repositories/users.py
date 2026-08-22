@@ -22,3 +22,10 @@ async def get_user_by_email(db: AsyncSession, *, email: str) -> User | None:
 
 async def get_user_by_id(db: AsyncSession, *, user_id: uuid.UUID) -> User | None:
     return await db.get(User, user_id)
+
+
+async def update_user_password(db: AsyncSession, *, user: User, password_hash: str) -> None:
+    """V1.5 Epic N. Takes the already-loaded ORM `user` (never a bare id) so the
+    caller has already proven ownership/authentication before this mutates anything."""
+    user.password_hash = password_hash
+    await db.flush()
