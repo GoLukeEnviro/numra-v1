@@ -258,3 +258,66 @@ async def test_list_calculations_isolated_per_user_and_unknown_person(
 
     response = await client.get(f"/v1/people/{person_id}/calculations", headers=headers_b)
     assert response.status_code == 404
+
+
+async def test_identity_history_is_recorded_truthfully(client, sessionmaker, lukas_payload) -> None:
+    """V1.5 Epic C: creating a person records a birth identity (with valid_from =
+    birth_date, a genuinely known fact); editing current/preferred names appends
+    new entries with no invented effective date, never rewriting the earlier ones."""
+    headers = await _login(client, sessionmaker)
+    person_id = (await client.post("/v1/people", json=lukas_payload, headers=headers)).json()["id"]
+
+    after_create = (await client.get(f"/v1/people/{person_id}/identities")).json()
+    assert len(after_create) == 1
+    birth_entry = after_create[0]
+    assert birth_entry["kind"] == "birth"
+    assert birth_entry["first_names"] == "Lukas"
+    assert birth_entry["last_name"] == "Springer"
+    assert birth_entry["valid_from"] == "1986-07-18"  # a known fact, not a guess
+    assert birth_entry["recorded_at"] is not None
+
+    await client.patch(
+        f"/v1/people/{person_id}",
+        json={"preferred_name": "Luke"},
+        headers=headers,
+    )
+    after_preferred = (await client.get(f"/v1/people/{person_id}/identities")).json()
+    assert len(after_preferred) == 2
+    preferred_entry = next(e for e in after_preferred if e["kind"] == "preferred")
+    assert preferred_entry["first_names"] == "Luke"
+    assert preferred_entry["valid_from"] is None  # never invented
+
+    # Re-saving the identical preferred_name must not append a duplicate row.
+    await client.patch(
+        f"/v1/people/{person_id}",
+        json={"preferred_name": "Luke"},
+        headers=headers,
+    )
+    unchanged = (await client.get(f"/v1/people/{person_id}/identities")).json()
+    assert len(unchanged) == 2
+
+    # A genuine change appends a new row -- the old one is never rewritten.
+    await client.patch(
+        f"/v1/people/{person_id}",
+        json={"preferred_name": "L."},
+        headers=headers,
+    )
+    after_second_change = (await client.get(f"/v1/people/{person_id}/identities")).json()
+    assert len(after_second_change) == 3
+    preferred_names = sorted(
+        e["first_names"] for e in after_second_change if e["kind"] == "preferred"
+    )
+    assert preferred_names == ["L.", "Luke"]
+
+
+async def test_identity_history_isolated_per_user(client, sessionmaker, lukas_payload) -> None:
+    headers_a = await _login(client, sessionmaker, email="identity-a@example.com")
+    person_id = (await client.post("/v1/people", json=lukas_payload, headers=headers_a)).json()[
+        "id"
+    ]
+
+    await client.post("/v1/auth/logout")
+    headers_b = await _login(client, sessionmaker, email="identity-b@example.com")
+
+    response = await client.get(f"/v1/people/{person_id}/identities", headers=headers_b)
+    assert response.status_code == 404

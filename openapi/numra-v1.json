@@ -345,6 +345,75 @@
         "title": "LoginRequest",
         "type": "object"
       },
+      "NameIdentityKind": {
+        "enum": [
+          "birth",
+          "current",
+          "preferred"
+        ],
+        "title": "NameIdentityKind",
+        "type": "string"
+      },
+      "NameIdentityOut": {
+        "description": "V1.5 Epic C: one recorded name Numra has held for a person. `recorded_at` is\nwhen Numra actually wrote this row down -- always present. `valid_from` is only\never set when the effective date is a genuinely known fact (the birth identity's\n`valid_from` is the birth date itself); it is `None` for current/preferred names,\nsince no historical effective date is knowable for those -- never a guess.",
+        "properties": {
+          "first_names": {
+            "title": "First Names",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/NameIdentityKind"
+          },
+          "last_name": {
+            "title": "Last Name",
+            "type": "string"
+          },
+          "middle_names": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Middle Names"
+          },
+          "recorded_at": {
+            "format": "date-time",
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "valid_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid From"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "first_names",
+          "middle_names",
+          "last_name",
+          "valid_from",
+          "recorded_at"
+        ],
+        "title": "NameIdentityOut",
+        "type": "object"
+      },
       "PersonInput": {
         "description": "Raw person input as supplied by a caller, before normalization.",
         "properties": {
@@ -2254,6 +2323,69 @@
         "summary": "Create Calculation Route",
         "tags": [
           "calculations"
+        ]
+      }
+    },
+    "/v1/people/{person_id}/identities": {
+      "get": {
+        "operationId": "list_identities_route_v1_people__person_id__identities_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "person_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Person Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/NameIdentityOut"
+                  },
+                  "title": "Response List Identities Route V1 People  Person Id  Identities Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Identities Route",
+        "tags": [
+          "people"
         ]
       }
     },

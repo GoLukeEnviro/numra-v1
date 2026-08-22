@@ -5,6 +5,7 @@ import uuid
 
 from pydantic import BaseModel
 
+from numra_api.models.enums import NameIdentityKind
 from numra_numerology.models.person import BirthPlace, BirthTime
 
 
@@ -46,3 +47,19 @@ class PersonOut(BaseModel):
     updated_at: dt.datetime
 
     model_config = {"from_attributes": True}
+
+
+class NameIdentityOut(BaseModel):
+    """V1.5 Epic C: one recorded name Numra has held for a person. `recorded_at` is
+    when Numra actually wrote this row down -- always present. `valid_from` is only
+    ever set when the effective date is a genuinely known fact (the birth identity's
+    `valid_from` is the birth date itself); it is `None` for current/preferred names,
+    since no historical effective date is knowable for those -- never a guess."""
+
+    id: uuid.UUID
+    kind: NameIdentityKind
+    first_names: str
+    middle_names: str | None
+    last_name: str
+    valid_from: dt.date | None
+    recorded_at: dt.datetime

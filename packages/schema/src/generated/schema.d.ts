@@ -230,6 +230,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/people/{person_id}/identities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Identities Route */
+        get: operations["list_identities_route_v1_people__person_id__identities_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/people/{person_id}/timing": {
         parameters: {
             query?: never;
@@ -493,6 +510,40 @@ export interface components {
             email: string;
             /** Password */
             password: string;
+        };
+        /**
+         * NameIdentityKind
+         * @enum {string}
+         */
+        NameIdentityKind: "birth" | "current" | "preferred";
+        /**
+         * NameIdentityOut
+         * @description V1.5 Epic C: one recorded name Numra has held for a person. `recorded_at` is
+         *     when Numra actually wrote this row down -- always present. `valid_from` is only
+         *     ever set when the effective date is a genuinely known fact (the birth identity's
+         *     `valid_from` is the birth date itself); it is `None` for current/preferred names,
+         *     since no historical effective date is knowable for those -- never a guess.
+         */
+        NameIdentityOut: {
+            /** First Names */
+            first_names: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            kind: components["schemas"]["NameIdentityKind"];
+            /** Last Name */
+            last_name: string;
+            /** Middle Names */
+            middle_names: string | null;
+            /**
+             * Recorded At
+             * Format: date-time
+             */
+            recorded_at: string;
+            /** Valid From */
+            valid_from: string | null;
         };
         /**
          * PersonInput
@@ -1359,6 +1410,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CalculationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_identities_route_v1_people__person_id__identities_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                person_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NameIdentityOut"][];
                 };
             };
             /** @description Validation Error */

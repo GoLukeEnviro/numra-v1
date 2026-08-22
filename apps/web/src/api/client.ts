@@ -5,6 +5,8 @@ export type UserOut = components["schemas"]["UserOut"];
 export type PersonInput = components["schemas"]["PersonInput"];
 export type PersonOut = components["schemas"]["PersonOut"];
 export type PersonPatchRequest = components["schemas"]["PersonPatchRequest"];
+export type NameIdentityOut = components["schemas"]["NameIdentityOut"];
+export type NameIdentityKind = components["schemas"]["NameIdentityKind"];
 export type CalculateRequest = components["schemas"]["CalculateRequest"];
 export type CalculationOut = components["schemas"]["CalculationOut"];
 export type CalculationSummaryOut = components["schemas"]["CalculationSummaryOut"];
@@ -166,6 +168,9 @@ export const api = {
       request<unknown>(`/v1/people/${personId}/timing`, {
         query: { as_of_date: asOfDate },
       }),
+    /** V1.5 Epic C: the real, server-recorded name history for this person. */
+    identities: (personId: string) =>
+      request<NameIdentityOut[]>(`/v1/people/${personId}/identities`),
   },
   calculations: {
     create: (personId: string, body: CalculateRequest) =>

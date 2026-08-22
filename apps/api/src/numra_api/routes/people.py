@@ -7,7 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from numra_api.config import Settings
 from numra_api.deps import get_current_user, get_db, get_settings_dep, require_csrf
-from numra_api.models import User
+from numra_api.models import NameIdentity, User
+from numra_api.repositories.identities import list_name_identities_for_person, sync_identity_history
 from numra_api.repositories.people import (
     create_person,
     delete_person,
@@ -15,7 +16,7 @@ from numra_api.repositories.people import (
     list_people,
     update_person,
 )
-from numra_api.schemas.person import PersonOut, PersonPatchRequest
+from numra_api.schemas.person import NameIdentityOut, PersonOut, PersonPatchRequest
 from numra_api.services.errors import NotFoundError
 from numra_api.services.person_service import assert_birth_date_not_in_future
 from numra_numerology.models.person import PersonInput
@@ -25,6 +26,18 @@ router = APIRouter(prefix="/v1/people", tags=["people"])
 
 def _to_out(person) -> PersonOut:  # type: ignore[no-untyped-def]
     return PersonOut.model_validate(person, from_attributes=True)
+
+
+def _identity_to_out(identity: NameIdentity) -> NameIdentityOut:
+    return NameIdentityOut(
+        id=identity.id,
+        kind=identity.kind,
+        first_names=identity.first_names,
+        middle_names=identity.middle_names,
+        last_name=identity.last_name,
+        valid_from=identity.valid_from,
+        recorded_at=identity.created_at,
+    )
 
 
 @router.get("", response_model=list[PersonOut])
@@ -57,7 +70,21 @@ async def create_person_route(
         current_last_name=body.current_last_name,
         preferred_name=body.preferred_name,
     )
+    await sync_identity_history(db, person=person)
     return _to_out(person)
+
+
+@router.get("/{person_id}/identities", response_model=list[NameIdentityOut])
+async def list_identities_route(
+    person_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[NameIdentityOut]:
+    person = await get_person(db, person_id=person_id, user_id=user.id)
+    if person is None:
+        raise NotFoundError(f"person {person_id} not found")
+    identities = await list_name_identities_for_person(db, person_id=person_id, user_id=user.id)
+    return [_identity_to_out(i) for i in identities]
 
 
 @router.get("/{person_id}", response_model=PersonOut)
@@ -120,6 +147,7 @@ async def patch_person_route(
         updates["preferred_name"] = body.preferred_name
 
     person = await update_person(db, person=person, **updates)
+    await sync_identity_history(db, person=person)
     return _to_out(person)
 
 
