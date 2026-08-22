@@ -124,3 +124,56 @@ async def test_person_isolated_per_user(client, sessionmaker, lukas_payload) -> 
 
     response = await client.get(f"/v1/people/{person_id}", headers=headers_b)
     assert response.status_code == 404
+
+
+async def test_list_calculations_for_person_is_server_authoritative(
+    client, sessionmaker, lukas_payload
+) -> None:
+    """The calculation-history list is the server truth a fresh browser context (no
+    LocalStorage) relies on to discover existing snapshots -- V1.5 Epic A."""
+    headers = await _login(client, sessionmaker)
+    person_id = (await client.post("/v1/people", json=lukas_payload, headers=headers)).json()["id"]
+
+    first = (
+        await client.post(
+            f"/v1/people/{person_id}/calculations",
+            json={"as_of_date": "2026-01-01"},
+            headers=headers,
+        )
+    ).json()
+    second = (
+        await client.post(
+            f"/v1/people/{person_id}/calculations",
+            json={"as_of_date": "2026-06-01"},
+            headers=headers,
+        )
+    ).json()
+
+    list_response = await client.get(f"/v1/people/{person_id}/calculations")
+    assert list_response.status_code == 200
+    summaries = list_response.json()
+    assert [s["id"] for s in summaries] == [second["id"], first["id"]]  # newest first
+    # List cards never need the full canonical profile payload.
+    assert "canonical_profile" not in summaries[0]
+    assert summaries[0]["deterministic_hash"] == second["deterministic_hash"]
+    assert summaries[0]["as_of_date"] == "2026-06-01"
+
+
+async def test_list_calculations_isolated_per_user_and_unknown_person(
+    client, sessionmaker, lukas_payload
+) -> None:
+    headers_a = await _login(client, sessionmaker, email="calc-list-a@example.com")
+    person_id = (await client.post("/v1/people", json=lukas_payload, headers=headers_a)).json()[
+        "id"
+    ]
+    await client.post(
+        f"/v1/people/{person_id}/calculations",
+        json={"as_of_date": "2026-01-01"},
+        headers=headers_a,
+    )
+
+    await client.post("/v1/auth/logout")
+    headers_b = await _login(client, sessionmaker, email="calc-list-b@example.com")
+
+    response = await client.get(f"/v1/people/{person_id}/calculations", headers=headers_b)
+    assert response.status_code == 404

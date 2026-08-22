@@ -156,6 +156,52 @@
         "title": "CalculationOut",
         "type": "object"
       },
+      "CalculationSummaryOut": {
+        "description": "History-list shape: no `canonical_profile` payload \u2014 list cards only need\nenough to identify and link to a snapshot, not the full profile JSON.",
+        "properties": {
+          "as_of_date": {
+            "format": "date",
+            "title": "As Of Date",
+            "type": "string"
+          },
+          "calculation_version": {
+            "title": "Calculation Version",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "deterministic_hash": {
+            "title": "Deterministic Hash",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "person_id": {
+            "title": "Person Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "title": "Schema Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "person_id",
+          "as_of_date",
+          "calculation_version",
+          "schema_version",
+          "deterministic_hash",
+          "created_at"
+        ],
+        "title": "CalculationSummaryOut",
+        "type": "object"
+      },
       "DeleteAccountRequest": {
         "description": "Re-authentication is required to confirm irreversible account deletion\n(master prompt \u00a7137).",
         "properties": {
@@ -573,6 +619,25 @@
         "title": "PersonPatchRequest",
         "type": "object"
       },
+      "PersonRefOut": {
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "display_name"
+        ],
+        "title": "PersonRefOut",
+        "type": "object"
+      },
       "RegisterRequest": {
         "properties": {
           "email": {
@@ -634,16 +699,52 @@
           "id": {
             "title": "Id",
             "type": "string"
+          },
+          "person_a": {
+            "$ref": "#/components/schemas/PersonRefOut"
+          },
+          "person_b": {
+            "$ref": "#/components/schemas/PersonRefOut"
           }
         },
         "required": [
           "id",
           "calculation_a_id",
           "calculation_b_id",
+          "person_a",
+          "person_b",
           "comparison",
           "created_at"
         ],
         "title": "RelationshipOut",
+        "type": "object"
+      },
+      "RelationshipSummaryOut": {
+        "description": "Relationship-library list shape: resolved person names instead of raw\ncalculation UUIDs, so a list card never needs a LocalStorage cache to say who\nPerson A/B are. No `comparison` payload \u2014 that's a detail-view concern.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "person_a": {
+            "$ref": "#/components/schemas/PersonRefOut"
+          },
+          "person_b": {
+            "$ref": "#/components/schemas/PersonRefOut"
+          }
+        },
+        "required": [
+          "id",
+          "person_a",
+          "person_b",
+          "created_at"
+        ],
+        "title": "RelationshipSummaryOut",
         "type": "object"
       },
       "ReportCreateRequest": {
@@ -810,6 +911,62 @@
           "job_id"
         ],
         "title": "ReportOut",
+        "type": "object"
+      },
+      "ReportSummaryOut": {
+        "description": "Report-library list shape: a resolved person reference and a computed\nword_count instead of the full `content` payload, which a list card never\nrenders.",
+        "properties": {
+          "calculation_id": {
+            "title": "Calculation Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "generated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generated At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "person": {
+            "$ref": "#/components/schemas/PersonRefOut"
+          },
+          "report_type": {
+            "$ref": "#/components/schemas/ReportType"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "word_count": {
+            "title": "Word Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "calculation_id",
+          "person",
+          "report_type",
+          "status",
+          "word_count",
+          "generated_at",
+          "created_at"
+        ],
+        "title": "ReportSummaryOut",
         "type": "object"
       },
       "ReportType": {
@@ -1850,6 +2007,90 @@
       }
     },
     "/v1/people/{person_id}/calculations": {
+      "get": {
+        "operationId": "list_calculations_route_v1_people__person_id__calculations_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "person_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Person Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CalculationSummaryOut"
+                  },
+                  "title": "Response List Calculations Route V1 People  Person Id  Calculations Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Calculations Route",
+        "tags": [
+          "calculations"
+        ]
+      },
       "post": {
         "operationId": "create_calculation_route_v1_people__person_id__calculations_post",
         "parameters": [
@@ -2023,6 +2264,80 @@
       }
     },
     "/v1/relationships": {
+      "get": {
+        "operationId": "list_relationships_route_v1_relationships_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RelationshipSummaryOut"
+                  },
+                  "title": "Response List Relationships Route V1 Relationships Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Relationships Route",
+        "tags": [
+          "relationships"
+        ]
+      },
       "post": {
         "operationId": "create_relationship_route_v1_relationships_post",
         "parameters": [
@@ -2232,6 +2547,130 @@
       }
     },
     "/v1/reports": {
+      "get": {
+        "operationId": "list_reports_route_v1_reports_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "person_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Person Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "calculation_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Calculation Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ReportSummaryOut"
+                  },
+                  "title": "Response List Reports Route V1 Reports Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Reports Route",
+        "tags": [
+          "reports"
+        ]
+      },
       "post": {
         "operationId": "create_report_route_v1_reports_post",
         "parameters": [

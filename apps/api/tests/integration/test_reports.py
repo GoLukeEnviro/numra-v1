@@ -65,6 +65,74 @@ async def test_report_job_completes_via_worker(client, sessionmaker, llm, lukas_
     assert len(final_report["content"]["sections"]) >= 10
 
 
+async def test_list_reports_filters_and_word_count(
+    client, sessionmaker, llm, lukas_payload
+) -> None:
+    """The report library (V1.5 Epic A/D) is server-authoritative: this is the list
+    a fresh browser context with no LocalStorage relies on to discover reports."""
+    headers = await _login(client, sessionmaker, email="list-reports@example.com")
+    person = (await client.post("/v1/people", json=lukas_payload, headers=headers)).json()
+    calc = (
+        await client.post(
+            f"/v1/people/{person['id']}/calculations",
+            json={"as_of_date": "2026-01-01"},
+            headers=headers,
+        )
+    ).json()
+
+    create_response = await client.post(
+        "/v1/reports", json={"calculation_id": calc["id"], "report_type": "QUICK"}, headers=headers
+    )
+    report_id = create_response.json()["id"]
+
+    pending_list = await client.get("/v1/reports")
+    assert pending_list.status_code == 200
+    [summary] = pending_list.json()
+    assert summary["id"] == report_id
+    assert summary["person"]["id"] == person["id"]
+    assert summary["person"]["display_name"] == "Lukas Springer"
+    assert summary["calculation_id"] == calc["id"]
+    assert summary["status"] == "PENDING"
+    assert summary["word_count"] == 0
+    assert "content" not in summary  # list cards never ship the full report body
+
+    claimed = await run_one_cycle(sessionmaker, llm=llm)
+    assert claimed is True
+
+    complete_list = await client.get("/v1/reports", params={"status": "COMPLETE"})
+    assert complete_list.status_code == 200
+    [complete_summary] = complete_list.json()
+    assert complete_summary["status"] == "COMPLETE"
+    assert complete_summary["word_count"] > 0
+
+    by_person = await client.get("/v1/reports", params={"person_id": person["id"]})
+    assert len(by_person.json()) == 1
+    by_calculation = await client.get("/v1/reports", params={"calculation_id": calc["id"]})
+    assert len(by_calculation.json()) == 1
+
+    other_person_payload = {**lukas_payload, "birth_first_names": "Other"}
+    other_person = (
+        await client.post("/v1/people", json=other_person_payload, headers=headers)
+    ).json()
+    by_wrong_person = await client.get("/v1/reports", params={"person_id": other_person["id"]})
+    assert by_wrong_person.json() == []
+
+
+async def test_list_reports_isolated_per_user(client, sessionmaker, lukas_payload) -> None:
+    headers_a = await _login(client, sessionmaker, email="list-reports-a@example.com")
+    calc_id_a = await _create_person_and_calculation(client, headers_a, lukas_payload)
+    await client.post(
+        "/v1/reports", json={"calculation_id": calc_id_a, "report_type": "QUICK"}, headers=headers_a
+    )
+
+    await client.post("/v1/auth/logout")
+    headers_b = await _login(client, sessionmaker, email="list-reports-b@example.com")
+
+    response = await client.get("/v1/reports", headers=headers_b)
+    assert response.status_code == 200
+    assert response.json() == []
+
+
 async def test_report_idempotency_key_returns_same_job(client, sessionmaker, lukas_payload) -> None:
     headers = await _login(client, sessionmaker, email="idem@example.com")
     calc_id = await _create_person_and_calculation(client, headers, lukas_payload)

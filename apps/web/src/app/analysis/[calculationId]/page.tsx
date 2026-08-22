@@ -115,7 +115,7 @@ function AnalysisContent({ calculationId }: { calculationId: string }) {
 
       <section id="written-report" className="mt-14 scroll-mt-8">
         <h2 className="mb-4 font-serif text-xl text-ivory">Written report</h2>
-        <ReportLauncher calculationId={calculation.id} personLabel={name} />
+        <ReportLauncher calculationId={calculation.id} />
       </section>
     </div>
   );

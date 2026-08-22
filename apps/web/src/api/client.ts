@@ -7,13 +7,17 @@ export type PersonOut = components["schemas"]["PersonOut"];
 export type PersonPatchRequest = components["schemas"]["PersonPatchRequest"];
 export type CalculateRequest = components["schemas"]["CalculateRequest"];
 export type CalculationOut = components["schemas"]["CalculationOut"];
+export type CalculationSummaryOut = components["schemas"]["CalculationSummaryOut"];
 export type RelationshipCreateRequest = components["schemas"]["RelationshipCreateRequest"];
 export type RelationshipOut = components["schemas"]["RelationshipOut"];
+export type RelationshipSummaryOut = components["schemas"]["RelationshipSummaryOut"];
+export type PersonRefOut = components["schemas"]["PersonRefOut"];
 export type BirthPlace = components["schemas"]["BirthPlace"];
 export type BirthTime = components["schemas"]["BirthTime"];
 export type BirthTimePrecision = components["schemas"]["BirthTimePrecision"];
 export type ReportCreateRequest = components["schemas"]["ReportCreateRequest"];
 export type ReportOut = components["schemas"]["ReportOut"];
+export type ReportSummaryOut = components["schemas"]["ReportSummaryOut"];
 export type ReportJobOut = components["schemas"]["ReportJobOut"];
 export type ReportJobStatus = components["schemas"]["ReportJobStatus"];
 export type ReportType = components["schemas"]["ReportType"];
@@ -171,12 +175,17 @@ export const api = {
       }),
     get: (calculationId: string) =>
       request<CalculationOut>(`/v1/calculations/${calculationId}`),
+    /** Calculation history for a person — server-authoritative, newest first. */
+    list: (personId: string) =>
+      request<CalculationSummaryOut[]>(`/v1/people/${personId}/calculations`),
   },
   relationships: {
     create: (body: RelationshipCreateRequest) =>
       request<RelationshipOut>("/v1/relationships", { method: "POST", body }),
     get: (relationshipId: string) =>
       request<RelationshipOut>(`/v1/relationships/${relationshipId}`),
+    /** The relationship library — server-authoritative, resolved person names. */
+    list: () => request<RelationshipSummaryOut[]>("/v1/relationships"),
   },
   reports: {
     /**
@@ -193,6 +202,15 @@ export const api = {
       }),
     get: (reportId: string) => request<ReportOut>(`/v1/reports/${reportId}`),
     getJob: (jobId: string) => request<ReportJobOut>(`/v1/report-jobs/${jobId}`),
+    /** The report library — server-authoritative, optionally filtered. */
+    list: (filter?: { personId?: string; calculationId?: string; status?: string }) =>
+      request<ReportSummaryOut[]>("/v1/reports", {
+        query: {
+          person_id: filter?.personId,
+          calculation_id: filter?.calculationId,
+          status: filter?.status,
+        },
+      }),
   },
   exports: {
     /**

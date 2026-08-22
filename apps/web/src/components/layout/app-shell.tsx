@@ -6,7 +6,15 @@ import { useAuth } from "@/lib/auth-context";
 import { RequireAuth } from "@/components/layout/require-auth";
 import { NumericWheel } from "@/components/layout/numeric-wheel";
 import { Button } from "@/components/ui/button";
-import { LogOut, Users, LayoutGrid, GitCompareArrows, Settings, Sunrise } from "lucide-react";
+import {
+  LogOut,
+  Users,
+  LayoutGrid,
+  GitCompareArrows,
+  Settings,
+  Sunrise,
+  BookOpen,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Today leads: it is the lightest, most-returned-to view, and the only one that
@@ -15,6 +23,7 @@ const NAV = [
   { href: "/today", label: "Today", icon: Sunrise },
   { href: "/dashboard", label: "Dashboard", icon: LayoutGrid },
   { href: "/people", label: "People", icon: Users },
+  { href: "/reports", label: "Reports", icon: BookOpen },
   { href: "/relationships", label: "Relationships", icon: GitCompareArrows },
   { href: "/settings", label: "Settings", icon: Settings },
 ];

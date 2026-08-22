@@ -2,25 +2,58 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from numra_api.deps import get_current_user, get_db, require_csrf
-from numra_api.models import RelationshipComparison, User
+from numra_api.models import Person, RelationshipComparison, User
 from numra_api.repositories.calculations import get_calculation_for_user
-from numra_api.schemas.relationship import RelationshipCreateRequest, RelationshipOut
+from numra_api.repositories.relationships import (
+    get_relationship_with_people_for_user,
+    list_relationships_for_user,
+)
+from numra_api.schemas.person_ref import PersonRefOut, person_display_name
+from numra_api.schemas.relationship import (
+    RelationshipCreateRequest,
+    RelationshipOut,
+    RelationshipSummaryOut,
+)
 from numra_api.services.errors import NotFoundError
 from numra_api.services.relationship_service import build_relationship_comparison
 
 router = APIRouter(prefix="/v1/relationships", tags=["relationships"])
 
 
-def _to_out(rel: RelationshipComparison) -> RelationshipOut:
+def _person_ref(person: Person) -> PersonRefOut:
+    return PersonRefOut(
+        id=person.id,
+        display_name=person_display_name(
+            preferred_name=person.preferred_name,
+            birth_first_names=person.birth_first_names,
+            birth_last_name=person.birth_last_name,
+        ),
+    )
+
+
+def _to_out(rel: RelationshipComparison, person_a: Person, person_b: Person) -> RelationshipOut:
     return RelationshipOut(
         id=str(rel.id),
         calculation_a_id=str(rel.calculation_a_id),
         calculation_b_id=str(rel.calculation_b_id),
+        person_a=_person_ref(person_a),
+        person_b=_person_ref(person_b),
         comparison=rel.comparison_json,
+        created_at=rel.created_at,
+    )
+
+
+def _to_summary(
+    rel: RelationshipComparison, person_a: Person, person_b: Person
+) -> RelationshipSummaryOut:
+    return RelationshipSummaryOut(
+        id=str(rel.id),
+        person_a=_person_ref(person_a),
+        person_b=_person_ref(person_b),
         created_at=rel.created_at,
     )
 
@@ -53,7 +86,23 @@ async def create_relationship_route(
     )
     db.add(relationship)
     await db.flush()
-    return _to_out(relationship)
+
+    row = await get_relationship_with_people_for_user(
+        db, relationship_id=relationship.id, user_id=user.id
+    )
+    assert row is not None
+    return _to_out(*row)
+
+
+@router.get("", response_model=list[RelationshipSummaryOut])
+async def list_relationships_route(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+) -> list[RelationshipSummaryOut]:
+    rows = await list_relationships_for_user(db, user_id=user.id, limit=limit, offset=offset)
+    return [_to_summary(rel, person_a, person_b) for rel, person_a, person_b in rows]
 
 
 @router.get("/{relationship_id}", response_model=RelationshipOut)
@@ -62,7 +111,9 @@ async def get_relationship_route(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> RelationshipOut:
-    relationship = await db.get(RelationshipComparison, relationship_id)
-    if relationship is None or relationship.user_id != user.id:
+    row = await get_relationship_with_people_for_user(
+        db, relationship_id=relationship_id, user_id=user.id
+    )
+    if row is None:
         raise NotFoundError(f"relationship {relationship_id} not found")
-    return _to_out(relationship)
+    return _to_out(*row)

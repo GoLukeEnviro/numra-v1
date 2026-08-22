@@ -6,6 +6,7 @@ from typing import Any
 from pydantic import BaseModel
 
 from numra_api.models.enums import ReportJobStatus, ReportType
+from numra_api.schemas.person_ref import PersonRefOut
 
 
 class ReportCreateRequest(BaseModel):
@@ -25,6 +26,21 @@ class ReportOut(BaseModel):
     generated_at: dt.datetime | None
     created_at: dt.datetime
     job_id: str
+
+
+class ReportSummaryOut(BaseModel):
+    """Report-library list shape: a resolved person reference and a computed
+    word_count instead of the full `content` payload, which a list card never
+    renders."""
+
+    id: str
+    calculation_id: str
+    person: PersonRefOut
+    report_type: ReportType
+    status: str
+    word_count: int
+    generated_at: dt.datetime | None
+    created_at: dt.datetime
 
 
 class ReportJobOut(BaseModel):

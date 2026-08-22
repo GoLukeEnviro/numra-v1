@@ -219,7 +219,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** List Calculations Route */
+        get: operations["list_calculations_route_v1_people__person_id__calculations_get"];
         put?: never;
         /** Create Calculation Route */
         post: operations["create_calculation_route_v1_people__person_id__calculations_post"];
@@ -257,7 +258,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** List Relationships Route */
+        get: operations["list_relationships_route_v1_relationships_get"];
         put?: never;
         /** Create Relationship Route */
         post: operations["create_relationship_route_v1_relationships_post"];
@@ -308,7 +310,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** List Reports Route */
+        get: operations["list_reports_route_v1_reports_get"];
         put?: never;
         /** Create Report Route */
         post: operations["create_report_route_v1_reports_post"];
@@ -391,6 +394,33 @@ export interface components {
             canonical_profile: {
                 [key: string]: unknown;
             };
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Deterministic Hash */
+            deterministic_hash: string;
+            /** Id */
+            id: string;
+            /** Person Id */
+            person_id: string;
+            /** Schema Version */
+            schema_version: string;
+        };
+        /**
+         * CalculationSummaryOut
+         * @description History-list shape: no `canonical_profile` payload — list cards only need
+         *     enough to identify and link to a snapshot, not the full profile JSON.
+         */
+        CalculationSummaryOut: {
+            /**
+             * As Of Date
+             * Format: date
+             */
+            as_of_date: string;
+            /** Calculation Version */
+            calculation_version: string;
             /**
              * Created At
              * Format: date-time
@@ -541,6 +571,16 @@ export interface components {
             /** Preferred Name */
             preferred_name?: string | null;
         };
+        /** PersonRefOut */
+        PersonRefOut: {
+            /** Display Name */
+            display_name: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+        };
         /** RegisterRequest */
         RegisterRequest: {
             /**
@@ -575,6 +615,25 @@ export interface components {
             created_at: string;
             /** Id */
             id: string;
+            person_a: components["schemas"]["PersonRefOut"];
+            person_b: components["schemas"]["PersonRefOut"];
+        };
+        /**
+         * RelationshipSummaryOut
+         * @description Relationship-library list shape: resolved person names instead of raw
+         *     calculation UUIDs, so a list card never needs a LocalStorage cache to say who
+         *     Person A/B are. No `comparison` payload — that's a detail-view concern.
+         */
+        RelationshipSummaryOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Id */
+            id: string;
+            person_a: components["schemas"]["PersonRefOut"];
+            person_b: components["schemas"]["PersonRefOut"];
         };
         /** ReportCreateRequest */
         ReportCreateRequest: {
@@ -639,6 +698,31 @@ export interface components {
             report_type: components["schemas"]["ReportType"];
             /** Status */
             status: string;
+        };
+        /**
+         * ReportSummaryOut
+         * @description Report-library list shape: a resolved person reference and a computed
+         *     word_count instead of the full `content` payload, which a list card never
+         *     renders.
+         */
+        ReportSummaryOut: {
+            /** Calculation Id */
+            calculation_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Generated At */
+            generated_at: string | null;
+            /** Id */
+            id: string;
+            person: components["schemas"]["PersonRefOut"];
+            report_type: components["schemas"]["ReportType"];
+            /** Status */
+            status: string;
+            /** Word Count */
+            word_count: number;
         };
         /**
          * ReportType
@@ -1193,6 +1277,42 @@ export interface operations {
             };
         };
     };
+    list_calculations_route_v1_people__person_id__calculations_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                person_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalculationSummaryOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     create_calculation_route_v1_people__person_id__calculations_post: {
         parameters: {
             query?: never;
@@ -1257,6 +1377,40 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_relationships_route_v1_relationships_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RelationshipSummaryOut"][];
                 };
             };
             /** @description Validation Error */
@@ -1361,6 +1515,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReportJobOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_reports_route_v1_reports_get: {
+        parameters: {
+            query?: {
+                person_id?: string | null;
+                calculation_id?: string | null;
+                status?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportSummaryOut"][];
                 };
             };
             /** @description Validation Error */

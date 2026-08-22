@@ -19,3 +19,16 @@ class CalculationOut(BaseModel):
     deterministic_hash: str
     canonical_profile: dict[str, Any]
     created_at: dt.datetime
+
+
+class CalculationSummaryOut(BaseModel):
+    """History-list shape: no `canonical_profile` payload — list cards only need
+    enough to identify and link to a snapshot, not the full profile JSON."""
+
+    id: str
+    person_id: str
+    as_of_date: dt.date
+    calculation_version: str
+    schema_version: str
+    deterministic_hash: str
+    created_at: dt.datetime

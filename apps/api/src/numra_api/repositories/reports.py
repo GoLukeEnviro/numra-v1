@@ -4,11 +4,11 @@ import datetime as dt
 import uuid
 from typing import Any
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from numra_api.models import Report, ReportJob, ReportSection
+from numra_api.models import Calculation, Person, Report, ReportJob, ReportSection
 from numra_api.models.enums import ReportJobStatus, ReportType
 
 #: In-flight statuses a crashed worker may have left a job in — these are still
@@ -95,6 +95,46 @@ async def get_report_job_for_user(
     stmt = select(ReportJob).where(ReportJob.id == job_id, ReportJob.user_id == user_id)
     result = await db.execute(stmt)
     return result.scalar_one_or_none()
+
+
+async def list_reports_for_user(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    person_id: uuid.UUID | None,
+    calculation_id: uuid.UUID | None,
+    status: str | None,
+    limit: int,
+    offset: int,
+) -> list[tuple[Report, Person, int]]:
+    """List view: returns `(report, person, word_count)` triples in one query — no
+    N+1 (word_count is a correlated scalar subquery, the person row comes from the
+    existing Calculation join) and no full `content_json` payload, which list cards
+    never need. `user_id` scoping is on `Report.user_id` directly (Report already
+    carries its owner), so this never needs to trust a caller-supplied
+    person_id/calculation_id for ownership -- an id belonging to another user's data
+    simply matches nothing."""
+    word_count_subquery = (
+        select(func.coalesce(func.sum(ReportSection.word_count), 0))
+        .where(ReportSection.report_id == Report.id)
+        .correlate(Report)
+        .scalar_subquery()
+    )
+    stmt = (
+        select(Report, Person, word_count_subquery)
+        .join(Calculation, Calculation.id == Report.calculation_id)
+        .join(Person, Person.id == Calculation.person_id)
+        .where(Report.user_id == user_id)
+    )
+    if person_id is not None:
+        stmt = stmt.where(Calculation.person_id == person_id)
+    if calculation_id is not None:
+        stmt = stmt.where(Report.calculation_id == calculation_id)
+    if status is not None:
+        stmt = stmt.where(Report.status == status)
+    stmt = stmt.order_by(Report.created_at.desc()).limit(limit).offset(offset)
+    result = await db.execute(stmt)
+    return [(report, person, word_count) for report, person, word_count in result.all()]
 
 
 async def claim_next_job(

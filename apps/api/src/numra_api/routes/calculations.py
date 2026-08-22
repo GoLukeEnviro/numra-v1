@@ -4,14 +4,17 @@ import datetime as dt
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from numra_api.deps import get_current_user, get_db, require_csrf
 from numra_api.models import User
-from numra_api.repositories.calculations import get_calculation_for_user
+from numra_api.repositories.calculations import (
+    get_calculation_for_user,
+    list_calculations_for_person,
+)
 from numra_api.repositories.people import get_person
-from numra_api.schemas.calculation import CalculateRequest, CalculationOut
+from numra_api.schemas.calculation import CalculateRequest, CalculationOut, CalculationSummaryOut
 from numra_api.services.calculation_service import (
     person_input_from_row,
     run_and_persist_calculation,
@@ -35,6 +38,18 @@ def _to_out(calc) -> CalculationOut:  # type: ignore[no-untyped-def]
     )
 
 
+def _to_summary(calc) -> CalculationSummaryOut:  # type: ignore[no-untyped-def]
+    return CalculationSummaryOut(
+        id=str(calc.id),
+        person_id=str(calc.person_id),
+        as_of_date=calc.as_of_date,
+        calculation_version=calc.calculation_version,
+        schema_version=calc.schema_version,
+        deterministic_hash=calc.deterministic_hash,
+        created_at=calc.created_at,
+    )
+
+
 @router.post(
     "/people/{person_id}/calculations",
     response_model=CalculationOut,
@@ -52,6 +67,23 @@ async def create_calculation_route(
         raise NotFoundError(f"person {person_id} not found")
     calculation = await run_and_persist_calculation(db, person=person, as_of_date=body.as_of_date)
     return _to_out(calculation)
+
+
+@router.get("/people/{person_id}/calculations", response_model=list[CalculationSummaryOut])
+async def list_calculations_route(
+    person_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+) -> list[CalculationSummaryOut]:
+    person = await get_person(db, person_id=person_id, user_id=user.id)
+    if person is None:
+        raise NotFoundError(f"person {person_id} not found")
+    calculations = await list_calculations_for_person(
+        db, person_id=person_id, user_id=user.id, limit=limit, offset=offset
+    )
+    return [_to_summary(calc) for calc in calculations]
 
 
 @router.get("/calculations/{calculation_id}", response_model=CalculationOut)

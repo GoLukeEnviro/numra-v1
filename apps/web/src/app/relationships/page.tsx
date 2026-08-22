@@ -9,10 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { LinkButton } from "@/components/ui/link-button";
-import { EmptyState } from "@/components/ui/states";
+import { EmptyState, LoadingState, ErrorState } from "@/components/ui/states";
 import { api, ApiError } from "@/api/client";
 import { getAllCached } from "@/lib/local-calculations";
-import { getAllCachedRelationships, recordRelationship } from "@/lib/local-relationships";
+import { useAsync } from "@/lib/use-async";
 import { formatDateTime } from "@/lib/utils";
 import { GitCompareArrows } from "lucide-react";
 
@@ -31,11 +31,6 @@ function ComparisonForm() {
   const calculationAId = calcAChoice === MANUAL_OPTION ? manualA.trim() : calcAChoice;
   const calculationBId = calcBChoice === MANUAL_OPTION ? manualB.trim() : calcBChoice;
 
-  function labelFor(id: string): string {
-    const cached = cachedCalculations.find((c) => c.calculationId === id);
-    return cached ? cached.personLabel : id.slice(0, 8);
-  }
-
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
@@ -44,11 +39,6 @@ function ComparisonForm() {
       const relationship = await api.relationships.create({
         calculation_a_id: calculationAId,
         calculation_b_id: calculationBId,
-      });
-      recordRelationship({
-        relationshipId: relationship.id,
-        labelA: labelFor(calculationAId),
-        labelB: labelFor(calculationBId),
       });
       router.push(`/relationships/${relationship.id}`);
     } catch (err) {
@@ -141,24 +131,41 @@ function ComparisonForm() {
   );
 }
 
+/**
+ * Server-authoritative — a fresh browser context with no LocalStorage still sees
+ * every comparison this account has ever created (V1.5 Epic A/E), with real person
+ * names resolved by the API, not a browser-only cache.
+ */
 function RecentComparisons() {
-  const cached = useMemo(() => getAllCachedRelationships(), []);
-  if (cached.length === 0) return null;
+  const state = useAsync(() => api.relationships.list(), []);
+
+  if (state.status === "loading") return <LoadingState label="Loading comparisons…" />;
+  if (state.status === "error") {
+    return (
+      <ErrorState
+        error={state.error}
+        onRetry={state.reload}
+        title="Could not load your comparisons"
+      />
+    );
+  }
+  if (state.data.length === 0) return null;
 
   return (
     <div className="mt-8">
       <h2 className="mb-4 font-serif text-xl text-ivory">Recent comparisons</h2>
       <div className="grid gap-3 sm:grid-cols-2">
-        {cached.map((r) => (
-          <Card key={r.relationshipId}>
+        {state.data.map((r) => (
+          <Card key={r.id}>
             <CardContent className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-text">
-                  {r.labelA} <span className="text-muted">vs.</span> {r.labelB}
+                  {r.person_a.display_name} <span className="text-muted">vs.</span>{" "}
+                  {r.person_b.display_name}
                 </p>
-                <p className="text-xs text-muted">{formatDateTime(r.savedAt)}</p>
+                <p className="text-xs text-muted">{formatDateTime(r.created_at)}</p>
               </div>
-              <LinkButton size="sm" variant="secondary" href={`/relationships/${r.relationshipId}`}>
+              <LinkButton size="sm" variant="secondary" href={`/relationships/${r.id}`}>
                 Open
               </LinkButton>
             </CardContent>
