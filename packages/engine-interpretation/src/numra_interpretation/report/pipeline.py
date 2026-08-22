@@ -245,6 +245,37 @@ async def _generate_section(
         )
     )
 
+    # The system instructions say to reference facts via "a known metric id" /
+    # "a known special id" but never state which ids are actually known — a model
+    # left to infer plausible-sounding names from prose like "personality = 44/8"
+    # can (and, live against Ollama Cloud's deepseek-v4-pro, did) invent a
+    # near-miss like `personality_number` instead of the real `personality`,
+    # which `_resolve_placeholders` then rejects outright. These two indices are
+    # the exact ground truth `_resolve_placeholders` validates against, so listing
+    # their keys here guarantees every id the model is told is "known" actually
+    # resolves.
+    # NOTE: deliberately does not spell out the literal "{{metric:ID}}" placeholder
+    # syntax here (unlike this docstring) — MockLLMProvider's deterministic filler
+    # seeds itself from every context_block's raw content, so a literal "{{...}}"
+    # written into an instruction block could itself get echoed into the generated
+    # text and then misfire the very placeholder resolver this block exists to keep
+    # accurate. Naming the two namespaces without the braces is safe either way.
+    valid_metric_ids = sorted(build_metric_display_value_index(profile))
+    valid_special_ids = sorted(build_special_claim_index(profile))
+    context_blocks.append(
+        ContextBlock(
+            role="instruction_supplement",
+            label="valid_placeholder_ids",
+            content=(
+                "The only valid ids in the metric placeholder namespace are: "
+                f"{', '.join(valid_metric_ids)}. "
+                "The only valid ids in the special placeholder namespace are: "
+                f"{', '.join(valid_special_ids)}. "
+                "Never invent an id outside these two lists, even if it seems descriptive."
+            ),
+        )
+    )
+
     numeric_claims = _numeric_claims_for_spec(profile, spec)
 
     if is_mock_provider:
