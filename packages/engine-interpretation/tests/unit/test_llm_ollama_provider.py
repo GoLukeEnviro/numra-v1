@@ -171,9 +171,7 @@ def test_generate_structured_sends_target_json_schema_to_model(monkeypatch) -> N
     asyncio.run(provider.generate_structured(request, _StructuredSection))
 
     messages = captured["payload"]["messages"]
-    schema_messages = [
-        m for m in messages if m["role"] == "system" and "metric_id" in m["content"]
-    ]
+    schema_messages = [m for m in messages if m["role"] == "system" and "metric_id" in m["content"]]
     assert schema_messages, f"expected the target JSON Schema in the prompt, got: {messages}"
 
 
@@ -182,9 +180,7 @@ def test_generate_structured_raises_clear_error_on_empty_content(monkeypatch) ->
     monkeypatch.setenv("OLLAMA_API_KEY", "test-key")
 
     def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(
-            200, json={"message": {"content": ""}, "done_reason": "length"}
-        )
+        return httpx.Response(200, json={"message": {"content": ""}, "done_reason": "length"})
 
     client = _client_with_transport(handler)
     provider = OllamaCloudProvider(client=client)
