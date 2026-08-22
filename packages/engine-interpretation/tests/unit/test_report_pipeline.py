@@ -451,3 +451,51 @@ async def test_generate_report_quick_type_skips_outline_step(
         profile=sample_profile, knowledge=knowledge_base, manifest=manifest, llm=TrackingProvider()
     )
     assert "ReportOutline" not in schema_calls
+
+
+async def test_generate_report_tells_model_the_valid_placeholder_ids(
+    sample_profile, knowledge_base
+) -> None:
+    """Regression test: live against Ollama Cloud's deepseek-v4-pro, the system
+    instructions said to reference facts via "a known metric id" without ever
+    stating which ids are known, and the model invented a plausible-sounding but
+    wrong id (`personality_number` instead of `personality`) that
+    `_resolve_placeholders` then rejected. Assert every section's context now
+    carries the real, resolvable id list — and never the literal "{{"/"}}"
+    placeholder syntax itself, which risks being echoed into MockLLMProvider's
+    seeded-from-context-blocks filler text and then misfiring the placeholder
+    resolver."""
+    manifest = build_manifest(report_type="QUICK", calculation_id="calc-1")
+    seen_blocks: list[tuple] = []
+
+    class TrackingProvider:
+        async def health(self) -> ProviderHealth:
+            return ProviderHealth(
+                status="healthy", provider="ollama_cloud", checked_at=dt.datetime.now(dt.UTC)
+            )
+
+        async def generate(self, request: GenerationRequest) -> GenerationResult:
+            raise AssertionError("not used")
+
+        async def generate_structured(self, request: StructuredGenerationRequest, schema: type):  # type: ignore[no-untyped-def]
+            seen_blocks.append(request.context_blocks)
+            section_id = request.metadata["section_id"]
+            target = int(request.metadata["target_word_count"])
+            return GeneratedSectionContent(
+                title=section_id,
+                text=_target_length_filler(section_id, target),
+                numeric_claims=(),
+                summary="s",
+            )
+
+    await generate_report(
+        profile=sample_profile, knowledge=knowledge_base, manifest=manifest, llm=TrackingProvider()
+    )
+
+    for blocks in seen_blocks:
+        id_blocks = [b for b in blocks if b.label == "valid_placeholder_ids"]
+        assert id_blocks, "expected a valid_placeholder_ids context block for every section"
+        content = id_blocks[0].content
+        assert "personality" in content
+        assert "{{" not in content
+        assert "}}" not in content
