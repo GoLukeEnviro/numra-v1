@@ -75,6 +75,32 @@ def test_health_is_degraded_on_non_200(monkeypatch) -> None:
     assert health.status == "degraded"
 
 
+def test_generate_appends_trigger_user_message_when_no_user_instructions(monkeypatch) -> None:
+    """Regression test: live against Ollama Cloud's deepseek-v4-pro/-flash models, a
+    message list containing only system-role entries (no trailing user turn) returned
+    an immediate empty response with done_reason="load" — no generation attempted at
+    all. Every request must end with a real user-role message."""
+    monkeypatch.setenv("OLLAMA_BASE_URL", "https://ollama.example.invalid")
+    monkeypatch.setenv("OLLAMA_API_KEY", "test-key")
+
+    captured: dict = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["payload"] = json.loads(request.content)
+        return httpx.Response(
+            200, json={"message": {"content": "Antworttext"}, "done_reason": "stop"}
+        )
+
+    client = _client_with_transport(handler)
+    provider = OllamaCloudProvider(client=client)
+    request = GenerationRequest(system_instructions="x")
+    asyncio.run(provider.generate(request))
+
+    messages = captured["payload"]["messages"]
+    assert messages[-1]["role"] == "user"
+    assert messages[-1]["content"]
+
+
 def test_generate_sends_user_instructions_as_separate_message(monkeypatch) -> None:
     monkeypatch.setenv("OLLAMA_BASE_URL", "https://ollama.example.invalid")
     monkeypatch.setenv("OLLAMA_API_KEY", "test-key")
