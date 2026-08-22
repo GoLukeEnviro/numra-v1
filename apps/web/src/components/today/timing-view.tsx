@@ -11,12 +11,13 @@ import { formatIsoDate, cn } from "@/lib/utils";
 import { ChevronDown } from "lucide-react";
 
 /**
- * The Today view.
+ * The numbers-only half of the Today view.
  *
  * Every value shown is a `display_value` returned by `GET /v1/people/{id}/timing`,
- * printed verbatim. Nothing on this page interprets, ranks or scores a number, and
- * nothing is computed in the browser — the only client-side logic is choosing which
- * of the four values gets the large type.
+ * printed verbatim. Nothing in this component interprets, ranks or scores a number,
+ * and nothing is computed in the browser — the only client-side logic is choosing
+ * which of the four values gets the large type. The reflective counterpart lives in
+ * `DailyBriefView` (V1.5 Epic K), rendered directly below this on the Today page.
  */
 
 function MasterBadge({ masterNumber }: { masterNumber: number | null }) {

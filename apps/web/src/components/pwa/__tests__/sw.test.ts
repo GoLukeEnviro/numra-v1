@@ -27,8 +27,9 @@ describe("public/sw.js", () => {
 
   it("never precaches anything under /api/", () => {
     const match = swSource.match(/PRECACHE_URLS\s*=\s*(\[[^\]]*\]);/);
-    expect(match).not.toBeNull();
-    const urls = JSON.parse(match![1].replace(/'/g, '"')) as string[];
+    const captured = match?.[1];
+    expect(captured).toBeDefined();
+    const urls = JSON.parse((captured ?? "[]").replace(/'/g, '"')) as string[];
     expect(urls.length).toBeGreaterThan(0);
     for (const url of urls) {
       expect(url.startsWith("/api/")).toBe(false);

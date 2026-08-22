@@ -202,6 +202,68 @@
         "title": "CalculationSummaryOut",
         "type": "object"
       },
+      "DailyBriefOut": {
+        "description": "Deterministic Daily Brief for one person on one `as_of_date`: identical\ninputs (person + date + knowledge version) always produce a byte-identical\nresponse -- there is no LLM call and no randomness anywhere in this path.",
+        "properties": {
+          "as_of_date": {
+            "format": "date",
+            "title": "As Of Date",
+            "type": "string"
+          },
+          "knowledge_version": {
+            "title": "Knowledge Version",
+            "type": "string"
+          },
+          "person_id": {
+            "title": "Person Id",
+            "type": "string"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/DailyBriefSectionOut"
+            },
+            "title": "Sections",
+            "type": "array"
+          }
+        },
+        "required": [
+          "person_id",
+          "as_of_date",
+          "knowledge_version",
+          "sections"
+        ],
+        "title": "DailyBriefOut",
+        "type": "object"
+      },
+      "DailyBriefSectionOut": {
+        "description": "One Personal Day/Month/Year reflection -- knowledge-sourced, reflective\nlanguage only, never a predictive-certainty claim (V1.5 Epic K).",
+        "properties": {
+          "display_name_de": {
+            "title": "Display Name De",
+            "type": "string"
+          },
+          "display_value": {
+            "title": "Display Value",
+            "type": "string"
+          },
+          "metric_id": {
+            "title": "Metric Id",
+            "type": "string"
+          },
+          "text_de": {
+            "title": "Text De",
+            "type": "string"
+          }
+        },
+        "required": [
+          "metric_id",
+          "display_name_de",
+          "display_value",
+          "text_de"
+        ],
+        "title": "DailyBriefSectionOut",
+        "type": "object"
+      },
       "DeleteAccountRequest": {
         "description": "Re-authentication is required to confirm irreversible account deletion\n(master prompt \u00a7137).",
         "properties": {
@@ -2415,6 +2477,76 @@
           }
         },
         "summary": "Create Calculation Route",
+        "tags": [
+          "calculations"
+        ]
+      }
+    },
+    "/v1/people/{person_id}/daily-brief": {
+      "get": {
+        "description": "V1.5 Epic K: a deterministic, reproducible Daily Brief -- Personal Day/Month/\nYear composed with knowledge-sourced reflection text. Ad-hoc and non-persisted,\nsame as /timing: recomputed from the engine for the given as_of_date, no LLM call,\nno randomness. Identical person + as_of_date + knowledge version always produce a\nbyte-identical response.",
+        "operationId": "get_daily_brief_route_v1_people__person_id__daily_brief_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "person_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Person Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "as_of_date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "As Of Date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DailyBriefOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Daily Brief Route",
         "tags": [
           "calculations"
         ]

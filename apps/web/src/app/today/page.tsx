@@ -6,6 +6,7 @@ import { LoadingState, ErrorState, EmptyState } from "@/components/ui/states";
 import { Select } from "@/components/ui/select";
 import { LinkButton } from "@/components/ui/link-button";
 import { TimingView } from "@/components/today/timing-view";
+import { DailyBriefView } from "@/components/today/daily-brief-view";
 import { api, type PersonOut } from "@/api/client";
 import { asTiming } from "@/api/canonical-profile";
 import { useAsync } from "@/lib/use-async";
@@ -47,7 +48,12 @@ function TodayForPerson({
     );
   }
 
-  return <TimingView personLabel={personLabel} timing={timing} />;
+  return (
+    <>
+      <TimingView personLabel={personLabel} timing={timing} />
+      <DailyBriefView personId={personId} asOfDate={asOfDate} />
+    </>
+  );
 }
 
 function TodayContent() {

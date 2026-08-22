@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime as dt
 import uuid
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query
@@ -15,14 +16,20 @@ from numra_api.repositories.calculations import (
 )
 from numra_api.repositories.people import get_person
 from numra_api.schemas.calculation import CalculateRequest, CalculationOut, CalculationSummaryOut
+from numra_api.schemas.daily_brief import DailyBriefOut, DailyBriefSectionOut
 from numra_api.services.calculation_service import (
     person_input_from_row,
     run_and_persist_calculation,
 )
 from numra_api.services.errors import NotFoundError
+from numra_interpretation.daily_brief import compose_daily_brief
+from numra_interpretation.knowledge_loader import load_knowledge_base
 from numra_numerology.engine import calculate_profile
 
 router = APIRouter(prefix="/v1", tags=["calculations"])
+
+REPO_ROOT = Path(__file__).resolve().parents[5]
+KNOWLEDGE_ROOT = REPO_ROOT / "knowledge"
 
 
 def _to_out(calc) -> CalculationOut:  # type: ignore[no-untyped-def]
@@ -114,3 +121,38 @@ async def get_timing_route(
     profile = calculate_profile(person_input, as_of_date=as_of_date)
     timing: dict[str, Any] = profile.model_dump(mode="json")["timing"]
     return timing
+
+
+@router.get("/people/{person_id}/daily-brief", response_model=DailyBriefOut)
+async def get_daily_brief_route(
+    person_id: uuid.UUID,
+    as_of_date: dt.date,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> DailyBriefOut:
+    """V1.5 Epic K: a deterministic, reproducible Daily Brief -- Personal Day/Month/
+    Year composed with knowledge-sourced reflection text. Ad-hoc and non-persisted,
+    same as /timing: recomputed from the engine for the given as_of_date, no LLM call,
+    no randomness. Identical person + as_of_date + knowledge version always produce a
+    byte-identical response."""
+    person = await get_person(db, person_id=person_id, user_id=user.id)
+    if person is None:
+        raise NotFoundError(f"person {person_id} not found")
+    person_input = person_input_from_row(person)
+    profile = calculate_profile(person_input, as_of_date=as_of_date)
+    knowledge = load_knowledge_base(KNOWLEDGE_ROOT)
+    brief = compose_daily_brief(profile, knowledge)
+    return DailyBriefOut(
+        person_id=str(person_id),
+        as_of_date=brief.as_of_date,
+        knowledge_version=brief.knowledge_version,
+        sections=tuple(
+            DailyBriefSectionOut(
+                metric_id=section.metric_id,
+                display_name_de=section.display_name_de,
+                display_value=section.display_value,
+                text_de=section.text_de,
+            )
+            for section in brief.sections
+        ),
+    )

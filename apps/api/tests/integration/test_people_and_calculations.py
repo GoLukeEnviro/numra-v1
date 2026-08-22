@@ -80,6 +80,45 @@ async def test_person_and_golden_calculation_flow(client, sessionmaker, lukas_pa
     assert timing_response.json()["personal_year"]["display_value"] == "17/8"
 
 
+async def test_daily_brief_is_deterministic_and_has_no_compatibility_score(
+    client, sessionmaker, lukas_payload
+) -> None:
+    """V1.5 Epic K: same person + as_of_date always produces a byte-identical Daily
+    Brief; no LLM call is involved, and none of the hard failure conditions (a
+    compatibility percentage, a numeric "score") ever appear."""
+    headers = await _login(client, sessionmaker, email="daily-brief@example.com")
+    person = (await client.post("/v1/people", json=lukas_payload, headers=headers)).json()
+
+    first = await client.get(
+        f"/v1/people/{person['id']}/daily-brief", params={"as_of_date": "2026-08-19"}
+    )
+    assert first.status_code == 200
+    body = first.json()
+    assert body["person_id"] == person["id"]
+    assert body["as_of_date"] == "2026-08-19"
+    assert [s["metric_id"] for s in body["sections"]] == [
+        "personal_year",
+        "personal_month",
+        "personal_day",
+    ]
+    for section in body["sections"]:
+        assert section["text_de"].strip() != ""
+        assert "score" not in section
+        assert "percentage" not in section
+
+    second = await client.get(
+        f"/v1/people/{person['id']}/daily-brief", params={"as_of_date": "2026-08-19"}
+    )
+    assert second.status_code == 200
+    assert second.json() == body
+
+    different_date = await client.get(
+        f"/v1/people/{person['id']}/daily-brief", params={"as_of_date": "2026-08-20"}
+    )
+    assert different_date.status_code == 200
+    assert different_date.json()["as_of_date"] == "2026-08-20"
+
+
 async def test_patch_person_updates_current_name(client, sessionmaker, lukas_payload) -> None:
     headers = await _login(client, sessionmaker)
     create_response = await client.post("/v1/people", json=lukas_payload, headers=headers)

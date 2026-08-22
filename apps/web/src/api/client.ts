@@ -14,6 +14,8 @@ export type RelationshipCreateRequest = components["schemas"]["RelationshipCreat
 export type RelationshipOut = components["schemas"]["RelationshipOut"];
 export type RelationshipSummaryOut = components["schemas"]["RelationshipSummaryOut"];
 export type RelationshipInsightOut = components["schemas"]["RelationshipInsightOut"];
+export type DailyBriefOut = components["schemas"]["DailyBriefOut"];
+export type DailyBriefSectionOut = components["schemas"]["DailyBriefSectionOut"];
 export type PersonRefOut = components["schemas"]["PersonRefOut"];
 export type BirthPlace = components["schemas"]["BirthPlace"];
 export type BirthTime = components["schemas"]["BirthTime"];
@@ -167,6 +169,15 @@ export const api = {
      */
     timing: (personId: string, asOfDate: string) =>
       request<unknown>(`/v1/people/${personId}/timing`, {
+        query: { as_of_date: asOfDate },
+      }),
+    /**
+     * V1.5 Epic K: the deterministic, reproducible Daily Brief -- Personal Day/
+     * Month/Year with knowledge-sourced reflection text. Ad-hoc, non-persisted,
+     * same pattern as timing() above.
+     */
+    dailyBrief: (personId: string, asOfDate: string) =>
+      request<DailyBriefOut>(`/v1/people/${personId}/daily-brief`, {
         query: { as_of_date: asOfDate },
       }),
     /** V1.5 Epic C: the real, server-recorded name history for this person. */

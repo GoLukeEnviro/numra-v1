@@ -230,6 +230,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/people/{person_id}/daily-brief": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Daily Brief Route
+         * @description V1.5 Epic K: a deterministic, reproducible Daily Brief -- Personal Day/Month/
+         *     Year composed with knowledge-sourced reflection text. Ad-hoc and non-persisted,
+         *     same as /timing: recomputed from the engine for the given as_of_date, no LLM call,
+         *     no randomness. Identical person + as_of_date + knowledge version always produce a
+         *     byte-identical response.
+         */
+        get: operations["get_daily_brief_route_v1_people__person_id__daily_brief_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/people/{person_id}/identities": {
         parameters: {
             query?: never;
@@ -451,6 +475,40 @@ export interface components {
             person_id: string;
             /** Schema Version */
             schema_version: string;
+        };
+        /**
+         * DailyBriefOut
+         * @description Deterministic Daily Brief for one person on one `as_of_date`: identical
+         *     inputs (person + date + knowledge version) always produce a byte-identical
+         *     response -- there is no LLM call and no randomness anywhere in this path.
+         */
+        DailyBriefOut: {
+            /**
+             * As Of Date
+             * Format: date
+             */
+            as_of_date: string;
+            /** Knowledge Version */
+            knowledge_version: string;
+            /** Person Id */
+            person_id: string;
+            /** Sections */
+            sections: components["schemas"]["DailyBriefSectionOut"][];
+        };
+        /**
+         * DailyBriefSectionOut
+         * @description One Personal Day/Month/Year reflection -- knowledge-sourced, reflective
+         *     language only, never a predictive-certainty claim (V1.5 Epic K).
+         */
+        DailyBriefSectionOut: {
+            /** Display Name De */
+            display_name_de: string;
+            /** Display Value */
+            display_value: string;
+            /** Metric Id */
+            metric_id: string;
+            /** Text De */
+            text_de: string;
         };
         /**
          * DeleteAccountRequest
@@ -1448,6 +1506,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CalculationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_daily_brief_route_v1_people__person_id__daily_brief_get: {
+        parameters: {
+            query: {
+                as_of_date: string;
+            };
+            header?: never;
+            path: {
+                person_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DailyBriefOut"];
                 };
             };
             /** @description Validation Error */
