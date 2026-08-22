@@ -661,12 +661,24 @@ export interface components {
             /** Password */
             password: string;
         };
-        /** RelationshipCreateRequest */
+        /**
+         * RelationshipCreateRequest
+         * @description V1.5 Epic E: the primary, product-facing way to start a comparison is by
+         *     person (`person_a_id`/`person_b_id`) — the route resolves each person's latest
+         *     calculation server-side. `calculation_a_id`/`calculation_b_id` remain accepted
+         *     directly for callers that already know a specific snapshot (e.g. comparing an
+         *     older snapshot rather than the latest one) — exactly one of the two pairs must
+         *     be supplied, never a mix.
+         */
         RelationshipCreateRequest: {
             /** Calculation A Id */
-            calculation_a_id: string;
+            calculation_a_id?: string | null;
             /** Calculation B Id */
-            calculation_b_id: string;
+            calculation_b_id?: string | null;
+            /** Person A Id */
+            person_a_id?: string | null;
+            /** Person B Id */
+            person_b_id?: string | null;
         };
         /** RelationshipOut */
         RelationshipOut: {

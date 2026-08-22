@@ -3,14 +3,34 @@ from __future__ import annotations
 import datetime as dt
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 from numra_api.schemas.person_ref import PersonRefOut
 
 
 class RelationshipCreateRequest(BaseModel):
-    calculation_a_id: str
-    calculation_b_id: str
+    """V1.5 Epic E: the primary, product-facing way to start a comparison is by
+    person (`person_a_id`/`person_b_id`) — the route resolves each person's latest
+    calculation server-side. `calculation_a_id`/`calculation_b_id` remain accepted
+    directly for callers that already know a specific snapshot (e.g. comparing an
+    older snapshot rather than the latest one) — exactly one of the two pairs must
+    be supplied, never a mix."""
+
+    person_a_id: str | None = None
+    person_b_id: str | None = None
+    calculation_a_id: str | None = None
+    calculation_b_id: str | None = None
+
+    @model_validator(mode="after")
+    def _exactly_one_pair(self) -> RelationshipCreateRequest:
+        by_person = self.person_a_id is not None and self.person_b_id is not None
+        by_calculation = self.calculation_a_id is not None and self.calculation_b_id is not None
+        if by_person == by_calculation:
+            raise ValueError(
+                "provide exactly one of (person_a_id, person_b_id) or "
+                "(calculation_a_id, calculation_b_id)"
+            )
+        return self
 
 
 class RelationshipOut(BaseModel):

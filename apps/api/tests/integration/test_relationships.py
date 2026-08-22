@@ -149,3 +149,88 @@ async def test_list_relationships_isolated_per_user(client, sessionmaker, lukas_
     response = await client.get("/v1/relationships", headers=headers_b)
     assert response.status_code == 200
     assert response.json() == []
+
+
+async def test_create_relationship_by_person_resolves_latest_calculation(
+    client, sessionmaker, lukas_payload
+) -> None:
+    """V1.5 Epic E: the product-facing path -- select two people, not two pasted
+    calculation UUIDs. The route resolves each person's latest calculation itself."""
+    headers = await _login(client, sessionmaker, email="rel-by-person@example.com")
+
+    person_a = (await client.post("/v1/people", json=lukas_payload, headers=headers)).json()
+    other_payload = {**lukas_payload, "birth_first_names": "Anna", "birth_last_name": "Beispiel"}
+    person_b = (await client.post("/v1/people", json=other_payload, headers=headers)).json()
+
+    calc_a = (
+        await client.post(
+            f"/v1/people/{person_a['id']}/calculations",
+            json={"as_of_date": "2026-01-01"},
+            headers=headers,
+        )
+    ).json()
+    await client.post(
+        f"/v1/people/{person_b['id']}/calculations",
+        json={"as_of_date": "2026-01-01"},
+        headers=headers,
+    )
+    # A second, later calculation for A -- the route must resolve to THIS one, not
+    # the first.
+    calc_a2 = (
+        await client.post(
+            f"/v1/people/{person_a['id']}/calculations",
+            json={"as_of_date": "2026-02-01"},
+            headers=headers,
+        )
+    ).json()
+
+    response = await client.post(
+        "/v1/relationships",
+        json={"person_a_id": person_a["id"], "person_b_id": person_b["id"]},
+        headers=headers,
+    )
+    assert response.status_code == 201
+    body = response.json()
+    assert body["calculation_a_id"] == calc_a2["id"]
+    assert body["calculation_a_id"] != calc_a["id"]
+    assert body["person_a"]["display_name"] == "Lukas Springer"
+    assert body["person_b"]["display_name"] == "Anna Beispiel"
+
+
+async def test_create_relationship_by_person_without_calculation_fails_clearly(
+    client, sessionmaker, lukas_payload
+) -> None:
+    headers = await _login(client, sessionmaker, email="rel-no-calc@example.com")
+    person_a = (await client.post("/v1/people", json=lukas_payload, headers=headers)).json()
+    other_payload = {**lukas_payload, "birth_first_names": "Anna", "birth_last_name": "Beispiel"}
+    person_b = (await client.post("/v1/people", json=other_payload, headers=headers)).json()
+    # Neither person has a calculation yet.
+
+    response = await client.post(
+        "/v1/relationships",
+        json={"person_a_id": person_a["id"], "person_b_id": person_b["id"]},
+        headers=headers,
+    )
+    assert response.status_code == 404
+
+
+async def test_create_relationship_rejects_mixed_or_missing_selectors(
+    client, sessionmaker, lukas_payload
+) -> None:
+    headers = await _login(client, sessionmaker, email="rel-bad-request@example.com")
+    person_a = (await client.post("/v1/people", json=lukas_payload, headers=headers)).json()
+
+    neither = await client.post("/v1/relationships", json={}, headers=headers)
+    assert neither.status_code == 422
+
+    mixed = await client.post(
+        "/v1/relationships",
+        json={
+            "person_a_id": person_a["id"],
+            "person_b_id": person_a["id"],
+            "calculation_a_id": str(person_a["id"]),
+            "calculation_b_id": str(person_a["id"]),
+        },
+        headers=headers,
+    )
+    assert mixed.status_code == 422

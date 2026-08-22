@@ -4,32 +4,35 @@ import { useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { LinkButton } from "@/components/ui/link-button";
 import { EmptyState, LoadingState, ErrorState } from "@/components/ui/states";
-import { api, ApiError } from "@/api/client";
-import { getAllCached } from "@/lib/local-calculations";
+import { api, ApiError, type PersonOut } from "@/api/client";
 import { useAsync } from "@/lib/use-async";
+import { personDisplayName } from "@/lib/identity";
 import { formatDateTime } from "@/lib/utils";
-import { GitCompareArrows } from "lucide-react";
+import { GitCompareArrows, Sparkles } from "lucide-react";
 
-const MANUAL_OPTION = "__manual__";
+function personOptionLabel(person: PersonOut): string {
+  return personDisplayName(person);
+}
 
-function ComparisonForm() {
+/**
+ * V1.5 Epic E: the user selects two *people*, never a pasted calculation UUID --
+ * the backend resolves each person's latest calculation server-side
+ * (POST /v1/relationships with person_a_id/person_b_id). A person with no
+ * calculation yet gets a specific, actionable error instead of a raw 404.
+ */
+function ComparisonForm({ people }: { people: PersonOut[] }) {
   const router = useRouter();
-  const cachedCalculations = useMemo(() => getAllCached(), []);
-  const [calcAChoice, setCalcAChoice] = useState(cachedCalculations[0]?.calculationId ?? MANUAL_OPTION);
-  const [calcBChoice, setCalcBChoice] = useState(cachedCalculations[1]?.calculationId ?? MANUAL_OPTION);
-  const [manualA, setManualA] = useState("");
-  const [manualB, setManualB] = useState("");
+  const [personAId, setPersonAId] = useState(people[0]?.id ?? "");
+  const [personBId, setPersonBId] = useState(people[1]?.id ?? people[0]?.id ?? "");
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<{ code: string; message: string } | null>(null);
-
-  const calculationAId = calcAChoice === MANUAL_OPTION ? manualA.trim() : calcAChoice;
-  const calculationBId = calcBChoice === MANUAL_OPTION ? manualB.trim() : calcBChoice;
+  const [error, setError] = useState<{ code: string; message: string; personId?: string } | null>(
+    null,
+  );
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -37,18 +40,32 @@ function ComparisonForm() {
     setSubmitting(true);
     try {
       const relationship = await api.relationships.create({
-        calculation_a_id: calculationAId,
-        calculation_b_id: calculationBId,
+        person_a_id: personAId,
+        person_b_id: personBId,
       });
       router.push(`/relationships/${relationship.id}`);
     } catch (err) {
-      setError(
-        err instanceof ApiError
-          ? { code: err.code, message: err.message }
-          : { code: "NETWORK_ERROR", message: "Could not reach the server." },
-      );
-    } finally {
       setSubmitting(false);
+      if (err instanceof ApiError && err.status === 404) {
+        // The route's NotFoundError message names which person lacks a calculation
+        // -- surface a specific "run it first" prompt rather than a generic error.
+        const missingPersonId = err.message.includes(personAId)
+          ? personAId
+          : err.message.includes(personBId)
+            ? personBId
+            : undefined;
+        setError({
+          code: err.code,
+          message: "That profile has no calculation yet.",
+          personId: missingPersonId,
+        });
+      } else {
+        setError(
+          err instanceof ApiError
+            ? { code: err.code, message: err.message }
+            : { code: "NETWORK_ERROR", message: "Could not reach the server." },
+        );
+      }
     }
   }
 
@@ -57,62 +74,57 @@ function ComparisonForm() {
       <CardHeader>
         <CardTitle>Compare two profiles</CardTitle>
         <CardDescription>
-          Pick two calculations to compare. Recently viewed calculations from this browser are
-          offered below — you can also paste a calculation ID directly (visible on any Analysis
-          page).
+          Numra compares each person&apos;s latest calculation. If someone has no calculation yet,
+          run one first.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-5 sm:grid-cols-2">
             <div>
-              <Label htmlFor="calcA">Person A</Label>
-              <Select id="calcA" value={calcAChoice} onChange={(e) => setCalcAChoice(e.target.value)}>
-                {cachedCalculations.map((c) => (
-                  <option key={c.calculationId} value={c.calculationId}>
-                    {c.personLabel} — {c.calculationId.slice(0, 8)}
+              <Label htmlFor="personA">Person A</Label>
+              <Select id="personA" value={personAId} onChange={(e) => setPersonAId(e.target.value)}>
+                {people.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {personOptionLabel(p)}
                   </option>
                 ))}
-                <option value={MANUAL_OPTION}>Paste calculation ID…</option>
               </Select>
-              {calcAChoice === MANUAL_OPTION && (
-                <Input
-                  className="mt-2"
-                  placeholder="Calculation ID"
-                  value={manualA}
-                  onChange={(e) => setManualA(e.target.value)}
-                  aria-label="Calculation ID for person A"
-                />
-              )}
             </div>
             <div>
-              <Label htmlFor="calcB">Person B</Label>
-              <Select id="calcB" value={calcBChoice} onChange={(e) => setCalcBChoice(e.target.value)}>
-                {cachedCalculations.map((c) => (
-                  <option key={c.calculationId} value={c.calculationId}>
-                    {c.personLabel} — {c.calculationId.slice(0, 8)}
+              <Label htmlFor="personB">Person B</Label>
+              <Select id="personB" value={personBId} onChange={(e) => setPersonBId(e.target.value)}>
+                {people.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {personOptionLabel(p)}
                   </option>
                 ))}
-                <option value={MANUAL_OPTION}>Paste calculation ID…</option>
               </Select>
-              {calcBChoice === MANUAL_OPTION && (
-                <Input
-                  className="mt-2"
-                  placeholder="Calculation ID"
-                  value={manualB}
-                  onChange={(e) => setManualB(e.target.value)}
-                  aria-label="Calculation ID for person B"
-                />
-              )}
             </div>
           </div>
 
           {error && (
-            <div role="alert" className="mt-5 rounded-lg border border-danger/30 bg-danger-surface p-3 text-sm text-text">
-              <span className="mr-1.5 rounded bg-black/20 px-1.5 py-0.5 font-mono text-xs">
-                {error.code}
-              </span>
-              {error.message}
+            <div
+              role="alert"
+              className="mt-5 rounded-lg border border-danger/30 bg-danger-surface p-3 text-sm text-text"
+            >
+              <div>
+                <span className="mr-1.5 rounded bg-black/20 px-1.5 py-0.5 font-mono text-xs">
+                  {error.code}
+                </span>
+                {error.message}
+              </div>
+              {error.personId && (
+                <LinkButton
+                  size="sm"
+                  variant="secondary"
+                  href={`/people/${error.personId}`}
+                  className="mt-3"
+                >
+                  <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                  Open profile to run a calculation
+                </LinkButton>
+              )}
             </div>
           )}
 
@@ -120,11 +132,14 @@ function ComparisonForm() {
             type="submit"
             className="mt-5"
             loading={submitting}
-            disabled={!calculationAId || !calculationBId}
+            disabled={!personAId || !personBId || personAId === personBId}
           >
             <GitCompareArrows className="h-4 w-4" aria-hidden="true" />
             Compare
           </Button>
+          {personAId && personAId === personBId && (
+            <p className="mt-2 text-xs text-muted">Choose two different people.</p>
+          )}
         </form>
       </CardContent>
     </Card>
@@ -177,7 +192,11 @@ function RecentComparisons() {
 }
 
 function RelationshipsContent() {
-  const hasCachedCalculations = useMemo(() => getAllCached().length > 0, []);
+  const peopleState = useAsync(() => api.people.list(), []);
+  const people = useMemo(
+    () => (peopleState.status === "success" ? peopleState.data : []),
+    [peopleState],
+  );
 
   return (
     <div>
@@ -188,16 +207,25 @@ function RelationshipsContent() {
         </p>
       </div>
 
-      {!hasCachedCalculations && (
+      {peopleState.status === "loading" && <LoadingState label="Loading profiles…" />}
+      {peopleState.status === "error" && (
+        <ErrorState error={peopleState.error} onRetry={peopleState.reload} />
+      )}
+      {peopleState.status === "success" && people.length < 2 && (
         <div className="mb-6">
           <EmptyState
-            title="No calculations to compare yet"
-            description="Run at least two calculations first — you can still paste calculation IDs manually below."
+            title="Add a second profile to compare"
+            description="Numra needs at least two people, each with a calculation, before it can compare them."
+            action={
+              <LinkButton href="/people/new" size="sm">
+                New profile
+              </LinkButton>
+            }
           />
         </div>
       )}
+      {peopleState.status === "success" && people.length >= 2 && <ComparisonForm people={people} />}
 
-      <ComparisonForm />
       <RecentComparisons />
     </div>
   );

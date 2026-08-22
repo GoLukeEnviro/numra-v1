@@ -7,7 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from numra_api.deps import get_current_user, get_db, require_csrf
 from numra_api.models import Person, RelationshipComparison, User
-from numra_api.repositories.calculations import get_calculation_for_user
+from numra_api.repositories.calculations import (
+    get_calculation_for_user,
+    get_latest_calculation_for_person,
+)
 from numra_api.repositories.relationships import (
     get_relationship_with_people_for_user,
     list_relationships_for_user,
@@ -66,14 +69,30 @@ async def create_relationship_route(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> RelationshipOut:
-    calc_a = await get_calculation_for_user(
-        db, calculation_id=uuid.UUID(body.calculation_a_id), user_id=user.id
-    )
-    calc_b = await get_calculation_for_user(
-        db, calculation_id=uuid.UUID(body.calculation_b_id), user_id=user.id
-    )
-    if calc_a is None or calc_b is None:
-        raise NotFoundError("one or both calculations not found")
+    if body.person_a_id is not None and body.person_b_id is not None:
+        # V1.5 Epic E: the product-facing path -- resolve each person's latest
+        # calculation server-side rather than making the user paste a calculation
+        # UUID. A person with no calculation yet gets a specific, actionable error
+        # (not a generic "not found") so the frontend can offer "Run calculation".
+        person_a_id = uuid.UUID(body.person_a_id)
+        person_b_id = uuid.UUID(body.person_b_id)
+        calc_a = await get_latest_calculation_for_person(db, person_id=person_a_id, user_id=user.id)
+        if calc_a is None:
+            raise NotFoundError(f"person {person_a_id} has no calculation yet")
+        calc_b = await get_latest_calculation_for_person(db, person_id=person_b_id, user_id=user.id)
+        if calc_b is None:
+            raise NotFoundError(f"person {person_b_id} has no calculation yet")
+    else:
+        assert body.calculation_a_id is not None
+        assert body.calculation_b_id is not None
+        calc_a = await get_calculation_for_user(
+            db, calculation_id=uuid.UUID(body.calculation_a_id), user_id=user.id
+        )
+        calc_b = await get_calculation_for_user(
+            db, calculation_id=uuid.UUID(body.calculation_b_id), user_id=user.id
+        )
+        if calc_a is None or calc_b is None:
+            raise NotFoundError("one or both calculations not found")
 
     comparison = build_relationship_comparison(
         calc_a.canonical_profile_json, calc_b.canonical_profile_json

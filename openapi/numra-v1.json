@@ -794,20 +794,53 @@
         "type": "object"
       },
       "RelationshipCreateRequest": {
+        "description": "V1.5 Epic E: the primary, product-facing way to start a comparison is by\nperson (`person_a_id`/`person_b_id`) \u2014 the route resolves each person's latest\ncalculation server-side. `calculation_a_id`/`calculation_b_id` remain accepted\ndirectly for callers that already know a specific snapshot (e.g. comparing an\nolder snapshot rather than the latest one) \u2014 exactly one of the two pairs must\nbe supplied, never a mix.",
         "properties": {
           "calculation_a_id": {
-            "title": "Calculation A Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calculation A Id"
           },
           "calculation_b_id": {
-            "title": "Calculation B Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calculation B Id"
+          },
+          "person_a_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Person A Id"
+          },
+          "person_b_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Person B Id"
           }
         },
-        "required": [
-          "calculation_a_id",
-          "calculation_b_id"
-        ],
         "title": "RelationshipCreateRequest",
         "type": "object"
       },
