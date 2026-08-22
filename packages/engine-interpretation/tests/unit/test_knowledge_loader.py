@@ -19,7 +19,7 @@ def test_knowledge_root_resolves_from_repo_root() -> None:
     assert KNOWLEDGE_ROOT.is_dir(), f"expected {KNOWLEDGE_ROOT} to exist"
     kb = load_knowledge_base(KNOWLEDGE_ROOT)
     assert kb.manifest.knowledge_system == "numra"
-    assert kb.manifest.version == "1.0.0"
+    assert kb.manifest.version == "1.1.0"
     assert kb.manifest.language == "de"
 
 
@@ -79,6 +79,10 @@ ALL_METRIC_IDS = (
     "hidden_passion",
     "karmic_lessons",
     "subconscious_self",
+    "cornerstone",
+    "capstone",
+    "first_vowel",
+    "intensity_table",
     "pinnacle",
     "challenge",
     "personal_year",
