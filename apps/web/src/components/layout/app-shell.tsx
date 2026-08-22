@@ -20,33 +20,35 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLocale } from "@/i18n/context";
+import type { MessageKey } from "@/i18n/catalog";
 
 // Today leads: it is the lightest, most-returned-to view, and the only one that
 // answers a question about *now* rather than about a stored record.
 const NAV = [
-  { href: "/today", label: "Today", icon: Sunrise },
-  { href: "/dashboard", label: "Dashboard", icon: LayoutGrid },
-  { href: "/people", label: "People", icon: Users },
-  { href: "/reports", label: "Reports", icon: BookOpen },
-  { href: "/relationships", label: "Relationships", icon: GitCompareArrows },
-  { href: "/settings", label: "Settings", icon: Settings },
-];
+  { href: "/today", labelKey: "nav.today", icon: Sunrise },
+  { href: "/dashboard", labelKey: "nav.dashboard", icon: LayoutGrid },
+  { href: "/people", labelKey: "nav.people", icon: Users },
+  { href: "/reports", labelKey: "nav.reports", icon: BookOpen },
+  { href: "/relationships", labelKey: "nav.relationships", icon: GitCompareArrows },
+  { href: "/settings", labelKey: "nav.settings", icon: Settings },
+] as const satisfies readonly { href: string; labelKey: MessageKey; icon: typeof Sunrise }[];
 
 // Mobile-first V1.5 Epic H: the desktop sidebar's full item set doesn't fit a fixed
 // bottom bar. These four are the ones a phone visit is most likely to be *for* — the
 // rest (Dashboard, Reports, Settings) plus Logout live behind "More", which mobile
 // still needs a real way to reach Logout from (previously desktop-only).
 const MOBILE_PRIMARY = [
-  { href: "/today", label: "Today", icon: Sunrise },
-  { href: "/people", label: "People", icon: Users },
-  { href: "/relationships", label: "Relationships", icon: GitCompareArrows },
-];
+  { href: "/today", labelKey: "nav.today", icon: Sunrise },
+  { href: "/people", labelKey: "nav.people", icon: Users },
+  { href: "/relationships", labelKey: "nav.relationships", icon: GitCompareArrows },
+] as const satisfies readonly { href: string; labelKey: MessageKey; icon: typeof Sunrise }[];
 
 const MOBILE_MORE = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutGrid },
-  { href: "/reports", label: "Reports", icon: BookOpen },
-  { href: "/settings", label: "Settings", icon: Settings },
-];
+  { href: "/dashboard", labelKey: "nav.dashboard", icon: LayoutGrid },
+  { href: "/reports", labelKey: "nav.reports", icon: BookOpen },
+  { href: "/settings", labelKey: "nav.settings", icon: Settings },
+] as const satisfies readonly { href: string; labelKey: MessageKey; icon: typeof Sunrise }[];
 
 function isActive(pathname: string | null, href: string): boolean {
   return pathname === href || (pathname?.startsWith(`${href}/`) ?? false);
@@ -64,10 +66,16 @@ function MobileMoreSheet({
   userEmail: string | undefined;
 }) {
   const pathname = usePathname();
+  const { t } = useLocale();
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true" aria-label="More">
+    <div
+      className="fixed inset-0 z-50 md:hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-label={t("nav.more")}
+    >
       <button
         type="button"
         aria-label="Dismiss"
@@ -79,7 +87,7 @@ function MobileMoreSheet({
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)" }}
       >
         <div className="mb-3 flex items-center justify-between">
-          <p className="font-serif text-lg text-ivory">More</p>
+          <p className="font-serif text-lg text-ivory">{t("nav.more")}</p>
           <button
             type="button"
             onClick={onClose}
@@ -90,7 +98,7 @@ function MobileMoreSheet({
           </button>
         </div>
         <nav className="flex flex-col gap-1">
-          {MOBILE_MORE.map(({ href, label, icon: Icon }) => {
+          {MOBILE_MORE.map(({ href, labelKey, icon: Icon }) => {
             const active = isActive(pathname, href);
             return (
               <Link
@@ -104,7 +112,7 @@ function MobileMoreSheet({
                 )}
               >
                 <Icon className="h-5 w-5" aria-hidden="true" />
-                {label}
+                {t(labelKey)}
               </Link>
             );
           })}
@@ -117,7 +125,7 @@ function MobileMoreSheet({
             className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm text-text transition-colors hover:bg-white/5 hover:text-ivory"
           >
             <LogOut className="h-5 w-5" aria-hidden="true" />
-            Log out
+            {t("nav.logout")}
           </button>
         </div>
       </div>
@@ -133,18 +141,19 @@ function MobileBottomNav({
   userEmail: string | undefined;
 }) {
   const pathname = usePathname();
+  const { t } = useLocale();
   const [moreOpen, setMoreOpen] = useState(false);
   const moreActive = MOBILE_MORE.some((item) => isActive(pathname, item.href));
 
   return (
     <>
       <nav
-        aria-label="Primary"
+        aria-label={t("nav.primary")}
         className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-surface md:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
         <div className="grid grid-cols-5">
-          {MOBILE_PRIMARY.slice(0, 2).map(({ href, label, icon: Icon }) => {
+          {MOBILE_PRIMARY.slice(0, 2).map(({ href, labelKey, icon: Icon }) => {
             const active = isActive(pathname, href);
             return (
               <Link
@@ -157,14 +166,14 @@ function MobileBottomNav({
                 )}
               >
                 <Icon className="h-5 w-5" aria-hidden="true" />
-                {label}
+                {t(labelKey)}
               </Link>
             );
           })}
 
           <Link
             href="/people/new"
-            aria-label="New profile"
+            aria-label={t("nav.newProfile")}
             className="flex flex-col items-center justify-center gap-1 py-2 text-[11px] text-muted"
           >
             <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gold text-background shadow-gold">
@@ -172,7 +181,7 @@ function MobileBottomNav({
             </span>
           </Link>
 
-          {MOBILE_PRIMARY.slice(2).map(({ href, label, icon: Icon }) => {
+          {MOBILE_PRIMARY.slice(2).map(({ href, labelKey, icon: Icon }) => {
             const active = isActive(pathname, href);
             return (
               <Link
@@ -185,7 +194,7 @@ function MobileBottomNav({
                 )}
               >
                 <Icon className="h-5 w-5" aria-hidden="true" />
-                {label}
+                {t(labelKey)}
               </Link>
             );
           })}
@@ -201,7 +210,7 @@ function MobileBottomNav({
             )}
           >
             <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
-            More
+            {t("nav.more")}
           </button>
         </div>
       </nav>
@@ -223,6 +232,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
+  const { t } = useLocale();
 
   async function handleLogout() {
     await logout();
@@ -248,7 +258,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
           </div>
           {/* Desktop-only: mobile uses the fixed bottom nav instead (below). */}
           <nav className="hidden gap-1 px-3 pb-3 md:flex md:flex-col md:pb-0">
-            {NAV.map(({ href, label, icon: Icon }) => {
+            {NAV.map(({ href, labelKey, icon: Icon }) => {
               const active = isActive(pathname, href);
               return (
                 <Link
@@ -263,7 +273,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
                   aria-current={active ? "page" : undefined}
                 >
                   <Icon className="h-4 w-4" aria-hidden="true" />
-                  {label}
+                  {t(labelKey)}
                 </Link>
               );
             })}
@@ -276,7 +286,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
             )}
             <Button variant="ghost" size="sm" className="w-full justify-start" onClick={handleLogout}>
               <LogOut className="h-4 w-4" aria-hidden="true" />
-              Log out
+              {t("nav.logout")}
             </Button>
           </div>
         </aside>
