@@ -1,24 +1,20 @@
 "use client";
 
-import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
 import { LoadingState, ErrorState } from "@/components/ui/states";
 import { ComparisonTable } from "@/components/relationships/comparison-table";
+import { RelationshipInsights } from "@/components/relationships/relationship-insights";
 import { NumericWheel } from "@/components/layout/numeric-wheel";
 import { api } from "@/api/client";
 import { asRelationshipComparison } from "@/api/canonical-profile";
 import { useAsync } from "@/lib/use-async";
-import { getCachedRelationship } from "@/lib/local-relationships";
 import { formatDateTime } from "@/lib/utils";
 import { ArrowLeft } from "lucide-react";
 
 function RelationshipContent({ relationshipId }: { relationshipId: string }) {
   const state = useAsync(() => api.relationships.get(relationshipId), [relationshipId]);
-  // Names are not part of RelationshipOut — only this browser's own cache can supply
-  // them. Absent a cached entry the columns stay neutrally labelled.
-  const cached = useMemo(() => getCachedRelationship(relationshipId), [relationshipId]);
 
   if (state.status === "loading") return <LoadingState label="Loading comparison…" />;
   if (state.status === "error") {
@@ -33,8 +29,11 @@ function RelationshipContent({ relationshipId }: { relationshipId: string }) {
 
   const relationship = state.data;
   const comparison = asRelationshipComparison(relationship.comparison);
-  const labelA = cached?.labelA || "Person A";
-  const labelB = cached?.labelB || "Person B";
+  // Server-resolved names (V1.5 Epic A/E) — real cross-device identities, not a
+  // browser-only cache. Falls back to a neutral label only if the backing Person
+  // row was itself deleted after this comparison was created.
+  const labelA = relationship.person_a.display_name || "Person A";
+  const labelB = relationship.person_b.display_name || "Person B";
 
   return (
     <div className="animate-rise-in">
@@ -87,6 +86,8 @@ function RelationshipContent({ relationshipId }: { relationshipId: string }) {
         defensible deterministic method for one, so inventing a number would undermine
         everything else on this page.
       </div>
+
+      <RelationshipInsights insights={relationship.insights} labelA={labelA} labelB={labelB} />
 
       <ComparisonTable comparison={comparison} labelA={labelA} labelB={labelB} />
     </div>

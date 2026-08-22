@@ -11,7 +11,6 @@ import { ExportPanel } from "@/components/reports/export-panel";
 import { api, ApiError, type ReportOut } from "@/api/client";
 import { asStructuredReport } from "@/api/report-content";
 import { useReportProgress } from "@/lib/use-report-progress";
-import { recordReport } from "@/lib/local-reports";
 import { ArrowLeft } from "lucide-react";
 
 function BackToAnalysis({ calculationId }: { calculationId: string }) {
@@ -41,13 +40,6 @@ function ReportContent({ reportId }: { reportId: string }) {
       const report = await api.reports.create({
         calculation_id: failed.calculation_id,
         report_type: failed.report_type,
-      });
-      recordReport({
-        reportId: report.id,
-        jobId: report.job_id,
-        calculationId: failed.calculation_id,
-        reportType: report.report_type,
-        personLabel: "",
       });
       router.push(`/reports/${report.id}`);
     } catch (err) {

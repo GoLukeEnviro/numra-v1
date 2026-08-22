@@ -51,6 +51,28 @@ test("renderReportHtml includes cover, TOC, sections, and appendix", () => {
   assert.match(html, /<html/);
 });
 
+test("renderReportHtml renders a Sources appendix from section metric/knowledge refs", () => {
+  const report = {
+    ...SAMPLE_REPORT,
+    sections: [
+      {
+        ...SAMPLE_REPORT.sections[0],
+        metric_refs: ["life_path", "expression"],
+        knowledge_refs: ["life_path"],
+      },
+      SAMPLE_REPORT.sections[1],
+    ],
+  };
+  const html = renderReportHtml({ report, profile: SAMPLE_PROFILE, person: SAMPLE_PERSON });
+  assert.match(html, /Sources/);
+  assert.match(html, /life_path, expression/);
+});
+
+test("renderReportHtml omits the Sources appendix when no section carries refs (backward compat)", () => {
+  const html = renderReportHtml({ report: SAMPLE_REPORT, profile: SAMPLE_PROFILE, person: SAMPLE_PERSON });
+  assert.doesNotMatch(html, /<h2>Sources<\/h2>/);
+});
+
 test("renderReportHtml escapes untrusted-looking text content", () => {
   const report = {
     ...SAMPLE_REPORT,

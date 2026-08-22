@@ -27,6 +27,7 @@ from numra_api.routes import (
     people,
     relationships,
     reports,
+    system_info,
 )
 from numra_api.services.errors import ApplicationError
 from numra_api.services.pdf_client import PdfServiceClient
@@ -103,6 +104,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(reports.router)
     app.include_router(exports.router)
     app.include_router(account.router)
+    app.include_router(system_info.router)
 
     return app
 

@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from numra_api.auth.csrf import CSRF_COOKIE_NAME, CSRF_HEADER_NAME, csrf_tokens_match
 from numra_api.auth.sessions import hash_session_token
 from numra_api.config import Settings
+from numra_api.models import Session as SessionModel
 from numra_api.models import User
 from numra_api.rate_limit import RateLimiter, pseudonymous_key
 from numra_api.repositories.sessions import get_active_session_by_token_hash
@@ -109,11 +110,11 @@ def rate_limit_by_user(
     return _dependency
 
 
-async def get_current_user(
+async def get_current_session(
     request: Request,
     db: AsyncSession = Depends(get_db),
     session_token: str | None = Cookie(default=None, alias="numra_session"),
-) -> User:
+) -> SessionModel:
     if not session_token:
         raise NotAuthenticated("no session cookie")
     token_hash = hash_session_token(session_token)
@@ -122,6 +123,13 @@ async def get_current_user(
     )
     if session is None:
         raise NotAuthenticated("session not found, expired, or revoked")
+    return session
+
+
+async def get_current_user(
+    db: AsyncSession = Depends(get_db),
+    session: SessionModel = Depends(get_current_session),
+) -> User:
     user = await get_user_by_id(db, user_id=session.user_id)
     if user is None:
         raise NotAuthenticated("session user no longer exists")

@@ -21,6 +21,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/auth/change-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Change Password
+         * @description V1.5 Epic N: requires the current password even though the caller already has
+         *     a valid session (a left-open or hijacked session should not be enough on its
+         *     own). On success every *other* active session for this user is revoked -- the
+         *     caller's own session (the one making this request) stays valid, so they are not
+         *     logged out by changing their own password.
+         */
+        post: operations["change_password_v1_auth_change_password_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/auth/login": {
         parameters: {
             query?: never;
@@ -83,6 +107,49 @@ export interface paths {
         put?: never;
         /** Register */
         post: operations["register_v1_auth_register_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Sessions
+         * @description V1.5 Epic N: every device/browser currently signed in as this user. No IP
+         *     address or device identifier is stored anywhere (see models.tables.Session), so
+         *     there is nothing to redact here beyond simply not having it.
+         */
+        get: operations["list_sessions_v1_auth_sessions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/sessions/revoke-others": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revoke Other Sessions
+         * @description V1.5 Epic N: "Log out other devices" -- revokes every active session for this
+         *     user except the one making this request.
+         */
+        post: operations["revoke_other_sessions_v1_auth_sessions_revoke_others_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -219,10 +286,52 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** List Calculations Route */
+        get: operations["list_calculations_route_v1_people__person_id__calculations_get"];
         put?: never;
         /** Create Calculation Route */
         post: operations["create_calculation_route_v1_people__person_id__calculations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/people/{person_id}/daily-brief": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Daily Brief Route
+         * @description V1.5 Epic K: a deterministic, reproducible Daily Brief -- Personal Day/Month/
+         *     Year composed with knowledge-sourced reflection text. Ad-hoc and non-persisted,
+         *     same as /timing: recomputed from the engine for the given as_of_date, no LLM call,
+         *     no randomness. Identical person + as_of_date + knowledge version always produce a
+         *     byte-identical response.
+         */
+        get: operations["get_daily_brief_route_v1_people__person_id__daily_brief_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/people/{person_id}/identities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Identities Route */
+        get: operations["list_identities_route_v1_people__person_id__identities_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -257,7 +366,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** List Relationships Route */
+        get: operations["list_relationships_route_v1_relationships_get"];
         put?: never;
         /** Create Relationship Route */
         post: operations["create_relationship_route_v1_relationships_post"];
@@ -308,7 +418,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** List Reports Route */
+        get: operations["list_reports_route_v1_reports_get"];
         put?: never;
         /** Create Report Route */
         post: operations["create_report_route_v1_reports_post"];
@@ -327,6 +438,28 @@ export interface paths {
         };
         /** Get Report Route */
         get: operations["get_report_route_v1_reports__report_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/system-info": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get System Info
+         * @description V1.5 Epic N: sanitized system info for the Settings page. Auth-required (not
+         *     a public endpoint) but still deliberately excludes every secret -- see
+         *     SystemInfoOut's own docstring for exactly what is and isn't included.
+         */
+        get: operations["get_system_info_v1_system_info_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -406,6 +539,79 @@ export interface components {
             schema_version: string;
         };
         /**
+         * CalculationSummaryOut
+         * @description History-list shape: no `canonical_profile` payload — list cards only need
+         *     enough to identify and link to a snapshot, not the full profile JSON.
+         */
+        CalculationSummaryOut: {
+            /**
+             * As Of Date
+             * Format: date
+             */
+            as_of_date: string;
+            /** Calculation Version */
+            calculation_version: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Deterministic Hash */
+            deterministic_hash: string;
+            /** Id */
+            id: string;
+            /** Person Id */
+            person_id: string;
+            /** Schema Version */
+            schema_version: string;
+        };
+        /**
+         * ChangePasswordRequest
+         * @description V1.5 Epic N. Same minimum-length rule as registration; the current password is
+         *     always required (never trust a signed-in session alone to authorize a password
+         *     change — a hijacked/left-open session should not be enough).
+         */
+        ChangePasswordRequest: {
+            /** Current Password */
+            current_password: string;
+            /** New Password */
+            new_password: string;
+        };
+        /**
+         * DailyBriefOut
+         * @description Deterministic Daily Brief for one person on one `as_of_date`: identical
+         *     inputs (person + date + knowledge version) always produce a byte-identical
+         *     response -- there is no LLM call and no randomness anywhere in this path.
+         */
+        DailyBriefOut: {
+            /**
+             * As Of Date
+             * Format: date
+             */
+            as_of_date: string;
+            /** Knowledge Version */
+            knowledge_version: string;
+            /** Person Id */
+            person_id: string;
+            /** Sections */
+            sections: components["schemas"]["DailyBriefSectionOut"][];
+        };
+        /**
+         * DailyBriefSectionOut
+         * @description One Personal Day/Month/Year reflection -- knowledge-sourced, reflective
+         *     language only, never a predictive-certainty claim (V1.5 Epic K).
+         */
+        DailyBriefSectionOut: {
+            /** Display Name De */
+            display_name_de: string;
+            /** Display Value */
+            display_value: string;
+            /** Metric Id */
+            metric_id: string;
+            /** Text De */
+            text_de: string;
+        };
+        /**
          * DeleteAccountRequest
          * @description Re-authentication is required to confirm irreversible account deletion
          *     (master prompt §137).
@@ -463,6 +669,40 @@ export interface components {
             email: string;
             /** Password */
             password: string;
+        };
+        /**
+         * NameIdentityKind
+         * @enum {string}
+         */
+        NameIdentityKind: "birth" | "current" | "preferred";
+        /**
+         * NameIdentityOut
+         * @description V1.5 Epic C: one recorded name Numra has held for a person. `recorded_at` is
+         *     when Numra actually wrote this row down -- always present. `valid_from` is only
+         *     ever set when the effective date is a genuinely known fact (the birth identity's
+         *     `valid_from` is the birth date itself); it is `None` for current/preferred names,
+         *     since no historical effective date is knowable for those -- never a guess.
+         */
+        NameIdentityOut: {
+            /** First Names */
+            first_names: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            kind: components["schemas"]["NameIdentityKind"];
+            /** Last Name */
+            last_name: string;
+            /** Middle Names */
+            middle_names: string | null;
+            /**
+             * Recorded At
+             * Format: date-time
+             */
+            recorded_at: string;
+            /** Valid From */
+            valid_from: string | null;
         };
         /**
          * PersonInput
@@ -530,8 +770,27 @@ export interface components {
              */
             updated_at: string;
         };
-        /** PersonPatchRequest */
+        /**
+         * PersonPatchRequest
+         * @description Every field is optional and `exclude_unset` at the route means only fields the
+         *     client actually sent are applied — the birth fields (V1.5 Epic B) intentionally
+         *     reuse the same names as `PersonInput`/`PersonOut` rather than a separate
+         *     "canon-sensitive" sub-object, since the route applies exactly one rule to all of
+         *     them: editing a Person never touches any existing `Calculation` row (those are
+         *     immutable snapshots, see `repositories/calculations.py`'s own docstring) — only a
+         *     *new* calculation reflects the edit.
+         */
         PersonPatchRequest: {
+            /** Birth Date */
+            birth_date?: string | null;
+            /** Birth First Names */
+            birth_first_names?: string | null;
+            /** Birth Last Name */
+            birth_last_name?: string | null;
+            /** Birth Middle Names */
+            birth_middle_names?: string | null;
+            birth_place?: components["schemas"]["BirthPlace"] | null;
+            birth_time?: components["schemas"]["BirthTime"] | null;
             /** Current First Names */
             current_first_names?: string | null;
             /** Current Last Name */
@@ -540,6 +799,16 @@ export interface components {
             current_middle_names?: string | null;
             /** Preferred Name */
             preferred_name?: string | null;
+        };
+        /** PersonRefOut */
+        PersonRefOut: {
+            /** Display Name */
+            display_name: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
         };
         /** RegisterRequest */
         RegisterRequest: {
@@ -551,12 +820,48 @@ export interface components {
             /** Password */
             password: string;
         };
-        /** RelationshipCreateRequest */
+        /**
+         * RelationshipCreateRequest
+         * @description V1.5 Epic E: the primary, product-facing way to start a comparison is by
+         *     person (`person_a_id`/`person_b_id`) — the route resolves each person's latest
+         *     calculation server-side. `calculation_a_id`/`calculation_b_id` remain accepted
+         *     directly for callers that already know a specific snapshot (e.g. comparing an
+         *     older snapshot rather than the latest one) — exactly one of the two pairs must
+         *     be supplied, never a mix.
+         */
         RelationshipCreateRequest: {
             /** Calculation A Id */
-            calculation_a_id: string;
+            calculation_a_id?: string | null;
             /** Calculation B Id */
-            calculation_b_id: string;
+            calculation_b_id?: string | null;
+            /** Person A Id */
+            person_a_id?: string | null;
+            /** Person B Id */
+            person_b_id?: string | null;
+        };
+        /**
+         * RelationshipInsightOut
+         * @description V1.5 Epic F: a structured, knowledge-sourced qualitative note for one metric --
+         *     never a compatibility percentage or any other invented score (canon-spec.md §33,
+         *     RESERVED_UNFROZEN). Every theme string is drawn verbatim from
+         *     `knowledge/numbers/*.yaml` / `knowledge/master-numbers/*.yaml`, so it changes only
+         *     when the knowledge package itself is re-versioned, not per-request.
+         */
+        RelationshipInsightOut: {
+            /** Knowledge Refs */
+            knowledge_refs: string[];
+            /** Metric Id */
+            metric_id: string;
+            /** Person A Number */
+            person_a_number: number;
+            /** Person A Relationship Themes */
+            person_a_relationship_themes: string[];
+            /** Person B Number */
+            person_b_number: number;
+            /** Person B Relationship Themes */
+            person_b_relationship_themes: string[];
+            /** Shared Number */
+            shared_number: boolean;
         };
         /** RelationshipOut */
         RelationshipOut: {
@@ -575,6 +880,27 @@ export interface components {
             created_at: string;
             /** Id */
             id: string;
+            /** Insights */
+            insights: components["schemas"]["RelationshipInsightOut"][];
+            person_a: components["schemas"]["PersonRefOut"];
+            person_b: components["schemas"]["PersonRefOut"];
+        };
+        /**
+         * RelationshipSummaryOut
+         * @description Relationship-library list shape: resolved person names instead of raw
+         *     calculation UUIDs, so a list card never needs a LocalStorage cache to say who
+         *     Person A/B are. No `comparison` payload — that's a detail-view concern.
+         */
+        RelationshipSummaryOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Id */
+            id: string;
+            person_a: components["schemas"]["PersonRefOut"];
+            person_b: components["schemas"]["PersonRefOut"];
         };
         /** ReportCreateRequest */
         ReportCreateRequest: {
@@ -641,10 +967,78 @@ export interface components {
             status: string;
         };
         /**
+         * ReportSummaryOut
+         * @description Report-library list shape: a resolved person reference and a computed
+         *     word_count instead of the full `content` payload, which a list card never
+         *     renders.
+         */
+        ReportSummaryOut: {
+            /** Calculation Id */
+            calculation_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Generated At */
+            generated_at: string | null;
+            /** Id */
+            id: string;
+            person: components["schemas"]["PersonRefOut"];
+            report_type: components["schemas"]["ReportType"];
+            /** Status */
+            status: string;
+            /** Word Count */
+            word_count: number;
+        };
+        /**
          * ReportType
          * @enum {string}
          */
         ReportType: "QUICK" | "FULL" | "ULTIMATE" | "CUSTOM";
+        /**
+         * SessionOut
+         * @description One active session (V1.5 Epic N). No IP address or device identifier is
+         *     stored or returned — sessions carry only a token hash, timestamps, and the
+         *     owning user (see models.tables.Session).
+         */
+        SessionOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Id */
+            id: string;
+            /** Is Current */
+            is_current: boolean;
+        };
+        /**
+         * SystemInfoOut
+         * @description Sanitized system info for the signed-in user's Settings page (V1.5 Epic N).
+         *     Deliberately excludes every secret (session_secret, pdf_internal_token,
+         *     ollama_api_key, database_url) -- only operational facts a user could otherwise
+         *     infer from how the app behaves.
+         */
+        SystemInfoOut: {
+            /** App Timezone */
+            app_timezone: string;
+            /** Environment */
+            environment: string;
+            /** Llm Provider */
+            llm_provider: string;
+            /** Pdf Export Enabled */
+            pdf_export_enabled: boolean;
+            /** Self Signup Enabled */
+            self_signup_enabled: boolean;
+            /** Session Ttl Hours */
+            session_ttl_hours: number;
+        };
         /** UserOut */
         UserOut: {
             /** Email */
@@ -689,6 +1083,42 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["DeleteAccountRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    change_password_v1_auth_change_password_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePasswordRequest"];
             };
         };
         responses: {
@@ -826,6 +1256,69 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["UserOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_sessions_v1_auth_sessions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_other_sessions_v1_auth_sessions_revoke_others_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -1193,6 +1686,42 @@ export interface operations {
             };
         };
     };
+    list_calculations_route_v1_people__person_id__calculations_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                person_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalculationSummaryOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     create_calculation_route_v1_people__person_id__calculations_post: {
         parameters: {
             query?: never;
@@ -1233,6 +1762,74 @@ export interface operations {
             };
         };
     };
+    get_daily_brief_route_v1_people__person_id__daily_brief_get: {
+        parameters: {
+            query: {
+                as_of_date: string;
+            };
+            header?: never;
+            path: {
+                person_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DailyBriefOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_identities_route_v1_people__person_id__identities_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                person_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NameIdentityOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_timing_route_v1_people__person_id__timing_get: {
         parameters: {
             query: {
@@ -1257,6 +1854,40 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_relationships_route_v1_relationships_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RelationshipSummaryOut"][];
                 };
             };
             /** @description Validation Error */
@@ -1374,6 +2005,43 @@ export interface operations {
             };
         };
     };
+    list_reports_route_v1_reports_get: {
+        parameters: {
+            query?: {
+                person_id?: string | null;
+                calculation_id?: string | null;
+                status?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportSummaryOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     create_report_route_v1_reports_post: {
         parameters: {
             query?: never;
@@ -1433,6 +2101,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReportOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_system_info_v1_system_info_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SystemInfoOut"];
                 };
             };
             /** @description Validation Error */

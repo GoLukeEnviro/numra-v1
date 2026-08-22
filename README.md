@@ -170,6 +170,23 @@ relationship compatibility percentages, and Period Cycle date-boundary transitio
 [docs/adr/006-unfrozen-features.md](docs/adr/006-unfrozen-features.md) and
 `specs/canon-spec.md` §26/§32/§33.
 
+## V1.5 — product completion
+
+On top of the frozen V1 canon above, V1.5 added: server-authoritative calculation/
+report/relationship history (a fresh browser with no LocalStorage still sees
+everything), a full person-profile edit workflow (calculation snapshots stay
+immutable — editing never rewrites one), real append-only identity history, a report
+library, a relationship library with knowledge-sourced qualitative notes (still no
+compatibility score), a German-default/English-switchable UI, a mobile-first bottom
+nav, an installable PWA (its service worker never caches anything under `/api/`), an
+expanded deterministic interpretation engine (Hidden Passion, Karmic Lessons,
+Pinnacles, Challenges, Personal Year/Month/Day, ...), a deterministic reflective Daily
+Brief (no LLM), calculation snapshot comparison, per-section report provenance, and
+Settings V2 (password change with other-session revocation, session management,
+sanitized system info). None of it touches `calculation_version` or the golden canon.
+See [docs/adr/007-v1-5-product-completion.md](docs/adr/007-v1-5-product-completion.md)
+for the durable decisions this introduced.
+
 ## Security notes
 
 - Argon2id password hashing; session tokens are cryptographically random, only their

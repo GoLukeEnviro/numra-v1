@@ -1,15 +1,85 @@
 "use client";
 
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { NumericWheel } from "@/components/layout/numeric-wheel";
 import type { ReportOut } from "@/api/client";
-import { orderedSections, type StructuredReport } from "@/api/report-content";
+import {
+  orderedSections,
+  type StructuredReport,
+  type StructuredReportSection,
+} from "@/api/report-content";
 import { describeReportType } from "@/lib/report-status";
 import { splitParagraphs } from "@/lib/prose";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime, cn } from "@/lib/utils";
+import { ChevronDown } from "lucide-react";
 
 function sectionAnchor(sectionId: string): string {
   return `section-${sectionId}`;
+}
+
+/**
+ * V1.5 Epic M: which CanonicalProfile metrics and which knowledge/ entries this
+ * section was actually grounded in -- taken verbatim from the manifest the pipeline
+ * used, never inferred from the prose. Absent (both arrays empty/undefined) on
+ * reports generated before this field existed, in which case nothing renders.
+ */
+function SectionSources({ section }: { section: StructuredReportSection }) {
+  const [open, setOpen] = useState(false);
+  const metricRefs = section.metric_refs ?? [];
+  const knowledgeRefs = section.knowledge_refs ?? [];
+  if (metricRefs.length === 0 && knowledgeRefs.length === 0) return null;
+
+  return (
+    <div className="mt-5 border-t border-white/10 pt-4">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="flex items-center gap-1.5 text-xs text-muted transition-colors hover:text-gold"
+      >
+        <ChevronDown
+          className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")}
+          aria-hidden="true"
+        />
+        {open ? "Hide sources" : "Sources"}
+      </button>
+      {open && (
+        <dl className="mt-3 grid gap-3 text-xs sm:grid-cols-2">
+          {metricRefs.length > 0 && (
+            <div>
+              <dt className="text-muted">Profile metrics</dt>
+              <dd className="mt-1 flex flex-wrap gap-1.5">
+                {metricRefs.map((ref) => (
+                  <span
+                    key={ref}
+                    className="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-text"
+                  >
+                    {ref}
+                  </span>
+                ))}
+              </dd>
+            </div>
+          )}
+          {knowledgeRefs.length > 0 && (
+            <div>
+              <dt className="text-muted">Knowledge entries</dt>
+              <dd className="mt-1 flex flex-wrap gap-1.5">
+                {knowledgeRefs.map((ref) => (
+                  <span
+                    key={ref}
+                    className="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-text"
+                  >
+                    {ref}
+                  </span>
+                ))}
+              </dd>
+            </div>
+          )}
+        </dl>
+      )}
+    </div>
+  );
 }
 
 /**
@@ -117,6 +187,8 @@ export function ReportReader({
               </div>
 
               <p className="mt-5 text-xs text-muted">{section.word_count.toLocaleString()} words</p>
+
+              <SectionSources section={section} />
             </section>
           ))}
         </div>

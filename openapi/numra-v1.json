@@ -156,6 +156,134 @@
         "title": "CalculationOut",
         "type": "object"
       },
+      "CalculationSummaryOut": {
+        "description": "History-list shape: no `canonical_profile` payload \u2014 list cards only need\nenough to identify and link to a snapshot, not the full profile JSON.",
+        "properties": {
+          "as_of_date": {
+            "format": "date",
+            "title": "As Of Date",
+            "type": "string"
+          },
+          "calculation_version": {
+            "title": "Calculation Version",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "deterministic_hash": {
+            "title": "Deterministic Hash",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "person_id": {
+            "title": "Person Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "title": "Schema Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "person_id",
+          "as_of_date",
+          "calculation_version",
+          "schema_version",
+          "deterministic_hash",
+          "created_at"
+        ],
+        "title": "CalculationSummaryOut",
+        "type": "object"
+      },
+      "ChangePasswordRequest": {
+        "description": "V1.5 Epic N. Same minimum-length rule as registration; the current password is\nalways required (never trust a signed-in session alone to authorize a password\nchange \u2014 a hijacked/left-open session should not be enough).",
+        "properties": {
+          "current_password": {
+            "title": "Current Password",
+            "type": "string"
+          },
+          "new_password": {
+            "minLength": 12,
+            "title": "New Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "current_password",
+          "new_password"
+        ],
+        "title": "ChangePasswordRequest",
+        "type": "object"
+      },
+      "DailyBriefOut": {
+        "description": "Deterministic Daily Brief for one person on one `as_of_date`: identical\ninputs (person + date + knowledge version) always produce a byte-identical\nresponse -- there is no LLM call and no randomness anywhere in this path.",
+        "properties": {
+          "as_of_date": {
+            "format": "date",
+            "title": "As Of Date",
+            "type": "string"
+          },
+          "knowledge_version": {
+            "title": "Knowledge Version",
+            "type": "string"
+          },
+          "person_id": {
+            "title": "Person Id",
+            "type": "string"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/DailyBriefSectionOut"
+            },
+            "title": "Sections",
+            "type": "array"
+          }
+        },
+        "required": [
+          "person_id",
+          "as_of_date",
+          "knowledge_version",
+          "sections"
+        ],
+        "title": "DailyBriefOut",
+        "type": "object"
+      },
+      "DailyBriefSectionOut": {
+        "description": "One Personal Day/Month/Year reflection -- knowledge-sourced, reflective\nlanguage only, never a predictive-certainty claim (V1.5 Epic K).",
+        "properties": {
+          "display_name_de": {
+            "title": "Display Name De",
+            "type": "string"
+          },
+          "display_value": {
+            "title": "Display Value",
+            "type": "string"
+          },
+          "metric_id": {
+            "title": "Metric Id",
+            "type": "string"
+          },
+          "text_de": {
+            "title": "Text De",
+            "type": "string"
+          }
+        },
+        "required": [
+          "metric_id",
+          "display_name_de",
+          "display_value",
+          "text_de"
+        ],
+        "title": "DailyBriefSectionOut",
+        "type": "object"
+      },
       "DeleteAccountRequest": {
         "description": "Re-authentication is required to confirm irreversible account deletion\n(master prompt \u00a7137).",
         "properties": {
@@ -297,6 +425,75 @@
           "password"
         ],
         "title": "LoginRequest",
+        "type": "object"
+      },
+      "NameIdentityKind": {
+        "enum": [
+          "birth",
+          "current",
+          "preferred"
+        ],
+        "title": "NameIdentityKind",
+        "type": "string"
+      },
+      "NameIdentityOut": {
+        "description": "V1.5 Epic C: one recorded name Numra has held for a person. `recorded_at` is\nwhen Numra actually wrote this row down -- always present. `valid_from` is only\never set when the effective date is a genuinely known fact (the birth identity's\n`valid_from` is the birth date itself); it is `None` for current/preferred names,\nsince no historical effective date is knowable for those -- never a guess.",
+        "properties": {
+          "first_names": {
+            "title": "First Names",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/NameIdentityKind"
+          },
+          "last_name": {
+            "title": "Last Name",
+            "type": "string"
+          },
+          "middle_names": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Middle Names"
+          },
+          "recorded_at": {
+            "format": "date-time",
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "valid_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid From"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "first_names",
+          "middle_names",
+          "last_name",
+          "valid_from",
+          "recorded_at"
+        ],
+        "title": "NameIdentityOut",
         "type": "object"
       },
       "PersonInput": {
@@ -524,7 +721,73 @@
         "type": "object"
       },
       "PersonPatchRequest": {
+        "description": "Every field is optional and `exclude_unset` at the route means only fields the\nclient actually sent are applied \u2014 the birth fields (V1.5 Epic B) intentionally\nreuse the same names as `PersonInput`/`PersonOut` rather than a separate\n\"canon-sensitive\" sub-object, since the route applies exactly one rule to all of\nthem: editing a Person never touches any existing `Calculation` row (those are\nimmutable snapshots, see `repositories/calculations.py`'s own docstring) \u2014 only a\n*new* calculation reflects the edit.",
         "properties": {
+          "birth_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birth Date"
+          },
+          "birth_first_names": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birth First Names"
+          },
+          "birth_last_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birth Last Name"
+          },
+          "birth_middle_names": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birth Middle Names"
+          },
+          "birth_place": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BirthPlace"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "birth_time": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BirthTime"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "current_first_names": {
             "anyOf": [
               {
@@ -573,6 +836,25 @@
         "title": "PersonPatchRequest",
         "type": "object"
       },
+      "PersonRefOut": {
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "display_name"
+        ],
+        "title": "PersonRefOut",
+        "type": "object"
+      },
       "RegisterRequest": {
         "properties": {
           "email": {
@@ -594,21 +876,107 @@
         "type": "object"
       },
       "RelationshipCreateRequest": {
+        "description": "V1.5 Epic E: the primary, product-facing way to start a comparison is by\nperson (`person_a_id`/`person_b_id`) \u2014 the route resolves each person's latest\ncalculation server-side. `calculation_a_id`/`calculation_b_id` remain accepted\ndirectly for callers that already know a specific snapshot (e.g. comparing an\nolder snapshot rather than the latest one) \u2014 exactly one of the two pairs must\nbe supplied, never a mix.",
         "properties": {
           "calculation_a_id": {
-            "title": "Calculation A Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calculation A Id"
           },
           "calculation_b_id": {
-            "title": "Calculation B Id",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calculation B Id"
+          },
+          "person_a_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Person A Id"
+          },
+          "person_b_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Person B Id"
+          }
+        },
+        "title": "RelationshipCreateRequest",
+        "type": "object"
+      },
+      "RelationshipInsightOut": {
+        "description": "V1.5 Epic F: a structured, knowledge-sourced qualitative note for one metric --\nnever a compatibility percentage or any other invented score (canon-spec.md \u00a733,\nRESERVED_UNFROZEN). Every theme string is drawn verbatim from\n`knowledge/numbers/*.yaml` / `knowledge/master-numbers/*.yaml`, so it changes only\nwhen the knowledge package itself is re-versioned, not per-request.",
+        "properties": {
+          "knowledge_refs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Knowledge Refs",
+            "type": "array"
+          },
+          "metric_id": {
+            "title": "Metric Id",
             "type": "string"
+          },
+          "person_a_number": {
+            "title": "Person A Number",
+            "type": "integer"
+          },
+          "person_a_relationship_themes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Person A Relationship Themes",
+            "type": "array"
+          },
+          "person_b_number": {
+            "title": "Person B Number",
+            "type": "integer"
+          },
+          "person_b_relationship_themes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Person B Relationship Themes",
+            "type": "array"
+          },
+          "shared_number": {
+            "title": "Shared Number",
+            "type": "boolean"
           }
         },
         "required": [
-          "calculation_a_id",
-          "calculation_b_id"
+          "metric_id",
+          "person_a_number",
+          "person_b_number",
+          "shared_number",
+          "person_a_relationship_themes",
+          "person_b_relationship_themes",
+          "knowledge_refs"
         ],
-        "title": "RelationshipCreateRequest",
+        "title": "RelationshipInsightOut",
         "type": "object"
       },
       "RelationshipOut": {
@@ -634,16 +1002,60 @@
           "id": {
             "title": "Id",
             "type": "string"
+          },
+          "insights": {
+            "items": {
+              "$ref": "#/components/schemas/RelationshipInsightOut"
+            },
+            "title": "Insights",
+            "type": "array"
+          },
+          "person_a": {
+            "$ref": "#/components/schemas/PersonRefOut"
+          },
+          "person_b": {
+            "$ref": "#/components/schemas/PersonRefOut"
           }
         },
         "required": [
           "id",
           "calculation_a_id",
           "calculation_b_id",
+          "person_a",
+          "person_b",
           "comparison",
+          "insights",
           "created_at"
         ],
         "title": "RelationshipOut",
+        "type": "object"
+      },
+      "RelationshipSummaryOut": {
+        "description": "Relationship-library list shape: resolved person names instead of raw\ncalculation UUIDs, so a list card never needs a LocalStorage cache to say who\nPerson A/B are. No `comparison` payload \u2014 that's a detail-view concern.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "person_a": {
+            "$ref": "#/components/schemas/PersonRefOut"
+          },
+          "person_b": {
+            "$ref": "#/components/schemas/PersonRefOut"
+          }
+        },
+        "required": [
+          "id",
+          "person_a",
+          "person_b",
+          "created_at"
+        ],
+        "title": "RelationshipSummaryOut",
         "type": "object"
       },
       "ReportCreateRequest": {
@@ -812,6 +1224,62 @@
         "title": "ReportOut",
         "type": "object"
       },
+      "ReportSummaryOut": {
+        "description": "Report-library list shape: a resolved person reference and a computed\nword_count instead of the full `content` payload, which a list card never\nrenders.",
+        "properties": {
+          "calculation_id": {
+            "title": "Calculation Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "generated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generated At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "person": {
+            "$ref": "#/components/schemas/PersonRefOut"
+          },
+          "report_type": {
+            "$ref": "#/components/schemas/ReportType"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "word_count": {
+            "title": "Word Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "calculation_id",
+          "person",
+          "report_type",
+          "status",
+          "word_count",
+          "generated_at",
+          "created_at"
+        ],
+        "title": "ReportSummaryOut",
+        "type": "object"
+      },
       "ReportType": {
         "enum": [
           "QUICK",
@@ -821,6 +1289,76 @@
         ],
         "title": "ReportType",
         "type": "string"
+      },
+      "SessionOut": {
+        "description": "One active session (V1.5 Epic N). No IP address or device identifier is\nstored or returned \u2014 sessions carry only a token hash, timestamps, and the\nowning user (see models.tables.Session).",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "is_current": {
+            "title": "Is Current",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "created_at",
+          "expires_at",
+          "is_current"
+        ],
+        "title": "SessionOut",
+        "type": "object"
+      },
+      "SystemInfoOut": {
+        "description": "Sanitized system info for the signed-in user's Settings page (V1.5 Epic N).\nDeliberately excludes every secret (session_secret, pdf_internal_token,\nollama_api_key, database_url) -- only operational facts a user could otherwise\ninfer from how the app behaves.",
+        "properties": {
+          "app_timezone": {
+            "title": "App Timezone",
+            "type": "string"
+          },
+          "environment": {
+            "title": "Environment",
+            "type": "string"
+          },
+          "llm_provider": {
+            "title": "Llm Provider",
+            "type": "string"
+          },
+          "pdf_export_enabled": {
+            "title": "Pdf Export Enabled",
+            "type": "boolean"
+          },
+          "self_signup_enabled": {
+            "title": "Self Signup Enabled",
+            "type": "boolean"
+          },
+          "session_ttl_hours": {
+            "title": "Session Ttl Hours",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "environment",
+          "app_timezone",
+          "session_ttl_hours",
+          "self_signup_enabled",
+          "llm_provider",
+          "pdf_export_enabled"
+        ],
+        "title": "SystemInfoOut",
+        "type": "object"
       },
       "UserOut": {
         "properties": {
@@ -969,6 +1507,91 @@
         "summary": "Delete All Route",
         "tags": [
           "account"
+        ]
+      }
+    },
+    "/v1/auth/change-password": {
+      "post": {
+        "description": "V1.5 Epic N: requires the current password even though the caller already has\na valid session (a left-open or hijacked session should not be enough on its\nown). On success every *other* active session for this user is revoked -- the\ncaller's own session (the one making this request) stays valid, so they are not\nlogged out by changing their own password.",
+        "operationId": "change_password_v1_auth_change_password_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-csrf-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_csrf",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Csrf"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Change Password",
+        "tags": [
+          "auth"
         ]
       }
     },
@@ -1156,6 +1779,135 @@
           }
         },
         "summary": "Register",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/sessions": {
+      "get": {
+        "description": "V1.5 Epic N: every device/browser currently signed in as this user. No IP\naddress or device identifier is stored anywhere (see models.tables.Session), so\nthere is nothing to redact here beyond simply not having it.",
+        "operationId": "list_sessions_v1_auth_sessions_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SessionOut"
+                  },
+                  "title": "Response List Sessions V1 Auth Sessions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Sessions",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/sessions/revoke-others": {
+      "post": {
+        "description": "V1.5 Epic N: \"Log out other devices\" -- revokes every active session for this\nuser except the one making this request.",
+        "operationId": "revoke_other_sessions_v1_auth_sessions_revoke_others_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-csrf-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_csrf",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Csrf"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Revoke Other Sessions",
         "tags": [
           "auth"
         ]
@@ -1850,6 +2602,90 @@
       }
     },
     "/v1/people/{person_id}/calculations": {
+      "get": {
+        "operationId": "list_calculations_route_v1_people__person_id__calculations_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "person_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Person Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CalculationSummaryOut"
+                  },
+                  "title": "Response List Calculations Route V1 People  Person Id  Calculations Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Calculations Route",
+        "tags": [
+          "calculations"
+        ]
+      },
       "post": {
         "operationId": "create_calculation_route_v1_people__person_id__calculations_post",
         "parameters": [
@@ -1950,6 +2786,139 @@
         ]
       }
     },
+    "/v1/people/{person_id}/daily-brief": {
+      "get": {
+        "description": "V1.5 Epic K: a deterministic, reproducible Daily Brief -- Personal Day/Month/\nYear composed with knowledge-sourced reflection text. Ad-hoc and non-persisted,\nsame as /timing: recomputed from the engine for the given as_of_date, no LLM call,\nno randomness. Identical person + as_of_date + knowledge version always produce a\nbyte-identical response.",
+        "operationId": "get_daily_brief_route_v1_people__person_id__daily_brief_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "person_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Person Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "as_of_date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "As Of Date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DailyBriefOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Daily Brief Route",
+        "tags": [
+          "calculations"
+        ]
+      }
+    },
+    "/v1/people/{person_id}/identities": {
+      "get": {
+        "operationId": "list_identities_route_v1_people__person_id__identities_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "person_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Person Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/NameIdentityOut"
+                  },
+                  "title": "Response List Identities Route V1 People  Person Id  Identities Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Identities Route",
+        "tags": [
+          "people"
+        ]
+      }
+    },
     "/v1/people/{person_id}/timing": {
       "get": {
         "description": "Ad-hoc, non-persisted timing lookup \u2014 recomputes the engine for the given\nas_of_date without creating a new immutable Calculation snapshot.",
@@ -2023,6 +2992,80 @@
       }
     },
     "/v1/relationships": {
+      "get": {
+        "operationId": "list_relationships_route_v1_relationships_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RelationshipSummaryOut"
+                  },
+                  "title": "Response List Relationships Route V1 Relationships Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Relationships Route",
+        "tags": [
+          "relationships"
+        ]
+      },
       "post": {
         "operationId": "create_relationship_route_v1_relationships_post",
         "parameters": [
@@ -2232,6 +3275,130 @@
       }
     },
     "/v1/reports": {
+      "get": {
+        "operationId": "list_reports_route_v1_reports_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "person_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Person Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "calculation_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Calculation Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ReportSummaryOut"
+                  },
+                  "title": "Response List Reports Route V1 Reports Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Reports Route",
+        "tags": [
+          "reports"
+        ]
+      },
       "post": {
         "operationId": "create_report_route_v1_reports_post",
         "parameters": [
@@ -2394,6 +3561,56 @@
         "summary": "Get Report Route",
         "tags": [
           "reports"
+        ]
+      }
+    },
+    "/v1/system-info": {
+      "get": {
+        "description": "V1.5 Epic N: sanitized system info for the Settings page. Auth-required (not\na public endpoint) but still deliberately excludes every secret -- see\nSystemInfoOut's own docstring for exactly what is and isn't included.",
+        "operationId": "get_system_info_v1_system_info_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemInfoOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get System Info",
+        "tags": [
+          "system-info"
         ]
       }
     }

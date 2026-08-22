@@ -1,17 +1,54 @@
+"use client";
+
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { PersonOut } from "@/api/client";
+import { api, type NameIdentityKind, type PersonOut } from "@/api/client";
 import { buildIdentityTimeline } from "@/lib/identity";
+import { useAsync } from "@/lib/use-async";
+import { formatDateTime, formatIsoDate } from "@/lib/utils";
+
+const KIND_LABEL: Record<NameIdentityKind, string> = {
+  birth: "Birth",
+  current: "Current",
+  preferred: "Preferred",
+};
 
 /**
- * Identity Timeline: the names Numra actually holds for a person, and which of them
- * a calculation uses.
- *
- * Explicitly *not* a name history. The backend has no endpoint that records when a
- * name changed and nothing writes to its `name_identities` table, so no dates, no
- * previous names and no ordering beyond birth → current → preferred are shown. Each
- * row exists only because `GET /v1/people/{id}` returned a value for it.
+ * The real, server-recorded name history (V1.5 Epic C) — every entry Numra has ever
+ * written down for this person, append-only. `recorded_at` is always shown (when
+ * Numra actually saved the row); `valid_from` is only ever shown when the backend
+ * sent one, since it is only ever set from a genuinely known fact (the birth date
+ * for the birth identity) — never invented for current/preferred names.
  */
+function RecordedHistory({ personId }: { personId: string }) {
+  const state = useAsync(() => api.people.identities(personId), [personId]);
+  if (state.status !== "success" || state.data.length === 0) return null;
+
+  return (
+    <div className="mt-6 border-t border-white/10 pt-5">
+      <p className="mb-3 text-xs uppercase tracking-wider text-muted">Recorded history</p>
+      <ul className="flex flex-col gap-2.5" aria-label="Recorded history">
+        {state.data.map((entry) => {
+          const name = [entry.first_names, entry.middle_names, entry.last_name]
+            .filter(Boolean)
+            .join(" ");
+          return (
+            <li key={entry.id} className="flex flex-wrap items-baseline gap-x-2 text-sm">
+              <Badge variant="neutral">{KIND_LABEL[entry.kind]}</Badge>
+              <span className="text-text">{name || "—"}</span>
+              <span className="text-xs text-muted">
+                {entry.valid_from
+                  ? `Valid from ${formatIsoDate(entry.valid_from)}`
+                  : `Recorded ${formatDateTime(entry.recorded_at)}`}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
 export function IdentityTimeline({ person }: { person: PersonOut }) {
   const entries = buildIdentityTimeline(person);
 
@@ -24,7 +61,7 @@ export function IdentityTimeline({ person }: { person: PersonOut }) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <ol className="relative">
+        <ol className="relative" aria-label="Current identity">
           {entries.map((entry, index) => {
             const isLast = index === entries.length - 1;
             return (
@@ -72,6 +109,8 @@ export function IdentityTimeline({ person }: { person: PersonOut }) {
             names it holds — it does not infer a name history.
           </p>
         )}
+
+        <RecordedHistory personId={person.id} />
       </CardContent>
     </Card>
   );

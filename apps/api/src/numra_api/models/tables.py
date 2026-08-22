@@ -147,6 +147,12 @@ class RelationshipComparison(Base):
         ForeignKey("calculations.id", ondelete="CASCADE")
     )
     comparison_json: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    #: V1.5 Epic F -- structured, knowledge-sourced qualitative notes (list of
+    #: per-metric insight dicts). Snapshotted at creation time like `comparison_json`,
+    #: never a compatibility score.
+    insights_json: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, server_default="[]", nullable=False
+    )
     created_at: Mapped[dt.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

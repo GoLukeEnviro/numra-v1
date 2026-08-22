@@ -2,13 +2,23 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, Header
+from fastapi import APIRouter, Depends, Header, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from numra_api.deps import get_current_user, get_db, rate_limit_by_user, require_csrf
-from numra_api.models import Report, ReportJob, User
-from numra_api.repositories.reports import get_report_for_user, get_report_job_for_user
-from numra_api.schemas.report import ReportCreateRequest, ReportJobOut, ReportOut
+from numra_api.models import Person, Report, ReportJob, User
+from numra_api.repositories.reports import (
+    get_report_for_user,
+    get_report_job_for_user,
+    list_reports_for_user,
+)
+from numra_api.schemas.person_ref import PersonRefOut, person_display_name
+from numra_api.schemas.report import (
+    ReportCreateRequest,
+    ReportJobOut,
+    ReportOut,
+    ReportSummaryOut,
+)
 from numra_api.services.errors import NotFoundError
 from numra_api.services.report_service import create_report_job
 
@@ -28,6 +38,26 @@ def _report_to_out(report: Report, job_id: uuid.UUID) -> ReportOut:
         generated_at=report.generated_at,
         created_at=report.created_at,
         job_id=str(job_id),
+    )
+
+
+def _report_to_summary(report: Report, person: Person, word_count: int) -> ReportSummaryOut:
+    return ReportSummaryOut(
+        id=str(report.id),
+        calculation_id=str(report.calculation_id),
+        person=PersonRefOut(
+            id=person.id,
+            display_name=person_display_name(
+                preferred_name=person.preferred_name,
+                birth_first_names=person.birth_first_names,
+                birth_last_name=person.birth_last_name,
+            ),
+        ),
+        report_type=report.report_type,
+        status=report.status,
+        word_count=word_count,
+        generated_at=report.generated_at,
+        created_at=report.created_at,
     )
 
 
@@ -67,6 +97,28 @@ async def create_report_route(
         idempotency_key=idempotency_key,
     )
     return _report_to_out(report, job.id)
+
+
+@router.get("/reports", response_model=list[ReportSummaryOut])
+async def list_reports_route(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    person_id: uuid.UUID | None = Query(default=None),
+    calculation_id: uuid.UUID | None = Query(default=None),
+    status: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+) -> list[ReportSummaryOut]:
+    rows = await list_reports_for_user(
+        db,
+        user_id=user.id,
+        person_id=person_id,
+        calculation_id=calculation_id,
+        status=status,
+        limit=limit,
+        offset=offset,
+    )
+    return [_report_to_summary(report, person, word_count) for report, person, word_count in rows]
 
 
 @router.get("/reports/{report_id}", response_model=ReportOut)

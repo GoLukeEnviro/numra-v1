@@ -10,16 +10,30 @@ from numra_api.auth.passwords import hash_password, verify_password
 from numra_api.auth.sessions import generate_session_token, hash_session_token
 from numra_api.config import Settings
 from numra_api.deps import (
+    get_current_session,
     get_current_user,
     get_db,
     get_settings_dep,
     rate_limit_by_ip,
+    rate_limit_by_user,
     require_csrf,
 )
+from numra_api.models import Session as SessionModel
 from numra_api.models import User
-from numra_api.repositories.sessions import create_session, revoke_session
-from numra_api.repositories.users import create_user, get_user_by_email
-from numra_api.schemas.auth import LoginRequest, RegisterRequest, UserOut
+from numra_api.repositories.sessions import (
+    create_session,
+    list_active_sessions_for_user,
+    revoke_all_sessions_except,
+    revoke_session,
+)
+from numra_api.repositories.users import create_user, get_user_by_email, update_user_password
+from numra_api.schemas.auth import (
+    ChangePasswordRequest,
+    LoginRequest,
+    RegisterRequest,
+    SessionOut,
+    UserOut,
+)
 from numra_api.services.errors import InvalidCredentials, SelfSignupDisabled
 
 router = APIRouter(prefix="/v1/auth", tags=["auth"])
@@ -112,3 +126,64 @@ async def logout(
 @router.get("/me", response_model=UserOut)
 async def me(user: User = Depends(get_current_user)) -> UserOut:
     return UserOut(id=str(user.id), email=user.email)
+
+
+@router.post(
+    "/change-password",
+    status_code=204,
+    dependencies=[
+        Depends(require_csrf),
+        Depends(rate_limit_by_user("auth:change_password", limit=5, window_seconds=3600)),
+    ],
+)
+async def change_password(
+    body: ChangePasswordRequest,
+    user: User = Depends(get_current_user),
+    session: SessionModel = Depends(get_current_session),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """V1.5 Epic N: requires the current password even though the caller already has
+    a valid session (a left-open or hijacked session should not be enough on its
+    own). On success every *other* active session for this user is revoked -- the
+    caller's own session (the one making this request) stays valid, so they are not
+    logged out by changing their own password."""
+    if not verify_password(user.password_hash, body.current_password):
+        raise InvalidCredentials("current password is incorrect")
+    await update_user_password(db, user=user, password_hash=hash_password(body.new_password))
+    await revoke_all_sessions_except(
+        db, user_id=user.id, keep_token_hash=session.token_hash, now=dt.datetime.now(dt.UTC)
+    )
+
+
+@router.get("/sessions", response_model=list[SessionOut])
+async def list_sessions(
+    user: User = Depends(get_current_user),
+    session: SessionModel = Depends(get_current_session),
+    db: AsyncSession = Depends(get_db),
+) -> list[SessionOut]:
+    """V1.5 Epic N: every device/browser currently signed in as this user. No IP
+    address or device identifier is stored anywhere (see models.tables.Session), so
+    there is nothing to redact here beyond simply not having it."""
+    sessions = await list_active_sessions_for_user(db, user_id=user.id, now=dt.datetime.now(dt.UTC))
+    return [
+        SessionOut(
+            id=str(s.id),
+            created_at=s.created_at,
+            expires_at=s.expires_at,
+            is_current=s.token_hash == session.token_hash,
+        )
+        for s in sessions
+    ]
+
+
+@router.post("/sessions/revoke-others", status_code=204, dependencies=[Depends(require_csrf)])
+async def revoke_other_sessions(
+    user: User = Depends(get_current_user),
+    session: SessionModel = Depends(get_current_session),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """V1.5 Epic N: "Log out other devices" -- revokes every active session for this
+    user except the one making this request."""
+    await revoke_all_sessions_except(
+        db, user_id=user.id, keep_token_hash=session.token_hash, now=dt.datetime.now(dt.UTC)
+    )

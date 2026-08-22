@@ -1,13 +1,13 @@
 "use client";
 
-import { useMemo, useRef, useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError, type ReportType } from "@/api/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LinkButton } from "@/components/ui/link-button";
 import { REPORT_TYPE_OPTIONS } from "@/lib/report-status";
-import { getReportsForCalculation, recordReport } from "@/lib/local-reports";
+import { useAsync } from "@/lib/use-async";
 import { formatDateTime } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { BookOpen, ArrowRight } from "lucide-react";
@@ -21,19 +21,16 @@ function newIdempotencyKey(): string {
   return `report-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-export function ReportLauncher({
-  calculationId,
-  personLabel,
-}: {
-  calculationId: string;
-  personLabel: string;
-}) {
+export function ReportLauncher({ calculationId }: { calculationId: string }) {
   const router = useRouter();
   const [reportType, setReportType] = useState<ReportType>("FULL");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<{ code: string; message: string } | null>(null);
   const idempotencyKeyRef = useRef<string | null>(null);
-  const previous = useMemo(() => getReportsForCalculation(calculationId), [calculationId]);
+  // Server-authoritative (V1.5 Epic A): a fresh browser context with no LocalStorage
+  // still sees every report already started from this calculation.
+  const previousState = useAsync(() => api.reports.list({ calculationId }), [calculationId]);
+  const previous = previousState.status === "success" ? previousState.data : [];
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -45,13 +42,6 @@ export function ReportLauncher({
         { calculation_id: calculationId, report_type: reportType },
         idempotencyKeyRef.current,
       );
-      recordReport({
-        reportId: report.id,
-        jobId: report.job_id,
-        calculationId,
-        reportType: report.report_type,
-        personLabel,
-      });
       idempotencyKeyRef.current = null;
       router.push(`/reports/${report.id}`);
     } catch (err) {
@@ -145,14 +135,14 @@ export function ReportLauncher({
             <ul className="flex flex-col gap-2">
               {previous.map((entry) => (
                 <li
-                  key={entry.reportId}
+                  key={entry.id}
                   className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 bg-surface-2 px-4 py-3"
                 >
                   <div>
-                    <p className="text-sm text-ivory">{entry.reportType}</p>
-                    <p className="text-xs text-muted">Started {formatDateTime(entry.savedAt)}</p>
+                    <p className="text-sm text-ivory">{entry.report_type}</p>
+                    <p className="text-xs text-muted">Started {formatDateTime(entry.created_at)}</p>
                   </div>
-                  <LinkButton size="sm" variant="secondary" href={`/reports/${entry.reportId}`}>
+                  <LinkButton size="sm" variant="secondary" href={`/reports/${entry.id}`}>
                     Open <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
                   </LinkButton>
                 </li>

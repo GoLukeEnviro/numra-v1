@@ -44,3 +44,35 @@ async def get_calculation_for_user(
     )
     result = await db.execute(stmt)
     return result.scalar_one_or_none()
+
+
+async def get_latest_calculation_for_person(
+    db: AsyncSession, *, person_id: uuid.UUID, user_id: uuid.UUID
+) -> Calculation | None:
+    stmt = (
+        select(Calculation)
+        .join(Person, Person.id == Calculation.person_id)
+        .where(Calculation.person_id == person_id, Person.user_id == user_id)
+        .order_by(Calculation.created_at.desc())
+        .limit(1)
+    )
+    result = await db.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def list_calculations_for_person(
+    db: AsyncSession, *, person_id: uuid.UUID, user_id: uuid.UUID, limit: int, offset: int
+) -> list[Calculation]:
+    """Ownership is enforced via the `Person.user_id` join, not by trusting the
+    caller's `person_id` alone — a person_id belonging to a different user yields an
+    empty list, not another user's calculations."""
+    stmt = (
+        select(Calculation)
+        .join(Person, Person.id == Calculation.person_id)
+        .where(Calculation.person_id == person_id, Person.user_id == user_id)
+        .order_by(Calculation.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    result = await db.execute(stmt)
+    return list(result.scalars().all())

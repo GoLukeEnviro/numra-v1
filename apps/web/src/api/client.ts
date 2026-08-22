@@ -5,15 +5,24 @@ export type UserOut = components["schemas"]["UserOut"];
 export type PersonInput = components["schemas"]["PersonInput"];
 export type PersonOut = components["schemas"]["PersonOut"];
 export type PersonPatchRequest = components["schemas"]["PersonPatchRequest"];
+export type NameIdentityOut = components["schemas"]["NameIdentityOut"];
+export type NameIdentityKind = components["schemas"]["NameIdentityKind"];
 export type CalculateRequest = components["schemas"]["CalculateRequest"];
 export type CalculationOut = components["schemas"]["CalculationOut"];
+export type CalculationSummaryOut = components["schemas"]["CalculationSummaryOut"];
 export type RelationshipCreateRequest = components["schemas"]["RelationshipCreateRequest"];
 export type RelationshipOut = components["schemas"]["RelationshipOut"];
+export type RelationshipSummaryOut = components["schemas"]["RelationshipSummaryOut"];
+export type RelationshipInsightOut = components["schemas"]["RelationshipInsightOut"];
+export type DailyBriefOut = components["schemas"]["DailyBriefOut"];
+export type DailyBriefSectionOut = components["schemas"]["DailyBriefSectionOut"];
+export type PersonRefOut = components["schemas"]["PersonRefOut"];
 export type BirthPlace = components["schemas"]["BirthPlace"];
 export type BirthTime = components["schemas"]["BirthTime"];
 export type BirthTimePrecision = components["schemas"]["BirthTimePrecision"];
 export type ReportCreateRequest = components["schemas"]["ReportCreateRequest"];
 export type ReportOut = components["schemas"]["ReportOut"];
+export type ReportSummaryOut = components["schemas"]["ReportSummaryOut"];
 export type ReportJobOut = components["schemas"]["ReportJobOut"];
 export type ReportJobStatus = components["schemas"]["ReportJobStatus"];
 export type ReportType = components["schemas"]["ReportType"];
@@ -21,6 +30,9 @@ export type ExportCreateRequest = components["schemas"]["ExportCreateRequest"];
 export type ExportOut = components["schemas"]["ExportOut"];
 export type ExportStatus = components["schemas"]["ExportStatus"];
 export type DeleteAccountRequest = components["schemas"]["DeleteAccountRequest"];
+export type ChangePasswordRequest = components["schemas"]["ChangePasswordRequest"];
+export type SessionOut = components["schemas"]["SessionOut"];
+export type SystemInfoOut = components["schemas"]["SystemInfoOut"];
 
 // Same-origin only: every request goes to /api/*, which next.config.mjs's rewrite
 // forwards server-side to API_INTERNAL_URL (a runtime, non-NEXT_PUBLIC_ env var — see
@@ -142,6 +154,18 @@ export const api = {
       request<UserOut>("/v1/auth/register", { method: "POST", body }),
     logout: () => request<void>("/v1/auth/logout", { method: "POST" }),
     me: () => request<UserOut>("/v1/auth/me"),
+    /** V1.5 Epic N. Revokes every other active session; the caller's own session
+     *  stays valid, so this never signs the caller themselves out. */
+    changePassword: (body: ChangePasswordRequest) =>
+      request<void>("/v1/auth/change-password", { method: "POST", body }),
+    /** V1.5 Epic N. Every currently active session for this user, newest first. */
+    sessions: () => request<SessionOut[]>("/v1/auth/sessions"),
+    /** V1.5 Epic N. "Log out other devices" -- revokes every session but this one. */
+    revokeOtherSessions: () =>
+      request<void>("/v1/auth/sessions/revoke-others", { method: "POST" }),
+  },
+  systemInfo: {
+    get: () => request<SystemInfoOut>("/v1/system-info"),
   },
   people: {
     list: () => request<PersonOut[]>("/v1/people"),
@@ -162,6 +186,18 @@ export const api = {
       request<unknown>(`/v1/people/${personId}/timing`, {
         query: { as_of_date: asOfDate },
       }),
+    /**
+     * V1.5 Epic K: the deterministic, reproducible Daily Brief -- Personal Day/
+     * Month/Year with knowledge-sourced reflection text. Ad-hoc, non-persisted,
+     * same pattern as timing() above.
+     */
+    dailyBrief: (personId: string, asOfDate: string) =>
+      request<DailyBriefOut>(`/v1/people/${personId}/daily-brief`, {
+        query: { as_of_date: asOfDate },
+      }),
+    /** V1.5 Epic C: the real, server-recorded name history for this person. */
+    identities: (personId: string) =>
+      request<NameIdentityOut[]>(`/v1/people/${personId}/identities`),
   },
   calculations: {
     create: (personId: string, body: CalculateRequest) =>
@@ -171,12 +207,17 @@ export const api = {
       }),
     get: (calculationId: string) =>
       request<CalculationOut>(`/v1/calculations/${calculationId}`),
+    /** Calculation history for a person — server-authoritative, newest first. */
+    list: (personId: string) =>
+      request<CalculationSummaryOut[]>(`/v1/people/${personId}/calculations`),
   },
   relationships: {
     create: (body: RelationshipCreateRequest) =>
       request<RelationshipOut>("/v1/relationships", { method: "POST", body }),
     get: (relationshipId: string) =>
       request<RelationshipOut>(`/v1/relationships/${relationshipId}`),
+    /** The relationship library — server-authoritative, resolved person names. */
+    list: () => request<RelationshipSummaryOut[]>("/v1/relationships"),
   },
   reports: {
     /**
@@ -193,6 +234,15 @@ export const api = {
       }),
     get: (reportId: string) => request<ReportOut>(`/v1/reports/${reportId}`),
     getJob: (jobId: string) => request<ReportJobOut>(`/v1/report-jobs/${jobId}`),
+    /** The report library — server-authoritative, optionally filtered. */
+    list: (filter?: { personId?: string; calculationId?: string; status?: string }) =>
+      request<ReportSummaryOut[]>("/v1/reports", {
+        query: {
+          person_id: filter?.personId,
+          calculation_id: filter?.calculationId,
+          status: filter?.status,
+        },
+      }),
   },
   exports: {
     /**

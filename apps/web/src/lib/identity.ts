@@ -1,13 +1,14 @@
 import type { PersonOut } from "@/api/client";
 
 /**
- * Builds the "Identity Timeline" shown on a person's profile.
+ * Builds the "Identity" snapshot shown on a person's profile — birth/current/
+ * preferred, derived only from fields `GET /v1/people/{id}` returns right now (no
+ * dates, no past names inferred).
  *
- * Scope note, deliberately narrow: the `name_identities` table in the backend has no
- * REST endpoint and nothing writes to it, so there is no stored name *history* to
- * render. Everything here is derived only from fields `GET /v1/people/{id}` actually
- * returns — no dates are invented, no past names are inferred, and an entry is
- * emitted only when the API really carries a value for it.
+ * The real, server-recorded name *history* (V1.5 Epic C — `GET
+ * /v1/people/{id}/identities`, append-only, `recorded_at`/`valid_from` kept
+ * strictly separate so no date is ever invented) is rendered separately by
+ * `RecordedHistory` in `identity-timeline.tsx`, underneath this snapshot.
  *
  * canon-spec.md §5 is the source for the "what this name is used for" copy: the Core
  * is computed from the **full birth name** only. Current and preferred names are

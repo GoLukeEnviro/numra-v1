@@ -61,13 +61,18 @@ async def create_report_job(
     if calculation is None:
         raise NotFoundError(f"calculation {calculation_id} not found")
 
+    # Read the knowledge package's own declared version rather than hardcoding it --
+    # a stale literal here would silently mislabel every report once the knowledge
+    # package is re-versioned (V1.5 Epic J).
+    knowledge_version = load_knowledge_base(KNOWLEDGE_ROOT).manifest.version
+
     report, job = await create_report_with_job(
         db,
         user_id=user_id,
         calculation_id=calculation.id,
         report_type=report_type,
         calculation_version=calculation.calculation_version,
-        knowledge_version="1.0.0",
+        knowledge_version=knowledge_version,
         prompt_version=PROMPT_VERSION,
         profile_snapshot=calculation.canonical_profile_json,
         report_schema_version=REPORT_SCHEMA_VERSION,
@@ -138,6 +143,8 @@ async def run_report_job(
                 "text": section.text,
                 "word_count": section.word_count,
                 "summary": section.summary,
+                "metric_refs": list(section.metric_refs),
+                "knowledge_refs": list(section.knowledge_refs),
             }
             for section in structured_report.sections
         ]

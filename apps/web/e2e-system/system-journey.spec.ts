@@ -151,7 +151,6 @@ test("real system journey: login through delete-all against the live stack", asy
   await page.getByRole("button", { name: /Create profile/i }).click();
 
   await expect(page).toHaveURL(/\/analysis\/[0-9a-f-]{36}$/);
-  const calculationIdB = page.url().split("/analysis/")[1];
   await expect(page.getByRole("heading", { name: "Anna Berger" })).toBeVisible();
 
   await page.goto("/people");
@@ -162,14 +161,21 @@ test("real system journey: login through delete-all against the live stack", asy
   await expect(page.getByText("Birth name", { exact: true })).toBeVisible();
   await expect(page.getByText("Current name", { exact: true })).toBeVisible();
   await expect(page.getByText("Preferred name", { exact: true })).toBeVisible();
-  await expect(page.getByRole("list").getByText("Annie", { exact: true })).toBeVisible();
+  // Two lists render "Annie" now (V1.5 Epic C added a second, server-authoritative
+  // "Recorded history" log alongside the original current-state timeline) -- scope
+  // to the current-identity one, which is what this assertion is actually about.
+  await expect(
+    page.getByRole("list", { name: "Current identity" }).getByText("Annie", { exact: true }),
+  ).toBeVisible();
   await expect(page.getByText("Used for Core Numbers")).toBeVisible();
 
-  // 7. Relationship comparison: both calculations were viewed in this browser, so
-  // they are offered as recent selections (no manual ID pasting needed).
+  // 7. Relationship comparison: V1.5 Epic E made this select by PERSON, not by a
+  // pasted calculation UUID -- the backend resolves each person's latest
+  // calculation itself. Both people created above appear by their real display
+  // name (personDisplayName() prioritizes the preferred name, hence "Annie").
   await page.goto("/relationships");
-  await page.getByLabel("Person A").selectOption(calculationIdA!);
-  await page.getByLabel("Person B").selectOption(calculationIdB!);
+  await page.getByLabel("Person A").selectOption({ label: "Lukas Springer" });
+  await page.getByLabel("Person B").selectOption({ label: "Annie" });
   await page.getByRole("button", { name: "Compare" }).click();
 
   await expect(page).toHaveURL(/\/relationships\/[0-9a-f-]{36}$/);
