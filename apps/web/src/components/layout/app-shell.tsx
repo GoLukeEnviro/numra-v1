@@ -70,7 +70,7 @@ function MobileMoreSheet({
     <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true" aria-label="More">
       <button
         type="button"
-        aria-label="Close menu"
+        aria-label="Dismiss"
         onClick={onClose}
         className="absolute inset-0 bg-black/60"
       />
