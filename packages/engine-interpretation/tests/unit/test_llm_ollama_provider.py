@@ -148,6 +148,49 @@ def test_generate_structured_parses_json_content_into_schema(monkeypatch) -> Non
     assert result.metric_id == "life_path"
 
 
+def test_generate_structured_sends_target_json_schema_to_model(monkeypatch) -> None:
+    """Regression test: `format: "json"` alone never told the model which fields to
+    return, so a real reasoning model could spend its whole output budget on hidden
+    thinking and return empty content (see `_build_structured_messages`). Assert the
+    outgoing prompt actually carries the schema's field names."""
+    monkeypatch.setenv("OLLAMA_BASE_URL", "https://ollama.example.invalid")
+    monkeypatch.setenv("OLLAMA_API_KEY", "test-key")
+
+    captured: dict[str, object] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["payload"] = json.loads(request.content)
+        body = {"text": "hallo", "metric_id": "life_path"}
+        return httpx.Response(200, json={"message": {"content": json.dumps(body)}})
+
+    client = _client_with_transport(handler)
+    provider = OllamaCloudProvider(client=client)
+    request = StructuredGenerationRequest(
+        system_instructions="x", target_schema_name="_StructuredSection"
+    )
+    asyncio.run(provider.generate_structured(request, _StructuredSection))
+
+    messages = captured["payload"]["messages"]
+    schema_messages = [m for m in messages if m["role"] == "system" and "metric_id" in m["content"]]
+    assert schema_messages, f"expected the target JSON Schema in the prompt, got: {messages}"
+
+
+def test_generate_structured_raises_clear_error_on_empty_content(monkeypatch) -> None:
+    monkeypatch.setenv("OLLAMA_BASE_URL", "https://ollama.example.invalid")
+    monkeypatch.setenv("OLLAMA_API_KEY", "test-key")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"message": {"content": ""}, "done_reason": "length"})
+
+    client = _client_with_transport(handler)
+    provider = OllamaCloudProvider(client=client)
+    request = StructuredGenerationRequest(
+        system_instructions="x", target_schema_name="_StructuredSection"
+    )
+    with pytest.raises(OllamaProviderError, match="empty content"):
+        asyncio.run(provider.generate_structured(request, _StructuredSection))
+
+
 def test_generate_structured_raises_on_schema_mismatch(monkeypatch) -> None:
     monkeypatch.setenv("OLLAMA_BASE_URL", "https://ollama.example.invalid")
     monkeypatch.setenv("OLLAMA_API_KEY", "test-key")

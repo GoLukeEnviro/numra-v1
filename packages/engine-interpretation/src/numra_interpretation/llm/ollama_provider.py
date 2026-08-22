@@ -139,6 +139,33 @@ def _build_messages(request: GenerationRequest) -> list[dict[str, str]]:
     return messages
 
 
+def _build_structured_messages(
+    request: GenerationRequest, schema: type[BaseModel]
+) -> list[dict[str, str]]:
+    """Same layout as `_build_messages`, plus one extra system message carrying the
+    target Pydantic model's JSON Schema. Without this, the model is asked for
+    ``format: "json"`` (syntactically valid JSON) but is never told which fields to
+    populate — it has to guess, and a reasoning model may spend its whole output
+    budget on hidden "thinking" and return an empty ``content`` instead. The schema
+    message is inserted before any trailing user message (not appended after it) so
+    it stays part of the instruction context rather than trailing behind end-user
+    content."""
+    messages = _build_messages(request)
+    schema_message = {
+        "role": "system",
+        "content": (
+            "Respond with a single JSON object that validates against exactly this "
+            "JSON Schema. No markdown fences, no commentary outside the JSON object.\n"
+            f"{json.dumps(schema.model_json_schema())}"
+        ),
+    }
+    if request.user_instructions is not None:
+        messages.insert(-1, schema_message)
+    else:
+        messages.append(schema_message)
+    return messages
+
+
 class OllamaCloudProvider:
     """Conforms to the `LLMProvider` protocol. Every configuration value is an
     explicit constructor argument (dependency injection) with an environment-variable
@@ -318,7 +345,7 @@ class OllamaCloudProvider:
         model = self._model_premium
         payload = {
             "model": model,
-            "messages": _build_messages(request),
+            "messages": _build_structured_messages(request, schema),
             "format": "json",
             "stream": False,
             "options": {"temperature": self._temperature},
@@ -330,6 +357,12 @@ class OllamaCloudProvider:
             raise OllamaInvalidStructuredResponseError(
                 f"Unexpected Ollama chat response shape: {data}"
             ) from exc
+
+        if not raw_content:
+            raise OllamaInvalidStructuredResponseError(
+                "Ollama structured response had empty content "
+                f"(done_reason={data.get('done_reason')!r})"
+            )
 
         try:
             parsed = json.loads(raw_content)
