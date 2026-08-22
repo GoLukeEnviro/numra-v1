@@ -93,6 +93,41 @@ function renderAppendix({ profile }) {
     </section>`;
 }
 
+/**
+ * V1.5 Epic M: a provenance appendix -- for every section, which profile metrics
+ * and which knowledge/ entries it was grounded in. Sourced verbatim from each
+ * section's own metric_refs/knowledge_refs (see
+ * numra_interpretation.report.schemas.StructuredReportSection); nothing here is
+ * inferred from the rendered prose. Sections carrying neither field (reports
+ * generated before this field existed) are simply omitted from the table, not
+ * padded with a placeholder.
+ */
+function renderProvenanceAppendix(sections) {
+  const rows = sections
+    .filter((s) => (s.metric_refs || []).length > 0 || (s.knowledge_refs || []).length > 0)
+    .map(
+      (s) => `<tr>
+        <td>${s.order_index + 1}. ${escapeHtml(s.title)}</td>
+        <td>${(s.metric_refs || []).map(escapeHtml).join(", ") || "—"}</td>
+        <td>${(s.knowledge_refs || []).map(escapeHtml).join(", ") || "—"}</td>
+      </tr>`,
+    )
+    .join("");
+  if (!rows) return "";
+  return `
+    <section class="report-section appendix">
+      <h2>Sources</h2>
+      <p class="methodology-note">
+        Which profile metrics and knowledge/ entries each section above was grounded
+        in, taken directly from the generation pipeline -- not inferred from the text.
+      </p>
+      <table class="provenance-table">
+        <thead><tr><th>Section</th><th>Profile metrics</th><th>Knowledge entries</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </section>`;
+}
+
 export function renderReportHtml({ report, profile, person }) {
   const sections = [...(report.sections || [])].sort((a, b) => a.order_index - b.order_index);
   return `<!doctype html>
@@ -107,6 +142,7 @@ ${renderCoverPage({ person, profile, report })}
 ${renderToc(sections)}
 ${sections.map(renderSection).join("\n")}
 ${renderAppendix({ profile })}
+${renderProvenanceAppendix(sections)}
 </body>
 </html>`;
 }
@@ -138,4 +174,7 @@ const STYLES = `
   .toc-dots { flex: 1; border-bottom: 1px dotted #ccc; margin: 0 6pt; }
   .report-section { page-break-inside: avoid; margin-bottom: 18pt; }
   .methodology-note { font-style: italic; color: #555; }
+  .provenance-table { width: 100%; border-collapse: collapse; font-size: 9pt; margin-top: 10pt; }
+  .provenance-table th, .provenance-table td { padding: 4pt 8pt; border-bottom: 1px solid #e5ddc8; text-align: left; vertical-align: top; }
+  .provenance-table th { color: #8f6b3e; font-weight: normal; text-transform: uppercase; letter-spacing: 0.04em; font-size: 8pt; }
 `;

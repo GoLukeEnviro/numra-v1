@@ -143,6 +143,8 @@ async def run_report_job(
                 "text": section.text,
                 "word_count": section.word_count,
                 "summary": section.summary,
+                "metric_refs": list(section.metric_refs),
+                "knowledge_refs": list(section.knowledge_refs),
             }
             for section in structured_report.sections
         ]

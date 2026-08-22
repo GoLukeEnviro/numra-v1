@@ -19,6 +19,11 @@ export interface StructuredReportSection {
   text: string;
   word_count: number;
   summary: string;
+  /** V1.5 Epic M — provenance: which profile metrics / knowledge entries this
+   *  section was grounded in. Absent on reports generated before this field
+   *  existed, so always optional. */
+  metric_refs?: string[];
+  knowledge_refs?: string[];
 }
 
 export interface StructuredReport {

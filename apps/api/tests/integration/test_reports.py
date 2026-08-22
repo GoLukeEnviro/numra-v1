@@ -64,6 +64,12 @@ async def test_report_job_completes_via_worker(client, sessionmaker, llm, lukas_
     assert final_report["content"]["total_word_count"] > 0
     assert len(final_report["content"]["sections"]) >= 10
 
+    # V1.5 Epic M: every persisted section carries real provenance (which profile
+    # metrics / knowledge entries it was grounded in), not an empty placeholder.
+    sections = final_report["content"]["sections"]
+    assert all("metric_refs" in s and "knowledge_refs" in s for s in sections)
+    assert any(s["metric_refs"] or s["knowledge_refs"] for s in sections)
+
 
 async def test_list_reports_filters_and_word_count(
     client, sessionmaker, llm, lukas_payload

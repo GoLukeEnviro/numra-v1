@@ -84,6 +84,30 @@ async def test_generate_report_quick_all_sections_present(sample_profile, knowle
     assert report.model_provider == "mock"
 
 
+async def test_generate_report_sections_carry_manifest_provenance(
+    sample_profile, knowledge_base
+) -> None:
+    """V1.5 Epic M: each generated section's metric_refs/knowledge_refs must be
+    exactly the manifest's own ReportSectionSpec values -- not re-derived from the
+    generated text, not empty just because the mock provider ran."""
+    manifest = build_manifest(report_type="QUICK", calculation_id="calc-1")
+    provider = MockLLMProvider()
+
+    report = await generate_report(
+        profile=sample_profile, knowledge=knowledge_base, manifest=manifest, llm=provider
+    )
+
+    spec_by_id = {spec.section_id: spec for spec in manifest.sections}
+    assert len(report.sections) > 0
+    for section in report.sections:
+        spec = spec_by_id[section.section_id]
+        assert section.metric_refs == spec.metric_refs
+        assert section.knowledge_refs == spec.knowledge_refs
+
+    # At least one real section actually carries non-empty refs (not a vacuous check).
+    assert any(s.metric_refs or s.knowledge_refs for s in report.sections)
+
+
 async def test_generate_report_ultimate_reaches_target_scale(
     sample_profile, knowledge_base
 ) -> None:

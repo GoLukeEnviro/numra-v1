@@ -318,6 +318,8 @@ async def _generate_section(
         text=text,
         word_count=word_count,
         summary=result.summary or f"{spec.title}: {word_count} words generated.",
+        metric_refs=spec.metric_refs,
+        knowledge_refs=spec.knowledge_refs,
     )
 
 

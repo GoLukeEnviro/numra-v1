@@ -62,6 +62,13 @@ class StructuredReportSection(BaseModel):
     text: str
     word_count: int
     summary: str
+    #: V1.5 Epic M — provenance: which CanonicalProfile metric ids and which
+    #: knowledge/ entries this section was grounded in, taken verbatim from the
+    #: manifest's `ReportSectionSpec` (report/manifest.py). Never inferred from the
+    #: generated text itself — this is what the pipeline actually fed the model, not a
+    #: guess at what the model used.
+    metric_refs: tuple[str, ...] = ()
+    knowledge_refs: tuple[str, ...] = ()
 
 
 class StructuredReport(BaseModel):
