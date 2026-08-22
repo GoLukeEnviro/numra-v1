@@ -124,11 +124,24 @@ def _read_env_int(name: str, default: int) -> int:
         return default
 
 
+#: Fixed, developer-authored trigger text — never end-user content — appended as the
+#: trailing ``user`` message when `GenerationRequest.user_instructions` is absent. Some
+#: providers (observed live against Ollama Cloud's ``deepseek-v4-pro``/``deepseek-v4-
+#: flash`` models) return an immediate empty response with ``done_reason="load"`` — no
+#: generation attempted at all — for a message list containing only ``system``-role
+#: entries and no trailing ``user`` turn. Every real chat model expects the final
+#: message in the list to be the turn it is replying to.
+_NO_USER_INSTRUCTIONS_TRIGGER = "Follow the instructions and context above now."
+
+
 def _build_messages(request: GenerationRequest) -> list[dict[str, str]]:
     """Role-tagged chat messages. Each context block becomes its own message so
     nothing is string-concatenated together, and `user_instructions` — the one field
     that may carry end-user-supplied content — is always its own trailing ``user``
-    message, never folded into the ``system`` message."""
+    message, never folded into the ``system`` message. The list always ends with a
+    ``user``-role message (see `_NO_USER_INSTRUCTIONS_TRIGGER`) — a provider is a real
+    chat API, not a document completer, and some backends only generate a reply to an
+    actual user turn."""
     messages: list[dict[str, str]] = [{"role": "system", "content": request.system_instructions}]
     for block in request.context_blocks:
         messages.append(
@@ -136,20 +149,20 @@ def _build_messages(request: GenerationRequest) -> list[dict[str, str]]:
         )
     if request.user_instructions is not None:
         messages.append({"role": "user", "content": request.user_instructions})
+    else:
+        messages.append({"role": "user", "content": _NO_USER_INSTRUCTIONS_TRIGGER})
     return messages
 
 
 def _build_structured_messages(
     request: GenerationRequest, schema: type[BaseModel]
 ) -> list[dict[str, str]]:
-    """Same layout as `_build_messages`, plus one extra system message carrying the
-    target Pydantic model's JSON Schema. Without this, the model is asked for
-    ``format: "json"`` (syntactically valid JSON) but is never told which fields to
-    populate — it has to guess, and a reasoning model may spend its whole output
-    budget on hidden "thinking" and return an empty ``content`` instead. The schema
-    message is inserted before any trailing user message (not appended after it) so
-    it stays part of the instruction context rather than trailing behind end-user
-    content."""
+    """Same layout as `_build_messages` (which always ends with a ``user`` message),
+    plus one extra system message carrying the target Pydantic model's JSON Schema,
+    inserted right before that trailing user message. Without the schema, the model is
+    asked for ``format: "json"`` (syntactically valid JSON) but is never told which
+    fields to populate — it has to guess, and a reasoning model may spend its whole
+    output budget on hidden "thinking" and return an empty ``content`` instead."""
     messages = _build_messages(request)
     schema_message = {
         "role": "system",
@@ -159,10 +172,7 @@ def _build_structured_messages(
             f"{json.dumps(schema.model_json_schema())}"
         ),
     }
-    if request.user_instructions is not None:
-        messages.insert(-1, schema_message)
-    else:
-        messages.append(schema_message)
+    messages.insert(-1, schema_message)
     return messages
 
 
