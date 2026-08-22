@@ -560,8 +560,27 @@ export interface components {
              */
             updated_at: string;
         };
-        /** PersonPatchRequest */
+        /**
+         * PersonPatchRequest
+         * @description Every field is optional and `exclude_unset` at the route means only fields the
+         *     client actually sent are applied — the birth fields (V1.5 Epic B) intentionally
+         *     reuse the same names as `PersonInput`/`PersonOut` rather than a separate
+         *     "canon-sensitive" sub-object, since the route applies exactly one rule to all of
+         *     them: editing a Person never touches any existing `Calculation` row (those are
+         *     immutable snapshots, see `repositories/calculations.py`'s own docstring) — only a
+         *     *new* calculation reflects the edit.
+         */
         PersonPatchRequest: {
+            /** Birth Date */
+            birth_date?: string | null;
+            /** Birth First Names */
+            birth_first_names?: string | null;
+            /** Birth Last Name */
+            birth_last_name?: string | null;
+            /** Birth Middle Names */
+            birth_middle_names?: string | null;
+            birth_place?: components["schemas"]["BirthPlace"] | null;
+            birth_time?: components["schemas"]["BirthTime"] | null;
             /** Current First Names */
             current_first_names?: string | null;
             /** Current Last Name */

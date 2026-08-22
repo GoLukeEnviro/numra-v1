@@ -94,6 +94,87 @@ async def test_patch_person_updates_current_name(client, sessionmaker, lukas_pay
     assert patch_response.json()["preferred_name"] == "Luke"
 
 
+async def test_patch_person_can_edit_birth_fields(client, sessionmaker, lukas_payload) -> None:
+    headers = await _login(client, sessionmaker)
+    person_id = (await client.post("/v1/people", json=lukas_payload, headers=headers)).json()["id"]
+
+    patch_response = await client.patch(
+        f"/v1/people/{person_id}",
+        json={
+            "birth_first_names": "Luca",
+            "birth_middle_names": None,
+            "birth_place": {"display_name": "Düsseldorf", "country_code": "DE"},
+        },
+        headers=headers,
+    )
+    assert patch_response.status_code == 200
+    updated = patch_response.json()
+    assert updated["birth_first_names"] == "Luca"
+    assert updated["birth_middle_names"] is None
+    assert updated["birth_place"]["display_name"] == "Düsseldorf"
+    # birth_last_name/birth_date were not sent -- untouched.
+    assert updated["birth_last_name"] == "Springer"
+    assert updated["birth_date"] == "1986-07-18"
+
+
+async def test_patch_person_rejects_future_birth_date(client, sessionmaker, lukas_payload) -> None:
+    headers = await _login(client, sessionmaker)
+    person_id = (await client.post("/v1/people", json=lukas_payload, headers=headers)).json()["id"]
+
+    response = await client.patch(
+        f"/v1/people/{person_id}",
+        json={"birth_date": "2999-01-01"},
+        headers=headers,
+    )
+    assert response.status_code == 422
+    assert response.json()["code"] == "FUTURE_BIRTH_DATE_NOT_ALLOWED"
+
+
+async def test_editing_person_never_mutates_existing_calculations(
+    client, sessionmaker, lukas_payload
+) -> None:
+    """V1.5 Epic B's core guarantee: a Calculation is an immutable snapshot. Editing
+    the Person it was computed from -- even a canon-sensitive field like the birth
+    name -- must never change an already-persisted Calculation's stored hash or
+    profile. Only a *new* calculation reflects the edited input."""
+    headers = await _login(client, sessionmaker)
+    person_id = (await client.post("/v1/people", json=lukas_payload, headers=headers)).json()["id"]
+
+    calc_a = (
+        await client.post(
+            f"/v1/people/{person_id}/calculations",
+            json={"as_of_date": "2026-01-01"},
+            headers=headers,
+        )
+    ).json()
+    assert calc_a["canonical_profile"]["core_numbers"]["life_path"]["display_value"] == "22/4"
+
+    # A canon-sensitive edit: the birth name itself, which the Life Path/Expression/
+    # Soul Urge/Personality calculations are all derived from.
+    patch_response = await client.patch(
+        f"/v1/people/{person_id}",
+        json={"birth_first_names": "Someone", "birth_last_name": "Else"},
+        headers=headers,
+    )
+    assert patch_response.status_code == 200
+
+    reloaded_calc_a = (await client.get(f"/v1/calculations/{calc_a['id']}")).json()
+    assert reloaded_calc_a["deterministic_hash"] == calc_a["deterministic_hash"]
+    assert reloaded_calc_a["canonical_profile"] == calc_a["canonical_profile"]
+
+    calc_b = (
+        await client.post(
+            f"/v1/people/{person_id}/calculations",
+            json={"as_of_date": "2026-01-01"},
+            headers=headers,
+        )
+    ).json()
+    assert calc_b["deterministic_hash"] != calc_a["deterministic_hash"]
+
+    history = (await client.get(f"/v1/people/{person_id}/calculations")).json()
+    assert {c["id"] for c in history} == {calc_a["id"], calc_b["id"]}
+
+
 async def test_delete_person_cascades_calculations(client, sessionmaker, lukas_payload) -> None:
     headers = await _login(client, sessionmaker)
     create_response = await client.post("/v1/people", json=lukas_payload, headers=headers)

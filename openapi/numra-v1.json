@@ -570,7 +570,73 @@
         "type": "object"
       },
       "PersonPatchRequest": {
+        "description": "Every field is optional and `exclude_unset` at the route means only fields the\nclient actually sent are applied \u2014 the birth fields (V1.5 Epic B) intentionally\nreuse the same names as `PersonInput`/`PersonOut` rather than a separate\n\"canon-sensitive\" sub-object, since the route applies exactly one rule to all of\nthem: editing a Person never touches any existing `Calculation` row (those are\nimmutable snapshots, see `repositories/calculations.py`'s own docstring) \u2014 only a\n*new* calculation reflects the edit.",
         "properties": {
+          "birth_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birth Date"
+          },
+          "birth_first_names": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birth First Names"
+          },
+          "birth_last_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birth Last Name"
+          },
+          "birth_middle_names": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birth Middle Names"
+          },
+          "birth_place": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BirthPlace"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "birth_time": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BirthTime"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "current_first_names": {
             "anyOf": [
               {

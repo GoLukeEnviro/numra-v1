@@ -13,8 +13,8 @@ import { api, ApiError, type PersonOut } from "@/api/client";
 import { useAsync } from "@/lib/use-async";
 import { recordCalculation, getLatestForPerson } from "@/lib/local-calculations";
 import { personDisplayName } from "@/lib/identity";
-import { formatIsoDate, todayIsoDate } from "@/lib/utils";
-import { Sparkles, Trash2, Sunrise, ArrowRight } from "lucide-react";
+import { formatDateTime, formatIsoDate, todayIsoDate } from "@/lib/utils";
+import { Sparkles, Trash2, Sunrise, ArrowRight, Pencil, History } from "lucide-react";
 
 function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -61,6 +61,56 @@ function BirthDataCard({ person }: { person: PersonOut }) {
             )}
           </DetailRow>
         </dl>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Server-authoritative (V1.5 Epic A/L): every snapshot this person has ever had,
+ *  visible from any device, newest first. Immutable — nothing here can be edited. */
+function CalculationHistoryCard({ personId }: { personId: string }) {
+  const state = useAsync(() => api.calculations.list(personId), [personId]);
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <History className="h-4 w-4 text-gold" aria-hidden="true" />
+          <CardTitle className="text-base">Calculation history</CardTitle>
+        </div>
+        <CardDescription>
+          Every snapshot is permanent — editing the profile above never changes one that
+          already exists.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {state.status === "loading" && <p className="text-sm text-muted">Loading…</p>}
+        {state.status === "error" && (
+          <p className="text-sm text-danger">Could not load calculation history.</p>
+        )}
+        {state.status === "success" && state.data.length === 0 && (
+          <p className="text-sm text-muted">No calculations yet.</p>
+        )}
+        {state.status === "success" && state.data.length > 0 && (
+          <ul className="flex flex-col gap-2">
+            {state.data.map((calc) => (
+              <li
+                key={calc.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 bg-surface-2 px-4 py-2.5"
+              >
+                <div>
+                  <p className="text-sm text-text">As of {formatIsoDate(calc.as_of_date)}</p>
+                  <p className="font-mono text-xs text-muted">
+                    {calc.deterministic_hash.slice(0, 12)} · {formatDateTime(calc.created_at)}
+                  </p>
+                </div>
+                <LinkButton size="sm" variant="secondary" href={`/analysis/${calc.id}`}>
+                  Open <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                </LinkButton>
+              </li>
+            ))}
+          </ul>
+        )}
       </CardContent>
     </Card>
   );
@@ -186,6 +236,10 @@ function PersonDetailContent({ personId }: { personId: string }) {
               <Sunrise className="h-4 w-4" aria-hidden="true" />
               Today
             </LinkButton>
+            <LinkButton variant="ghost" href={`/people/${personId}/edit`}>
+              <Pencil className="h-4 w-4" aria-hidden="true" />
+              Edit
+            </LinkButton>
           </div>
         </div>
       </header>
@@ -205,6 +259,10 @@ function PersonDetailContent({ personId }: { personId: string }) {
       <div className="grid gap-6 lg:grid-cols-2">
         <IdentityTimeline person={person} />
         <BirthDataCard person={person} />
+      </div>
+
+      <div className="mt-6">
+        <CalculationHistoryCard personId={personId} />
       </div>
 
       <div className="mt-6 max-w-xl">

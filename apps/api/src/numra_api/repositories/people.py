@@ -31,9 +31,13 @@ async def list_people(db: AsyncSession, *, user_id: uuid.UUID) -> list[Person]:
 
 
 async def update_person(db: AsyncSession, *, person: Person, **fields: Any) -> Person:
+    """`fields` must already be filtered to only what the caller actually intends to
+    change (see `routes/people.py::patch_person_route`'s `model_fields_set` check) --
+    this applies every value verbatim, `None` included, so a client can genuinely
+    clear a nullable field (e.g. `birth_middle_names`) rather than have that silently
+    ignored."""
     for key, value in fields.items():
-        if value is not None:
-            setattr(person, key, value)
+        setattr(person, key, value)
     await db.flush()
     await db.refresh(person)
     return person

@@ -78,11 +78,47 @@ async def patch_person_route(
     body: PersonPatchRequest,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    settings: Settings = Depends(get_settings_dep),
 ) -> PersonOut:
     person = await get_person(db, person_id=person_id, user_id=user.id)
     if person is None:
         raise NotFoundError(f"person {person_id} not found")
-    updates = body.model_dump(exclude_unset=True)
+
+    if body.birth_date is not None:
+        assert_birth_date_not_in_future(body.birth_date, app_timezone=settings.app_timezone)
+
+    # Built field-by-field (not a blanket body.model_dump()) so BirthTime/BirthPlace
+    # serialize to JSON-safe dicts for the JSONB columns exactly like create_person
+    # does, while birth_date stays a native `date` for the Date column -- a single
+    # model_dump(mode="json") would turn birth_date into a string too, which the
+    # Date column does not accept. Editing a Person NEVER touches any existing
+    # Calculation row (those are immutable snapshots) -- only a future calculation
+    # reflects the edit.
+    set_fields = body.model_fields_set
+    updates: dict[str, object] = {}
+    if "birth_first_names" in set_fields:
+        updates["birth_first_names"] = body.birth_first_names
+    if "birth_middle_names" in set_fields:
+        updates["birth_middle_names"] = body.birth_middle_names
+    if "birth_last_name" in set_fields:
+        updates["birth_last_name"] = body.birth_last_name
+    if "birth_date" in set_fields:
+        updates["birth_date"] = body.birth_date
+    if "birth_time" in set_fields:
+        updates["birth_time"] = body.birth_time.model_dump(mode="json") if body.birth_time else None
+    if "birth_place" in set_fields:
+        updates["birth_place"] = (
+            body.birth_place.model_dump(mode="json") if body.birth_place else None
+        )
+    if "current_first_names" in set_fields:
+        updates["current_first_names"] = body.current_first_names
+    if "current_middle_names" in set_fields:
+        updates["current_middle_names"] = body.current_middle_names
+    if "current_last_name" in set_fields:
+        updates["current_last_name"] = body.current_last_name
+    if "preferred_name" in set_fields:
+        updates["preferred_name"] = body.preferred_name
+
     person = await update_person(db, person=person, **updates)
     return _to_out(person)
 
