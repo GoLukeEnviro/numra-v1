@@ -27,7 +27,7 @@ function RecordedHistory({ personId }: { personId: string }) {
   return (
     <div className="mt-6 border-t border-white/10 pt-5">
       <p className="mb-3 text-xs uppercase tracking-wider text-muted">Recorded history</p>
-      <ul className="flex flex-col gap-2.5">
+      <ul className="flex flex-col gap-2.5" aria-label="Recorded history">
         {state.data.map((entry) => {
           const name = [entry.first_names, entry.middle_names, entry.last_name]
             .filter(Boolean)
@@ -61,7 +61,7 @@ export function IdentityTimeline({ person }: { person: PersonOut }) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <ol className="relative">
+        <ol className="relative" aria-label="Current identity">
           {entries.map((entry, index) => {
             const isLast = index === entries.length - 1;
             return (
