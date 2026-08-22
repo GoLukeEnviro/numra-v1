@@ -67,9 +67,21 @@ function BirthDataCard({ person }: { person: PersonOut }) {
 }
 
 /** Server-authoritative (V1.5 Epic A/L): every snapshot this person has ever had,
- *  visible from any device, newest first. Immutable — nothing here can be edited. */
+ *  visible from any device, newest first. Immutable — nothing here can be edited.
+ *  Selecting exactly two enables a snapshot comparison (Epic L). */
 function CalculationHistoryCard({ personId }: { personId: string }) {
+  const router = useRouter();
   const state = useAsync(() => api.calculations.list(personId), [personId]);
+  const [selected, setSelected] = useState<string[]>([]);
+
+  function toggle(id: string) {
+    setSelected((current) => {
+      if (current.includes(id)) return current.filter((c) => c !== id);
+      const mostRecent = current[current.length - 1];
+      if (current.length >= 2 && mostRecent) return [mostRecent, id];
+      return [...current, id];
+    });
+  }
 
   return (
     <Card>
@@ -80,7 +92,7 @@ function CalculationHistoryCard({ personId }: { personId: string }) {
         </div>
         <CardDescription>
           Every snapshot is permanent — editing the profile above never changes one that
-          already exists.
+          already exists. Pick two to compare them.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -92,24 +104,55 @@ function CalculationHistoryCard({ personId }: { personId: string }) {
           <p className="text-sm text-muted">No calculations yet.</p>
         )}
         {state.status === "success" && state.data.length > 0 && (
-          <ul className="flex flex-col gap-2">
-            {state.data.map((calc) => (
-              <li
-                key={calc.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 bg-surface-2 px-4 py-2.5"
+          <>
+            <ul className="flex flex-col gap-2">
+              {state.data.map((calc) => {
+                const isSelected = selected.includes(calc.id);
+                return (
+                  <li
+                    key={calc.id}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 bg-surface-2 px-4 py-2.5"
+                  >
+                    <label className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggle(calc.id)}
+                        aria-label={`Select snapshot from ${formatIsoDate(calc.as_of_date)} for comparison`}
+                        className="h-4 w-4 rounded border-white/20 bg-surface text-gold accent-gold"
+                      />
+                      <div>
+                        <p className="text-sm text-text">As of {formatIsoDate(calc.as_of_date)}</p>
+                        <p className="font-mono text-xs text-muted">
+                          {calc.deterministic_hash.slice(0, 12)} · {formatDateTime(calc.created_at)}
+                        </p>
+                      </div>
+                    </label>
+                    <LinkButton size="sm" variant="secondary" href={`/analysis/${calc.id}`}>
+                      Open <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                    </LinkButton>
+                  </li>
+                );
+              })}
+            </ul>
+            <div className="mt-4 flex items-center gap-3">
+              <Button
+                type="button"
+                size="sm"
+                disabled={selected.length !== 2}
+                onClick={() =>
+                  router.push(`/calculations/compare?a=${selected[0]}&b=${selected[1]}`)
+                }
               >
-                <div>
-                  <p className="text-sm text-text">As of {formatIsoDate(calc.as_of_date)}</p>
-                  <p className="font-mono text-xs text-muted">
-                    {calc.deterministic_hash.slice(0, 12)} · {formatDateTime(calc.created_at)}
-                  </p>
-                </div>
-                <LinkButton size="sm" variant="secondary" href={`/analysis/${calc.id}`}>
-                  Open <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-                </LinkButton>
-              </li>
-            ))}
-          </ul>
+                Compare selected
+              </Button>
+              <p className="text-xs text-muted">
+                {selected.length === 0 && "Select two snapshots to compare."}
+                {selected.length === 1 && "Select one more."}
+                {selected.length === 2 && "Ready to compare."}
+              </p>
+            </div>
+          </>
         )}
       </CardContent>
     </Card>
