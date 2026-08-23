@@ -77,7 +77,7 @@ async def register(
     if not settings.allow_self_signup:
         raise SelfSignupDisabled("self-signup is disabled (ALLOW_SELF_SIGNUP=false)")
     user = await create_user(db, email=body.email, password_hash=hash_password(body.password))
-    return UserOut(id=str(user.id), email=user.email)
+    return UserOut(id=str(user.id), email=user.email, role=str(user.role), is_active=user.is_active)
 
 
 @router.post(
@@ -107,7 +107,7 @@ async def login(
         secure=settings.cookies_secure,
         ttl_hours=settings.session_ttl_hours,
     )
-    return UserOut(id=str(user.id), email=user.email)
+    return UserOut(id=str(user.id), email=user.email, role=str(user.role), is_active=user.is_active)
 
 
 @router.post("/logout", status_code=204, dependencies=[Depends(require_csrf)])
@@ -125,7 +125,7 @@ async def logout(
 
 @router.get("/me", response_model=UserOut)
 async def me(user: User = Depends(get_current_user)) -> UserOut:
-    return UserOut(id=str(user.id), email=user.email)
+    return UserOut(id=str(user.id), email=user.email, role=str(user.role), is_active=user.is_active)
 
 
 @router.post(

@@ -11,10 +11,16 @@ from numra_api.auth.sessions import hash_session_token
 from numra_api.config import Settings
 from numra_api.models import Session as SessionModel
 from numra_api.models import User
+from numra_api.models.enums import UserRole
 from numra_api.rate_limit import RateLimiter, pseudonymous_key
 from numra_api.repositories.sessions import get_active_session_by_token_hash
 from numra_api.repositories.users import get_user_by_id
-from numra_api.services.errors import CsrfValidationFailed, NotAuthenticated, RateLimitExceeded
+from numra_api.services.errors import (
+    CsrfValidationFailed,
+    Forbidden,
+    NotAuthenticated,
+    RateLimitExceeded,
+)
 from numra_api.services.pdf_client import PdfServiceClient
 from numra_api.storage.exports import ExportStorage
 
@@ -131,8 +137,18 @@ async def get_current_user(
     session: SessionModel = Depends(get_current_session),
 ) -> User:
     user = await get_user_by_id(db, user_id=session.user_id)
-    if user is None:
+    if user is None or not user.is_active:
+        # Deliberately indistinguishable from "no session" -- a disabled account must
+        # never be enumerable via a different error shape than "not authenticated".
         raise NotAuthenticated("session user no longer exists")
+    return user
+
+
+async def require_admin(user: User = Depends(get_current_user)) -> User:
+    """Admin-only gate. `is_active` is already guaranteed by the composed
+    `get_current_user` above -- this only adds the role check."""
+    if user.role != UserRole.ADMIN:
+        raise Forbidden("admin role required")
     return user
 
 

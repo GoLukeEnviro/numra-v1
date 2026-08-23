@@ -70,3 +70,20 @@ async def revoke_all_sessions_except(
         )
         .values(revoked_at=now)
     )
+
+
+async def revoke_all_sessions_for_user(
+    db: AsyncSession, *, user_id: uuid.UUID, now: dt.datetime
+) -> None:
+    """Admin-forced disable: revokes every active session for this user, no
+    keep-token (unlike `revoke_all_sessions_except`, which always preserves the
+    caller's own session -- there is no "caller's own session" in an admin action
+    against someone else's account)."""
+    await db.execute(
+        update(SessionModel)
+        .where(
+            SessionModel.user_id == user_id,
+            SessionModel.revoked_at.is_(None),
+        )
+        .values(revoked_at=now)
+    )

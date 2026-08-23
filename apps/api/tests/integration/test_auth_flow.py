@@ -107,6 +107,55 @@ async def test_register_rejects_password_shorter_than_12_chars(settings, db_engi
         assert long_enough.status_code == 201
 
 
+async def test_register_rejects_role_field_as_privilege_escalation_attempt(
+    settings, db_engine
+) -> None:
+    """RegisterRequest's `extra="forbid"` must reject any body containing an
+    unexpected privileged key -- a freshly registered user must always end up
+    role=USER, never able to self-elevate via the register body."""
+    from httpx import ASGITransport, AsyncClient
+
+    from numra_api.app import create_app
+    from numra_api.config import Settings
+    from numra_api.db import build_sessionmaker
+
+    open_settings = Settings(
+        database_url=settings.database_url, environment="test", allow_self_signup=True
+    )
+    app = create_app(settings=open_settings)
+    app.state.engine = db_engine
+    app.state.sessionmaker = build_sessionmaker(db_engine)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as open_client:
+        escalation_attempt = await open_client.post(
+            "/v1/auth/register",
+            json={
+                "email": "wannabe-admin@example.com",
+                "password": "long-enough-password",
+                "role": "ADMIN",
+            },
+        )
+        assert escalation_attempt.status_code == 422
+
+        legit_register = await open_client.post(
+            "/v1/auth/register",
+            json={"email": "legit-user@example.com", "password": "long-enough-password"},
+        )
+        assert legit_register.status_code == 201
+        assert legit_register.json()["role"] == "USER"
+
+        login_response = await open_client.post(
+            "/v1/auth/login",
+            json={"email": "legit-user@example.com", "password": "long-enough-password"},
+        )
+        assert login_response.status_code == 200
+
+        me_response = await open_client.get("/v1/auth/me")
+        assert me_response.status_code == 200
+        assert me_response.json()["role"] == "USER"
+        assert me_response.json()["is_active"] is True
+
+
 async def test_login_is_rate_limited_per_ip(client, sessionmaker) -> None:
     """P1 hardening: brute-force protection on /v1/auth/login (limit=10/60s per IP,
     see routes/auth.py). All 11 requests hit the same key here since ASGITransport

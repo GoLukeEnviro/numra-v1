@@ -20,6 +20,7 @@ from numra_api.middleware.security import (
 from numra_api.rate_limit import InMemoryRateLimiter, RateLimiter, RedisRateLimiter
 from numra_api.routes import (
     account,
+    admin,
     auth,
     calculations,
     exports,
@@ -105,6 +106,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(exports.router)
     app.include_router(account.router)
     app.include_router(system_info.router)
+    app.include_router(admin.router)
 
     return app
 
