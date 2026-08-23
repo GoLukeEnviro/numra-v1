@@ -84,7 +84,12 @@ class ReportManifest(BaseModel):
     calculation_id: str
     total_target_words: int
     sections: tuple[ReportSectionSpec, ...]
-    prompt_version: str = "numra-report-v1"
+    #: Bumped for V1.6 C (timing-report grounding + coverage fix) — stays in sync with
+    #: `numra_api.services.report_service.PROMPT_VERSION`, which stamps this same
+    #: value onto a `Report` row before generation even starts. Existing, already
+    #: persisted reports keep whatever prompt_version they were generated with; this
+    #: default only ever applies to a manifest built for a *new* report.
+    prompt_version: str = "numra-report-v2"
 
 
 def build_manifest(

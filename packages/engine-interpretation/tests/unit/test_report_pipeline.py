@@ -327,8 +327,11 @@ async def test_generate_report_rejects_bare_numeric_literal_from_real_provider(
                 text = f"Buchstäblich {bare_digit} ohne Platzhalter. {filler}"
             else:
                 text = f"Siehe {{{{metric:{metric_id}}}}}. {filler}"
+            # Echo the requested claims back (like a well-behaved real provider
+            # would) so this fixture's unrelated concern (bare-literal detection)
+            # doesn't also trip the metric-ref-coverage check on repair.
             return GeneratedSectionContent(
-                title=section_id, text=text, numeric_claims=(), summary="s"
+                title=section_id, text=text, numeric_claims=request.numeric_claims, summary="s"
             )
 
     manifest = build_manifest(report_type="QUICK", calculation_id="calc-1")
@@ -430,7 +433,7 @@ async def test_generate_report_full_type_runs_outline_step(sample_profile, knowl
             return GeneratedSectionContent(
                 title=section_id,
                 text=_target_length_filler(section_id, target),
-                numeric_claims=(),
+                numeric_claims=request.numeric_claims,
                 summary="s",
             )
 
@@ -467,7 +470,7 @@ async def test_generate_report_quick_type_skips_outline_step(
             return GeneratedSectionContent(
                 title=section_id,
                 text=_target_length_filler(section_id, target),
-                numeric_claims=(),
+                numeric_claims=request.numeric_claims,
                 summary="s",
             )
 
@@ -508,7 +511,7 @@ async def test_generate_report_tells_model_the_valid_placeholder_ids(
             return GeneratedSectionContent(
                 title=section_id,
                 text=_target_length_filler(section_id, target),
-                numeric_claims=(),
+                numeric_claims=request.numeric_claims,
                 summary="s",
             )
 
@@ -523,3 +526,139 @@ async def test_generate_report_tells_model_the_valid_placeholder_ids(
         assert "personality" in content
         assert "{{" not in content
         assert "}}" not in content
+
+
+async def test_generate_report_timing_section_gets_knowledge_grounding(
+    sample_profile, knowledge_base
+) -> None:
+    """V1.6 C regression test: before this fix, the `timing` section's context
+    blocks only ever carried a bare `personal_year = 5/5`-style `profile_fact` block
+    (via `_generic_metric_block`) because the grounding helper checked
+    `CORE_METRIC_IDS` alone. It must now get the same knowledge-composed
+    `role="knowledge"` text the eight core metrics already get, reusing
+    `compose_section`/`compose_timing_sections` exactly like Epic K's Daily Brief."""
+    manifest = build_manifest(report_type="QUICK", calculation_id="calc-1")
+    timing_blocks: list[tuple] = []
+
+    class TrackingProvider:
+        async def health(self) -> ProviderHealth:
+            return ProviderHealth(
+                status="healthy", provider="ollama_cloud", checked_at=dt.datetime.now(dt.UTC)
+            )
+
+        async def generate(self, request: GenerationRequest) -> GenerationResult:
+            raise AssertionError("not used")
+
+        async def generate_structured(self, request: StructuredGenerationRequest, schema: type):  # type: ignore[no-untyped-def]
+            section_id = request.metadata["section_id"]
+            if section_id == "timing":
+                timing_blocks.extend(request.context_blocks)
+            target = int(request.metadata["target_word_count"])
+            return GeneratedSectionContent(
+                title=section_id,
+                text=_target_length_filler(section_id, target),
+                numeric_claims=request.numeric_claims,
+                summary="s",
+            )
+
+    await generate_report(
+        profile=sample_profile, knowledge=knowledge_base, manifest=manifest, llm=TrackingProvider()
+    )
+
+    assert timing_blocks, "expected the timing section to have been generated"
+    knowledge_labels = {b.label for b in timing_blocks if b.role == "knowledge"}
+    assert knowledge_labels == {"personal_year", "personal_month", "personal_day"}
+
+
+async def test_generate_report_timing_section_repairs_when_coverage_missing(
+    sample_profile, knowledge_base
+) -> None:
+    """V1.6 C regression test, end-to-end: reproduces the exact production failure
+    shape (the timing section's first attempt cites the prior Pinnacles/Challenges
+    section's claims instead of its own personal_year/month/day) and shows the
+    existing one-repair-attempt mechanism now catches and fixes it, rather than
+    silently assembling a report whose timing section never actually covers what its
+    manifest spec requires."""
+    manifest = build_manifest(report_type="QUICK", calculation_id="calc-1")
+
+    class TimingConfusedProvider:
+        async def health(self) -> ProviderHealth:
+            return ProviderHealth(
+                status="healthy", provider="ollama_cloud", checked_at=dt.datetime.now(dt.UTC)
+            )
+
+        async def generate(self, request: GenerationRequest) -> GenerationResult:
+            raise AssertionError("not used")
+
+        async def generate_structured(self, request: StructuredGenerationRequest, schema: type):  # type: ignore[no-untyped-def]
+            section_id = request.metadata["section_id"]
+            attempt = request.metadata.get("attempt")
+            target = int(request.metadata["target_word_count"])
+            text = _target_length_filler(section_id, target)
+            if section_id == "timing" and attempt == "1":
+                # Recycles Pinnacles/Challenges-style claims instead of its own.
+                claims = (
+                    NumericClaim(metric_id="pinnacle_1", display_value="5"),
+                    NumericClaim(metric_id="challenge_1", display_value="2"),
+                )
+            else:
+                claims = request.numeric_claims
+            return GeneratedSectionContent(
+                title=section_id, text=text, numeric_claims=claims, summary="s"
+            )
+
+    report = await generate_report(
+        profile=sample_profile,
+        knowledge=knowledge_base,
+        manifest=manifest,
+        llm=TimingConfusedProvider(),
+    )
+    assert len(report.sections) == len(manifest.sections)
+
+
+async def test_generate_report_timing_section_raises_when_repair_also_fails(
+    sample_profile, knowledge_base
+) -> None:
+    """Companion to the repair test above: if the repair attempt also fails to cover
+    personal_year/month/day, the pipeline's single permitted repair is already
+    spent and the failure must propagate -- not silently assemble an incomplete
+    report."""
+    manifest = build_manifest(report_type="QUICK", calculation_id="calc-1")
+
+    class AlwaysTimingConfusedProvider:
+        async def health(self) -> ProviderHealth:
+            return ProviderHealth(
+                status="healthy", provider="ollama_cloud", checked_at=dt.datetime.now(dt.UTC)
+            )
+
+        async def generate(self, request: GenerationRequest) -> GenerationResult:
+            raise AssertionError("not used")
+
+        async def generate_structured(self, request: StructuredGenerationRequest, schema: type):  # type: ignore[no-untyped-def]
+            section_id = request.metadata["section_id"]
+            target = int(request.metadata["target_word_count"])
+            text = _target_length_filler(section_id, target)
+            if section_id == "timing":
+                pinnacle_1 = sample_profile.cycles.pinnacles.pinnacle_1.display_value
+                claims = (NumericClaim(metric_id="pinnacle_1", display_value=pinnacle_1),)
+            else:
+                claims = request.numeric_claims
+            return GeneratedSectionContent(
+                title=section_id, text=text, numeric_claims=claims, summary="s"
+            )
+
+    with pytest.raises(InvalidReportSection, match="MissingMetricCoverage"):
+        await generate_report(
+            profile=sample_profile,
+            knowledge=knowledge_base,
+            manifest=manifest,
+            llm=AlwaysTimingConfusedProvider(),
+        )
+
+
+def test_build_manifest_prompt_version_is_v2() -> None:
+    """V1.6 C: the prompt_version was bumped for the timing-report grounding +
+    coverage fix -- new reports are distinguishable from ones generated before it.
+    Must stay in sync with `numra_api.services.report_service.PROMPT_VERSION`."""
+    manifest = build_manifest(report_type="QUICK", calculation_id="calc-1")
+    assert manifest.prompt_version == "numra-report-v2"

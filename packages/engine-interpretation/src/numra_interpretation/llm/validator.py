@@ -39,6 +39,7 @@ __all__ = [
     "format_hidden_passion",
     "format_karmic_lessons",
     "validate_generation_result",
+    "validate_metric_ref_coverage",
     "validate_numeric_claims",
 ]
 
@@ -196,6 +197,28 @@ def validate_numeric_claims(claims: tuple[NumericClaim, ...], profile: Canonical
                 f"claimed display_value={claim.display_value!r}, "
                 f"canonical display_value={actual!r}"
             )
+
+
+def validate_metric_ref_coverage(
+    claims: tuple[NumericClaim, ...], required_metric_ids: tuple[str, ...], *, section_id: str
+) -> None:
+    """Raise `InvalidReportSection` if a section's own declared metric refs (e.g. a
+    `timing` section's personal_year/month/day) are not all cited by its returned
+    `claims`. Coverage is exact-id membership, so a claim about a different metric
+    (e.g. `pinnacle_1`) can never satisfy coverage of an id it isn't.
+
+    Added for the V1.6 C timing-report production bug: a real provider, given weak
+    timing-specific grounding, recycled the previous section's Pinnacles/Challenges
+    content (or claimed personal_year/month/day were unavailable) instead of citing
+    the declared facts — nothing previously checked that a section's generated
+    `numeric_claims` actually covered what its own manifest spec required."""
+    cited = {claim.metric_id for claim in claims}
+    missing = [metric_id for metric_id in required_metric_ids if metric_id not in cited]
+    if missing:
+        raise InvalidReportSection(
+            f"MissingMetricCoverage: section {section_id!r} must cite "
+            f"{list(required_metric_ids)} but its numeric_claims is missing {missing!r}"
+        )
 
 
 def validate_generation_result(

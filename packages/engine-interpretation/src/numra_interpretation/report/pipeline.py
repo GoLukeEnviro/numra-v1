@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import re
 
-from numra_interpretation.composer import CORE_METRIC_IDS, compose_section
+from numra_interpretation.composer import CORE_METRIC_IDS, TIMING_METRIC_IDS, compose_section
 from numra_interpretation.errors import InvalidReportSection
 from numra_interpretation.knowledge_loader import KnowledgeBase
 from numra_interpretation.llm.types import (
@@ -24,6 +24,7 @@ from numra_interpretation.llm.validator import (
     build_metric_display_value_index,
     build_special_claim_index,
     find_unauthorized_numeric_literals,
+    validate_metric_ref_coverage,
     validate_numeric_claims,
 )
 from numra_interpretation.report.content_padding import deterministic_elaboration
@@ -103,14 +104,27 @@ def _generic_metric_block(profile: CanonicalProfile, metric_id: str) -> ContextB
     )
 
 
-def _core_metric_grounding(
+def _uniform_metric_grounding(
     profile: CanonicalProfile, knowledge: KnowledgeBase, metric_id: str
 ) -> tuple[ContextBlock, ...]:
-    """Reuse Phase 3's composed German text for the eight uniform core metrics —
-    already grounds a display_value + knowledge themes/shadows in one place."""
-    if metric_id not in CORE_METRIC_IDS:
+    """Reuse Phase 3's composed German text for the eight uniform core metrics and the
+    three timing metrics (personal_year/month/day) — both are `CalculationMetric`
+    instances `compose_section` already knows how to ground with a display_value +
+    knowledge themes/shadows, unlike the bare `_generic_metric_block` fallback below.
+
+    Before this, a `timing`-section metric_id fell through to `_generic_metric_block`
+    only (a bare "personal_year = 5" fact, no knowledge text) because this function
+    checked `CORE_METRIC_IDS` alone. With the `timing` section otherwise carrying
+    almost no substantive grounding of its own, a real provider's generation for it
+    would lean on the much richer `previous_sections_summary` context from the prior
+    (Pinnacles/Challenges) section instead — the root cause of the V1.6 C
+    timing-report production bug this fixes."""
+    if metric_id in CORE_METRIC_IDS:
+        metric: CalculationMetric = getattr(profile.core_numbers, metric_id)
+    elif metric_id in TIMING_METRIC_IDS:
+        metric = getattr(profile.timing, metric_id)
+    else:
         return ()
-    metric: CalculationMetric = getattr(profile.core_numbers, metric_id)
     section = compose_section(metric_id, metric, knowledge)
     return (ContextBlock(role="knowledge", label=metric_id, content=section.text_de),)
 
@@ -168,7 +182,7 @@ def _gather_context_blocks(
     blocks: list[ContextBlock] = []
 
     for metric_id in spec.metric_refs:
-        blocks.extend(_core_metric_grounding(profile, knowledge, metric_id))
+        blocks.extend(_uniform_metric_grounding(profile, knowledge, metric_id))
         generic = _generic_metric_block(profile, metric_id)
         if generic is not None and not any(b.label == metric_id for b in blocks):
             blocks.append(generic)
@@ -323,6 +337,11 @@ async def _generate_section(
     assert isinstance(result, GeneratedSectionContent)
 
     validate_numeric_claims(result.numeric_claims, profile)
+    validate_metric_ref_coverage(
+        result.numeric_claims,
+        tuple(claim.metric_id for claim in numeric_claims),
+        section_id=spec.section_id,
+    )
 
     # template_text (still carrying {{metric:ID}}/{{special:ID}} placeholders) is
     # linted BEFORE placeholder resolution — the unauthorized-literal check only means
