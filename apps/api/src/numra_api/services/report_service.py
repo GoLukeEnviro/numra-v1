@@ -35,7 +35,9 @@ logger = logging.getLogger("numra_api.report_service")
 REPO_ROOT = Path(__file__).resolve().parents[5]
 KNOWLEDGE_ROOT = REPO_ROOT / "knowledge"
 REPORT_SCHEMA_VERSION = "1.0.0"
-PROMPT_VERSION = "numra-report-v1"
+#: Kept in sync with `numra_interpretation.report.manifest.ReportManifest`'s own
+#: `prompt_version` default — see that field's docstring (V1.6 C timing-report fix).
+PROMPT_VERSION = "numra-report-v2"
 
 
 async def create_report_job(

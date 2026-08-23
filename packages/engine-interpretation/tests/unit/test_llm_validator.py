@@ -16,6 +16,7 @@ from numra_interpretation.llm.validator import (
     format_hidden_passion,
     format_karmic_lessons,
     validate_generation_result,
+    validate_metric_ref_coverage,
     validate_numeric_claims,
 )
 from numra_numerology.engine import calculate_profile
@@ -82,6 +83,63 @@ def test_unknown_metric_id_claim_raises(sample_profile) -> None:
     claims = (NumericClaim(metric_id="not_a_real_metric", display_value="1"),)
     with pytest.raises(InvalidReportSection, match="Unknown metric_id"):
         validate_numeric_claims(claims, sample_profile)
+
+
+def test_metric_ref_coverage_passes_when_all_required_ids_cited() -> None:
+    claims = (
+        NumericClaim(metric_id="personal_year", display_value="5/5"),
+        NumericClaim(metric_id="personal_month", display_value="3/3"),
+        NumericClaim(metric_id="personal_day", display_value="8/8"),
+    )
+    validate_metric_ref_coverage(
+        claims,
+        ("personal_year", "personal_month", "personal_day"),
+        section_id="timing",
+    )  # must not raise
+
+
+def test_metric_ref_coverage_passes_when_nothing_required() -> None:
+    # Sections with no declared metric_refs (e.g. "cycles", "development") have
+    # nothing to enforce here, regardless of what claims they carry.
+    validate_metric_ref_coverage((), (), section_id="cycles")
+
+
+def test_metric_ref_coverage_raises_on_missing_timing_metric() -> None:
+    # Reproduces the V1.6 C production bug shape: the timing section's own
+    # personal_month never got cited.
+    claims = (
+        NumericClaim(metric_id="personal_year", display_value="5/5"),
+        NumericClaim(metric_id="personal_day", display_value="8/8"),
+    )
+    with pytest.raises(InvalidReportSection, match="MissingMetricCoverage") as excinfo:
+        validate_metric_ref_coverage(
+            claims,
+            ("personal_year", "personal_month", "personal_day"),
+            section_id="timing",
+        )
+    assert "personal_month" in str(excinfo.value)
+
+
+def test_metric_ref_coverage_pinnacles_and_challenges_do_not_satisfy_timing() -> None:
+    """Pinnacles/Challenges must not be able to satisfy timing coverage: a claim
+    about a differently-named metric can never count toward a required id it isn't,
+    even though both groups appear in the same 'cycles come before timing' section
+    ordering that originally caused the production bug (a real provider recycled the
+    prior Pinnacles/Challenges section's claims for the timing section instead)."""
+    claims = (
+        NumericClaim(metric_id="pinnacle_1", display_value="5"),
+        NumericClaim(metric_id="challenge_1", display_value="2"),
+    )
+    with pytest.raises(InvalidReportSection, match="MissingMetricCoverage") as excinfo:
+        validate_metric_ref_coverage(
+            claims,
+            ("personal_year", "personal_month", "personal_day"),
+            section_id="timing",
+        )
+    message = str(excinfo.value)
+    assert "personal_year" in message
+    assert "personal_month" in message
+    assert "personal_day" in message
 
 
 def test_validate_generation_result_rejects_unknown_placeholder(sample_profile) -> None:
