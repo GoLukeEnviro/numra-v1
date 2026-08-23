@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { RequireAuth } from "@/components/layout/require-auth";
-import { NumericWheel } from "@/components/layout/numeric-wheel";
+import { BrandMark } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import {
   LogOut,
@@ -250,9 +250,12 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
       <div className="flex min-h-screen flex-col md:flex-row">
         <aside className="border-b border-white/10 bg-surface md:w-64 md:shrink-0 md:border-b-0 md:border-r">
           <div className="flex items-center gap-3 p-5">
-            <NumericWheel className="h-9 w-9 shrink-0" />
+            <BrandMark className="h-9 w-9 shrink-0" />
             <div>
-              <p className="font-serif text-lg leading-none text-ivory">Numra</p>
+              <p className="flex items-center gap-1.5 font-serif text-lg leading-none text-ivory">
+                Numra
+                <span aria-hidden="true" className="h-1 w-1 rounded-full bg-gold" />
+              </p>
               <p className="text-xs text-muted">Numerology, made auditable</p>
             </div>
           </div>

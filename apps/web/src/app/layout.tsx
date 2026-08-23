@@ -6,7 +6,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Numra",
-  description: "An auditable numerology platform — deterministic core, transparent traces.",
+  description:
+    "Numerologie ohne Raten — deterministische Engine, jede Zahl mit Herleitung.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,

@@ -1,7 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Numra — das konstruierte N: drei gerade Linien, vier Knoten.
+       Gold auf Noir, Elfenbein-Knoten. Siehe docs/brand/visual-identity.md §2. -->
   <rect width="32" height="32" rx="7" fill="#0B0B0F" />
-  <path
-    d="M10 22.5V9.5h2.6l6.8 9.3V9.5H22v13h-2.6l-6.8-9.3v9.3H10z"
-    fill="#C8A96B"
-  />
+  <g stroke="#C8A96B" stroke-width="2" fill="none">
+    <path d="M10.5 21.5V10.5" />
+    <path d="M10.5 10.5L21.5 21.5" />
+    <path d="M21.5 10.5V21.5" />
+  </g>
+  <g fill="#F2EBDD">
+    <circle cx="10.5" cy="10.5" r="1.6" />
+    <circle cx="10.5" cy="21.5" r="1.6" />
+    <circle cx="21.5" cy="10.5" r="1.6" />
+    <circle cx="21.5" cy="21.5" r="1.6" />
+  </g>
 </svg>

@@ -1,7 +1,7 @@
 {
   "name": "Numra",
   "short_name": "Numra",
-  "description": "An auditable numerology platform — deterministic core, transparent traces.",
+  "description": "Numerologie ohne Raten — deterministische Engine, jede Zahl mit Herleitung.",
   "start_url": "/today",
   "id": "/",
   "scope": "/",

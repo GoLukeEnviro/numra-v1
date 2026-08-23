@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Logo } from "@/components/brand/logo";
 import { NumericWheel } from "@/components/layout/numeric-wheel";
 import { AlertTriangle } from "lucide-react";
 
@@ -51,9 +52,10 @@ export default function LoginPage() {
       <div className="relative flex w-full max-w-4xl flex-col items-center gap-12 lg:flex-row lg:items-center lg:justify-between">
         {/* Brand panel — hidden on small screens so the form stays the whole viewport. */}
         <div className="hidden max-w-sm animate-rise-in lg:block">
-          <NumericWheel className="h-14 w-14" />
-          <h1 className="mt-6 font-serif text-4xl text-ivory">Numra</h1>
-          <p className="mt-3 text-sm leading-relaxed text-muted">
+          <h1 className="mt-0">
+            <Logo markClassName="h-14 w-14" textClassName="text-4xl" />
+          </h1>
+          <p className="mt-6 text-sm leading-relaxed text-muted">
             An auditable numerology platform. A deterministic engine does the arithmetic;
             language only ever explains what it already produced.
           </p>
@@ -72,10 +74,14 @@ export default function LoginPage() {
 
         <Card className="w-full max-w-sm animate-rise-in shadow-elevated">
           <CardHeader className="text-center">
-            <div className="mb-3 flex justify-center lg:hidden">
-              <NumericWheel className="h-12 w-12" />
-            </div>
-            <CardTitle className="text-2xl">Numra</CardTitle>
+            <CardTitle className="text-2xl">
+              <Logo
+                className="justify-center lg:hidden"
+                markClassName="h-10 w-10"
+                textClassName="text-2xl"
+              />
+              <span className="hidden lg:inline">Numra</span>
+            </CardTitle>
             <CardDescription>Sign in to your account</CardDescription>
           </CardHeader>
           <CardContent>
