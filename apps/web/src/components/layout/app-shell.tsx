@@ -1,27 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { BrandMark } from "@/components/brand/logo";
+import { RequireAuth } from "@/components/layout/require-auth";
+import { Button } from "@/components/ui/button";
+import type { MessageKey } from "@/i18n/catalog";
+import { useLocale } from "@/i18n/context";
+import { useAuth } from "@/lib/auth-context";
+import { cn } from "@/lib/utils";
+import {
+    BookOpen,
+    GitCompareArrows,
+    LayoutGrid,
+    LogOut,
+    MoreHorizontal,
+    Plus,
+    Settings,
+    Sunrise,
+    Users,
+    X,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useAuth } from "@/lib/auth-context";
-import { RequireAuth } from "@/components/layout/require-auth";
-import { BrandMark } from "@/components/brand/logo";
-import { Button } from "@/components/ui/button";
-import {
-  LogOut,
-  Users,
-  LayoutGrid,
-  GitCompareArrows,
-  Settings,
-  Sunrise,
-  BookOpen,
-  Plus,
-  MoreHorizontal,
-  X,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useLocale } from "@/i18n/context";
-import type { MessageKey } from "@/i18n/catalog";
+import { useState } from "react";
 
 // Today leads: it is the lightest, most-returned-to view, and the only one that
 // answers a question about *now* rather than about a stored record.

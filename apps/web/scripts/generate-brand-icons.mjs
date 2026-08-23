@@ -12,8 +12,8 @@
  *   icon-512.png          512×512  (purpose: any)
  *   maskable-icon-512.png 512×512  (mark inside the 80 % maskable safe zone)
  */
-import { promises as fs } from "node:fs";
 import { spawn } from "node:child_process";
+import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";

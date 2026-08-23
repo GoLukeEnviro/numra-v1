@@ -1,7 +1,7 @@
-import type { Metadata, Viewport } from "next";
-import { AuthProvider } from "@/lib/auth-context";
-import { LocaleProvider } from "@/i18n/context";
 import { RegisterServiceWorker } from "@/components/pwa/register-service-worker";
+import { LocaleProvider } from "@/i18n/context";
+import { AuthProvider } from "@/lib/auth-context";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
