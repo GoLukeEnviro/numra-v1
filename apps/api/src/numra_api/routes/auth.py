@@ -92,7 +92,11 @@ async def login(
     settings: Settings = Depends(get_settings_dep),
 ) -> UserOut:
     user = await get_user_by_email(db, email=body.email)
-    if user is None or not verify_password(user.password_hash, body.password):
+    if user is None or not verify_password(user.password_hash, body.password) or not user.is_active:
+        # Deliberately identical error for wrong-password, unknown-email, and
+        # disabled-account -- a disabled account must never be distinguishable from
+        # a simple login failure (see get_current_user's matching anti-enumeration
+        # behavior for the session path).
         raise InvalidCredentials("invalid email or password")
 
     token = generate_session_token()
