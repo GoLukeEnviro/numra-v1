@@ -27,9 +27,7 @@ def upgrade() -> None:
     )
     op.add_column(
         "users",
-        sa.Column(
-            "is_active", sa.Boolean(), nullable=False, server_default=sa.true()
-        ),
+        sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.true()),
     )
     op.create_index("ix_users_role", "users", ["role"])
 
@@ -62,9 +60,7 @@ def upgrade() -> None:
             nullable=False,
         ),
     )
-    op.create_index(
-        "ix_admin_audit_events_created_at", "admin_audit_events", ["created_at"]
-    )
+    op.create_index("ix_admin_audit_events_created_at", "admin_audit_events", ["created_at"])
     op.create_index(
         "ix_admin_audit_events_target_user_id",
         "admin_audit_events",
