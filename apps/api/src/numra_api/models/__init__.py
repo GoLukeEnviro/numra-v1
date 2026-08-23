@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from numra_api.models.tables import (
+    AdminAuditEvent,
     Base,
     Calculation,
     Export,
@@ -16,6 +17,7 @@ from numra_api.models.tables import (
 )
 
 __all__ = [
+    "AdminAuditEvent",
     "Base",
     "Calculation",
     "Export",

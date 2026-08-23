@@ -31,6 +31,11 @@ class SelfSignupDisabled(ApplicationError):
     status_code = 403
 
 
+class Forbidden(ApplicationError):
+    code = "FORBIDDEN"
+    status_code = 403
+
+
 class CsrfValidationFailed(ApplicationError):
     code = "CSRF_VALIDATION_FAILED"
     status_code = 403

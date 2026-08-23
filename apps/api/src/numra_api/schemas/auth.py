@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import datetime as dt
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class LoginRequest(BaseModel):
@@ -11,6 +11,10 @@ class LoginRequest(BaseModel):
 
 
 class RegisterRequest(BaseModel):
+    #: Public registration can NEVER set role/is_active/permissions — any unexpected
+    #: key (e.g. "role": "ADMIN") becomes a 422 instead of being silently ignored.
+    model_config = ConfigDict(extra="forbid")
+
     email: EmailStr
     #: Minimum 12 characters (security hardening) — enforced only at registration, not
     #: at login (a login attempt must still be checked against the stored hash and
@@ -22,6 +26,8 @@ class RegisterRequest(BaseModel):
 class UserOut(BaseModel):
     id: str
     email: str
+    role: str
+    is_active: bool
 
 
 class ChangePasswordRequest(BaseModel):

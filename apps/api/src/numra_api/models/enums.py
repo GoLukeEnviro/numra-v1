@@ -36,3 +36,15 @@ class ExportStatus(StrEnum):
     PENDING = "pending"
     COMPLETE = "complete"
     FAILED = "failed"
+
+
+class UserRole(StrEnum):
+    USER = "USER"
+    ADMIN = "ADMIN"
+
+
+class AuditAction(StrEnum):
+    USER_DISABLED = "USER_DISABLED"
+    USER_ENABLED = "USER_ENABLED"
+    USER_SESSIONS_REVOKED = "USER_SESSIONS_REVOKED"
+    ADMIN_PROMOTED = "ADMIN_PROMOTED"
