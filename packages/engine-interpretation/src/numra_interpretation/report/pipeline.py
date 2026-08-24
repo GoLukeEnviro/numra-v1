@@ -292,6 +292,30 @@ async def _generate_section(
 
     numeric_claims = _numeric_claims_for_spec(profile, spec)
 
+    # `request.numeric_claims` (built below) is never turned into chat messages by any
+    # concrete provider — ollama_provider._build_messages/_build_structured_messages only
+    # read system_instructions/context_blocks/user_instructions — so the model was told
+    # which metric ids EXIST (via valid_placeholder_ids above) but never which ones its own
+    # `numeric_claims` output array is REQUIRED to cover for this specific section. Every
+    # real generation since 388bbbb ("V1.6 C") consequently failed post-generation with
+    # `InvalidReportSection: MissingMetricCoverage` from validate_metric_ref_coverage below,
+    # because a model with no explicit instruction reasonably left the array empty or
+    # partial. This block makes the requirement an instruction the model actually sees,
+    # using the same canonical display values already given via the metric context blocks.
+    if numeric_claims:
+        required_ids = ", ".join(claim.metric_id for claim in numeric_claims)
+        context_blocks.append(
+            ContextBlock(
+                role="instruction_supplement",
+                label="required_numeric_claims",
+                content=(
+                    "numeric_claims must include exactly one entry per metric id: "
+                    f"{required_ids}, each with the canonical display_value already given "
+                    "above."
+                ),
+            )
+        )
+
     if is_mock_provider:
         # Deterministic, network-free filler so MockLLMProvider-driven tests can
         # exercise realistic section lengths (including ULTIMATE-scale, 15,000+ words)

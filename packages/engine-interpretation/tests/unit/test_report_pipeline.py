@@ -528,6 +528,68 @@ async def test_generate_report_tells_model_the_valid_placeholder_ids(
         assert "}}" not in content
 
 
+async def test_generate_report_tells_model_which_numeric_claims_ids_are_mandatory(
+    sample_profile, knowledge_base
+) -> None:
+    """V1.6-C-era production regression test: `request.numeric_claims` (the section's
+    required/candidate claim set) is never turned into chat messages by any concrete
+    provider -- ollama_provider._build_messages/_build_structured_messages only read
+    system_instructions/context_blocks/user_instructions -- so a real model was never
+    told which ids its own `numeric_claims` output array had to cover, and every real
+    generation since 388bbbb failed post-generation with `InvalidReportSection:
+    MissingMetricCoverage`. Assert every section whose spec requires at least one
+    metric id now carries an explicit instruction_supplement context block naming
+    every one of those ids, so the requirement is something a real provider's prompt
+    actually contains -- not just something validate_metric_ref_coverage checks
+    after the fact."""
+    manifest = build_manifest(report_type="QUICK", calculation_id="calc-1")
+    seen_by_section: dict[str, tuple] = {}
+
+    class TrackingProvider:
+        async def health(self) -> ProviderHealth:
+            return ProviderHealth(
+                status="healthy", provider="ollama_cloud", checked_at=dt.datetime.now(dt.UTC)
+            )
+
+        async def generate(self, request: GenerationRequest) -> GenerationResult:
+            raise AssertionError("not used")
+
+        async def generate_structured(self, request: StructuredGenerationRequest, schema: type):  # type: ignore[no-untyped-def]
+            section_id = request.metadata["section_id"]
+            seen_by_section[section_id] = request.context_blocks
+            target = int(request.metadata["target_word_count"])
+            return GeneratedSectionContent(
+                title=section_id,
+                text=_target_length_filler(section_id, target),
+                numeric_claims=request.numeric_claims,
+                summary="s",
+            )
+
+    await generate_report(
+        profile=sample_profile, knowledge=knowledge_base, manifest=manifest, llm=TrackingProvider()
+    )
+
+    spec_by_id = {spec.section_id: spec for spec in manifest.sections}
+    index = build_metric_display_value_index(sample_profile)
+    sections_with_required_ids = 0
+    for section_id, blocks in seen_by_section.items():
+        spec = spec_by_id[section_id]
+        required_ids = tuple(
+            mid for mid in (spec.metric_refs or tuple(index.keys())[:3]) if mid in index
+        )
+        required_blocks = [b for b in blocks if b.label == "required_numeric_claims"]
+        if not required_ids:
+            assert not required_blocks, f"{section_id} has no required ids but got a block"
+            continue
+        sections_with_required_ids += 1
+        assert required_blocks, f"{section_id} requires {required_ids} but has no instruction"
+        content = required_blocks[0].content
+        for metric_id in required_ids:
+            assert metric_id in content, f"{section_id}: {metric_id!r} missing from {content!r}"
+
+    assert sections_with_required_ids > 0
+
+
 async def test_generate_report_timing_section_gets_knowledge_grounding(
     sample_profile, knowledge_base
 ) -> None:
