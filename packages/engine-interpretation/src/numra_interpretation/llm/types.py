@@ -25,7 +25,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal, Protocol
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 __all__ = [
     "ContextBlock",
@@ -54,8 +54,17 @@ class NumericClaim(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    metric_id: str
-    display_value: str
+    metric_id: str = Field(
+        description="The known metric or special id this claim is about, e.g. 'life_path'."
+    )
+    display_value: str = Field(
+        description=(
+            "The literal, already-resolved canonical value for this metric, e.g. '22/4'. "
+            "Never the '{{metric:ID}}' or '{{special:ID}}' placeholder syntax, and never "
+            "an empty string — that placeholder syntax belongs only in the free-text "
+            "content, not in this field."
+        )
+    )
 
 
 class ContextBlock(BaseModel):

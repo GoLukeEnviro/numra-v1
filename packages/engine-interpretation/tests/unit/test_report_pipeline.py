@@ -586,8 +586,41 @@ async def test_generate_report_tells_model_which_numeric_claims_ids_are_mandator
         content = required_blocks[0].content
         for metric_id in required_ids:
             assert metric_id in content, f"{section_id}: {metric_id!r} missing from {content!r}"
+        # V1.6-D-era production regression: the model started including one
+        # numeric_claims entry per required id (fixing MissingMetricCoverage above)
+        # but put the literal "{{metric:ID}}" placeholder text (or an empty string)
+        # into display_value instead of the resolved value -- the instruction must
+        # explicitly rule that out. NOTE: deliberately asserts on the word
+        # "placeholder" rather than the literal "{{...}}" syntax itself -- like
+        # valid_placeholder_ids above, MockLLMProvider's filler is seeded from every
+        # context_block's raw content, so writing literal braces into this
+        # instruction block would itself get echoed into the generated text and
+        # misfire `_resolve_placeholders`.
+        assert "placeholder" in content, (
+            f"{section_id}: instruction must warn against placeholder syntax: {content!r}"
+        )
+        assert "blank" in content or "empty" in content, (
+            f"{section_id}: instruction must warn against a blank display_value: {content!r}"
+        )
 
     assert sections_with_required_ids > 0
+
+
+def test_numeric_claim_display_value_schema_forbids_placeholder_syntax() -> None:
+    """V1.6-D regression test: `NumericClaim.display_value` had no `Field(description=...)`
+    at all, so the JSON Schema sent to the model via `_build_structured_messages` gave no
+    hint that this field must hold the literal resolved value rather than the
+    `{{metric:ID}}` placeholder syntax the system instructions tell the model to use
+    everywhere else. Assert the schema now documents that distinction explicitly."""
+    schema = GeneratedSectionContent.model_json_schema()
+    claim_ref = schema["properties"]["numeric_claims"]["items"]["$ref"]
+    claim_def_name = claim_ref.rsplit("/", 1)[-1]
+    display_value_schema = schema["$defs"][claim_def_name]["properties"]["display_value"]
+
+    description = display_value_schema.get("description", "")
+    assert description, "display_value must have a schema description"
+    assert "{{" in description and "}}" in description
+    assert "blank" in description or "empty" in description
 
 
 async def test_generate_report_timing_section_gets_knowledge_grounding(
