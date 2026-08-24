@@ -311,7 +311,8 @@ async def _generate_section(
                 content=(
                     "numeric_claims must include exactly one entry per metric id: "
                     f"{required_ids}, each with the canonical display_value already given "
-                    "above."
+                    "above as a literal value (e.g. '22/4'), never the metric-placeholder "
+                    "syntax used in the text field and never blank."
                 ),
             )
         )
