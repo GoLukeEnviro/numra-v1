@@ -22,6 +22,7 @@ from numra_interpretation.llm.types import (
 from numra_interpretation.llm.validator import (
     build_metric_display_value_index,
     extract_placeholder_metric_ids,
+    normalize_numeric_claims,
     validate_generation_result,
     validate_numeric_claims,
 )
@@ -39,6 +40,7 @@ __all__ = [
     "StructuredGenerationRequest",
     "build_metric_display_value_index",
     "extract_placeholder_metric_ids",
+    "normalize_numeric_claims",
     "validate_generation_result",
     "validate_numeric_claims",
 ]

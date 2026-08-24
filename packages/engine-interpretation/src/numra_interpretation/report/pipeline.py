@@ -24,8 +24,8 @@ from numra_interpretation.llm.validator import (
     build_metric_display_value_index,
     build_special_claim_index,
     find_unauthorized_numeric_literals,
+    normalize_numeric_claims,
     validate_metric_ref_coverage,
-    validate_numeric_claims,
 )
 from numra_interpretation.report.content_padding import deterministic_elaboration
 from numra_interpretation.report.linter import lint_report
@@ -361,9 +361,15 @@ async def _generate_section(
     result = await llm.generate_structured(request, GeneratedSectionContent)
     assert isinstance(result, GeneratedSectionContent)
 
-    validate_numeric_claims(result.numeric_claims, profile)
+    # Self-heals a known-metric_id-but-wrong-display_value claim (silently substitutes
+    # the canonical value the pipeline already computed) instead of raising — the
+    # provider's temperature-0.2 sampling occasionally mistypes/invents a literal
+    # value even though it correctly names which metric_id the claim is about. Only
+    # an unknown metric_id (real confusion about which facts exist) still raises. See
+    # `normalize_numeric_claims`'s docstring for the full rationale.
+    section_claims = normalize_numeric_claims(result.numeric_claims, profile)
     validate_metric_ref_coverage(
-        result.numeric_claims,
+        section_claims,
         tuple(claim.metric_id for claim in numeric_claims),
         section_id=spec.section_id,
     )

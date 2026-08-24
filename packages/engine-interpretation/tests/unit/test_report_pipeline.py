@@ -751,6 +751,73 @@ async def test_generate_report_timing_section_raises_when_repair_also_fails(
         )
 
 
+async def test_generate_report_self_heals_wrong_but_known_numeric_claim(
+    sample_profile, knowledge_base
+) -> None:
+    """V1.6 D-2 production regression, end-to-end: a section's provider response
+    correctly names a required metric_id but types the wrong literal display_value
+    for it (inherent temperature-0.2 sampling variance, not a further prompt-wording
+    gap). Before this fix that raised `InvalidReportSection: Numeric claim mismatch`
+    on attempt 1 and forced a retry (or a hard failure if the retry also mistyped the
+    value, as seen live in production). Assert generation now succeeds on the very
+    first attempt -- proving the wrong value was silently self-healed rather than
+    rejected -- and that the resolved section text still carries the CORRECT
+    canonical value, never the model's wrong guess."""
+    manifest = build_manifest(report_type="QUICK", calculation_id="calc-1")
+    life_path = sample_profile.core_numbers.life_path.display_value
+    wrong_life_path = "99/9" if life_path != "99/9" else "1/1"
+    attempts_seen: dict[str, list[str]] = {}
+
+    class WrongValueKnownIdProvider:
+        async def health(self) -> ProviderHealth:
+            return ProviderHealth(
+                status="healthy", provider="ollama_cloud", checked_at=dt.datetime.now(dt.UTC)
+            )
+
+        async def generate(self, request: GenerationRequest) -> GenerationResult:
+            raise AssertionError("not used")
+
+        async def generate_structured(self, request: StructuredGenerationRequest, schema: type):  # type: ignore[no-untyped-def]
+            section_id = request.metadata["section_id"]
+            attempt = request.metadata["attempt"]
+            attempts_seen.setdefault(section_id, []).append(attempt)
+            target = int(request.metadata["target_word_count"])
+            text = _target_length_filler(section_id, target)
+            required_ids = {claim.metric_id for claim in request.numeric_claims}
+            if "life_path" in required_ids:
+                # Cites life_path via the correct placeholder syntax in the text (so
+                # placeholder resolution has something to resolve), while its
+                # accompanying numeric_claims entry mistypes the literal value -- the
+                # exact production failure shape.
+                text = "{{metric:life_path}} " + text
+            claims = tuple(
+                claim.model_copy(update={"display_value": wrong_life_path})
+                if claim.metric_id == "life_path"
+                else claim
+                for claim in request.numeric_claims
+            )
+            return GeneratedSectionContent(
+                title=section_id, text=text, numeric_claims=claims, summary="s"
+            )
+
+    report = await generate_report(
+        profile=sample_profile,
+        knowledge=knowledge_base,
+        manifest=manifest,
+        llm=WrongValueKnownIdProvider(),
+    )
+
+    assert len(report.sections) == len(manifest.sections)
+    # No section needed a repair attempt -- the wrong value was self-healed on
+    # attempt 1 instead of raising and burning the pipeline's one retry.
+    for section_id, attempts in attempts_seen.items():
+        assert attempts == ["1"], f"{section_id} needed a retry: {attempts!r}"
+
+    life_path_section = next(s for s in report.sections if "life_path" in s.metric_refs)
+    assert life_path in life_path_section.text
+    assert wrong_life_path not in life_path_section.text
+
+
 def test_build_manifest_prompt_version_is_v2() -> None:
     """V1.6 C: the prompt_version was bumped for the timing-report grounding +
     coverage fix -- new reports are distinguishable from ones generated before it.
