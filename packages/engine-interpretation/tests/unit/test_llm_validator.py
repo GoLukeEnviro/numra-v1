@@ -15,6 +15,7 @@ from numra_interpretation.llm.validator import (
     find_unauthorized_numeric_literals,
     format_hidden_passion,
     format_karmic_lessons,
+    normalize_numeric_claims,
     validate_generation_result,
     validate_metric_ref_coverage,
     validate_numeric_claims,
@@ -83,6 +84,40 @@ def test_unknown_metric_id_claim_raises(sample_profile) -> None:
     claims = (NumericClaim(metric_id="not_a_real_metric", display_value="1"),)
     with pytest.raises(InvalidReportSection, match="Unknown metric_id"):
         validate_numeric_claims(claims, sample_profile)
+
+
+def test_normalize_numeric_claims_self_heals_wrong_but_known_value(sample_profile) -> None:
+    """User-approved fix (V1.6 D-2): a known metric_id with a wrong display_value must
+    be silently corrected to the canonical value instead of raising -- the model
+    correctly identified WHICH fact the claim is about, and the pipeline already knows
+    the fact authoritatively, so there is no reason to reject the whole section over a
+    mistyped literal."""
+    actual = sample_profile.core_numbers.birthday.display_value
+    wrong = "99/9" if actual != "99/9" else "1/1"
+    claims = (NumericClaim(metric_id="birthday", display_value=wrong),)
+
+    normalized = normalize_numeric_claims(claims, sample_profile)
+
+    assert len(normalized) == 1
+    assert normalized[0].metric_id == "birthday"
+    assert normalized[0].display_value == actual
+
+
+def test_normalize_numeric_claims_leaves_correct_claim_untouched(sample_profile) -> None:
+    life_path = sample_profile.core_numbers.life_path.display_value
+    claims = (NumericClaim(metric_id="life_path", display_value=life_path),)
+
+    normalized = normalize_numeric_claims(claims, sample_profile)
+
+    assert normalized == claims
+
+
+def test_normalize_numeric_claims_still_raises_on_unknown_metric_id(sample_profile) -> None:
+    """Preserves the hard failure for a genuinely invented id -- self-healing only
+    ever corrects a mistyped *value*, never fabricates a fact for an unknown id."""
+    claims = (NumericClaim(metric_id="not_a_real_metric", display_value="1"),)
+    with pytest.raises(InvalidReportSection, match="Unknown metric_id"):
+        normalize_numeric_claims(claims, sample_profile)
 
 
 def test_metric_ref_coverage_passes_when_all_required_ids_cited() -> None:

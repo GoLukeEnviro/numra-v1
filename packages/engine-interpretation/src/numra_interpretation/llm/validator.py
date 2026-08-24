@@ -38,6 +38,7 @@ __all__ = [
     "find_unauthorized_numeric_literals",
     "format_hidden_passion",
     "format_karmic_lessons",
+    "normalize_numeric_claims",
     "validate_generation_result",
     "validate_metric_ref_coverage",
     "validate_numeric_claims",
@@ -178,10 +179,62 @@ def find_unauthorized_numeric_literals(text: str, profile: CanonicalProfile) -> 
     return tuple(found)
 
 
+def normalize_numeric_claims(
+    claims: tuple[NumericClaim, ...], profile: CanonicalProfile
+) -> tuple[NumericClaim, ...]:
+    """Self-heal each claim's ``display_value`` against the profile instead of
+    rejecting the whole section over it — the primary entry point a generation
+    pipeline should call on a provider's raw `numeric_claims` output.
+
+    User-approved fix for a production regression (V1.6 D-2): even after the model
+    reliably names the *correct* ``metric_id`` for every required claim (fixing the
+    two prior failure modes — missing claims, and placeholder-syntax-as-value), it
+    still occasionally types the wrong literal digit into ``display_value`` — e.g.
+    claiming ``birthday`` is ``'4'`` when the canonical value is ``'18/9'``. This is
+    inherent sampling variance at the provider's temperature 0.2 (see
+    `_DEFAULT_TEMPERATURE` in `ollama_provider.py`), not a further prompt-wording
+    gap: across a report's many sections and claims, even a small per-claim
+    non-compliance rate compounds into frequent validation failures.
+
+    The pipeline (`build_metric_display_value_index`/`build_special_claim_index`) is
+    the sole authoritative source for every numeric fact a report can cite — the
+    model was already given each canonical value verbatim in the prompt. There is
+    therefore no correctness or security reason to trust, or even require, the model
+    to retype that value exactly: only *which* ``metric_id`` a claim is about is
+    actually meaningful signal contributed by the model, and only that continues to
+    be enforced strictly here.
+
+    A claim whose ``metric_id`` is not found in either index still raises
+    `InvalidReportSection` exactly as `validate_numeric_claims` does — an invented id
+    indicates real confusion about which facts exist, not just a mistyped value, and
+    that failure mode is not self-healable."""
+    index = build_metric_display_value_index(profile)
+    special_index = build_special_claim_index(profile)
+    normalized: list[NumericClaim] = []
+    for claim in claims:
+        if claim.metric_id in index:
+            actual = index[claim.metric_id]
+        elif claim.metric_id in special_index:
+            actual = special_index[claim.metric_id]
+        else:
+            raise InvalidReportSection(f"Unknown metric_id in numeric claim: {claim.metric_id!r}")
+        if claim.display_value != actual:
+            normalized.append(claim.model_copy(update={"display_value": actual}))
+        else:
+            normalized.append(claim)
+    return tuple(normalized)
+
+
 def validate_numeric_claims(claims: tuple[NumericClaim, ...], profile: CanonicalProfile) -> None:
     """Raise `InvalidReportSection` if any claim references an unknown id (checked
     across both the scalar metric index and the special/non-scalar index) or a
-    ``display_value`` that does not exactly match the profile."""
+    ``display_value`` that does not exactly match the profile.
+
+    Kept as a strict assertion helper (still used by `validate_generation_result` and
+    by tests that want a hard failure on any mismatch) alongside the newer
+    `normalize_numeric_claims`, which is what the report generation pipeline actually
+    calls — see its docstring for why a mismatched-but-known claim is self-healed
+    there rather than rejected."""
     index = build_metric_display_value_index(profile)
     special_index = build_special_claim_index(profile)
     for claim in claims:
