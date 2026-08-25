@@ -3,7 +3,7 @@
  * loaded when no locale preference has been chosen yet. Keys mirror en.ts 1:1;
  * `apps/web/src/i18n/catalog.ts` enforces that at the type level.
  */
-export const de = {
+export const deCore = {
   "nav.today": "Heute",
   "nav.dashboard": "Übersicht",
   "nav.people": "Personen",
@@ -18,6 +18,14 @@ export const de = {
   "common.loading": "Wird geladen…",
   "common.tryAgain": "Erneut versuchen",
   "common.somethingWrong": "Etwas ist schiefgelaufen",
+  "common.networkError": "Der Server ist nicht erreichbar.",
+  "common.appLoading": "Numra wird geladen…",
+
+  "shell.skipToContent": "Zum Inhalt springen",
+  "shell.dismiss": "Schließen",
+  "shell.closeMenu": "Menü schließen",
+  "shell.tagline": "Numerologie, nachprüfbar gemacht",
+  "shell.checkingSession": "Deine Sitzung wird geprüft…",
 
   "settings.title": "Einstellungen",
   "settings.account": "Konto",
