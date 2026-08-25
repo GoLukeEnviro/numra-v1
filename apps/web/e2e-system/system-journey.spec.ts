@@ -60,24 +60,24 @@ test("real system journey: login through delete-all against the live stack", asy
 
   // 1. Log in through the real UI/API.
   await page.goto("/login");
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByLabel("E-Mail").fill(email);
+  await page.getByLabel("Passwort").fill(PASSWORD);
+  await page.getByRole("button", { name: "Anmelden" }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
 
   // 2. Create the first person (Lukas Springer — the pinned golden fixture) and let
   // its calculation run for real, through the deterministic engine.
-  await page.getByRole("link", { name: "New profile" }).first().click();
+  await page.getByRole("link", { name: "Neues Profil" }).first().click();
   await expect(page).toHaveURL(/\/people\/new$/);
 
-  await page.getByLabel("First name(s) *").fill("Lukas");
-  await page.getByLabel("Last name *").fill("Springer");
-  await page.getByLabel("Birth date *").fill("1986-07-18");
-  await page.getByLabel("Birth time", { exact: true }).fill("06:00");
-  await page.getByLabel("Time precision").selectOption("exact");
-  await page.getByLabel("Birth place").fill("Meerbusch");
-  await page.getByLabel("Country code").fill("DE");
-  await page.getByRole("button", { name: /Create profile/i }).click();
+  await page.getByLabel("Vorname(n) *").fill("Lukas");
+  await page.getByLabel("Nachname *").fill("Springer");
+  await page.getByLabel("Geburtsdatum *").fill("1986-07-18");
+  await page.getByLabel("Geburtszeit", { exact: true }).fill("06:00");
+  await page.getByLabel("Zeitgenauigkeit").selectOption("exact");
+  await page.getByLabel("Geburtsort").fill("Meerbusch");
+  await page.getByLabel("Ländercode").fill("DE");
+  await page.getByRole("button", { name: /Profil anlegen & berechnen/i }).click();
 
   await expect(page).toHaveURL(/\/analysis\/[0-9a-f-]{36}$/);
   const calculationIdA = page.url().split("/analysis/")[1];
@@ -91,7 +91,7 @@ test("real system journey: login through delete-all against the live stack", asy
   await expect(page.getByText("44/8", { exact: true }).first()).toBeVisible(); // Personality
   await expect(page.getByText(/Master Number 22/i).first()).toBeVisible();
 
-  await page.getByRole("tab", { name: "Calculation Inspector" }).click();
+  await page.getByRole("tab", { name: "Rechen-Inspektor" }).click();
   await expect(page.getByText("Day: 18 → 9")).toBeVisible();
   await expect(page.getByText("9 + 7 + 6 = 22")).toBeVisible();
 
@@ -99,7 +99,7 @@ test("real system journey: login through delete-all against the live stack", asy
   await page.goto("/dashboard");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await page.goto("/today");
-  await expect(page.getByRole("heading", { name: "Today" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Heute" })).toBeVisible();
   // With exactly one profile so far, the timing view renders directly (no picker).
   await expect(page.getByText(/Personal (Year|Month|Day)/i).first()).toBeVisible({
     timeout: 15_000,
@@ -109,7 +109,7 @@ test("real system journey: login through delete-all against the live stack", asy
   // processes it (NUMRA_LLM_PROVIDER=mock), real polling from the browser.
   await page.goto(`/analysis/${calculationIdA}`);
   await page.getByLabel("Quick", { exact: false }).first().check();
-  await page.getByRole("button", { name: "Generate report" }).click();
+  await page.getByRole("button", { name: "Bericht erzeugen" }).click();
 
   await expect(page).toHaveURL(/\/reports\/[0-9a-f-]{36}$/);
   const reportId = page.url().split("/reports/")[1];
@@ -127,9 +127,9 @@ test("real system journey: login through delete-all against the live stack", asy
   // 120s -- this wait must clear that with real margin, or a genuine slow-but-real
   // render gets marked "failed" server-side before the client would ever see it as
   // slow-but-successful.
-  await page.getByRole("button", { name: "Export PDF" }).click();
-  await expect(page.getByRole("link", { name: /Download/i })).toBeVisible({ timeout: 150_000 });
-  const downloadHref = await page.getByRole("link", { name: /Download/i }).getAttribute("href");
+  await page.getByRole("button", { name: "PDF exportieren" }).click();
+  await expect(page.getByRole("link", { name: /Herunterladen/i })).toBeVisible({ timeout: 150_000 });
+  const downloadHref = await page.getByRole("link", { name: /Herunterladen/i }).getAttribute("href");
   expect(downloadHref).toBeTruthy();
 
   const pdfResponse = await page.request.get(downloadHref!);
@@ -142,13 +142,13 @@ test("real system journey: login through delete-all against the live stack", asy
   // 6. Create a second person, with a current name and preferred name, to exercise
   // the Identity Timeline as more than a single birth-name entry.
   await page.goto("/people/new");
-  await page.getByLabel("First name(s) *").fill("Anna");
-  await page.getByLabel("Last name *").fill("Berger");
-  await page.getByLabel("Birth date *").fill("1990-03-14");
-  await page.getByLabel("Current first name(s)").fill("Anna");
-  await page.getByLabel("Current last name").fill("Weber");
-  await page.getByLabel("Preferred name").fill("Annie");
-  await page.getByRole("button", { name: /Create profile/i }).click();
+  await page.getByLabel("Vorname(n) *").fill("Anna");
+  await page.getByLabel("Nachname *").fill("Berger");
+  await page.getByLabel("Geburtsdatum *").fill("1990-03-14");
+  await page.getByLabel("Aktuelle(r) Vorname(n)").fill("Anna");
+  await page.getByLabel("Aktueller Nachname").fill("Weber");
+  await page.getByLabel("Rufname").fill("Annie");
+  await page.getByRole("button", { name: /Profil anlegen & berechnen/i }).click();
 
   await expect(page).toHaveURL(/\/analysis\/[0-9a-f-]{36}$/);
   await expect(page.getByRole("heading", { name: "Anna Berger" })).toBeVisible();
@@ -157,38 +157,43 @@ test("real system journey: login through delete-all against the live stack", asy
   // The People tile shows the preferred name ("Annie") when one is set, not the
   // birth name — personDisplayName() prioritizes it deliberately.
   await page.getByRole("link", { name: /Annie/i }).click();
-  await expect(page.getByRole("heading", { name: "Identity" })).toBeVisible();
-  await expect(page.getByText("Birth name", { exact: true })).toBeVisible();
-  await expect(page.getByText("Current name", { exact: true })).toBeVisible();
-  await expect(page.getByText("Preferred name", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Identität" })).toBeVisible();
+  await expect(page.getByText("Geburtsname", { exact: true })).toBeVisible();
+  await expect(page.getByText("Aktueller Name", { exact: true })).toBeVisible();
+  // "Rufname" labels both the identity-timeline entry and (when the server has also
+  // recorded a "preferred" history row) the matching badge in the "Erfasste
+  // Historie" list below -- de/app.ts intentionally reuses the same word for
+  // app.identity.preferredLabel and app.identity.kindPreferred, so this may
+  // legitimately match more than one element.
+  await expect(page.getByText("Rufname", { exact: true }).first()).toBeVisible();
   // Two lists render "Annie" now (V1.5 Epic C added a second, server-authoritative
   // "Recorded history" log alongside the original current-state timeline) -- scope
   // to the current-identity one, which is what this assertion is actually about.
   await expect(
-    page.getByRole("list", { name: "Current identity" }).getByText("Annie", { exact: true }),
+    page.getByRole("list", { name: "Identität" }).getByText("Annie", { exact: true }),
   ).toBeVisible();
-  await expect(page.getByText("Used for Core Numbers")).toBeVisible();
+  await expect(page.getByText("Für Kernzahlen verwendet")).toBeVisible();
 
   // 7. Relationship comparison: V1.5 Epic E made this select by PERSON, not by a
   // pasted calculation UUID -- the backend resolves each person's latest
   // calculation itself. Both people created above appear by their real display
   // name (personDisplayName() prioritizes the preferred name, hence "Annie").
   await page.goto("/relationships");
-  await page.getByLabel("Person A").selectOption({ label: "Lukas Springer" });
-  await page.getByLabel("Person B").selectOption({ label: "Annie" });
-  await page.getByRole("button", { name: "Compare" }).click();
+  await page.getByLabel("Erste Person").selectOption({ label: "Lukas Springer" });
+  await page.getByLabel("Zweite Person").selectOption({ label: "Annie" });
+  await page.getByRole("button", { name: "Vergleichen" }).click();
 
   await expect(page).toHaveURL(/\/relationships\/[0-9a-f-]{36}$/);
-  await expect(page.getByText(/does not compute a compatibility percentage/i)).toBeVisible();
+  await expect(page.getByText(/Kompatibilitäts-Prozentsatz/i)).toBeVisible();
   // The canon-spec prohibition holds against the live comparison output too: no bare
   // percentage sign appears anywhere on the rendered comparison.
   await expect(page.locator("body")).not.toContainText("%");
 
   // 8. Delete-All: real password-confirmed deletion against the live account.
   await page.goto("/settings/privacy");
-  await page.getByRole("button", { name: "Delete my account" }).click();
-  await page.getByLabel("Confirm with your password").fill(PASSWORD);
-  await page.getByRole("button", { name: "Delete everything permanently" }).click();
+  await page.getByRole("button", { name: "Mein Konto löschen" }).click();
+  await page.getByLabel("Mit deinem Passwort bestätigen").fill(PASSWORD);
+  await page.getByRole("button", { name: "Alles endgültig löschen" }).click();
 
   await expect(page).toHaveURL(/\/login$/, { timeout: 15_000 });
 

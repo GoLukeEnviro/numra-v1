@@ -86,24 +86,24 @@ test("golden journey: log in, create a profile, see core numbers, inspect the tr
 
   // 1. Log in
   await page.goto("/login");
-  await page.getByLabel("Email").fill(USER.email);
-  await page.getByLabel("Password").fill("correct-horse-battery-staple");
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByLabel("E-Mail").fill(USER.email);
+  await page.getByLabel("Passwort").fill("correct-horse-battery-staple");
+  await page.getByRole("button", { name: "Anmelden" }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
 
   // 2. Create a person
-  await page.getByRole("link", { name: "New profile" }).first().click();
+  await page.getByRole("link", { name: "Neues Profil" }).first().click();
   await expect(page).toHaveURL(/\/people\/new$/);
 
-  await page.getByLabel("First name(s) *").fill("Lukas");
-  await page.getByLabel("Last name *").fill("Springer");
-  await page.getByLabel("Birth date *").fill("1986-07-18");
-  await page.getByLabel("Birth time", { exact: true }).fill("06:00");
-  await page.getByLabel("Time precision").selectOption("exact");
-  await page.getByLabel("Birth place").fill("Meerbusch");
-  await page.getByLabel("Country code").fill("DE");
+  await page.getByLabel("Vorname(n) *").fill("Lukas");
+  await page.getByLabel("Nachname *").fill("Springer");
+  await page.getByLabel("Geburtsdatum *").fill("1986-07-18");
+  await page.getByLabel("Geburtszeit", { exact: true }).fill("06:00");
+  await page.getByLabel("Zeitgenauigkeit").selectOption("exact");
+  await page.getByLabel("Geburtsort").fill("Meerbusch");
+  await page.getByLabel("Ländercode").fill("DE");
 
-  await page.getByRole("button", { name: /Create profile/i }).click();
+  await page.getByRole("button", { name: /Profil anlegen & berechnen/i }).click();
 
   // 3. Land on the analysis page for the new calculation, Core Numbers visible
   await expect(page).toHaveURL(new RegExp(`/analysis/${CALCULATION_ID}$`));
@@ -118,7 +118,7 @@ test("golden journey: log in, create a profile, see core numbers, inspect the tr
   await expect(page.getByText(/Master Number 22/i).first()).toBeVisible();
 
   // 4. Open the Calculation Inspector and confirm the trace is shown
-  await page.getByRole("tab", { name: "Calculation Inspector" }).click();
+  await page.getByRole("tab", { name: "Rechen-Inspektor" }).click();
   await expect(page.getByRole("tabpanel")).toBeVisible();
 
   // The canonical Life Path trace (default-selected metric), per canon-spec.md's
