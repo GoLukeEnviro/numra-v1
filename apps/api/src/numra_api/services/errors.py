@@ -31,6 +31,11 @@ class SelfSignupDisabled(ApplicationError):
     status_code = 403
 
 
+class EmailAlreadyRegistered(ApplicationError):
+    code = "EMAIL_ALREADY_REGISTERED"
+    status_code = 409
+
+
 class Forbidden(ApplicationError):
     code = "FORBIDDEN"
     status_code = 403

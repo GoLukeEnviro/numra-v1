@@ -9,24 +9,25 @@ from numra_api.models import User
 from numra_api.models.enums import UserRole
 
 
+def normalize_email(email: str) -> str:
+    """The single definition of email identity: `  Foo@Example.com ` and
+    `foo@example.com` must resolve to one and the same account. Applied on the way in
+    (`create_user`) and on every lookup, so the two can never drift apart."""
+    return email.strip().lower()
+
+
 async def create_user(db: AsyncSession, *, email: str, password_hash: str) -> User:
-    user = User(email=email, password_hash=password_hash)
+    user = User(email=normalize_email(email), password_hash=password_hash)
     db.add(user)
     await db.flush()
     return user
 
 
 async def get_user_by_email(db: AsyncSession, *, email: str) -> User | None:
-    result = await db.execute(select(User).where(User.email == email))
-    return result.scalar_one_or_none()
-
-
-async def get_user_by_email_normalized(db: AsyncSession, *, email: str) -> User | None:
-    """Lowercase + strip lookup -- used only by the admin CLI (`promote-admin`), which
-    accepts a human-typed email and must not fail on stray whitespace/casing. Leaves
-    `get_user_by_email` (used by login, exact-match) untouched."""
-    normalized = email.strip().lower()
-    result = await db.execute(select(User).where(func.lower(User.email) == normalized))
+    """Compares `func.lower(User.email)` rather than the stored value directly -- the
+    lookup must not depend on every existing row already having been written in
+    normalized form (rows predate `create_user`'s normalization)."""
+    result = await db.execute(select(User).where(func.lower(User.email) == normalize_email(email)))
     return result.scalar_one_or_none()
 
 
