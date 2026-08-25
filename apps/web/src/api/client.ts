@@ -1,6 +1,8 @@
 import type { components } from "@numra/schema";
 
 export type LoginRequest = components["schemas"]["LoginRequest"];
+export type RegisterRequest = components["schemas"]["RegisterRequest"];
+export type PublicConfigOut = components["schemas"]["PublicConfigOut"];
 export type UserOut = components["schemas"]["UserOut"];
 export type PersonInput = components["schemas"]["PersonInput"];
 export type PersonOut = components["schemas"]["PersonOut"];
@@ -33,6 +35,30 @@ export type DeleteAccountRequest = components["schemas"]["DeleteAccountRequest"]
 export type ChangePasswordRequest = components["schemas"]["ChangePasswordRequest"];
 export type SessionOut = components["schemas"]["SessionOut"];
 export type SystemInfoOut = components["schemas"]["SystemInfoOut"];
+export type UserRole = components["schemas"]["UserRole"];
+export type AdminStatsOut = components["schemas"]["AdminStatsOut"];
+export type AdminUserOut = components["schemas"]["AdminUserOut"];
+export type AdminUserListOut = components["schemas"]["AdminUserListOut"];
+export type AuditAction = components["schemas"]["AuditAction"];
+export type AuditEventOut = components["schemas"]["AuditEventOut"];
+export type AuditEventListOut = components["schemas"]["AuditEventListOut"];
+
+/** V1.6: server-side filtering/pagination for `GET /v1/admin/users`. */
+export interface AdminUserListParams {
+  search?: string;
+  role?: UserRole;
+  isActive?: boolean;
+  page?: number;
+  pageSize?: number;
+}
+
+/** V1.6: server-side filtering/pagination for `GET /v1/admin/audit`. */
+export interface AdminAuditListParams {
+  action?: string;
+  targetUserId?: string;
+  page?: number;
+  pageSize?: number;
+}
 
 // Same-origin only: every request goes to /api/*, which next.config.mjs's rewrite
 // forwards server-side to API_INTERNAL_URL (a runtime, non-NEXT_PUBLIC_ env var — see
@@ -150,7 +176,7 @@ function extractError(payload: unknown, status: number): [string, string, number
 export const api = {
   auth: {
     login: (body: LoginRequest) => request<UserOut>("/v1/auth/login", { method: "POST", body }),
-    register: (body: LoginRequest) =>
+    register: (body: RegisterRequest) =>
       request<UserOut>("/v1/auth/register", { method: "POST", body }),
     logout: () => request<void>("/v1/auth/logout", { method: "POST" }),
     me: () => request<UserOut>("/v1/auth/me"),
@@ -163,6 +189,10 @@ export const api = {
     /** V1.5 Epic N. "Log out other devices" -- revokes every session but this one. */
     revokeOtherSessions: () =>
       request<void>("/v1/auth/sessions/revoke-others", { method: "POST" }),
+  },
+  /** V1.6 B: anonymous bootstrap config for the pre-login pages. */
+  publicConfig: {
+    get: () => request<PublicConfigOut>("/v1/public/config"),
   },
   systemInfo: {
     get: () => request<SystemInfoOut>("/v1/system-info"),
@@ -264,5 +294,45 @@ export const api = {
      * export file for the current user, then invalidates the session server-side. */
     deleteAll: (body: DeleteAccountRequest) =>
       request<void>("/v1/account/delete-all", { method: "POST", body }),
+  },
+  /**
+   * V1.6 admin console. Every endpoint here sits behind `require_admin` in the
+   * FastAPI router — a non-admin session gets 403, an anonymous one 401. The
+   * frontend's admin gating is convenience only; the API is the security boundary.
+   */
+  admin: {
+    stats: () => request<AdminStatsOut>("/v1/admin/stats"),
+    users: {
+      /** Server-side search/filter/pagination — never filter the page client-side.
+       *  `page_size` is capped at 100 by the API. */
+      list: (params: AdminUserListParams = {}) =>
+        request<AdminUserListOut>("/v1/admin/users", {
+          query: {
+            search: params.search || undefined,
+            role: params.role,
+            is_active: params.isActive === undefined ? undefined : String(params.isActive),
+            page: params.page === undefined ? undefined : String(params.page),
+            page_size: params.pageSize === undefined ? undefined : String(params.pageSize),
+          },
+        }),
+      get: (userId: string) => request<AdminUserOut>(`/v1/admin/users/${userId}`),
+      disable: (userId: string) =>
+        request<void>(`/v1/admin/users/${userId}/disable`, { method: "POST" }),
+      enable: (userId: string) =>
+        request<void>(`/v1/admin/users/${userId}/enable`, { method: "POST" }),
+      revokeSessions: (userId: string) =>
+        request<void>(`/v1/admin/users/${userId}/revoke-sessions`, { method: "POST" }),
+    },
+    audit: {
+      list: (params: AdminAuditListParams = {}) =>
+        request<AuditEventListOut>("/v1/admin/audit", {
+          query: {
+            action: params.action || undefined,
+            target_user_id: params.targetUserId || undefined,
+            page: params.page === undefined ? undefined : String(params.page),
+            page_size: params.pageSize === undefined ? undefined : String(params.pageSize),
+          },
+        }),
+    },
   },
 };

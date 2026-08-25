@@ -7,19 +7,23 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { MessageKey } from "@/i18n/catalog";
+import { useLocale } from "@/i18n/context";
 import { useAuth } from "@/lib/auth-context";
 import { AlertTriangle } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
-const PROMISES = [
-  "Every number carries the trace that produced it.",
-  "The same inputs always reproduce the same hash.",
-  "No compatibility score is ever invented.",
+const PROMISE_KEYS: MessageKey[] = [
+  "public.login.promise1",
+  "public.login.promise2",
+  "public.login.promise3",
 ];
 
 export default function LoginPage() {
   const { login } = useAuth();
+  const { t } = useLocale();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -37,7 +41,7 @@ export default function LoginPage() {
       if (err instanceof ApiError) {
         setError({ code: err.code, message: err.message });
       } else {
-        setError({ code: "NETWORK_ERROR", message: "Could not reach the server." });
+        setError({ code: "NETWORK_ERROR", message: t("common.networkError") });
       }
     } finally {
       setSubmitting(false);
@@ -55,18 +59,15 @@ export default function LoginPage() {
           <h1 className="mt-0">
             <Logo markClassName="h-14 w-14" textClassName="text-4xl" />
           </h1>
-          <p className="mt-6 text-sm leading-relaxed text-muted">
-            An auditable numerology platform. A deterministic engine does the arithmetic;
-            language only ever explains what it already produced.
-          </p>
+          <p className="mt-6 text-sm leading-relaxed text-muted">{t("public.login.brandIntro")}</p>
           <ul className="mt-8 flex flex-col gap-3">
-            {PROMISES.map((promise) => (
-              <li key={promise} className="flex gap-3 text-sm text-text">
+            {PROMISE_KEYS.map((key) => (
+              <li key={key} className="flex gap-3 text-sm text-text">
                 <span
                   aria-hidden="true"
                   className="mt-[0.45rem] h-1.5 w-1.5 shrink-0 rounded-full bg-gold"
                 />
-                {promise}
+                {t(key)}
               </li>
             ))}
           </ul>
@@ -82,12 +83,12 @@ export default function LoginPage() {
               />
               <span className="hidden lg:inline">Numra</span>
             </CardTitle>
-            <CardDescription>Sign in to your account</CardDescription>
+            <CardDescription>{t("public.login.subtitle")}</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} noValidate>
               <div className="mb-4">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">{t("public.login.email")}</Label>
                 <Input
                   id="email"
                   name="email"
@@ -99,7 +100,7 @@ export default function LoginPage() {
                 />
               </div>
               <div className="mb-5">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">{t("public.login.password")}</Label>
                 <Input
                   id="password"
                   name="password"
@@ -130,8 +131,15 @@ export default function LoginPage() {
               )}
 
               <Button type="submit" className="w-full" loading={submitting}>
-                Sign in
+                {t("public.login.submit")}
               </Button>
+
+              <p className="mt-5 text-center text-sm text-muted">
+                {t("public.login.noAccount")}{" "}
+                <Link href="/register" className="text-gold underline-offset-4 hover:underline">
+                  {t("public.login.createAccount")}
+                </Link>
+              </p>
             </form>
           </CardContent>
         </Card>
