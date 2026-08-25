@@ -21,7 +21,7 @@ from numra_api.db import build_engine, build_sessionmaker
 from numra_api.models import User
 from numra_api.models.enums import AuditAction, UserRole
 from numra_api.repositories.audit import record_audit_event
-from numra_api.repositories.users import get_user_by_email_normalized, set_user_role
+from numra_api.repositories.users import get_user_by_email, set_user_role
 
 
 async def promote_admin(email: str) -> int:
@@ -34,7 +34,7 @@ async def promote_admin(email: str) -> int:
     sessionmaker = build_sessionmaker(engine)
     try:
         async with sessionmaker() as db:
-            user = await get_user_by_email_normalized(db, email=email)
+            user = await get_user_by_email(db, email=email)
             if user is None:
                 print(f"no user found with email {email!r} -- not creating one")
                 return 1

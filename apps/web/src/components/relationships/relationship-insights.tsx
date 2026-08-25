@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { METRIC_LABELS } from "@/components/relationships/comparison-table";
 import type { RelationshipMetricKey } from "@/api/canonical-profile";
 import type { RelationshipInsightOut } from "@/api/client";
+import { useLocale } from "@/i18n/context";
 import { Sparkles } from "lucide-react";
 
 /**
@@ -19,6 +20,7 @@ export function RelationshipInsights({
   labelA: string;
   labelB: string;
 }) {
+  const { t } = useLocale();
   if (insights.length === 0) return null;
 
   return (
@@ -26,12 +28,9 @@ export function RelationshipInsights({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-gold" aria-hidden="true" />
-          Relationship notes
+          {t("app.relationshipDetail.notesTitle")}
         </CardTitle>
-        <CardDescription>
-          How each person&apos;s number tends to show up in relationships, side by side --
-          sourced from Numra&apos;s knowledge package, not generated per comparison.
-        </CardDescription>
+        <CardDescription>{t("app.relationshipDetail.notesBody")}</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -46,7 +45,7 @@ export function RelationshipInsights({
                 </p>
                 {insight.shared_number && (
                   <span className="rounded-full bg-gold/10 px-2 py-0.5 text-[11px] text-gold">
-                    Same number
+                    {t("app.relationshipDetail.sameNumber")}
                   </span>
                 )}
               </div>

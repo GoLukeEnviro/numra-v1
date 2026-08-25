@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { LoadingState, ErrorState } from "@/components/ui/states";
 import { api } from "@/api/client";
 import { useAsync } from "@/lib/use-async";
+import { useLocale } from "@/i18n/context";
 import { Sparkles } from "lucide-react";
 
 /**
@@ -14,12 +15,13 @@ import { Sparkles } from "lucide-react";
  * text.
  */
 export function DailyBriefView({ personId, asOfDate }: { personId: string; asOfDate: string }) {
+  const { t } = useLocale();
   const state = useAsync(() => api.people.dailyBrief(personId, asOfDate), [personId, asOfDate]);
 
-  if (state.status === "loading") return <LoadingState label="Composing reflection…" />;
+  if (state.status === "loading") return <LoadingState label={t("app.today.composing")} />;
   if (state.status === "error") {
     return (
-      <ErrorState error={state.error} onRetry={state.reload} title="Could not load the reflection" />
+      <ErrorState error={state.error} onRetry={state.reload} title={t("app.today.reflectionErrorTitle")} />
     );
   }
 
@@ -27,7 +29,7 @@ export function DailyBriefView({ personId, asOfDate }: { personId: string; asOfD
     <div className="mt-6">
       <div className="mb-3 flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-gold" aria-hidden="true" />
-        <h2 className="font-serif text-lg text-ivory">Reflection</h2>
+        <h2 className="font-serif text-lg text-ivory">{t("app.today.reflection")}</h2>
       </div>
       <div className="grid gap-3">
         {state.data.sections.map((section) => (
@@ -46,8 +48,7 @@ export function DailyBriefView({ personId, asOfDate }: { personId: string; asOfD
         ))}
       </div>
       <p className="mt-4 max-w-reading text-xs leading-relaxed text-muted">
-        Reflective and symbolic, sourced from Numra&apos;s knowledge package -- not a prediction
-        and not written by a language model. Recomputed for {asOfDate}, not stored.
+        {t("app.today.reflectionFootnotePrefix")} {asOfDate}, {t("app.today.reflectionFootnoteSuffix")}
       </p>
     </div>
   );

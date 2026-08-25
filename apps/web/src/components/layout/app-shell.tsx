@@ -15,6 +15,7 @@ import {
     MoreHorizontal,
     Plus,
     Settings,
+    ShieldCheck,
     Sunrise,
     Users,
     X,
@@ -50,6 +51,14 @@ const MOBILE_MORE = [
   { href: "/settings", labelKey: "nav.settings", icon: Settings },
 ] as const satisfies readonly { href: string; labelKey: MessageKey; icon: typeof Sunrise }[];
 
+// V1.6 B: appended only for an ADMIN session. A USER's markup never contains this
+// entry at all — it is not rendered and hidden, it simply does not exist for them.
+const ADMIN_NAV_ITEM = {
+  href: "/admin",
+  labelKey: "admin.nav.admin",
+  icon: ShieldCheck,
+} as const satisfies { href: string; labelKey: MessageKey; icon: typeof Sunrise };
+
 function isActive(pathname: string | null, href: string): boolean {
   return pathname === href || (pathname?.startsWith(`${href}/`) ?? false);
 }
@@ -59,14 +68,17 @@ function MobileMoreSheet({
   onClose,
   onLogout,
   userEmail,
+  isAdmin,
 }: {
   open: boolean;
   onClose: () => void;
   onLogout: () => void;
   userEmail: string | undefined;
+  isAdmin: boolean;
 }) {
   const pathname = usePathname();
   const { t } = useLocale();
+  const items = isAdmin ? [...MOBILE_MORE, ADMIN_NAV_ITEM] : MOBILE_MORE;
   if (!open) return null;
 
   return (
@@ -78,7 +90,7 @@ function MobileMoreSheet({
     >
       <button
         type="button"
-        aria-label="Dismiss"
+        aria-label={t("shell.dismiss")}
         onClick={onClose}
         className="absolute inset-0 bg-black/60"
       />
@@ -91,14 +103,14 @@ function MobileMoreSheet({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close menu"
+            aria-label={t("shell.closeMenu")}
             className="rounded-lg p-2 text-muted hover:bg-white/5 hover:text-ivory"
           >
             <X className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
         <nav className="flex flex-col gap-1">
-          {MOBILE_MORE.map(({ href, labelKey, icon: Icon }) => {
+          {items.map(({ href, labelKey, icon: Icon }) => {
             const active = isActive(pathname, href);
             return (
               <Link
@@ -136,14 +148,18 @@ function MobileMoreSheet({
 function MobileBottomNav({
   onLogout,
   userEmail,
+  isAdmin,
 }: {
   onLogout: () => void;
   userEmail: string | undefined;
+  isAdmin: boolean;
 }) {
   const pathname = usePathname();
   const { t } = useLocale();
   const [moreOpen, setMoreOpen] = useState(false);
-  const moreActive = MOBILE_MORE.some((item) => isActive(pathname, item.href));
+  const moreActive =
+    MOBILE_MORE.some((item) => isActive(pathname, item.href)) ||
+    (isAdmin && isActive(pathname, ADMIN_NAV_ITEM.href));
 
   return (
     <>
@@ -223,6 +239,7 @@ function MobileBottomNav({
           onLogout();
         }}
         userEmail={userEmail}
+        isAdmin={isAdmin}
       />
     </>
   );
@@ -233,6 +250,8 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, logout } = useAuth();
   const { t } = useLocale();
+  const isAdmin = user?.role === "ADMIN";
+  const navItems = isAdmin ? [...NAV, ADMIN_NAV_ITEM] : NAV;
 
   async function handleLogout() {
     await logout();
@@ -245,7 +264,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-gold focus:px-4 focus:py-2 focus:text-background"
       >
-        Skip to content
+        {t("shell.skipToContent")}
       </a>
       <div className="flex min-h-screen flex-col md:flex-row">
         <aside className="border-b border-white/10 bg-surface md:w-64 md:shrink-0 md:border-b-0 md:border-r">
@@ -256,12 +275,12 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
                 Numra
                 <span aria-hidden="true" className="h-1 w-1 rounded-full bg-gold" />
               </p>
-              <p className="text-xs text-muted">Numerology, made auditable</p>
+              <p className="text-xs text-muted">{t("shell.tagline")}</p>
             </div>
           </div>
           {/* Desktop-only: mobile uses the fixed bottom nav instead (below). */}
           <nav className="hidden gap-1 px-3 pb-3 md:flex md:flex-col md:pb-0">
-            {NAV.map(({ href, labelKey, icon: Icon }) => {
+            {navItems.map(({ href, labelKey, icon: Icon }) => {
               const active = isActive(pathname, href);
               return (
                 <Link
@@ -300,7 +319,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
           <div className="mx-auto max-w-6xl">{children}</div>
         </main>
       </div>
-      <MobileBottomNav onLogout={handleLogout} userEmail={user?.email} />
+      <MobileBottomNav onLogout={handleLogout} userEmail={user?.email} isAdmin={isAdmin} />
     </div>
   );
 }

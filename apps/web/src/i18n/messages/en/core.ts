@@ -1,10 +1,10 @@
-import type { de } from "@/i18n/messages/de";
+import type { deCore } from "@/i18n/messages/de/core";
 
 /**
  * English is switchable via Settings (V1.5 Epic G). Typed against `de`'s key set
  * so a missing/extra key fails `tsc`, not a runtime lookup.
  */
-export const en: Record<keyof typeof de, string> = {
+export const enCore: Record<keyof typeof deCore, string> = {
   "nav.today": "Today",
   "nav.dashboard": "Dashboard",
   "nav.people": "People",
@@ -19,6 +19,14 @@ export const en: Record<keyof typeof de, string> = {
   "common.loading": "Loading…",
   "common.tryAgain": "Try again",
   "common.somethingWrong": "Something went wrong",
+  "common.networkError": "Could not reach the server.",
+  "common.appLoading": "Loading Numra…",
+
+  "shell.skipToContent": "Skip to content",
+  "shell.dismiss": "Dismiss",
+  "shell.closeMenu": "Close menu",
+  "shell.tagline": "Numerology, made auditable",
+  "shell.checkingSession": "Checking your session…",
 
   "settings.title": "Settings",
   "settings.account": "Account",

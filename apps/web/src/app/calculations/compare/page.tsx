@@ -10,6 +10,7 @@ import { api, type CalculationOut } from "@/api/client";
 import { asCanonicalProfile, type CalculationMetric } from "@/api/canonical-profile";
 import { useAsync } from "@/lib/use-async";
 import { formatIsoDate } from "@/lib/utils";
+import { useLocale } from "@/i18n/context";
 import { ArrowLeft, Equal, GitCompareArrows } from "lucide-react";
 
 /**
@@ -31,6 +32,9 @@ const CORE_METRIC_IDS = [
   "balance",
 ] as const;
 
+// Numerology core-number labels are kept as the domain-standard English terms used
+// throughout the calculation engine and canon-spec.md — see the final report's i18n
+// scope note.
 const CORE_METRIC_LABELS: Record<(typeof CORE_METRIC_IDS)[number], string> = {
   life_path: "Life Path",
   birthday: "Birthday",
@@ -68,15 +72,16 @@ function CoreNumberRow({
 }
 
 function CompareContent({ aId, bId }: { aId: string; bId: string }) {
+  const { t } = useLocale();
   const state = useAsync(
     () => Promise.all([api.calculations.get(aId), api.calculations.get(bId)]),
     [aId, bId],
   );
 
-  if (state.status === "loading") return <LoadingState label="Loading both snapshots…" />;
+  if (state.status === "loading") return <LoadingState label={t("app.compare.loading")} />;
   if (state.status === "error") {
     return (
-      <ErrorState error={state.error} onRetry={state.reload} title="Could not load both snapshots" />
+      <ErrorState error={state.error} onRetry={state.reload} title={t("app.compare.errorTitle")} />
     );
   }
 
@@ -88,7 +93,7 @@ function CompareContent({ aId, bId }: { aId: string; bId: string }) {
     return (
       <ErrorState
         error={new Error("A snapshot did not match the expected canonical profile shape.")}
-        title="Unreadable snapshot"
+        title={t("app.compare.unreadableTitle")}
         onRetry={state.reload}
       />
     );
@@ -97,8 +102,8 @@ function CompareContent({ aId, bId }: { aId: string; bId: string }) {
   if (calcA.person_id !== calcB.person_id) {
     return (
       <EmptyState
-        title="These snapshots belong to different people"
-        description="A comparison only makes sense between two calculations of the same person."
+        title={t("app.compare.differentPeopleTitle")}
+        description={t("app.compare.differentPeopleBody")}
       />
     );
   }
@@ -114,13 +119,13 @@ function CompareContent({ aId, bId }: { aId: string; bId: string }) {
         className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-gold"
       >
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        Back to profile
+        {t("app.compare.back")}
       </Link>
 
       <div className="mb-8">
         <h1 className="flex items-center gap-2 font-serif text-3xl text-ivory">
           <GitCompareArrows className="h-7 w-7 text-gold" aria-hidden="true" />
-          Snapshot comparison
+          {t("app.compare.title")}
         </h1>
         <p className="mt-1 text-sm text-muted">
           {formatIsoDate(calcA.as_of_date)} vs. {formatIsoDate(calcB.as_of_date)}
@@ -131,23 +136,19 @@ function CompareContent({ aId, bId }: { aId: string; bId: string }) {
         role="note"
         className="mb-6 rounded-xl border border-white/10 bg-surface-2 p-5 text-sm leading-relaxed text-muted"
       >
-        This is a factual diff, nothing more: it shows which values differ between the two
-        snapshots and stops there. Numra does not compute a growth score, an improvement
-        percentage, or any judgment of which snapshot is &quot;better&quot;.
+        {t("app.compare.factualNote")}
       </div>
 
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle className="text-base">Stable core numbers</CardTitle>
+          <CardTitle className="text-base">{t("app.compare.stableTitle")}</CardTitle>
           <CardDescription>
-            {coreChanged
-              ? "These differ between the two snapshots — likely because the person's name or birth data was edited in between."
-              : "Identical in both snapshots, as expected when the underlying identity has not changed."}
+            {coreChanged ? t("app.compare.stableChanged") : t("app.compare.stableUnchanged")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-3 gap-3 border-b border-white/10 pb-2 text-xs uppercase tracking-wider text-muted">
-            <span>Metric</span>
+            <span>{t("app.compare.metricColumn")}</span>
             <span>{formatIsoDate(calcA.as_of_date)}</span>
             <span>{formatIsoDate(calcB.as_of_date)}</span>
           </div>
@@ -166,15 +167,13 @@ function CompareContent({ aId, bId }: { aId: string; bId: string }) {
         <CardHeader>
           <div className="mb-1 flex items-center gap-2">
             <Equal className="h-4 w-4 text-muted" aria-hidden="true" />
-            <CardTitle className="text-base">Date-dependent timing</CardTitle>
+            <CardTitle className="text-base">{t("app.compare.timingTitle")}</CardTitle>
           </div>
-          <CardDescription>
-            Expected to differ — each snapshot was computed for a different as-of date.
-          </CardDescription>
+          <CardDescription>{t("app.compare.timingBody")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-3 gap-3 border-b border-white/10 pb-2 text-xs uppercase tracking-wider text-muted">
-            <span>Metric</span>
+            <span>{t("app.compare.metricColumn")}</span>
             <span>{formatIsoDate(calcA.as_of_date)}</span>
             <span>{formatIsoDate(calcB.as_of_date)}</span>
           </div>
@@ -195,16 +194,14 @@ function CompareContent({ aId, bId }: { aId: string; bId: string }) {
 }
 
 function CompareParamsGate() {
+  const { t } = useLocale();
   const searchParams = useSearchParams();
   const aId = searchParams.get("a");
   const bId = searchParams.get("b");
 
   if (!aId || !bId) {
     return (
-      <EmptyState
-        title="Choose two snapshots"
-        description="Open a person's profile, select two calculations from their history, and choose Compare."
-      />
+      <EmptyState title={t("app.compare.chooseTitle")} description={t("app.compare.chooseBody")} />
     );
   }
 
@@ -212,9 +209,10 @@ function CompareParamsGate() {
 }
 
 export default function CompareCalculationsPage() {
+  const { t } = useLocale();
   return (
     <AppShell>
-      <Suspense fallback={<LoadingState label="Loading comparison…" />}>
+      <Suspense fallback={<LoadingState label={t("app.compare.loadingOne")} />}>
         <CompareParamsGate />
       </Suspense>
     </AppShell>

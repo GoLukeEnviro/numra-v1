@@ -13,6 +13,7 @@ import { useAsync } from "@/lib/use-async";
 import { personDisplayName } from "@/lib/identity";
 import { getTodayPersonId, setTodayPersonId } from "@/lib/local-preferences";
 import { todayIsoDate } from "@/lib/utils";
+import { useLocale } from "@/i18n/context";
 import { UserPlus } from "lucide-react";
 
 function TodayForPerson({
@@ -24,15 +25,16 @@ function TodayForPerson({
   personLabel: string;
   asOfDate: string;
 }) {
+  const { t } = useLocale();
   const timingState = useAsync(() => api.people.timing(personId, asOfDate), [personId, asOfDate]);
 
-  if (timingState.status === "loading") return <LoadingState label="Reading today…" />;
+  if (timingState.status === "loading") return <LoadingState label={t("app.today.reading")} />;
   if (timingState.status === "error") {
     return (
       <ErrorState
         error={timingState.error}
         onRetry={timingState.reload}
-        title="Could not read today's timing"
+        title={t("app.today.timingErrorTitle")}
       />
     );
   }
@@ -42,7 +44,7 @@ function TodayForPerson({
     return (
       <ErrorState
         error={new Error("The timing payload did not match the expected shape.")}
-        title="Unreadable timing"
+        title={t("app.today.unreadableTiming")}
         onRetry={timingState.reload}
       />
     );
@@ -57,6 +59,7 @@ function TodayForPerson({
 }
 
 function TodayContent() {
+  const { t } = useLocale();
   const peopleState = useAsync(() => api.people.list(), []);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const asOfDate = useMemo(() => todayIsoDate(), []);
@@ -88,15 +91,13 @@ function TodayContent() {
     <div>
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="font-serif text-3xl text-ivory">Today</h1>
-          <p className="mt-1 text-sm text-muted">
-            Where this date falls in a personal cycle — recomputed live, never guessed.
-          </p>
+          <h1 className="font-serif text-3xl text-ivory">{t("app.today.title")}</h1>
+          <p className="mt-1 text-sm text-muted">{t("app.today.subtitle")}</p>
         </div>
         {people.length > 1 && (
           <div className="w-full sm:w-64">
             <label htmlFor="today-person" className="mb-1.5 block text-xs text-muted">
-              Whose day?
+              {t("app.today.whoseDay")}
             </label>
             <Select
               id="today-person"
@@ -113,18 +114,18 @@ function TodayContent() {
         )}
       </div>
 
-      {peopleState.status === "loading" && <LoadingState label="Loading your people…" />}
+      {peopleState.status === "loading" && <LoadingState label={t("app.today.loadingPeople")} />}
       {peopleState.status === "error" && (
         <ErrorState error={peopleState.error} onRetry={peopleState.reload} />
       )}
       {peopleState.status === "success" && people.length === 0 && (
         <EmptyState
-          title="No profiles yet"
-          description="Today needs a birth date to work from. Create a profile and this page becomes your daily view."
+          title={t("app.today.emptyTitle")}
+          description={t("app.today.emptyBody")}
           action={
             <LinkButton href="/people/new">
               <UserPlus className="h-4 w-4" aria-hidden="true" />
-              New profile
+              {t("app.people.newProfile")}
             </LinkButton>
           }
         />

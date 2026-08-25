@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime as dt
 
 from fastapi import APIRouter, Depends, Request, Response
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from numra_api.auth.csrf import CSRF_COOKIE_NAME, generate_csrf_token
@@ -34,7 +35,11 @@ from numra_api.schemas.auth import (
     SessionOut,
     UserOut,
 )
-from numra_api.services.errors import InvalidCredentials, SelfSignupDisabled
+from numra_api.services.errors import (
+    EmailAlreadyRegistered,
+    InvalidCredentials,
+    SelfSignupDisabled,
+)
 
 router = APIRouter(prefix="/v1/auth", tags=["auth"])
 
@@ -63,6 +68,24 @@ def _set_auth_cookies(
     )
 
 
+async def _issue_authenticated_session(
+    *, response: Response, db: AsyncSession, settings: Settings, user: User
+) -> None:
+    """The one place a browser becomes signed in -- both `login` and `register` go
+    through here so the two can never drift apart on TTL, hashing, or cookie flags."""
+    token = generate_session_token()
+    expires_at = dt.datetime.now(dt.UTC) + dt.timedelta(hours=settings.session_ttl_hours)
+    await create_session(
+        db, user_id=user.id, token_hash=hash_session_token(token), expires_at=expires_at
+    )
+    _set_auth_cookies(
+        response,
+        session_token=token,
+        secure=settings.cookies_secure,
+        ttl_hours=settings.session_ttl_hours,
+    )
+
+
 @router.post(
     "/register",
     response_model=UserOut,
@@ -71,12 +94,29 @@ def _set_auth_cookies(
 )
 async def register(
     body: RegisterRequest,
+    response: Response,
     db: AsyncSession = Depends(get_db),
     settings: Settings = Depends(get_settings_dep),
 ) -> UserOut:
+    """V1.6 B: a successful registration is signed in immediately (same cookies as
+    `login`, no server-side redirect -- the client decides where to go next). Role and
+    is_active come exclusively from the model defaults; `RegisterRequest`'s
+    `extra="forbid"` is what stops a "role": "ADMIN" body from ever reaching here."""
     if not settings.allow_self_signup:
         raise SelfSignupDisabled("self-signup is disabled (ALLOW_SELF_SIGNUP=false)")
-    user = await create_user(db, email=body.email, password_hash=hash_password(body.password))
+    if await get_user_by_email(db, email=body.email) is not None:
+        raise EmailAlreadyRegistered("an account with this email already exists")
+
+    try:
+        user = await create_user(db, email=body.email, password_hash=hash_password(body.password))
+    except IntegrityError as exc:
+        # The check above loses to a concurrent signup for the same address; the unique
+        # index on users.email is the only real arbiter, and losing that race must
+        # surface as this application error, never as a raw driver exception.
+        await db.rollback()
+        raise EmailAlreadyRegistered("an account with this email already exists") from exc
+
+    await _issue_authenticated_session(response=response, db=db, settings=settings, user=user)
     return UserOut(id=str(user.id), email=user.email, role=str(user.role), is_active=user.is_active)
 
 
@@ -99,18 +139,7 @@ async def login(
         # behavior for the session path).
         raise InvalidCredentials("invalid email or password")
 
-    token = generate_session_token()
-    expires_at = dt.datetime.now(dt.UTC) + dt.timedelta(hours=settings.session_ttl_hours)
-    await create_session(
-        db, user_id=user.id, token_hash=hash_session_token(token), expires_at=expires_at
-    )
-
-    _set_auth_cookies(
-        response,
-        session_token=token,
-        secure=settings.cookies_secure,
-        ttl_hours=settings.session_ttl_hours,
-    )
+    await _issue_authenticated_session(response=response, db=db, settings=settings, user=user)
     return UserOut(id=str(user.id), email=user.email, role=str(user.role), is_active=user.is_active)
 
 

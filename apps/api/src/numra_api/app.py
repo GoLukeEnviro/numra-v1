@@ -26,6 +26,7 @@ from numra_api.routes import (
     exports,
     health,
     people,
+    public,
     relationships,
     reports,
     system_info,
@@ -98,6 +99,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
 
     app.include_router(health.router)
+    app.include_router(public.router)
     app.include_router(auth.router)
     app.include_router(people.router)
     app.include_router(calculations.router)

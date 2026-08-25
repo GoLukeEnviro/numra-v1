@@ -5,6 +5,7 @@ import {
   type RelationshipMetricComparison,
   type RelationshipMetricKey,
 } from "@/api/canonical-profile";
+import { useLocale } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 import { Check, Minus } from "lucide-react";
 
@@ -21,8 +22,8 @@ export const METRIC_LABELS: Record<RelationshipMetricKey, string> = {
 
 interface MetricGroup {
   id: string;
-  title: string;
-  description: string;
+  titleKey: "app.relationshipDetail.coreTitle" | "app.relationshipDetail.timingTitle";
+  descriptionKey: "app.relationshipDetail.coreBody" | "app.relationshipDetail.timingBody";
   keys: readonly RelationshipMetricKey[];
 }
 
@@ -35,15 +36,14 @@ interface MetricGroup {
 const METRIC_GROUPS: readonly MetricGroup[] = [
   {
     id: "core",
-    title: "Core numbers",
-    description: "Derived from each person's birth name and birth date. These do not change.",
+    titleKey: "app.relationshipDetail.coreTitle",
+    descriptionKey: "app.relationshipDetail.coreBody",
     keys: ["life_path", "expression", "soul_urge", "personality", "maturity"],
   },
   {
     id: "timing",
-    title: "Timing",
-    description:
-      "Derived from each calculation's as-of date — meaningful to compare only when both calculations share that date.",
+    titleKey: "app.relationshipDetail.timingTitle",
+    descriptionKey: "app.relationshipDetail.timingBody",
     keys: ["personal_year", "personal_month", "personal_day"],
   },
 ] as const;
@@ -64,6 +64,7 @@ const GROUP_COVERAGE: Record<RelationshipMetricKey, GroupedKeys> = {
 };
 
 function MatchMarker({ match }: { match: boolean }) {
+  const { t } = useLocale();
   return (
     <span
       className={cn(
@@ -76,7 +77,9 @@ function MatchMarker({ match }: { match: boolean }) {
       ) : (
         <Minus className="h-3.5 w-3.5" aria-hidden="true" />
       )}
-      <span className="sr-only">{match ? "Same value" : "Different values"}</span>
+      <span className="sr-only">
+        {match ? t("app.relationshipDetail.sameValue") : t("app.relationshipDetail.differentValues")}
+      </span>
     </span>
   );
 }
@@ -92,6 +95,7 @@ function GroupTable({
   labelA: string;
   labelB: string;
 }) {
+  const { t } = useLocale();
   const rows: { key: RelationshipMetricKey; value: RelationshipMetricComparison }[] = [];
   for (const key of group.keys) {
     const value = comparison[key];
@@ -103,26 +107,26 @@ function GroupTable({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">{group.title}</CardTitle>
-        <CardDescription>{group.description}</CardDescription>
+        <CardTitle className="text-base">{t(group.titleKey)}</CardTitle>
+        <CardDescription>{t(group.descriptionKey)}</CardDescription>
       </CardHeader>
       <CardContent className="overflow-x-auto p-0">
         <table className="w-full min-w-[520px] text-left text-sm">
           <caption className="sr-only">
-            {group.title}: each row shows both people&apos;s values for one metric and whether
+            {t(group.titleKey)}: each row shows both people&apos;s values for one metric and whether
             they are the same. No compatibility percentage or overall score is computed
             anywhere in Numra.
           </caption>
           <thead>
             <tr className="border-b border-white/10 text-xs uppercase tracking-wider text-muted">
               <th scope="col" className="px-5 py-3 font-normal">
-                Metric
+                {t("app.compare.metricColumn")}
               </th>
               <th scope="col" className="px-5 py-3 text-right font-normal">
                 {labelA}
               </th>
               <th scope="col" className="w-16 px-2 py-3 text-center font-normal">
-                <span className="sr-only">Same value</span>
+                <span className="sr-only">{t("app.relationshipDetail.sameValue")}</span>
               </th>
               <th scope="col" className="px-5 py-3 font-normal">
                 {labelB}
@@ -176,15 +180,12 @@ export function ComparisonTable({
   labelA?: string;
   labelB?: string;
 }) {
+  const { t } = useLocale();
   void GROUP_COVERAGE;
   const hasAnyMetric = RELATIONSHIP_METRIC_KEYS.some((key) => comparison[key] !== undefined);
 
   if (!hasAnyMetric) {
-    return (
-      <p className="text-sm text-muted">
-        This comparison did not include any of the expected metrics.
-      </p>
-    );
+    return <p className="text-sm text-muted">{t("app.relationshipDetail.noMetrics")}</p>;
   }
 
   return (

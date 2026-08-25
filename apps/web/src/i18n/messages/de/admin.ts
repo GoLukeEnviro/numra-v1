@@ -1,0 +1,131 @@
+/** Admin-Konsole: Login, Dashboard, Benutzerverwaltung, Audit-Log. Siehe `messages/de/index.ts` für die Modulaufteilung. */
+export const deAdmin = {
+  // Navigation
+  "admin.nav.admin": "Admin",
+  "admin.nav.console": "Admin-Konsole",
+  "admin.nav.overview": "Übersicht",
+  "admin.nav.users": "Benutzer",
+  "admin.nav.audit": "Audit-Log",
+  "admin.nav.backToApp": "Zurück zur App",
+
+  // Guard
+  "admin.guard.checking": "Sitzung wird geprüft …",
+  "admin.guard.deniedTitle": "Kein Zugriff",
+  "admin.guard.deniedBody": "Dieses Konto hat keine Administrationsrechte.",
+  "admin.guard.backToDashboard": "Zur Übersicht",
+
+  // Login
+  "admin.login.title": "Admin-Zugang",
+  "admin.login.subtitle": "Mit deinem Numra-Konto anmelden.",
+  "admin.login.hint": "Dieser Bereich ist ausschließlich für Administratoren.",
+  "admin.login.email": "E-Mail",
+  "admin.login.password": "Passwort",
+  "admin.login.submit": "Anmelden",
+  "admin.login.networkError": "Der Server konnte nicht erreicht werden.",
+  "admin.login.notAdminTitle": "Kein Administrationszugang",
+  "admin.login.notAdminBody": "Dieses Konto hat keine Administrationsrechte.",
+
+  // Dashboard
+  "admin.dashboard.title": "Admin-Übersicht",
+  "admin.dashboard.subtitle": "Betriebskennzahlen des Backends, unverändert übernommen.",
+  "admin.dashboard.loading": "Kennzahlen werden geladen …",
+  "admin.stats.totalUsers": "Benutzer gesamt",
+  "admin.stats.activeUsers": "Aktive Benutzer",
+  "admin.stats.disabledUsers": "Deaktivierte Benutzer",
+  "admin.stats.registrations7": "Registrierungen letzte 7 Tage",
+  "admin.stats.registrations30": "Registrierungen letzte 30 Tage",
+  "admin.stats.activeSessions": "Aktive Sessions",
+  "admin.stats.totalPeople": "Profile",
+  "admin.stats.totalCalculations": "Berechnungen",
+  "admin.stats.totalReports": "Berichte",
+
+  // Benutzerliste
+  "admin.users.title": "Benutzer",
+  "admin.users.subtitle": "Konten durchsuchen, filtern und verwalten.",
+  "admin.users.loading": "Benutzer werden geladen …",
+  "admin.users.searchLabel": "Suche nach E-Mail",
+  "admin.users.searchPlaceholder": "z. B. name@beispiel.de",
+  "admin.users.searchSubmit": "Suchen",
+  "admin.users.roleLabel": "Rolle",
+  "admin.users.statusLabel": "Status",
+  "admin.users.allRoles": "Alle Rollen",
+  "admin.users.allStatuses": "Beliebiger Status",
+  "admin.users.roleUserLabel": "Benutzerkonto",
+  "admin.users.roleAdminLabel": "Administrator",
+  "admin.users.statusActive": "Aktiv",
+  "admin.users.statusDisabled": "Deaktiviert",
+  "admin.users.tableCaption": "Benutzerkonten",
+  "admin.users.colEmail": "E-Mail",
+  "admin.users.colRole": "Rolle",
+  "admin.users.colStatus": "Status",
+  "admin.users.colRegistered": "Registriert am",
+  "admin.users.colLastLogin": "Letzter Login",
+  "admin.users.colSessions": "Aktive Sessions",
+  "admin.users.colPeople": "Profile",
+  "admin.users.colCalculations": "Berechnungen",
+  "admin.users.colReports": "Berichte",
+  "admin.users.colRelationships": "Beziehungen",
+  "admin.users.empty": "Keine Benutzer gefunden",
+  "admin.users.emptyHint": "Passe Suche oder Filter an.",
+  "admin.users.openDetail": "Konto öffnen",
+
+  // Paginierung
+  "admin.pagination.total": "Treffer gesamt",
+  "admin.pagination.page": "Seite",
+  "admin.pagination.prev": "Zurück",
+  "admin.pagination.next": "Weiter",
+
+  // Benutzerdetail
+  "admin.userDetail.title": "Benutzerkonto",
+  "admin.userDetail.loading": "Konto wird geladen …",
+  "admin.userDetail.back": "Zurück zur Benutzerliste",
+  "admin.userDetail.metadataTitle": "Kontodaten",
+  "admin.userDetail.usageTitle": "Nutzung",
+  "admin.userDetail.colId": "Benutzer-ID",
+  "admin.userDetail.actionsTitle": "Aktionen",
+  "admin.userDetail.disable": "Konto deaktivieren",
+  "admin.userDetail.enable": "Konto aktivieren",
+  "admin.userDetail.revoke": "Alle Sessions widerrufen",
+  "admin.userDetail.selfLockHint":
+    "Das eigene Konto kann nicht deaktiviert werden — das Backend lehnt es ebenfalls ab.",
+  "admin.userDetail.disableConfirmTitle": "Konto deaktivieren?",
+  "admin.userDetail.disableConfirmBody":
+    "Die Person kann sich danach nicht mehr anmelden und wird von allen Geräten abgemeldet.",
+  "admin.userDetail.enableConfirmTitle": "Konto aktivieren?",
+  "admin.userDetail.enableConfirmBody": "Die Person kann sich danach wieder anmelden.",
+  "admin.userDetail.revokeConfirmTitle": "Alle Sessions widerrufen?",
+  "admin.userDetail.revokeConfirmBody":
+    "Alle Geräte dieser Person werden abgemeldet. Das Konto selbst bleibt aktiv.",
+  "admin.userDetail.disableSuccess": "Das Konto wurde deaktiviert.",
+  "admin.userDetail.enableSuccess": "Das Konto wurde aktiviert.",
+  "admin.userDetail.revokeSuccess": "Alle Sessions wurden widerrufen.",
+
+  // Dialog
+  "admin.dialog.confirm": "Bestätigen",
+  "admin.dialog.cancel": "Abbrechen",
+
+  // Audit-Log
+  "admin.audit.title": "Audit-Log",
+  "admin.audit.subtitle": "Protokollierte Administrationsereignisse.",
+  "admin.audit.loading": "Ereignisse werden geladen …",
+  "admin.audit.actionLabel": "Aktion",
+  "admin.audit.allActions": "Alle Aktionen",
+  "admin.audit.targetLabel": "Ziel-Benutzer-ID",
+  "admin.audit.targetPlaceholder": "UUID",
+  "admin.audit.apply": "Filter anwenden",
+  "admin.audit.reset": "Zurücksetzen",
+  "admin.audit.tableCaption": "Audit-Ereignisse",
+  "admin.audit.colTime": "Zeitpunkt",
+  "admin.audit.colAction": "Aktion",
+  "admin.audit.colActor": "Actor-ID",
+  "admin.audit.colTarget": "Ziel-ID",
+  "admin.audit.colMetadata": "Metadaten",
+  "admin.audit.noMetadata": "Keine",
+  "admin.audit.empty": "Keine Ereignisse gefunden",
+  "admin.audit.emptyHint": "Für diese Filter wurde nichts protokolliert.",
+
+  // Gemeinsam
+  "admin.common.retry": "Erneut versuchen",
+  "admin.common.never": "Nie",
+  "admin.common.errorTitle": "Etwas ist schiefgelaufen",
+} as const;

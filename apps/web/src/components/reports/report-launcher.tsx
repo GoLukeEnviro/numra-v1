@@ -10,6 +10,7 @@ import { REPORT_TYPE_OPTIONS } from "@/lib/report-status";
 import { useAsync } from "@/lib/use-async";
 import { formatDateTime } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { useLocale } from "@/i18n/context";
 import { BookOpen, ArrowRight } from "lucide-react";
 
 /** A per-attempt Idempotency-Key, kept across retries of the *same* attempt so a
@@ -23,6 +24,7 @@ function newIdempotencyKey(): string {
 
 export function ReportLauncher({ calculationId }: { calculationId: string }) {
   const router = useRouter();
+  const { t } = useLocale();
   const [reportType, setReportType] = useState<ReportType>("FULL");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<{ code: string; message: string } | null>(null);
@@ -49,7 +51,7 @@ export function ReportLauncher({ calculationId }: { calculationId: string }) {
       setError(
         err instanceof ApiError
           ? { code: err.code, message: err.message }
-          : { code: "NETWORK_ERROR", message: "Could not reach the server." },
+          : { code: "NETWORK_ERROR", message: t("common.networkError") },
       );
     }
   }
@@ -59,17 +61,16 @@ export function ReportLauncher({ calculationId }: { calculationId: string }) {
       <CardHeader>
         <div className="flex items-center gap-2">
           <BookOpen className="h-5 w-5 text-gold" aria-hidden="true" />
-          <CardTitle className="text-base">Written report</CardTitle>
+          <CardTitle className="text-base">{t("app.reportLauncher.title")}</CardTitle>
         </div>
-        <CardDescription>
-          A long-form reading written from this exact calculation. Every number it states is
-          verified against the canonical profile above before the report is assembled.
-        </CardDescription>
+        <CardDescription>{t("app.reportLauncher.body")}</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit}>
           <fieldset disabled={submitting}>
-            <legend className="mb-3 text-sm font-medium text-ivory">Report length</legend>
+            <legend className="mb-3 text-sm font-medium text-ivory">
+              {t("app.reportLauncher.length")}
+            </legend>
             <div className="grid gap-3 sm:grid-cols-3">
               {REPORT_TYPE_OPTIONS.map((option) => {
                 const selected = option.value === reportType;
@@ -123,14 +124,14 @@ export function ReportLauncher({ calculationId }: { calculationId: string }) {
           )}
 
           <Button type="submit" className="mt-5" loading={submitting}>
-            {submitting ? "Starting generation…" : "Generate report"}
+            {submitting ? t("app.reportLauncher.starting") : t("app.reportLauncher.generate")}
           </Button>
         </form>
 
         {previous.length > 0 && (
           <div className="mt-6 border-t border-white/10 pt-5">
             <p className="mb-3 text-xs uppercase tracking-wider text-muted">
-              Reports started from this calculation
+              {t("app.reportLauncher.previous")}
             </p>
             <ul className="flex flex-col gap-2">
               {previous.map((entry) => (
@@ -140,10 +141,12 @@ export function ReportLauncher({ calculationId }: { calculationId: string }) {
                 >
                   <div>
                     <p className="text-sm text-ivory">{entry.report_type}</p>
-                    <p className="text-xs text-muted">Started {formatDateTime(entry.created_at)}</p>
+                    <p className="text-xs text-muted">
+                      {t("app.reportLauncher.startedAt")} {formatDateTime(entry.created_at)}
+                    </p>
                   </div>
                   <LinkButton size="sm" variant="secondary" href={`/reports/${entry.id}`}>
-                    Open <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                    {t("app.reportLauncher.open")} <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
                   </LinkButton>
                 </li>
               ))}

@@ -1107,6 +1107,33 @@
         "title": "PersonRefOut",
         "type": "object"
       },
+      "PublicConfigOut": {
+        "description": "Bootstrap config for the pre-login web app (V1.6 B). Unauthenticated, so it may\nonly carry what an anonymous visitor could already infer from the sign-in page\nitself -- deliberately no environment, URLs, paths, versions or any other\ndeployment metadata (contrast SystemInfoOut, which is auth-required and says\nmore). Any new field here is a new disclosure to the open internet.",
+        "properties": {
+          "app_name": {
+            "title": "App Name",
+            "type": "string"
+          },
+          "self_signup_enabled": {
+            "title": "Self Signup Enabled",
+            "type": "boolean"
+          },
+          "supported_ui_locales": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Supported Ui Locales",
+            "type": "array"
+          }
+        },
+        "required": [
+          "self_signup_enabled",
+          "app_name",
+          "supported_ui_locales"
+        ],
+        "title": "PublicConfigOut",
+        "type": "object"
+      },
       "RegisterRequest": {
         "additionalProperties": false,
         "properties": {
@@ -2601,6 +2628,7 @@
     },
     "/v1/auth/register": {
       "post": {
+        "description": "V1.6 B: a successful registration is signed in immediately (same cookies as\n`login`, no server-side redirect -- the client decides where to go next). Role and\nis_active come exclusively from the model defaults; `RegisterRequest`'s\n`extra=\"forbid\"` is what stops a \"role\": \"ADMIN\" body from ever reaching here.",
         "operationId": "register_v1_auth_register_post",
         "requestBody": {
           "content": {
@@ -3844,6 +3872,28 @@
         "summary": "Get Timing Route",
         "tags": [
           "calculations"
+        ]
+      }
+    },
+    "/v1/public/config": {
+      "get": {
+        "description": "Unauthenticated by design: the sign-in page has to know whether self-signup is\nopen before anyone can possibly hold a session.",
+        "operationId": "get_public_config_v1_public_config_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicConfigOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Public Config",
+        "tags": [
+          "public"
         ]
       }
     },

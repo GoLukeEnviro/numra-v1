@@ -224,7 +224,13 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Register */
+        /**
+         * Register
+         * @description V1.6 B: a successful registration is signed in immediately (same cookies as
+         *     `login`, no server-side redirect -- the client decides where to go next). Role and
+         *     is_active come exclusively from the model defaults; `RegisterRequest`'s
+         *     `extra="forbid"` is what stops a "role": "ADMIN" body from ever reaching here.
+         */
         post: operations["register_v1_auth_register_post"];
         delete?: never;
         options?: never;
@@ -470,6 +476,27 @@ export interface paths {
          *     as_of_date without creating a new immutable Calculation snapshot.
          */
         get: operations["get_timing_route_v1_people__person_id__timing_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/public/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Public Config
+         * @description Unauthenticated by design: the sign-in page has to know whether self-signup is
+         *     open before anyone can possibly hold a session.
+         */
+        get: operations["get_public_config_v1_public_config_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1029,6 +1056,22 @@ export interface components {
              * Format: uuid
              */
             id: string;
+        };
+        /**
+         * PublicConfigOut
+         * @description Bootstrap config for the pre-login web app (V1.6 B). Unauthenticated, so it may
+         *     only carry what an anonymous visitor could already infer from the sign-in page
+         *     itself -- deliberately no environment, URLs, paths, versions or any other
+         *     deployment metadata (contrast SystemInfoOut, which is auth-required and says
+         *     more). Any new field here is a new disclosure to the open internet.
+         */
+        PublicConfigOut: {
+            /** App Name */
+            app_name: string;
+            /** Self Signup Enabled */
+            self_signup_enabled: boolean;
+            /** Supported Ui Locales */
+            supported_ui_locales: string[];
         };
         /** RegisterRequest */
         RegisterRequest: {
@@ -2331,6 +2374,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_public_config_v1_public_config_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicConfigOut"];
                 };
             };
         };

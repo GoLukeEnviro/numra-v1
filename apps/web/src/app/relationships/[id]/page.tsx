@@ -11,18 +11,20 @@ import { api } from "@/api/client";
 import { asRelationshipComparison } from "@/api/canonical-profile";
 import { useAsync } from "@/lib/use-async";
 import { formatDateTime } from "@/lib/utils";
+import { useLocale } from "@/i18n/context";
 import { ArrowLeft } from "lucide-react";
 
 function RelationshipContent({ relationshipId }: { relationshipId: string }) {
+  const { t } = useLocale();
   const state = useAsync(() => api.relationships.get(relationshipId), [relationshipId]);
 
-  if (state.status === "loading") return <LoadingState label="Loading comparison…" />;
+  if (state.status === "loading") return <LoadingState label={t("app.relationshipDetail.loading")} />;
   if (state.status === "error") {
     return (
       <ErrorState
         error={state.error}
         onRetry={state.reload}
-        title="Could not load this comparison"
+        title={t("app.relationshipDetail.errorTitle")}
       />
     );
   }
@@ -42,21 +44,25 @@ function RelationshipContent({ relationshipId }: { relationshipId: string }) {
         className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-gold"
       >
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        All comparisons
+        {t("app.relationshipDetail.all")}
       </Link>
 
       <header className="sacred-wheel-bg-left relative mb-8 overflow-hidden rounded-xl border border-white/10 bg-surface p-6 shadow-elevated sm:p-8">
         <NumericWheel className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 opacity-[0.12]" />
         <div className="relative">
-          <p className="mb-2 text-xs uppercase tracking-wider text-bronze">Comparison</p>
+          <p className="mb-2 text-xs uppercase tracking-wider text-bronze">
+            {t("app.relationshipDetail.eyebrow")}
+          </p>
           <h1 className="font-serif text-3xl text-ivory sm:text-4xl">
             {labelA} <span className="text-muted">&amp;</span> {labelB}
           </h1>
-          <p className="mt-2 text-sm text-muted">Created {formatDateTime(relationship.created_at)}</p>
+          <p className="mt-2 text-sm text-muted">
+            {t("app.relationshipDetail.created")} {formatDateTime(relationship.created_at)}
+          </p>
 
           <div className="mt-6 grid gap-3 border-t border-white/10 pt-5 text-xs sm:grid-cols-2">
             <div>
-              <p className="text-muted">Calculation A</p>
+              <p className="text-muted">{t("app.relationshipDetail.calcA")}</p>
               <Link
                 href={`/analysis/${relationship.calculation_a_id}`}
                 className="mt-0.5 block truncate font-mono text-text transition-colors hover:text-gold"
@@ -65,7 +71,7 @@ function RelationshipContent({ relationshipId }: { relationshipId: string }) {
               </Link>
             </div>
             <div>
-              <p className="text-muted">Calculation B</p>
+              <p className="text-muted">{t("app.relationshipDetail.calcB")}</p>
               <Link
                 href={`/analysis/${relationship.calculation_b_id}`}
                 className="mt-0.5 block truncate font-mono text-text transition-colors hover:text-gold"
@@ -81,10 +87,7 @@ function RelationshipContent({ relationshipId }: { relationshipId: string }) {
         role="note"
         className="mb-6 rounded-xl border border-white/10 bg-surface-2 p-5 text-sm leading-relaxed text-muted"
       >
-        Numra compares two profiles metric by metric and stops there. It does not compute a
-        compatibility percentage, a match count, or any other combined score — there is no
-        defensible deterministic method for one, so inventing a number would undermine
-        everything else on this page.
+        {t("app.relationshipDetail.noScoreNote")}
       </div>
 
       <RelationshipInsights insights={relationship.insights} labelA={labelA} labelB={labelB} />

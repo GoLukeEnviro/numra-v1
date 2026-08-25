@@ -13,6 +13,7 @@ import { api, ApiError, type PersonOut } from "@/api/client";
 import { useAsync } from "@/lib/use-async";
 import { personDisplayName } from "@/lib/identity";
 import { formatDateTime } from "@/lib/utils";
+import { useLocale } from "@/i18n/context";
 import { GitCompareArrows, Sparkles } from "lucide-react";
 
 function personOptionLabel(person: PersonOut): string {
@@ -27,6 +28,7 @@ function personOptionLabel(person: PersonOut): string {
  */
 function ComparisonForm({ people }: { people: PersonOut[] }) {
   const router = useRouter();
+  const { t } = useLocale();
   const [personAId, setPersonAId] = useState(people[0]?.id ?? "");
   const [personBId, setPersonBId] = useState(people[1]?.id ?? people[0]?.id ?? "");
   const [submitting, setSubmitting] = useState(false);
@@ -56,14 +58,14 @@ function ComparisonForm({ people }: { people: PersonOut[] }) {
             : undefined;
         setError({
           code: err.code,
-          message: "That profile has no calculation yet.",
+          message: t("app.relationships.noCalcYet"),
           personId: missingPersonId,
         });
       } else {
         setError(
           err instanceof ApiError
             ? { code: err.code, message: err.message }
-            : { code: "NETWORK_ERROR", message: "Could not reach the server." },
+            : { code: "NETWORK_ERROR", message: t("common.networkError") },
         );
       }
     }
@@ -72,17 +74,14 @@ function ComparisonForm({ people }: { people: PersonOut[] }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Compare two profiles</CardTitle>
-        <CardDescription>
-          Numra compares each person&apos;s latest calculation. If someone has no calculation yet,
-          run one first.
-        </CardDescription>
+        <CardTitle>{t("app.relationships.formTitle")}</CardTitle>
+        <CardDescription>{t("app.relationships.formBody")}</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-5 sm:grid-cols-2">
             <div>
-              <Label htmlFor="personA">Person A</Label>
+              <Label htmlFor="personA">{t("app.relationships.personA")}</Label>
               <Select id="personA" value={personAId} onChange={(e) => setPersonAId(e.target.value)}>
                 {people.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -92,7 +91,7 @@ function ComparisonForm({ people }: { people: PersonOut[] }) {
               </Select>
             </div>
             <div>
-              <Label htmlFor="personB">Person B</Label>
+              <Label htmlFor="personB">{t("app.relationships.personB")}</Label>
               <Select id="personB" value={personBId} onChange={(e) => setPersonBId(e.target.value)}>
                 {people.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -122,7 +121,7 @@ function ComparisonForm({ people }: { people: PersonOut[] }) {
                   className="mt-3"
                 >
                   <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-                  Open profile to run a calculation
+                  {t("app.relationships.openProfileToRun")}
                 </LinkButton>
               )}
             </div>
@@ -135,10 +134,10 @@ function ComparisonForm({ people }: { people: PersonOut[] }) {
             disabled={!personAId || !personBId || personAId === personBId}
           >
             <GitCompareArrows className="h-4 w-4" aria-hidden="true" />
-            Compare
+            {t("app.relationships.compare")}
           </Button>
           {personAId && personAId === personBId && (
-            <p className="mt-2 text-xs text-muted">Choose two different people.</p>
+            <p className="mt-2 text-xs text-muted">{t("app.relationships.chooseDifferent")}</p>
           )}
         </form>
       </CardContent>
@@ -152,15 +151,16 @@ function ComparisonForm({ people }: { people: PersonOut[] }) {
  * names resolved by the API, not a browser-only cache.
  */
 function RecentComparisons() {
+  const { t } = useLocale();
   const state = useAsync(() => api.relationships.list(), []);
 
-  if (state.status === "loading") return <LoadingState label="Loading comparisons…" />;
+  if (state.status === "loading") return <LoadingState label={t("app.relationships.loadingComparisons")} />;
   if (state.status === "error") {
     return (
       <ErrorState
         error={state.error}
         onRetry={state.reload}
-        title="Could not load your comparisons"
+        title={t("app.relationships.comparisonsErrorTitle")}
       />
     );
   }
@@ -168,7 +168,7 @@ function RecentComparisons() {
 
   return (
     <div className="mt-8">
-      <h2 className="mb-4 font-serif text-xl text-ivory">Recent comparisons</h2>
+      <h2 className="mb-4 font-serif text-xl text-ivory">{t("app.relationships.recent")}</h2>
       <div className="grid gap-3 sm:grid-cols-2">
         {state.data.map((r) => (
           <Card key={r.id}>
@@ -181,7 +181,7 @@ function RecentComparisons() {
                 <p className="text-xs text-muted">{formatDateTime(r.created_at)}</p>
               </div>
               <LinkButton size="sm" variant="secondary" href={`/relationships/${r.id}`}>
-                Open
+                {t("app.relationships.open")}
               </LinkButton>
             </CardContent>
           </Card>
@@ -192,6 +192,7 @@ function RecentComparisons() {
 }
 
 function RelationshipsContent() {
+  const { t } = useLocale();
   const peopleState = useAsync(() => api.people.list(), []);
   const people = useMemo(
     () => (peopleState.status === "success" ? peopleState.data : []),
@@ -201,24 +202,22 @@ function RelationshipsContent() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="font-serif text-3xl text-ivory">Relationships</h1>
-        <p className="mt-1 text-sm text-muted">
-          Compare two calculated profiles, metric by metric.
-        </p>
+        <h1 className="font-serif text-3xl text-ivory">{t("app.relationships.title")}</h1>
+        <p className="mt-1 text-sm text-muted">{t("app.relationships.subtitle")}</p>
       </div>
 
-      {peopleState.status === "loading" && <LoadingState label="Loading profiles…" />}
+      {peopleState.status === "loading" && <LoadingState label={t("app.relationships.loadingProfiles")} />}
       {peopleState.status === "error" && (
         <ErrorState error={peopleState.error} onRetry={peopleState.reload} />
       )}
       {peopleState.status === "success" && people.length < 2 && (
         <div className="mb-6">
           <EmptyState
-            title="Add a second profile to compare"
-            description="Numra needs at least two people, each with a calculation, before it can compare them."
+            title={t("app.relationships.emptyTitle")}
+            description={t("app.relationships.emptyBody")}
             action={
               <LinkButton href="/people/new" size="sm">
-                New profile
+                {t("app.people.newProfile")}
               </LinkButton>
             }
           />
