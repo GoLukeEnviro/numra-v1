@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatDateTime } from "@/lib/utils";
+import { useLocale } from "@/i18n/context";
 import { Download, FileDown } from "lucide-react";
 
 function formatBytes(bytes: number | null): string {
@@ -29,6 +30,7 @@ function formatBytes(bytes: number | null): string {
  * `request()` helper, which would mangle binary content.
  */
 export function ExportPanel({ reportId }: { reportId: string }) {
+  const { t } = useLocale();
   const [exports, setExports] = useState<ExportOut[] | null>(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<{ code: string; message: string } | null>(null);
@@ -56,7 +58,7 @@ export function ExportPanel({ reportId }: { reportId: string }) {
       if (created.status === "failed") {
         setError({
           code: created.error_code ?? "EXPORT_FAILED",
-          message: "The PDF could not be rendered. You can try the export again.",
+          message: t("app.export.failed"),
         });
       }
       // Use the just-created export directly instead of re-fetching the list: the
@@ -69,7 +71,7 @@ export function ExportPanel({ reportId }: { reportId: string }) {
       setError(
         err instanceof ApiError
           ? { code: err.code, message: err.message }
-          : { code: "NETWORK_ERROR", message: "Could not reach the server." },
+          : { code: "NETWORK_ERROR", message: t("common.networkError") },
       );
     } finally {
       setCreating(false);
@@ -83,21 +85,18 @@ export function ExportPanel({ reportId }: { reportId: string }) {
       <CardHeader>
         <div className="flex items-center gap-2">
           <FileDown className="h-5 w-5 text-gold" aria-hidden="true" />
-          <CardTitle className="text-base">Export</CardTitle>
+          <CardTitle className="text-base">{t("app.export.title")}</CardTitle>
         </div>
-        <CardDescription>
-          Render this report as a PDF. The file is produced from the report exactly as it
-          is stored — exporting never regenerates or changes the text.
-        </CardDescription>
+        <CardDescription>{t("app.export.body")}</CardDescription>
       </CardHeader>
       <CardContent>
         <Button onClick={handleExport} loading={creating}>
           <Download className="h-4 w-4" aria-hidden="true" />
-          {creating ? "Rendering PDF…" : "Export PDF"}
+          {creating ? t("app.export.rendering") : t("app.export.button")}
         </Button>
         {creating && (
           <p className="mt-2 text-xs text-muted" role="status" aria-live="polite">
-            The PDF is rendered on the server; this usually takes a few seconds.
+            {t("app.export.renderingHint")}
           </p>
         )}
 
@@ -115,7 +114,9 @@ export function ExportPanel({ reportId }: { reportId: string }) {
 
         {completed.length > 0 && (
           <div className="mt-6 border-t border-white/10 pt-5">
-            <p className="mb-3 text-xs uppercase tracking-wider text-muted">Available files</p>
+            <p className="mb-3 text-xs uppercase tracking-wider text-muted">
+              {t("app.export.available")}
+            </p>
             <ul className="flex flex-col gap-2">
               {completed.map((exp) => (
                 <li
@@ -133,7 +134,7 @@ export function ExportPanel({ reportId }: { reportId: string }) {
                     className="inline-flex h-8 items-center gap-2 rounded-lg border border-white/10 bg-surface px-3 text-xs font-medium text-ivory transition-colors hover:border-gold/50"
                   >
                     <Download className="h-3.5 w-3.5" aria-hidden="true" />
-                    Download
+                    {t("app.export.download")}
                   </a>
                 </li>
               ))}
@@ -142,15 +143,13 @@ export function ExportPanel({ reportId }: { reportId: string }) {
         )}
 
         {exports !== null && completed.length === 0 && !creating && (
-          <p className="mt-4 text-xs text-muted">
-            No PDF has been rendered for this report yet.
-          </p>
+          <p className="mt-4 text-xs text-muted">{t("app.export.none")}</p>
         )}
 
         {(exports ?? []).some((e) => e.status === "failed") && (
           <p className="mt-3 text-xs text-muted">
-            <Badge variant="neutral">Earlier attempt failed</Badge>{" "}
-            A previous export of this report did not complete.
+            <Badge variant="neutral">{t("app.export.earlierFailedBadge")}</Badge>{" "}
+            {t("app.export.earlierFailedBody")}
           </p>
         )}
       </CardContent>

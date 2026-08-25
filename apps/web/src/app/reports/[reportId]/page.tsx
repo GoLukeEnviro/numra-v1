@@ -11,22 +11,25 @@ import { ExportPanel } from "@/components/reports/export-panel";
 import { api, ApiError, type ReportOut } from "@/api/client";
 import { asStructuredReport } from "@/api/report-content";
 import { useReportProgress } from "@/lib/use-report-progress";
+import { useLocale } from "@/i18n/context";
 import { ArrowLeft } from "lucide-react";
 
 function BackToAnalysis({ calculationId }: { calculationId: string }) {
+  const { t } = useLocale();
   return (
     <Link
       href={`/analysis/${calculationId}`}
       className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-gold"
     >
       <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-      Back to the calculation
+      {t("app.reportDetail.back")}
     </Link>
   );
 }
 
 function ReportContent({ reportId }: { reportId: string }) {
   const router = useRouter();
+  const { t } = useLocale();
   const progress = useReportProgress(reportId);
   const [retrying, setRetrying] = useState(false);
   const [retryError, setRetryError] = useState<{ code: string; message: string } | null>(null);
@@ -47,13 +50,13 @@ function ReportContent({ reportId }: { reportId: string }) {
       setRetryError(
         err instanceof ApiError
           ? { code: err.code, message: err.message }
-          : { code: "NETWORK_ERROR", message: "Could not reach the server." },
+          : { code: "NETWORK_ERROR", message: t("common.networkError") },
       );
     }
   }
 
   if (progress.phase === "loading") {
-    return <LoadingState label="Loading report…" />;
+    return <LoadingState label={t("app.reportDetail.loading")} />;
   }
 
   if (progress.phase === "error") {
@@ -61,7 +64,7 @@ function ReportContent({ reportId }: { reportId: string }) {
       <ErrorState
         error={progress.error}
         onRetry={progress.reload}
-        title="Could not load this report"
+        title={t("app.reportDetail.errorTitle")}
       />
     );
   }
@@ -108,7 +111,7 @@ function ReportContent({ reportId }: { reportId: string }) {
           error={new Error(
             "The report is marked complete but its stored content did not match the expected structure.",
           )}
-          title="Unreadable report"
+          title={t("app.reportDetail.unreadableTitle")}
           onRetry={progress.reload}
         />
       </>

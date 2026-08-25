@@ -9,7 +9,15 @@ export interface TabDef {
   content: ReactNode;
 }
 
-export function Tabs({ tabs, initialId }: { tabs: TabDef[]; initialId?: string }) {
+export function Tabs({
+  tabs,
+  initialId,
+  ariaLabel = "Analysis views",
+}: {
+  tabs: TabDef[];
+  initialId?: string;
+  ariaLabel?: string;
+}) {
   const [active, setActive] = useState(initialId ?? tabs[0]?.id);
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
@@ -27,7 +35,7 @@ export function Tabs({ tabs, initialId }: { tabs: TabDef[]; initialId?: string }
     <div>
       <div
         role="tablist"
-        aria-label="Analysis views"
+        aria-label={ariaLabel}
         onKeyDown={onKeyDown}
         className="mb-6 flex flex-wrap gap-1 border-b border-white/10"
       >

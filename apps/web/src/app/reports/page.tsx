@@ -11,15 +11,17 @@ import { api, type ReportSummaryOut } from "@/api/client";
 import { useAsync } from "@/lib/use-async";
 import { describeReportType } from "@/lib/report-status";
 import { formatDateTime } from "@/lib/utils";
+import { useLocale } from "@/i18n/context";
+import type { MessageKey } from "@/i18n/catalog";
 import { BookOpen } from "lucide-react";
 
 type StatusFilter = "all" | "PENDING" | "COMPLETE" | "FAILED";
 
-const STATUS_TABS: { value: StatusFilter; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "PENDING", label: "In progress" },
-  { value: "COMPLETE", label: "Complete" },
-  { value: "FAILED", label: "Failed" },
+const STATUS_TABS: { value: StatusFilter; labelKey: MessageKey }[] = [
+  { value: "all", labelKey: "app.reports.filterAll" },
+  { value: "PENDING", labelKey: "app.reports.filterPending" },
+  { value: "COMPLETE", labelKey: "app.reports.filterComplete" },
+  { value: "FAILED", labelKey: "app.reports.filterFailed" },
 ];
 
 function statusBadgeVariant(status: string): "success" | "diagnostic" | "neutral" {
@@ -29,6 +31,7 @@ function statusBadgeVariant(status: string): "success" | "diagnostic" | "neutral
 }
 
 function ReportCard({ report }: { report: ReportSummaryOut }) {
+  const { t } = useLocale();
   return (
     <Card>
       <CardContent className="flex flex-wrap items-center justify-between gap-3">
@@ -40,17 +43,17 @@ function ReportCard({ report }: { report: ReportSummaryOut }) {
           </div>
           <p className="mt-1 text-xs text-muted">
             {report.status === "COMPLETE" && report.generated_at
-              ? `Generated ${formatDateTime(report.generated_at)}`
-              : `Started ${formatDateTime(report.created_at)}`}
-            {report.word_count > 0 && ` · ${report.word_count.toLocaleString()} words`}
+              ? `${t("app.reports.generated")} ${formatDateTime(report.generated_at)}`
+              : `${t("app.reports.started")} ${formatDateTime(report.created_at)}`}
+            {report.word_count > 0 && ` · ${report.word_count.toLocaleString()} ${t("app.reports.words")}`}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <LinkButton size="sm" variant="secondary" href={`/analysis/${report.calculation_id}`}>
-            Calculation
+            {t("app.reports.openCalculation")}
           </LinkButton>
           <LinkButton size="sm" href={`/reports/${report.id}`}>
-            Open
+            {t("app.reports.open")}
           </LinkButton>
         </div>
       </CardContent>
@@ -59,6 +62,7 @@ function ReportCard({ report }: { report: ReportSummaryOut }) {
 }
 
 function ReportsContent() {
+  const { t } = useLocale();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [personFilter, setPersonFilter] = useState<string>("all");
 
@@ -82,15 +86,17 @@ function ReportsContent() {
       <div className="mb-8 flex items-center gap-3">
         <BookOpen className="h-6 w-6 text-gold" aria-hidden="true" />
         <div>
-          <h1 className="font-serif text-3xl text-ivory">Reports</h1>
-          <p className="mt-1 text-sm text-muted">
-            Every long-form reading you have generated — server-side, visible from any device.
-          </p>
+          <h1 className="font-serif text-3xl text-ivory">{t("app.reports.title")}</h1>
+          <p className="mt-1 text-sm text-muted">{t("app.reports.subtitle")}</p>
         </div>
       </div>
 
       <div className="mb-6 flex flex-wrap items-center gap-3">
-        <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Filter by status">
+        <div
+          className="flex flex-wrap gap-1.5"
+          role="tablist"
+          aria-label={t("app.reports.filterByStatus")}
+        >
           {STATUS_TABS.map((tab) => (
             <button
               key={tab.value}
@@ -104,7 +110,7 @@ function ReportsContent() {
                   : "border border-white/15 text-muted hover:text-text"
               }`}
             >
-              {tab.label}
+              {t(tab.labelKey)}
             </button>
           ))}
         </div>
@@ -112,9 +118,9 @@ function ReportsContent() {
           className="ml-auto w-auto min-w-[10rem]"
           value={personFilter}
           onChange={(e) => setPersonFilter(e.target.value)}
-          aria-label="Filter by person"
+          aria-label={t("app.reports.filterByPerson")}
         >
-          <option value="all">All people</option>
+          <option value="all">{t("app.reports.allPeople")}</option>
           {personOptions.map((person) => (
             <option key={person.id} value={person.id}>
               {person.preferred_name || `${person.birth_first_names} ${person.birth_last_name}`}
@@ -123,19 +129,16 @@ function ReportsContent() {
         </Select>
       </div>
 
-      {reportsState.status === "loading" && <LoadingState label="Loading reports…" />}
+      {reportsState.status === "loading" && <LoadingState label={t("app.reports.loading")} />}
       {reportsState.status === "error" && (
         <ErrorState
           error={reportsState.error}
           onRetry={reportsState.reload}
-          title="Could not load your reports"
+          title={t("app.reports.errorTitle")}
         />
       )}
       {reportsState.status === "success" && reportsState.data.length === 0 && (
-        <EmptyState
-          title="No reports yet"
-          description="Generate a report from any calculation's Analysis page to see it here."
-        />
+        <EmptyState title={t("app.reports.emptyTitle")} description={t("app.reports.emptyBody")} />
       )}
       {reportsState.status === "success" && reportsState.data.length > 0 && (
         <div className="flex flex-col gap-3">

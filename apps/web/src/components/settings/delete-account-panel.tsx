@@ -8,15 +8,17 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useLocale } from "@/i18n/context";
+import type { MessageKey } from "@/i18n/catalog";
 import { AlertTriangle, Trash2 } from "lucide-react";
 
-const DELETED_ITEMS = [
-  "every person profile you have created",
-  "every calculation and its stored trace",
-  "every relationship comparison",
-  "every generated report",
-  "every exported PDF, including the files on disk",
-  "your account and its login credentials",
+const DELETED_ITEM_KEYS: MessageKey[] = [
+  "app.deleteAccount.itemProfiles",
+  "app.deleteAccount.itemCalculations",
+  "app.deleteAccount.itemRelationships",
+  "app.deleteAccount.itemReports",
+  "app.deleteAccount.itemExports",
+  "app.deleteAccount.itemAccount",
 ];
 
 /**
@@ -31,6 +33,7 @@ const DELETED_ITEMS = [
 export function DeleteAccountPanel() {
   const router = useRouter();
   const { refresh } = useAuth();
+  const { t } = useLocale();
   const [confirming, setConfirming] = useState(false);
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -53,12 +56,12 @@ export function DeleteAccountPanel() {
       if (err instanceof ApiError && err.code === "INVALID_CREDENTIALS") {
         setError({
           code: err.code,
-          message: "That password did not match. Nothing has been deleted.",
+          message: t("app.deleteAccount.wrongPassword"),
         });
       } else if (err instanceof ApiError) {
         setError({ code: err.code, message: err.message });
       } else {
-        setError({ code: "NETWORK_ERROR", message: "Could not reach the server." });
+        setError({ code: "NETWORK_ERROR", message: t("common.networkError") });
       }
     }
   }
@@ -68,35 +71,29 @@ export function DeleteAccountPanel() {
       <CardHeader>
         <div className="flex items-center gap-2">
           <AlertTriangle className="h-5 w-5 text-danger" aria-hidden="true" />
-          <CardTitle className="text-base">Delete my account</CardTitle>
+          <CardTitle className="text-base">{t("app.deleteAccount.title")}</CardTitle>
         </div>
-        <CardDescription>
-          Permanently erases everything Numra stores for you. There is no undo, no export
-          step afterwards and no grace period.
-        </CardDescription>
+        <CardDescription>{t("app.deleteAccount.body")}</CardDescription>
       </CardHeader>
       <CardContent>
         {!confirming ? (
           <Button variant="secondary" onClick={() => setConfirming(true)}>
             <Trash2 className="h-4 w-4" aria-hidden="true" />
-            Delete my account
+            {t("app.deleteAccount.title")}
           </Button>
         ) : (
           <div className="rounded-lg border border-danger/30 bg-danger-surface p-5">
-            <p className="text-sm font-medium text-ivory">This deletes, permanently:</p>
+            <p className="text-sm font-medium text-ivory">{t("app.deleteAccount.listIntro")}</p>
             <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-text">
-              {DELETED_ITEMS.map((item) => (
-                <li key={item}>{item}</li>
+              {DELETED_ITEM_KEYS.map((key) => (
+                <li key={key}>{t(key)}</li>
               ))}
             </ul>
-            <p className="mt-4 text-sm text-text">
-              If you want a copy of a report, export its PDF before continuing — exported
-              files are deleted from disk too.
-            </p>
+            <p className="mt-4 text-sm text-text">{t("app.deleteAccount.exportHint")}</p>
 
             <form onSubmit={handleSubmit} className="mt-5" noValidate>
               <div className="max-w-sm">
-                <Label htmlFor="delete-password">Confirm with your password</Label>
+                <Label htmlFor="delete-password">{t("app.deleteAccount.confirmLabel")}</Label>
                 <Input
                   id="delete-password"
                   type="password"
@@ -134,7 +131,7 @@ export function DeleteAccountPanel() {
                   disabled={password.length === 0}
                 >
                   <Trash2 className="h-4 w-4" aria-hidden="true" />
-                  {submitting ? "Deleting everything…" : "Delete everything permanently"}
+                  {submitting ? t("app.deleteAccount.submitting") : t("app.deleteAccount.submit")}
                 </Button>
                 <Button
                   type="button"
@@ -146,7 +143,7 @@ export function DeleteAccountPanel() {
                     setError(null);
                   }}
                 >
-                  Cancel
+                  {t("app.deleteAccount.cancel")}
                 </Button>
               </div>
             </form>

@@ -13,6 +13,7 @@ import { LoadingState, ErrorState } from "@/components/ui/states";
 import { api, ApiError, type BirthTimePrecision, type PersonOut } from "@/api/client";
 import { useAsync } from "@/lib/use-async";
 import { todayIsoDate } from "@/lib/utils";
+import { useLocale } from "@/i18n/context";
 import { ArrowLeft, TriangleAlert } from "lucide-react";
 
 interface FormState {
@@ -60,6 +61,7 @@ const CANON_SENSITIVE_FIELDS: (keyof FormState)[] = [
 
 function EditPersonForm({ person }: { person: PersonOut }) {
   const router = useRouter();
+  const { t } = useLocale();
   const [form, setForm] = useState<FormState>(() => formFromPerson(person));
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<{ code: string; message: string } | null>(null);
@@ -110,7 +112,7 @@ function EditPersonForm({ person }: { person: PersonOut }) {
       setError(
         err instanceof ApiError
           ? { code: err.code, message: err.message }
-          : { code: "NETWORK_ERROR", message: "Could not reach the server." },
+          : { code: "NETWORK_ERROR", message: t("common.networkError") },
       );
     }
   }
@@ -118,11 +120,8 @@ function EditPersonForm({ person }: { person: PersonOut }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Edit profile</CardTitle>
-        <CardDescription>
-          The birth name and birth date drive every Core Number. Editing them here never changes
-          a calculation you have already run.
-        </CardDescription>
+        <CardTitle>{t("app.peopleEdit.title")}</CardTitle>
+        <CardDescription>{t("app.peopleEdit.description")}</CardDescription>
       </CardHeader>
       <CardContent>
         {canonSensitiveChanged && (
@@ -131,19 +130,18 @@ function EditPersonForm({ person }: { person: PersonOut }) {
             className="mb-6 flex items-start gap-3 rounded-lg border border-gold/30 bg-gold/[0.06] p-4 text-sm text-text"
           >
             <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-gold" aria-hidden="true" />
-            <p>
-              Existing calculations remain unchanged. Only a new calculation you run after saving
-              will use this updated birth data.
-            </p>
+            <p>{t("app.peopleEdit.canonWarning")}</p>
           </div>
         )}
 
         <form onSubmit={handleSubmit} noValidate>
           <fieldset className="mb-6" disabled={submitting}>
-            <legend className="mb-3 font-serif text-base text-ivory">Birth name</legend>
+            <legend className="mb-3 font-serif text-base text-ivory">
+              {t("app.personForm.birthName")}
+            </legend>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <Label htmlFor="birthFirstNames">First name(s) *</Label>
+                <Label htmlFor="birthFirstNames">{t("app.personForm.firstNames")}</Label>
                 <Input
                   id="birthFirstNames"
                   required
@@ -152,7 +150,7 @@ function EditPersonForm({ person }: { person: PersonOut }) {
                 />
               </div>
               <div>
-                <Label htmlFor="birthLastName">Last name *</Label>
+                <Label htmlFor="birthLastName">{t("app.personForm.lastName")}</Label>
                 <Input
                   id="birthLastName"
                   required
@@ -161,7 +159,7 @@ function EditPersonForm({ person }: { person: PersonOut }) {
                 />
               </div>
               <div className="sm:col-span-2">
-                <Label htmlFor="birthMiddleNames">Middle name(s)</Label>
+                <Label htmlFor="birthMiddleNames">{t("app.personForm.middleNames")}</Label>
                 <Input
                   id="birthMiddleNames"
                   value={form.birthMiddleNames}
@@ -169,7 +167,7 @@ function EditPersonForm({ person }: { person: PersonOut }) {
                 />
               </div>
               <div>
-                <Label htmlFor="birthDate">Birth date *</Label>
+                <Label htmlFor="birthDate">{t("app.personForm.birthDate")}</Label>
                 <Input
                   id="birthDate"
                   type="date"
@@ -184,14 +182,14 @@ function EditPersonForm({ person }: { person: PersonOut }) {
 
           <fieldset className="mb-6" disabled={submitting}>
             <legend className="mb-3 font-serif text-base text-ivory">
-              Birth time &amp; place{" "}
+              {t("app.personForm.birthTimePlace")}{" "}
               <span className="font-sans text-xs font-normal text-muted">
-                (metadata only — never affects a Core Number)
+                {t("app.personForm.birthTimePlaceNote")}
               </span>
             </legend>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <Label htmlFor="birthTimeValue">Birth time</Label>
+                <Label htmlFor="birthTimeValue">{t("app.personForm.birthTime")}</Label>
                 <Input
                   id="birthTimeValue"
                   type="time"
@@ -200,7 +198,7 @@ function EditPersonForm({ person }: { person: PersonOut }) {
                 />
               </div>
               <div>
-                <Label htmlFor="birthTimePrecision">Time precision</Label>
+                <Label htmlFor="birthTimePrecision">{t("app.personForm.timePrecision")}</Label>
                 <Select
                   id="birthTimePrecision"
                   value={form.birthTimePrecision}
@@ -208,25 +206,25 @@ function EditPersonForm({ person }: { person: PersonOut }) {
                     update("birthTimePrecision", e.target.value as BirthTimePrecision)
                   }
                 >
-                  <option value="exact">Exact</option>
-                  <option value="approximate">Approximate</option>
-                  <option value="unknown">Unknown</option>
+                  <option value="exact">{t("app.personForm.precisionExact")}</option>
+                  <option value="approximate">{t("app.personForm.precisionApproximate")}</option>
+                  <option value="unknown">{t("app.personForm.precisionUnknown")}</option>
                 </Select>
               </div>
               <div>
-                <Label htmlFor="birthPlaceDisplayName">Birth place</Label>
+                <Label htmlFor="birthPlaceDisplayName">{t("app.personForm.birthPlace")}</Label>
                 <Input
                   id="birthPlaceDisplayName"
-                  placeholder="e.g. Meerbusch"
+                  placeholder={t("app.personForm.birthPlacePlaceholder")}
                   value={form.birthPlaceDisplayName}
                   onChange={(e) => update("birthPlaceDisplayName", e.target.value)}
                 />
               </div>
               <div>
-                <Label htmlFor="birthPlaceCountryCode">Country code</Label>
+                <Label htmlFor="birthPlaceCountryCode">{t("app.personForm.countryCode")}</Label>
                 <Input
                   id="birthPlaceCountryCode"
-                  placeholder="e.g. DE"
+                  placeholder={t("app.personForm.countryCodePlaceholder")}
                   maxLength={2}
                   value={form.birthPlaceCountryCode}
                   onChange={(e) => update("birthPlaceCountryCode", e.target.value.toUpperCase())}
@@ -237,12 +235,14 @@ function EditPersonForm({ person }: { person: PersonOut }) {
 
           <fieldset className="mb-6" disabled={submitting}>
             <legend className="mb-3 font-serif text-base text-ivory">
-              Current name &amp; preferred name{" "}
-              <span className="font-sans text-xs font-normal text-muted">(optional)</span>
+              {t("app.personForm.currentPreferred")}{" "}
+              <span className="font-sans text-xs font-normal text-muted">
+                {t("app.personForm.optionalNote")}
+              </span>
             </legend>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <Label htmlFor="currentFirstNames">Current first name(s)</Label>
+                <Label htmlFor="currentFirstNames">{t("app.personForm.currentFirstNames")}</Label>
                 <Input
                   id="currentFirstNames"
                   value={form.currentFirstNames}
@@ -250,7 +250,7 @@ function EditPersonForm({ person }: { person: PersonOut }) {
                 />
               </div>
               <div>
-                <Label htmlFor="currentLastName">Current last name</Label>
+                <Label htmlFor="currentLastName">{t("app.personForm.currentLastName")}</Label>
                 <Input
                   id="currentLastName"
                   value={form.currentLastName}
@@ -258,7 +258,7 @@ function EditPersonForm({ person }: { person: PersonOut }) {
                 />
               </div>
               <div>
-                <Label htmlFor="currentMiddleNames">Current middle name(s)</Label>
+                <Label htmlFor="currentMiddleNames">{t("app.personForm.currentMiddleNames")}</Label>
                 <Input
                   id="currentMiddleNames"
                   value={form.currentMiddleNames}
@@ -266,7 +266,7 @@ function EditPersonForm({ person }: { person: PersonOut }) {
                 />
               </div>
               <div>
-                <Label htmlFor="preferredName">Preferred name</Label>
+                <Label htmlFor="preferredName">{t("app.personForm.preferredName")}</Label>
                 <Input
                   id="preferredName"
                   value={form.preferredName}
@@ -290,10 +290,10 @@ function EditPersonForm({ person }: { person: PersonOut }) {
 
           <div className="flex gap-3">
             <Button type="submit" loading={submitting}>
-              Save changes
+              {t("app.peopleEdit.save")}
             </Button>
             <Button type="button" variant="ghost" onClick={() => router.push(`/people/${person.id}`)}>
-              Cancel
+              {t("app.peopleEdit.cancel")}
             </Button>
           </div>
         </form>
@@ -303,11 +303,14 @@ function EditPersonForm({ person }: { person: PersonOut }) {
 }
 
 function EditPersonContent({ personId }: { personId: string }) {
+  const { t } = useLocale();
   const state = useAsync(() => api.people.get(personId), [personId]);
 
-  if (state.status === "loading") return <LoadingState label="Loading profile…" />;
+  if (state.status === "loading") return <LoadingState label={t("app.personDetail.loadingProfile")} />;
   if (state.status === "error") {
-    return <ErrorState error={state.error} onRetry={state.reload} title="Could not load profile" />;
+    return (
+      <ErrorState error={state.error} onRetry={state.reload} title={t("app.peopleEdit.loadErrorTitle")} />
+    );
   }
 
   return (
@@ -317,7 +320,7 @@ function EditPersonContent({ personId }: { personId: string }) {
         className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-gold"
       >
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        Back to profile
+        {t("app.peopleEdit.backToProfile")}
       </Link>
       <EditPersonForm person={state.data} />
     </div>

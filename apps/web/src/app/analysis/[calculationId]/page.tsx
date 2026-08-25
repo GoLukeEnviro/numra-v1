@@ -16,9 +16,11 @@ import { asCanonicalProfile } from "@/api/canonical-profile";
 import { useAsync } from "@/lib/use-async";
 import { recordCalculation } from "@/lib/local-calculations";
 import { formatIsoDate } from "@/lib/utils";
+import { useLocale } from "@/i18n/context";
 import { BookOpen } from "lucide-react";
 
 function AnalysisContent({ calculationId }: { calculationId: string }) {
+  const { t } = useLocale();
   const calcState = useAsync(() => api.calculations.get(calculationId), [calculationId]);
 
   useEffect(() => {
@@ -34,13 +36,13 @@ function AnalysisContent({ calculationId }: { calculationId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [calcState.status]);
 
-  if (calcState.status === "loading") return <LoadingState label="Loading calculation…" />;
+  if (calcState.status === "loading") return <LoadingState label={t("app.analysis.loading")} />;
   if (calcState.status === "error") {
     return (
       <ErrorState
         error={calcState.error}
         onRetry={calcState.reload}
-        title="Could not load this analysis"
+        title={t("app.analysis.errorTitle")}
       />
     );
   }
@@ -52,7 +54,7 @@ function AnalysisContent({ calculationId }: { calculationId: string }) {
     return (
       <ErrorState
         error={new Error("The calculation payload did not match the expected canonical profile shape.")}
-        title="Unreadable calculation"
+        title={t("app.analysis.unreadableTitle")}
       />
     );
   }
@@ -65,9 +67,13 @@ function AnalysisContent({ calculationId }: { calculationId: string }) {
         <NumericWheel className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 opacity-[0.13]" />
         <div className="relative flex flex-wrap items-start justify-between gap-6">
           <div className="min-w-0">
-            <p className="mb-2 text-xs uppercase tracking-wider text-bronze">Calculation</p>
+            <p className="mb-2 text-xs uppercase tracking-wider text-bronze">
+              {t("app.analysis.eyebrow")}
+            </p>
             <h1 className="font-serif text-3xl text-ivory sm:text-4xl">{name}</h1>
-            <p className="mt-2 text-sm text-muted">As of {formatIsoDate(calculation.as_of_date)}</p>
+            <p className="mt-2 text-sm text-muted">
+              {t("app.analysis.asOf")} {formatIsoDate(calculation.as_of_date)}
+            </p>
             <div className="mt-5 flex flex-wrap items-center gap-2">
               <Badge variant="neutral">
                 {profile.calculation_system} v{profile.calculation_version}
@@ -83,38 +89,37 @@ function AnalysisContent({ calculationId }: { calculationId: string }) {
             className="inline-flex h-10 shrink-0 items-center gap-2 rounded-lg bg-gold px-4 text-sm font-medium text-background transition-colors hover:bg-gold/90"
           >
             <BookOpen className="h-4 w-4" aria-hidden="true" />
-            Written report
+            {t("app.analysis.writtenReport")}
           </a>
         </div>
         <p className="relative mt-6 max-w-reading border-t border-white/10 pt-5 text-xs leading-relaxed text-muted">
-          This snapshot is immutable. Re-running the same person on the same as-of date
-          reproduces the identical hash above — every value on this page traces back to its
-          inputs, step by step.
+          {t("app.analysis.immutableNote")}
         </p>
       </header>
 
       <Tabs
+        ariaLabel={t("app.analysis.tabsAria")}
         tabs={[
           {
             id: "core-numbers",
-            label: "Core Numbers",
+            label: t("app.analysis.tabCore"),
             content: <CoreNumbersView core={profile.core_numbers} />,
           },
           {
             id: "inspector",
-            label: "Calculation Inspector",
+            label: t("app.analysis.tabInspector"),
             content: <InspectorView core={profile.core_numbers} diagnostics={profile.diagnostics} />,
           },
           {
             id: "cycles-timing",
-            label: "Cycles & Timing",
+            label: t("app.analysis.tabCycles"),
             content: <CyclesTimingView cycles={profile.cycles} timing={profile.timing} />,
           },
         ]}
       />
 
       <section id="written-report" className="mt-14 scroll-mt-8">
-        <h2 className="mb-4 font-serif text-xl text-ivory">Written report</h2>
+        <h2 className="mb-4 font-serif text-xl text-ivory">{t("app.analysis.writtenReport")}</h2>
         <ReportLauncher calculationId={calculation.id} />
       </section>
     </div>

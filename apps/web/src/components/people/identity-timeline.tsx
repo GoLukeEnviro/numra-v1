@@ -3,14 +3,28 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { api, type NameIdentityKind, type PersonOut } from "@/api/client";
-import { buildIdentityTimeline } from "@/lib/identity";
+import { buildIdentityTimeline, type IdentityEntryId } from "@/lib/identity";
 import { useAsync } from "@/lib/use-async";
 import { formatDateTime, formatIsoDate } from "@/lib/utils";
+import type { MessageKey } from "@/i18n/catalog";
+import { useLocale } from "@/i18n/context";
 
-const KIND_LABEL: Record<NameIdentityKind, string> = {
-  birth: "Birth",
-  current: "Current",
-  preferred: "Preferred",
+const KIND_LABEL_KEY: Record<NameIdentityKind, MessageKey> = {
+  birth: "app.identity.kindBirth",
+  current: "app.identity.kindCurrent",
+  preferred: "app.identity.kindPreferred",
+};
+
+const ENTRY_LABEL_KEY: Record<IdentityEntryId, MessageKey> = {
+  birth: "app.identity.birthLabel",
+  current: "app.identity.currentLabel",
+  preferred: "app.identity.preferredLabel",
+};
+
+const ENTRY_NOTE_KEY: Record<IdentityEntryId, MessageKey> = {
+  birth: "app.identity.birthNote",
+  current: "app.identity.currentNote",
+  preferred: "app.identity.preferredNote",
 };
 
 /**
@@ -21,25 +35,28 @@ const KIND_LABEL: Record<NameIdentityKind, string> = {
  * for the birth identity) — never invented for current/preferred names.
  */
 function RecordedHistory({ personId }: { personId: string }) {
+  const { t } = useLocale();
   const state = useAsync(() => api.people.identities(personId), [personId]);
   if (state.status !== "success" || state.data.length === 0) return null;
 
   return (
     <div className="mt-6 border-t border-white/10 pt-5">
-      <p className="mb-3 text-xs uppercase tracking-wider text-muted">Recorded history</p>
-      <ul className="flex flex-col gap-2.5" aria-label="Recorded history">
+      <p className="mb-3 text-xs uppercase tracking-wider text-muted">
+        {t("app.identity.recordedHistory")}
+      </p>
+      <ul className="flex flex-col gap-2.5" aria-label={t("app.identity.recordedHistory")}>
         {state.data.map((entry) => {
           const name = [entry.first_names, entry.middle_names, entry.last_name]
             .filter(Boolean)
             .join(" ");
           return (
             <li key={entry.id} className="flex flex-wrap items-baseline gap-x-2 text-sm">
-              <Badge variant="neutral">{KIND_LABEL[entry.kind]}</Badge>
+              <Badge variant="neutral">{t(KIND_LABEL_KEY[entry.kind])}</Badge>
               <span className="text-text">{name || "—"}</span>
               <span className="text-xs text-muted">
                 {entry.valid_from
-                  ? `Valid from ${formatIsoDate(entry.valid_from)}`
-                  : `Recorded ${formatDateTime(entry.recorded_at)}`}
+                  ? `${t("app.identity.validFrom")} ${formatIsoDate(entry.valid_from)}`
+                  : `${t("app.identity.recordedAt")} ${formatDateTime(entry.recorded_at)}`}
               </span>
             </li>
           );
@@ -50,18 +67,17 @@ function RecordedHistory({ personId }: { personId: string }) {
 }
 
 export function IdentityTimeline({ person }: { person: PersonOut }) {
+  const { t } = useLocale();
   const entries = buildIdentityTimeline(person);
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Identity</CardTitle>
-        <CardDescription>
-          The names recorded for this profile. Only the birth name enters a calculation.
-        </CardDescription>
+        <CardTitle className="text-base">{t("app.identity.title")}</CardTitle>
+        <CardDescription>{t("app.identity.body")}</CardDescription>
       </CardHeader>
       <CardContent>
-        <ol className="relative" aria-label="Current identity">
+        <ol className="relative" aria-label={t("app.identity.title")}>
           {entries.map((entry, index) => {
             const isLast = index === entries.length - 1;
             return (
@@ -83,18 +99,21 @@ export function IdentityTimeline({ person }: { person: PersonOut }) {
                 />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <p className="text-xs uppercase tracking-wider text-muted">{entry.label}</p>
+                    <p className="text-xs uppercase tracking-wider text-muted">
+                      {t(ENTRY_LABEL_KEY[entry.id])}
+                    </p>
                     {entry.drivesCoreNumbers && (
-                      <Badge variant="success">Used for Core Numbers</Badge>
+                      <Badge variant="success">{t("app.identity.usedForCore")}</Badge>
                     )}
-                    {entry.partial && <Badge variant="neutral">Partially recorded</Badge>}
+                    {entry.partial && <Badge variant="neutral">{t("app.identity.partial")}</Badge>}
                   </div>
                   <p className="mt-1 font-serif text-xl text-ivory">{entry.name}</p>
-                  <p className="mt-1 text-xs leading-relaxed text-muted">{entry.note}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-muted">
+                    {t(ENTRY_NOTE_KEY[entry.id])}
+                  </p>
                   {entry.partial && (
                     <p className="mt-1 text-xs leading-relaxed text-muted">
-                      Only the name parts stored for this profile are shown — the missing
-                      parts are not filled in from the birth name.
+                      {t("app.identity.partialNote")}
                     </p>
                   )}
                 </div>
@@ -105,8 +124,7 @@ export function IdentityTimeline({ person }: { person: PersonOut }) {
 
         {entries.length === 1 && (
           <p className="mt-2 border-t border-white/10 pt-4 text-xs leading-relaxed text-muted">
-            No current or preferred name is recorded for this profile. Numra shows only the
-            names it holds — it does not infer a name history.
+            {t("app.identity.noExtraNames")}
           </p>
         )}
 

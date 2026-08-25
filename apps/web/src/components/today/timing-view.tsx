@@ -8,6 +8,7 @@ import { NumericWheel } from "@/components/layout/numeric-wheel";
 import type { CalculationMetric, ReductionResult, Timing } from "@/api/canonical-profile";
 import { renderTrace } from "@/lib/trace";
 import { formatIsoDate, cn } from "@/lib/utils";
+import { useLocale } from "@/i18n/context";
 import { ChevronDown } from "lucide-react";
 
 /**
@@ -21,8 +22,13 @@ import { ChevronDown } from "lucide-react";
  */
 
 function MasterBadge({ masterNumber }: { masterNumber: number | null }) {
+  const { t } = useLocale();
   if (masterNumber === null) return null;
-  return <Badge variant="master">Master Number {masterNumber}</Badge>;
+  return (
+    <Badge variant="master">
+      {t("app.today.masterNumber")} {masterNumber}
+    </Badge>
+  );
 }
 
 function SupportingValue({
@@ -48,6 +54,7 @@ function SupportingValue({
 }
 
 function DerivationDisclosure({ metrics }: { metrics: { label: string; metric: CalculationMetric }[] }) {
+  const { t } = useLocale();
   const [open, setOpen] = useState(false);
 
   return (
@@ -62,7 +69,7 @@ function DerivationDisclosure({ metrics }: { metrics: { label: string; metric: C
           className={cn("h-4 w-4 transition-transform", open && "rotate-180")}
           aria-hidden="true"
         />
-        {open ? "Hide how these were derived" : "How were these derived?"}
+        {open ? t("app.today.derivedHide") : t("app.today.derivedShow")}
       </button>
 
       {open && (
@@ -88,6 +95,7 @@ export function TimingView({
   personLabel: string;
   timing: Timing;
 }) {
+  const { t } = useLocale();
   const day: CalculationMetric = timing.personal_day;
   const universalYear: ReductionResult = timing.universal_year;
 
@@ -138,9 +146,7 @@ export function TimingView({
       />
 
       <p className="mt-8 max-w-reading text-xs leading-relaxed text-muted">
-        These values are recomputed on request for today&apos;s date and are not stored as a
-        calculation snapshot. To pin a dated, hashed record, run a calculation from the
-        person&apos;s profile instead.
+        {t("app.today.footnote")}
       </p>
     </div>
   );
