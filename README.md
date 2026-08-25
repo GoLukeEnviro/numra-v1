@@ -187,6 +187,39 @@ sanitized system info). None of it touches `calculation_version` or the golden c
 See [docs/adr/007-v1-5-product-completion.md](docs/adr/007-v1-5-product-completion.md)
 for the durable decisions this introduced.
 
+## V1.6 A — RBAC and admin backend
+
+Adds `role` (`USER`/`ADMIN`) and `is_active` to `User`, an admin-only API
+(`/v1/admin/stats`, `/users`, `/users/{id}`, `/users/{id}/disable`, `/enable`,
+`/revoke-sessions`, `/audit`, gated end-to-end by `require_admin`), and an append-only
+`admin_audit_events` table. A disabled account is indistinguishable from a wrong
+password in every response — the same anti-enumeration idiom V1.5 already used for
+ownership checks.
+
+## V1.6 B — public platform and admin console
+
+The frontend and self-service half of the account platform:
+
+- **Public**: a real landing page at `/` (previously a hard redirect to `/login`),
+  `GET /v1/public/config` (unauthenticated, capped to `self_signup_enabled`/`app_name`/
+  `supported_ui_locales` — nothing environment- or deployment-specific), `/register`
+  with auto-login (`POST /v1/auth/register` now issues the same session/CSRF cookies as
+  login through one shared helper), and a short `/onboarding` first-run flow.
+- **Admin console**: `/admin/login`, `/admin`, `/admin/users`, `/admin/users/[id]`,
+  `/admin/audit` — a frontend for V1.6 A's backend. The route guard is explicitly *not*
+  the security boundary in code comments; `require_admin` on the API is.
+- **Complete i18n**: the flat `de.ts`/`en.ts` catalog is now split into
+  `core`/`public`/`app`/`admin` modules per locale (still typed 1:1, plus a runtime
+  catalog-parity test), covering every page including the new public and admin
+  surfaces. Numerology terminology (Life Path, Personal Day, Master Number, ...) stays
+  English by design — see `docs/releases/v1.6-b.md`.
+- Self-signup rolls out only after the release is fully verified in production —
+  `ALLOW_SELF_SIGNUP` stays `false` through merge and deploy, flipped to `true` as a
+  separate, explicit step once the exact merge SHA is confirmed live.
+
+See [docs/releases/v1.6-b.md](docs/releases/v1.6-b.md) for the full scope, security
+boundaries, and production rollout evidence.
+
 ## Security notes
 
 - Argon2id password hashing; session tokens are cryptographically random, only their
