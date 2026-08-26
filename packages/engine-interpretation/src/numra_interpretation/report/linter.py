@@ -1,4 +1,4 @@
-"""The global Report Linter (master prompt §109). Runs after section assembly.
+"""The global Report Linter. Runs after section assembly.
 
 Only PASS unlocks ``REPORT_STATUS=VALID``. Every check here is a structural/textual
 check on the *assembled* report — the per-claim numeric linter (validator.py) already
@@ -22,9 +22,6 @@ from numra_numerology.models.profile import CanonicalProfile
 
 __all__ = ["ReportLintResult", "lint_report"]
 
-#: Language a symbolic interpretation system must never use (master prompt §108).
-#: Deliberately conservative/short — a real deployment would extend this via the
-#: `numerology_safety`-equivalent claims blacklist; NUMRA V1 checks the core cases here.
 _UNSUPPORTED_CLAIM_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
     re.compile(pattern, re.IGNORECASE)
     for pattern in (
@@ -33,6 +30,11 @@ _UNSUPPORTED_CLAIM_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
         r"garantiert\w*",
         r"heilt\b",
         r"psychiatrisch\w* diagnos\w*",
+        r"du wirst krank",
+        r"vorherbestimmt",
+        r"in 20\d{2} passiert",
+        r"unvermeidlich",
+        r"Schicksal(s)? (ist|will)",
     )
 )
 
@@ -74,7 +76,7 @@ def _check_duplicate_paragraphs(sections: tuple[StructuredReportSection, ...]) -
     for section in sections:
         for paragraph in section.text.split("\n\n"):
             normalized = paragraph.strip()
-            if len(normalized.split()) < 12:  # ignore short/boilerplate lines
+            if len(normalized.split()) < 12:
                 continue
             if normalized in seen and seen[normalized] != section.section_id:
                 errors.append(
@@ -86,12 +88,6 @@ def _check_duplicate_paragraphs(sections: tuple[StructuredReportSection, ...]) -
     return errors
 
 
-#: Flat allowance added to the upper bound on top of the proportional tolerance. A
-#: provider's structured response carries some fixed overhead (framing, citations,
-#: transitions) independent of the target length — this is most visible for small
-#: (QUICK-report-scale) targets, where fixed overhead can exceed the target itself.
-#: This check exists to catch sections that are wildly off (empty, or absurdly long),
-#: not to enforce prose-quality word-count precision that only a real LLM could hit.
 _WORD_COUNT_FLAT_ALLOWANCE = 250
 
 

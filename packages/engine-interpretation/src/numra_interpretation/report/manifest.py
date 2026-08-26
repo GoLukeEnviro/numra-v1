@@ -1,4 +1,4 @@
-"""Report manifests — canon-spec-adjacent, master-prompt §102/§105/§106.
+"""Report manifests — section list, German titles, prompt version.
 
 A `ReportManifest` is pure data: report type, target word counts per section, and the
 metric/knowledge refs each section is grounded in. Building one performs no LLM calls
@@ -21,47 +21,40 @@ __all__ = [
 
 ReportType = Literal["QUICK", "FULL", "ULTIMATE", "CUSTOM"]
 
-#: (min_words, max_words) per master prompt §102. CUSTOM has no fixed range — the
-#: caller supplies total_target_words directly.
 REPORT_TYPE_WORD_RANGES: dict[str, tuple[int, int]] = {
     "QUICK": (1000, 2000),
     "FULL": (5000, 10000),
     "ULTIMATE": (15000, 30000),
 }
 
-#: (section_id, title, weight, metric_refs, knowledge_refs). Weight distributes the
-#: manifest's total_target_words proportionally across sections. Scoped to the metrics
-#: and knowledge actually available from Phase 3 (composer.CORE_METRIC_IDS plus the
-#: special-number/cycle/timing groups); this is a judgment call, not a literal
-#: transcription of master prompt §106's full (much longer) topic list — see
-#: specs/evidence/phase-4.md.
+#: German titles for language=de reports. Weight distributes total_target_words.
 _SECTION_DEFS: tuple[tuple[str, str, float, tuple[str, ...], tuple[str, ...]], ...] = (
-    ("executive_profile", "Executive Profile", 1.4, ("life_path", "expression", "soul_urge"), ()),
-    ("life_path", "Life Path", 1.2, ("life_path",), ("life_path",)),
-    ("expression", "Expression / Destiny", 1.0, ("expression",), ("expression",)),
-    ("soul_urge", "Soul Urge", 1.0, ("soul_urge",), ("soul_urge",)),
-    ("personality", "Personality", 1.0, ("personality",), ("personality",)),
-    ("birthday", "Birthday", 0.6, ("birthday",), ("birthday",)),
-    ("attitude", "Attitude", 0.6, ("attitude",), ("attitude",)),
-    ("maturity", "Maturity", 0.7, ("maturity",), ("maturity",)),
-    ("balance", "Balance", 0.5, ("balance",), ("balance",)),
+    ("executive_profile", "Profilüberblick", 1.4, ("life_path", "expression", "soul_urge"), ()),
+    ("life_path", "Lebenszahl", 1.2, ("life_path",), ("life_path",)),
+    ("expression", "Ausdruckszahl", 1.0, ("expression",), ("expression",)),
+    ("soul_urge", "Seelenzahl", 1.0, ("soul_urge",), ("soul_urge",)),
+    ("personality", "Persönlichkeitszahl", 1.0, ("personality",), ("personality",)),
+    ("birthday", "Geburtstagszahl", 0.6, ("birthday",), ("birthday",)),
+    ("attitude", "Einstellungszahl", 0.6, ("attitude",), ("attitude",)),
+    ("maturity", "Reifezahl", 0.7, ("maturity",), ("maturity",)),
+    ("balance", "Balancezahl", 0.5, ("balance",), ("balance",)),
     (
         "special_numbers",
-        "Hidden Passion, Karmic Lessons & Subconscious Self",
+        "Verborgene Leidenschaft, karmische Lektionen und Unterbewusstsein",
         1.1,
         (),
         ("hidden_passion", "karmic_lessons", "subconscious_self"),
     ),
-    ("cycles", "Pinnacles & Challenges", 1.3, (), ("pinnacle", "challenge")),
+    ("cycles", "Höhepunkte und Herausforderungen", 1.3, (), ("pinnacle", "challenge")),
     (
         "timing",
-        "Personal Year, Month & Day",
+        "Persönliches Jahr, Monat und Tag",
         1.1,
         ("personal_year", "personal_month", "personal_day"),
         ("personal_year", "personal_month", "personal_day"),
     ),
-    ("development", "Practical Development Plan", 1.0, (), ()),
-    ("calculation_appendix", "Calculation Appendix", 0.7, (), ()),
+    ("development", "Praktischer Entwicklungsplan", 1.0, (), ()),
+    ("calculation_appendix", "Rechenanhang", 0.7, (), ()),
 )
 
 
@@ -84,12 +77,7 @@ class ReportManifest(BaseModel):
     calculation_id: str
     total_target_words: int
     sections: tuple[ReportSectionSpec, ...]
-    #: Bumped for V1.6 C (timing-report grounding + coverage fix) — stays in sync with
-    #: `numra_api.services.report_service.PROMPT_VERSION`, which stamps this same
-    #: value onto a `Report` row before generation even starts. Existing, already
-    #: persisted reports keep whatever prompt_version they were generated with; this
-    #: default only ever applies to a manifest built for a *new* report.
-    prompt_version: str = "numra-report-v2"
+    prompt_version: str = "numra-report-v3"
 
 
 def build_manifest(
