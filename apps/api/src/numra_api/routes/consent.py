@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from numra_api.deps import get_current_user, get_db, require_csrf
-from numra_api.models import User
+from numra_api.models import ConsentGrant, User
 from numra_api.schemas.consent import (
     ConsentGrantOut,
     ConsentGrantRequest,
@@ -22,7 +22,7 @@ from numra_api.services.consent_service import (
 router = APIRouter(prefix="/v1/workspaces/{workspace_id}/consent", tags=["consent"])
 
 
-def _grant_to_out(grant) -> ConsentGrantOut:  # noqa: ANN001 -- ConsentGrant ORM instance
+def _grant_to_out(grant: ConsentGrant) -> ConsentGrantOut:
     return ConsentGrantOut.model_validate(grant, from_attributes=True)
 
 

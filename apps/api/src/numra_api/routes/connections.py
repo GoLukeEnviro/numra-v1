@@ -141,9 +141,7 @@ async def decline_invitation_route(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ConnectionInvitationOut:
-    invitation = await decline_own_invitation(
-        db, invitation_id=invitation_id, declining_user=user
-    )
+    invitation = await decline_own_invitation(db, invitation_id=invitation_id, declining_user=user)
     return _invitation_to_out(invitation)
 
 
