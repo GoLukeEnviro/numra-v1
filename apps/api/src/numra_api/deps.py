@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from numra_api.auth.csrf import CSRF_COOKIE_NAME, CSRF_HEADER_NAME, csrf_tokens_match
 from numra_api.auth.sessions import hash_session_token
 from numra_api.config import Settings
+from numra_api.email.sender import EmailSender
 from numra_api.models import Session as SessionModel
 from numra_api.models import User
 from numra_api.models.enums import UserRole
@@ -50,6 +51,11 @@ def get_pdf_client(request: Request) -> PdfServiceClient:
 def get_rate_limiter(request: Request) -> RateLimiter:
     limiter: RateLimiter = request.app.state.rate_limiter
     return limiter
+
+
+def get_email_sender(request: Request) -> EmailSender:
+    sender: EmailSender = request.app.state.email_sender
+    return sender
 
 
 async def _enforce_rate_limit(

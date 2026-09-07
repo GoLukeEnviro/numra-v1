@@ -8,6 +8,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 LLMProviderName = Literal["ollama", "mock", "disabled"]
 RateLimitBackend = Literal["memory", "redis"]
+EmailBackend = Literal["logging", "disabled"]
 
 
 class Settings(BaseSettings):
@@ -72,6 +73,26 @@ class Settings(BaseSettings):
 
     request_body_max_bytes: int = 2 * 1024 * 1024
 
+    #: Deliberately a Settings field (unlike routes/public.py's former APP_NAME
+    #: constant) -- branding is not a security-relevant value like
+    #: `allow_self_signup`, so letting a deployment configure it carries none of the
+    #: risk that letting one configure e.g. session/CSRF behavior would.
+    app_brand_name: str = "AVENYTH"
+
+    #: "logging" (default) only logs the email instead of sending it -- fine for local
+    #: dev/CI/E2E, never for real users; not permitted when ENVIRONMENT=production (see
+    #: the validator below). "disabled" is the `numra_llm_provider="disabled"` analogue:
+    #: no real send mechanism exists in V1 (see email/sender.py), so it is what a
+    #: production deployment configures today -- request-email-verification/
+    #: forgot-password fail fast and legibly rather than one of them being silently
+    #: mislabeled "sent". Same three-way shape as `numra_llm_provider`.
+    email_backend: EmailBackend = "logging"
+    #: Base URL of the web app the verification/reset links point to (no trailing
+    #: slash assumed by callers -- see services/auth_recovery_service.py).
+    web_app_base_url: str = "http://localhost:5173"
+    email_verification_token_ttl_hours: int = 24
+    password_reset_token_ttl_minutes: int = 60
+
     @property
     def cookies_secure(self) -> bool:
         return self.environment == "production"
@@ -84,6 +105,16 @@ class Settings(BaseSettings):
                 "— a real user must never receive mock-generated report content. Set "
                 "NUMRA_LLM_PROVIDER=ollama (with OLLAMA_BASE_URL/OLLAMA_API_KEY) or "
                 "NUMRA_LLM_PROVIDER=disabled."
+            )
+        return self
+
+    @model_validator(mode="after")
+    def _forbid_logging_email_backend_in_production(self) -> Settings:
+        if self.environment == "production" and self.email_backend == "logging":
+            raise ValueError(
+                "EMAIL_BACKEND=logging is not permitted when ENVIRONMENT=production "
+                "— a real user must actually receive verification/reset emails, not "
+                "have them written to the server log. Configure a real backend."
             )
         return self
 

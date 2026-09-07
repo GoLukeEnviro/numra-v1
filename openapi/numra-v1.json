@@ -550,6 +550,79 @@
         "title": "DeleteAccountRequest",
         "type": "object"
       },
+      "EntitlementSetOut": {
+        "description": "The effective feature/limit bundle for the signed-in user (GET\n/v1/me/entitlements) -- either their explicit assignment or the seeded\n\"beta_default\" fallback (see repositories/entitlements.py). `max_connections`/\n`max_workspaces` of ``None`` means unlimited.",
+        "properties": {
+          "advanced_relationship_analysis": {
+            "title": "Advanced Relationship Analysis",
+            "type": "boolean"
+          },
+          "connections": {
+            "title": "Connections",
+            "type": "boolean"
+          },
+          "life_tracking": {
+            "title": "Life Tracking",
+            "type": "boolean"
+          },
+          "max_connections": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Connections"
+          },
+          "max_workspaces": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Workspaces"
+          },
+          "personal_workspace": {
+            "title": "Personal Workspace",
+            "type": "boolean"
+          },
+          "premium_reports": {
+            "title": "Premium Reports",
+            "type": "boolean"
+          },
+          "relationship_checkins": {
+            "title": "Relationship Checkins",
+            "type": "boolean"
+          },
+          "relationship_copilot": {
+            "title": "Relationship Copilot",
+            "type": "boolean"
+          },
+          "relationship_workspaces": {
+            "title": "Relationship Workspaces",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "personal_workspace",
+          "connections",
+          "relationship_workspaces",
+          "relationship_checkins",
+          "relationship_copilot",
+          "advanced_relationship_analysis",
+          "life_tracking",
+          "premium_reports",
+          "max_connections",
+          "max_workspaces"
+        ],
+        "title": "EntitlementSetOut",
+        "type": "object"
+      },
       "ExportCreateRequest": {
         "properties": {
           "export_type": {
@@ -646,6 +719,21 @@
         ],
         "title": "ExportType",
         "type": "string"
+      },
+      "ForgotPasswordRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "title": "ForgotPasswordRequest",
+        "type": "object"
       },
       "HTTPValidationError": {
         "properties": {
@@ -1570,6 +1658,27 @@
         "title": "ReportType",
         "type": "string"
       },
+      "ResetPasswordRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "new_password": {
+            "minLength": 12,
+            "title": "New Password",
+            "type": "string"
+          },
+          "token": {
+            "minLength": 1,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "new_password"
+        ],
+        "title": "ResetPasswordRequest",
+        "type": "object"
+      },
       "SessionOut": {
         "description": "One active session (V1.5 Epic N). No IP address or device identifier is\nstored or returned \u2014 sessions carry only a token hash, timestamps, and the\nowning user (see models.tables.Session).",
         "properties": {
@@ -1714,6 +1823,22 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "VerifyEmailRequest": {
+        "additionalProperties": false,
+        "description": "`extra=\"forbid\"` like `RegisterRequest` -- an unauthenticated body accepting\nunknown keys is exactly the surface that must stay closed here.",
+        "properties": {
+          "token": {
+            "minLength": 1,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "title": "VerifyEmailRequest",
         "type": "object"
       }
     }
@@ -2478,6 +2603,46 @@
         ]
       }
     },
+    "/v1/auth/forgot-password": {
+      "post": {
+        "description": "V2: always answers 202 with no body, whether or not `body.email` belongs to an\naccount -- anti-enumeration (see services/auth_recovery_service.forgot_password,\nwhich only touches the database/sends anything on an actual match).",
+        "operationId": "forgot_password_v1_auth_forgot_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Forgot Password",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/v1/auth/login": {
       "post": {
         "operationId": "login_v1_auth_login_post",
@@ -2668,6 +2833,116 @@
         ]
       }
     },
+    "/v1/auth/request-email-verification": {
+      "post": {
+        "description": "V2: (re-)sends a verification link to the signed-in user's own email address.\nInvalidates any verification token requested earlier before issuing a new one --\nsee services/auth_recovery_service.request_email_verification.",
+        "operationId": "request_email_verification_v1_auth_request_email_verification_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-csrf-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_csrf",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Csrf"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Request Email Verification",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/reset-password": {
+      "post": {
+        "description": "V2: unauthenticated -- the reset token is the proof of ownership. On success,\nevery session for the user is revoked (not \"every other\" -- there is no caller\nsession here to keep), forcing a fresh login with the new password everywhere.",
+        "operationId": "reset_password_v1_auth_reset_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reset Password",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/v1/auth/sessions": {
       "get": {
         "description": "V1.5 Epic N: every device/browser currently signed in as this user. No IP\naddress or device identifier is stored anywhere (see models.tables.Session), so\nthere is nothing to redact here beyond simply not having it.",
@@ -2792,6 +3067,41 @@
           }
         },
         "summary": "Revoke Other Sessions",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/verify-email": {
+      "post": {
+        "description": "V2: unauthenticated -- the token itself, not a session, is the proof of\nownership. Claims the token atomically; an unknown, already-used, or expired\ntoken all surface as the same INVALID_OR_EXPIRED_TOKEN error (see\nservices/auth_recovery_service.verify_email).",
+        "operationId": "verify_email_v1_auth_verify_email_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyEmailRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Verify Email",
         "tags": [
           "auth"
         ]
@@ -3100,6 +3410,56 @@
         "summary": "Ready",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/v1/me/entitlements": {
+      "get": {
+        "description": "The signed-in user's effective feature/limit bundle: their explicit\n`EntitlementAssignment` if one exists, otherwise the seeded \"beta_default\"\n`EntitlementSet` (see repositories/entitlements.py). A missing default set is a\nseed/migration inconsistency, not a normal runtime state -- surfaced as 404 rather\nthan silently defaulting to some hardcoded shape.",
+        "operationId": "get_my_entitlements_v1_me_entitlements_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntitlementSetOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get My Entitlements",
+        "tags": [
+          "entitlements"
         ]
       }
     },
@@ -3877,7 +4237,7 @@
     },
     "/v1/public/config": {
       "get": {
-        "description": "Unauthenticated by design: the sign-in page has to know whether self-signup is\nopen before anyone can possibly hold a session.",
+        "description": "Unauthenticated by design: the sign-in page has to know whether self-signup is\nopen before anyone can possibly hold a session.\n\n`app_name` deliberately comes from `settings.app_brand_name` even though this\nendpoint is unauthenticated -- a bounded, intentional exception to the \"no\nSettings field on this route\" rule that otherwise applies here (see\nPublicConfigOut's docstring): branding is not a security-relevant value the way\n`allow_self_signup` or a URL/secret would be, so a deployment configuring its own\nproduct name carries none of the risk that motivated keeping this route\nSettings-free in the first place.",
         "operationId": "get_public_config_v1_public_config_get",
         "responses": {
           "200": {

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime as dt
 import uuid
 
 from sqlalchemy import func, select
@@ -39,6 +40,14 @@ async def update_user_password(db: AsyncSession, *, user: User, password_hash: s
     """V1.5 Epic N. Takes the already-loaded ORM `user` (never a bare id) so the
     caller has already proven ownership/authentication before this mutates anything."""
     user.password_hash = password_hash
+    await db.flush()
+
+
+async def mark_email_verified(db: AsyncSession, *, user: User, verified_at: dt.datetime) -> None:
+    """V2 email verification. Takes the already-loaded ORM `user` (never a bare id),
+    same rationale as `update_user_password` -- the caller has already proven which
+    user this is (via the atomic token claim), this only mutates it."""
+    user.email_verified_at = verified_at
     await db.flush()
 
 

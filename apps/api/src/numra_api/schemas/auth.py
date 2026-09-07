@@ -39,6 +39,29 @@ class ChangePasswordRequest(BaseModel):
     new_password: str = Field(min_length=12)
 
 
+class VerifyEmailRequest(BaseModel):
+    """`extra="forbid"` like `RegisterRequest` -- an unauthenticated body accepting
+    unknown keys is exactly the surface that must stay closed here."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    token: str = Field(min_length=1)
+
+
+class ForgotPasswordRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    token: str = Field(min_length=1)
+    #: Same minimum-length rule as registration/change-password.
+    new_password: str = Field(min_length=12)
+
+
 class SessionOut(BaseModel):
     """One active session (V1.5 Epic N). No IP address or device identifier is
     stored or returned — sessions carry only a token hash, timestamps, and the

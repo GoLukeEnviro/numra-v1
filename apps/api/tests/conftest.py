@@ -10,7 +10,9 @@ from httpx import ASGITransport, AsyncClient
 from numra_api.app import create_app
 from numra_api.config import Settings
 from numra_api.db import build_engine, build_sessionmaker
-from numra_api.models import Base
+from numra_api.email.sender import EmailSender
+from numra_api.models import Base, EntitlementSet
+from numra_api.repositories.entitlements import DEFAULT_ENTITLEMENT_SET_KEY
 from numra_api.services.llm_factory import build_llm_provider
 from numra_interpretation.llm.types import LLMProvider
 
@@ -46,8 +48,29 @@ async def db_engine(settings: Settings):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
+    # Base.metadata.create_all (not Alembic) builds the test schema -- so, unlike a
+    # real deployment, the "beta_default" EntitlementSet the migration seeds never
+    # gets inserted on its own. Reproduce that one seed row here so
+    # GET /v1/me/entitlements has the same fallback to resolve in tests as in
+    # production (see repositories/entitlements.py).
+    async with build_sessionmaker(engine)() as db:
+        db.add(EntitlementSet(key=DEFAULT_ENTITLEMENT_SET_KEY))
+        await db.commit()
     yield engine
     await engine.dispose()
+
+
+class FakeEmailSender:
+    """Test double implementing `EmailSender` -- collects every send() call instead of
+    logging/dispatching anything, so a test can read back the verification/reset link
+    it just triggered (the real `LoggingEmailSender` only logs; it hands nothing back
+    to the caller). See services/auth_recovery_service.py for what gets sent."""
+
+    def __init__(self) -> None:
+        self.sent: list[dict] = []
+
+    async def send(self, *, to: str, subject: str, body: str) -> None:
+        self.sent.append({"to": to, "subject": subject, "body": body})
 
 
 @pytest_asyncio.fixture
@@ -55,7 +78,17 @@ async def app(settings: Settings, db_engine):
     application = create_app(settings=settings)
     application.state.engine = db_engine
     application.state.sessionmaker = build_sessionmaker(db_engine)
+    # create_app() already builds a real LoggingEmailSender onto application.state
+    # from settings.email_backend, exactly like every other state-service (pdf_client,
+    # export_storage) -- this fixture overrides that state attribute afterwards,
+    # purely so tests can read back what was "sent" (see FakeEmailSender above).
+    application.state.email_sender = FakeEmailSender()
     return application
+
+
+@pytest_asyncio.fixture
+async def fake_email_sender(app) -> EmailSender:
+    return app.state.email_sender
 
 
 @pytest_asyncio.fixture

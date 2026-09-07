@@ -164,6 +164,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/auth/forgot-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Forgot Password
+         * @description V2: always answers 202 with no body, whether or not `body.email` belongs to an
+         *     account -- anti-enumeration (see services/auth_recovery_service.forgot_password,
+         *     which only touches the database/sends anything on an actual match).
+         */
+        post: operations["forgot_password_v1_auth_forgot_password_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/auth/login": {
         parameters: {
             query?: never;
@@ -238,6 +260,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/auth/request-email-verification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request Email Verification
+         * @description V2: (re-)sends a verification link to the signed-in user's own email address.
+         *     Invalidates any verification token requested earlier before issuing a new one --
+         *     see services/auth_recovery_service.request_email_verification.
+         */
+        post: operations["request_email_verification_v1_auth_request_email_verification_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/reset-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reset Password
+         * @description V2: unauthenticated -- the reset token is the proof of ownership. On success,
+         *     every session for the user is revoked (not "every other" -- there is no caller
+         *     session here to keep), forcing a fresh login with the new password everywhere.
+         */
+        post: operations["reset_password_v1_auth_reset_password_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/auth/sessions": {
         parameters: {
             query?: never;
@@ -275,6 +341,29 @@ export interface paths {
          *     user except the one making this request.
          */
         post: operations["revoke_other_sessions_v1_auth_sessions_revoke_others_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/verify-email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Verify Email
+         * @description V2: unauthenticated -- the token itself, not a session, is the proof of
+         *     ownership. Claims the token atomically; an unknown, already-used, or expired
+         *     token all surface as the same INVALID_OR_EXPIRED_TOKEN error (see
+         *     services/auth_recovery_service.verify_email).
+         */
+        post: operations["verify_email_v1_auth_verify_email_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -359,6 +448,30 @@ export interface paths {
         };
         /** Ready */
         get: operations["ready_v1_health_ready_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/entitlements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get My Entitlements
+         * @description The signed-in user's effective feature/limit bundle: their explicit
+         *     `EntitlementAssignment` if one exists, otherwise the seeded "beta_default"
+         *     `EntitlementSet` (see repositories/entitlements.py). A missing default set is a
+         *     seed/migration inconsistency, not a normal runtime state -- surfaced as 404 rather
+         *     than silently defaulting to some hardcoded shape.
+         */
+        get: operations["get_my_entitlements_v1_me_entitlements_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -495,6 +608,14 @@ export interface paths {
          * Get Public Config
          * @description Unauthenticated by design: the sign-in page has to know whether self-signup is
          *     open before anyone can possibly hold a session.
+         *
+         *     `app_name` deliberately comes from `settings.app_brand_name` even though this
+         *     endpoint is unauthenticated -- a bounded, intentional exception to the "no
+         *     Settings field on this route" rule that otherwise applies here (see
+         *     PublicConfigOut's docstring): branding is not a security-relevant value the way
+         *     `allow_self_signup` or a URL/secret would be, so a deployment configuring its own
+         *     product name carries none of the risk that motivated keeping this route
+         *     Settings-free in the first place.
          */
         get: operations["get_public_config_v1_public_config_get"];
         put?: never;
@@ -867,6 +988,35 @@ export interface components {
             /** Password */
             password: string;
         };
+        /**
+         * EntitlementSetOut
+         * @description The effective feature/limit bundle for the signed-in user (GET
+         *     /v1/me/entitlements) -- either their explicit assignment or the seeded
+         *     "beta_default" fallback (see repositories/entitlements.py). `max_connections`/
+         *     `max_workspaces` of ``None`` means unlimited.
+         */
+        EntitlementSetOut: {
+            /** Advanced Relationship Analysis */
+            advanced_relationship_analysis: boolean;
+            /** Connections */
+            connections: boolean;
+            /** Life Tracking */
+            life_tracking: boolean;
+            /** Max Connections */
+            max_connections: number | null;
+            /** Max Workspaces */
+            max_workspaces: number | null;
+            /** Personal Workspace */
+            personal_workspace: boolean;
+            /** Premium Reports */
+            premium_reports: boolean;
+            /** Relationship Checkins */
+            relationship_checkins: boolean;
+            /** Relationship Copilot */
+            relationship_copilot: boolean;
+            /** Relationship Workspaces */
+            relationship_workspaces: boolean;
+        };
         /** ExportCreateRequest */
         ExportCreateRequest: {
             /** @default pdf */
@@ -902,6 +1052,14 @@ export interface components {
          * @enum {string}
          */
         ExportType: "pdf" | "json";
+        /** ForgotPasswordRequest */
+        ForgotPasswordRequest: {
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -1259,6 +1417,13 @@ export interface components {
          * @enum {string}
          */
         ReportType: "QUICK" | "FULL" | "ULTIMATE" | "CUSTOM";
+        /** ResetPasswordRequest */
+        ResetPasswordRequest: {
+            /** New Password */
+            new_password: string;
+            /** Token */
+            token: string;
+        };
         /**
          * SessionOut
          * @description One active session (V1.5 Epic N). No IP address or device identifier is
@@ -1330,6 +1495,15 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /**
+         * VerifyEmailRequest
+         * @description `extra="forbid"` like `RegisterRequest` -- an unauthenticated body accepting
+         *     unknown keys is exactly the surface that must stay closed here.
+         */
+        VerifyEmailRequest: {
+            /** Token */
+            token: string;
         };
     };
     responses: never;
@@ -1651,6 +1825,39 @@ export interface operations {
             };
         };
     };
+    forgot_password_v1_auth_forgot_password_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ForgotPasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     login_v1_auth_login_post: {
         parameters: {
             query?: never;
@@ -1779,6 +1986,69 @@ export interface operations {
             };
         };
     };
+    request_email_verification_v1_auth_request_email_verification_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reset_password_v1_auth_reset_password_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResetPasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_sessions_v1_auth_sessions_get: {
         parameters: {
             query?: never;
@@ -1823,6 +2093,37 @@ export interface operations {
             };
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    verify_email_v1_auth_verify_email_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerifyEmailRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             204: {
@@ -2017,6 +2318,37 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    get_my_entitlements_v1_me_entitlements_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntitlementSetOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
