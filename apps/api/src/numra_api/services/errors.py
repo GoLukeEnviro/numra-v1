@@ -85,3 +85,49 @@ class RateLimitExceeded(ApplicationError):
     def __init__(self, *, retry_after_seconds: int) -> None:
         super().__init__(f"rate limit exceeded, retry after {retry_after_seconds}s")
         self.retry_after_seconds = retry_after_seconds
+
+
+class InvitationNotFound(ApplicationError):
+    """IDOR-safe 404 for a missing/foreign `ConnectionInvitation` -- never a 403 (see
+    PR-V2-03 blueprint: IDOR responses are always 404)."""
+
+    code = "INVITATION_NOT_FOUND"
+    status_code = 404
+
+
+class InvitationExpiredOrInvalid(ApplicationError):
+    """Unified error for invitations that are unknown, already redeemed/declined/
+    revoked, or expired -- deliberately one shape for all of those (same rationale as
+    `InvalidOrExpiredToken`), so a caller can never distinguish which."""
+
+    code = "INVITATION_EXPIRED_OR_INVALID"
+    status_code = 400
+
+
+class CannotInviteSelf(ApplicationError):
+    code = "CANNOT_INVITE_SELF"
+    status_code = 422
+
+
+class ConnectionAlreadyExists(ApplicationError):
+    code = "CONNECTION_ALREADY_EXISTS"
+    status_code = 409
+
+
+class AdultAccountRequired(ApplicationError):
+    """Never raised in PR-V2-03 -- every existing account is structurally adult per
+    ADR-012. Defined now so PR-V2-04 (`person_account_mode`/minor profiles) can raise
+    it without adding a new error shape later."""
+
+    code = "ADULT_ACCOUNT_REQUIRED"
+    status_code = 403
+
+
+class ConsentNotGranted(ApplicationError):
+    code = "CONSENT_NOT_GRANTED"
+    status_code = 403
+
+
+class WorkspaceDissolved(ApplicationError):
+    code = "WORKSPACE_DISSOLVED"
+    status_code = 409

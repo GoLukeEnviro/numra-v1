@@ -6,13 +6,16 @@ from typing import Any
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     Date,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy import (
     true as sa_true,
@@ -23,13 +26,18 @@ from sqlalchemy.sql import func
 
 from numra_api.db import Base
 from numra_api.models.enums import (
+    ConnectionStatus,
     ExportStatus,
     ExportType,
+    InvitationMethod,
+    InvitationState,
     NameIdentityKind,
     PersonalTaskStatus,
     ReportJobStatus,
     ReportType,
     UserRole,
+    WorkspaceMemberStatus,
+    WorkspaceStatus,
 )
 
 
@@ -518,10 +526,182 @@ class PersonalTask(Base):
     )
 
 
+class ConnectionInvitation(Base):
+    """Outbound invite to form a `UserConnection`. Always references the inviter's
+    `user_id` -- there is no `person_id` on this table (a Connection is a
+    User<->User relationship, see PR-V2-03 blueprint). `invitee_email` is only
+    populated for `method=EMAIL` invites; LINK/CODE invites carry no PII and are
+    redeemed purely off `token_hash`. Anti-enumeration for EMAIL invites lives in
+    services/connection_service.py, not here."""
+
+    __tablename__ = "connection_invitations"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    inviter_user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    method: Mapped[InvitationMethod] = mapped_column(String(20))
+    token_hash: Mapped[str] = mapped_column(String(128), unique=True, index=True)
+    invitee_email: Mapped[str | None] = mapped_column(String(320), nullable=True, index=True)
+    state: Mapped[InvitationState] = mapped_column(String(20), default=InvitationState.PENDING)
+    expires_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    redeemed_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    redeemed_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class UserConnection(Base):
+    """A confirmed User<->User connection, born from one accepted
+    `ConnectionInvitation`. `user_a_id`/`user_b_id` are unordered -- the expression
+    unique index below (LEAST/GREATEST) prevents a duplicate pairing regardless of
+    which side is stored as A vs. B, DB-enforced against races (not just checked in
+    the service layer). 1:1 with a `RelationshipWorkspace` once created."""
+
+    __tablename__ = "user_connections"
+    __table_args__ = (
+        CheckConstraint("user_a_id <> user_b_id", name="ck_user_connections_distinct_users"),
+        #: Expression unique index -- order-independent pairing guard, enforced at the
+        #: DB level regardless of which side is stored as A vs. B (race-safe, unlike a
+        #: service-layer check). `sa.text(...)` rather than `func.least(...)` on the
+        #: not-yet-bound mapped_column attributes -- see PR-V2-03 Context7 lookup.
+        Index(
+            "uq_user_connections_pair",
+            text("LEAST(user_a_id, user_b_id)"),
+            text("GREATEST(user_a_id, user_b_id)"),
+            unique=True,
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    user_a_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    user_b_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    status: Mapped[ConnectionStatus] = mapped_column(String(20), default=ConnectionStatus.ACTIVE)
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    dissolved_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class RelationshipWorkspace(Base):
+    """Placeholder shared workspace for one `UserConnection` -- no content columns yet
+    (see PR-V2-03 blueprint; content surfaces land in later PRs). 1:1 with its
+    `UserConnection` via the unique FK below."""
+
+    __tablename__ = "relationship_workspaces"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    connection_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("user_connections.id", ondelete="CASCADE"), unique=True, index=True
+    )
+    status: Mapped[WorkspaceStatus] = mapped_column(String(20), default=WorkspaceStatus.ACTIVE)
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    dissolved_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class WorkspaceMember(Base):
+    """One `User`'s membership row in a `RelationshipWorkspace` -- always exactly two
+    ACTIVE rows per workspace (created atomically alongside it, see
+    services/connection_service.py)."""
+
+    __tablename__ = "workspace_members"
+    __table_args__ = (
+        UniqueConstraint(
+            "workspace_id", "user_id", name="uq_workspace_members_workspace_id_user_id"
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("relationship_workspaces.id", ondelete="CASCADE"), index=True
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    status: Mapped[WorkspaceMemberStatus] = mapped_column(
+        String(20), default=WorkspaceMemberStatus.ACTIVE
+    )
+    joined_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class ConsentGrant(Base):
+    """One directional consent: `grantor_user_id` allows `grantee_user_id` to see
+    `scope` within `workspace_id`. `version` is always 1 in this PR (no re-grant flow
+    yet) -- see services/consent_service.py::assert_consent for the enforcement read
+    path (always fresh from DB, no caching)."""
+
+    __tablename__ = "consent_grants"
+    __table_args__ = (
+        CheckConstraint(
+            "grantor_user_id <> grantee_user_id", name="ck_consent_grants_distinct_users"
+        ),
+        UniqueConstraint(
+            "workspace_id",
+            "grantor_user_id",
+            "grantee_user_id",
+            "scope",
+            "version",
+            name="uq_consent_grants_workspace_grantor_grantee_scope_version",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("relationship_workspaces.id", ondelete="CASCADE"), index=True
+    )
+    grantor_user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    grantee_user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    scope: Mapped[str] = mapped_column(String(40))
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    granted_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    revoked_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class ConsentEvent(Base):
+    """Append-only audit trail for one `ConsentGrant` -- one row per GRANTED/REVOKED
+    transition. `actor_user_id` uses `ondelete=SET NULL` (audit-reference pattern,
+    see `AdminAuditEvent`) so history survives a deleted account."""
+
+    __tablename__ = "consent_events"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    grant_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("consent_grants.id", ondelete="CASCADE"), index=True
+    )
+    event_type: Mapped[str] = mapped_column(String(20))
+    actor_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    occurred_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
 __all__ = [
     "AdminAuditEvent",
     "Base",
     "Calculation",
+    "ConnectionInvitation",
+    "ConsentEvent",
+    "ConsentGrant",
     "EmailVerificationToken",
     "EntitlementAssignment",
     "EntitlementSet",
@@ -533,10 +713,13 @@ __all__ = [
     "PersonalTask",
     "PrivateNote",
     "PrivateReflection",
+    "RelationshipWorkspace",
     "Report",
     "ReportJob",
     "ReportSection",
     "RelationshipComparison",
     "Session",
     "User",
+    "UserConnection",
+    "WorkspaceMember",
 ]
