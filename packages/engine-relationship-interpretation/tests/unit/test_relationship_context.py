@@ -68,7 +68,8 @@ def test_assemble_relationship_context_covers_all_dimensions(profile_a, profile_
         assert blocks[0].role == "knowledge"
     assert context.profile_a_blocks
     assert context.profile_b_blocks
-    assert "life_path" in context.valid_metric_ids
+    assert "a:life_path" in context.valid_metric_ids
+    assert "b:life_path" in context.valid_metric_ids
 
 
 def test_assemble_shadow_context_resolves_a_rule(profile_a, profile_b, knowledge_base) -> None:

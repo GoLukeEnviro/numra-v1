@@ -160,10 +160,12 @@ def assemble_relationship_context(
         dimension_blocks[dimension_id] = tuple(blocks)
 
     valid_metric_ids = sorted(
-        {*build_metric_display_value_index(profile_a), *build_metric_display_value_index(profile_b)}
+        [f"a:{metric_id}" for metric_id in build_metric_display_value_index(profile_a)]
+        + [f"b:{metric_id}" for metric_id in build_metric_display_value_index(profile_b)]
     )
     valid_special_ids = sorted(
-        {*build_special_claim_index(profile_a), *build_special_claim_index(profile_b)}
+        [f"a:{special_id}" for special_id in build_special_claim_index(profile_a)]
+        + [f"b:{special_id}" for special_id in build_special_claim_index(profile_b)]
     )
 
     return StructuredRelationshipContext(
@@ -206,10 +208,12 @@ def assemble_shadow_context(
     profile_b_blocks = _profile_metric_blocks(profile_b, label_prefix="b")
 
     valid_metric_ids = sorted(
-        {*build_metric_display_value_index(profile_a), *build_metric_display_value_index(profile_b)}
+        [f"a:{metric_id}" for metric_id in build_metric_display_value_index(profile_a)]
+        + [f"b:{metric_id}" for metric_id in build_metric_display_value_index(profile_b)]
     )
     valid_special_ids = sorted(
-        {*build_special_claim_index(profile_a), *build_special_claim_index(profile_b)}
+        [f"a:{special_id}" for special_id in build_special_claim_index(profile_a)]
+        + [f"b:{special_id}" for special_id in build_special_claim_index(profile_b)]
     )
 
     return StructuredShadowContext(

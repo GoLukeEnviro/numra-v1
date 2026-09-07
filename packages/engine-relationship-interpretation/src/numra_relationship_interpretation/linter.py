@@ -47,10 +47,14 @@ _FORBIDDEN_DIAGNOSTIC_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
 _COMPATIBILITY_SCORE_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
     re.compile(pattern, re.IGNORECASE)
     for pattern in (
-        r"\d+\s*%.*(kompatib|match|übereinstimm)",
-        r"(kompatib|match|übereinstimm).*\d+\s*%",
-        r"\d+\s*/\s*100.*(kompatib|match|score)",
-        r"(kompatib|match|score).*\d+\s*/\s*100",
+        r"\d+\s*%.*(kompatib|match|übereinstimm|percent|compatible)",
+        r"(kompatib|match|übereinstimm|percent|compatible).*\d+\s*%",
+        r"\d+\s*prozent.*(kompatib|match|übereinstimm|compatible)",
+        r"(kompatib|match|übereinstimm|compatible).*\d+\s*prozent",
+        r"\d+\s*/\s*100.*(kompatib|match|score|compatible)",
+        r"(kompatib|match|score|compatible).*\d+\s*/\s*100",
+        r"\d+\s*von\s*\d+.*(kompatib|passt)",
+        r"(kompatib|passt).*\d+\s*von\s*\d+",
     )
 )
 

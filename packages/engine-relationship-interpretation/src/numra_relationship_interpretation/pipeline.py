@@ -13,11 +13,17 @@ chooses which knowledge entry or which shadow-interaction rule applies.
 
 from __future__ import annotations
 
+import re
+
 from pydantic import BaseModel, ConfigDict
 
 from numra_interpretation.knowledge_loader import KnowledgeBase
 from numra_interpretation.llm.types import ContextBlock, StructuredGenerationRequest
 from numra_interpretation.llm.types import LLMProvider as LLMProviderProtocol
+from numra_interpretation.llm.validator import (
+    build_metric_display_value_index,
+    build_special_claim_index,
+)
 from numra_numerology.models.profile import CanonicalProfile
 from numra_relationship_interpretation.context import (
     StructuredRelationshipContext,
@@ -53,11 +59,18 @@ _RELATIONSHIP_SYSTEM_INSTRUCTIONS = (
     "You are rendering a non-diagnostic, symbolic numerology relationship reflection "
     "for exactly one dimension, grounded entirely in the profile facts and knowledge "
     "context you were given. Do not invent a Life Path, Expression, or any other "
-    "numerology value. Do not state or imply a compatibility score, match percentage, "
-    "or numeric rating of the relationship. Never use psychiatric, clinical, or "
-    "personality-disorder language, and never frame an attachment style as a "
-    "diagnosis — only as a descriptive, non-diagnostic reflection. Write 2-4 sentences "
-    "of German prose for the 'text' field only."
+    "numerology value. Do not calculate or derive an alternative value. All "
+    "numerological claims must be grounded in the provided profile facts. Reference "
+    "every numeric fact using the metric-placeholder syntax you were given, naming a "
+    "known metric id for a single scalar fact or a known special id for a non-scalar "
+    "fact such as hidden passion or karmic lessons, always prefixed with which person "
+    "the fact belongs to (a for Person A, b for Person B), rather than typing digits "
+    "yourself. Never type a numerology value as a literal digit. Do not state or "
+    "imply a compatibility score, match percentage, or numeric rating of the "
+    "relationship. Never use psychiatric, clinical, or personality-disorder language, "
+    "and never frame an attachment style as a diagnosis — only as a descriptive, "
+    "non-diagnostic reflection. Write 2-4 sentences of German prose for the 'text' "
+    "field only."
 )
 
 _SHADOW_SYSTEM_INSTRUCTIONS = (
@@ -65,11 +78,139 @@ _SHADOW_SYSTEM_INSTRUCTIONS = (
     "reflection between two people, grounded entirely in the deterministic shadow "
     "theme(s) and interaction pattern you were given — you never choose or invent "
     "which shadow theme or interaction pattern applies, only explain the one given to "
-    "you in natural German prose. Do not state or imply a compatibility score or "
-    "match percentage. Never use psychiatric, clinical, or personality-disorder "
-    "language, and never frame an attachment style as a diagnosis. Write 2-4 sentences "
-    "for the 'text' field only."
+    "you in natural German prose. All numerological claims must be grounded in the "
+    "provided profile facts. Reference every numeric fact using the metric-placeholder "
+    "syntax you were given, naming a known metric id for a single scalar fact or a "
+    "known special id for a non-scalar fact such as hidden passion or karmic lessons, "
+    "always prefixed with which person the fact belongs to (a for Person A, b for "
+    "Person B), rather than typing digits yourself. Never type a numerology value as "
+    "a literal digit. Do not state or imply a compatibility score or match "
+    "percentage. Never use psychiatric, clinical, or personality-disorder language, "
+    "and never frame an attachment style as a diagnosis. Write 2-4 sentences for the "
+    "'text' field only."
 )
+
+#: Matches the two-profile-namespaced placeholder syntax this package requires:
+#: ``{{metric:a:ID}}`` / ``{{metric:b:ID}}`` / ``{{special:a:ID}}`` / ``{{special:b:ID}}``.
+#: Deliberately its own pattern rather than reusing
+#: `numra_interpretation.llm.validator`'s single-profile pattern, which has no
+#: namespace for *which* profile (A or B) a placeholder's id belongs to.
+_PLACEHOLDER_PATTERN = re.compile(
+    r"\{\{\s*(metric|special)\s*:\s*([ab])\s*:\s*([a-zA-Z0-9_]+)\s*\}\}"
+)
+
+
+def _resolve_placeholders(
+    text: str, *, profile_a: CanonicalProfile, profile_b: CanonicalProfile
+) -> str:
+    """Two-profile-aware sibling of `numra_interpretation.report.pipeline`'s
+    `_resolve_placeholders`: replaces every ``{{metric:a:ID}}``/``{{metric:b:ID}}``/
+    ``{{special:a:ID}}``/``{{special:b:ID}}`` placeholder with the referenced profile's
+    own canonical value — never with anything the LLM said. An unknown id (or an id
+    that does not exist for the referenced profile) is a hard failure
+    (`InvalidAnalysisSection`), retried once by the caller. A no-op when the text
+    carries no placeholder syntax at all (e.g. `MockLLMProvider`'s output)."""
+    indices: dict[tuple[str, str], dict[str, str]] = {
+        ("metric", "a"): build_metric_display_value_index(profile_a),
+        ("metric", "b"): build_metric_display_value_index(profile_b),
+        ("special", "a"): build_special_claim_index(profile_a),
+        ("special", "b"): build_special_claim_index(profile_b),
+    }
+
+    def _replace(match: re.Match[str]) -> str:
+        namespace, profile_letter, identifier = match.group(1), match.group(2), match.group(3)
+        source = indices[(namespace, profile_letter)]
+        if identifier not in source:
+            raise InvalidAnalysisSection(
+                f"Unknown {namespace} id referenced by placeholder for profile "
+                f"{profile_letter}: {identifier!r}"
+            )
+        return source[identifier]
+
+    return _PLACEHOLDER_PATTERN.sub(_replace, text)
+
+
+def _find_unauthorized_numeric_literals(
+    text: str, *, profile_a: CanonicalProfile, profile_b: CanonicalProfile
+) -> tuple[str, ...]:
+    """Two-profile-aware sibling of
+    `numra_interpretation.llm.validator.find_unauthorized_numeric_literals`: strips
+    this package's own ``{{metric:a/b:ID}}``/``{{special:a/b:ID}}`` placeholder syntax
+    first, then flags any remaining bare 2+-digit run that coincides with a canonical
+    value from *either* profile — evidence the model typed a numerology fact (about
+    Person A or Person B) as a literal digit instead of citing it via a placeholder."""
+    stripped = _PLACEHOLDER_PATTERN.sub(" ", text)
+
+    forbidden: set[str] = set()
+    all_values = list(build_metric_display_value_index(profile_a).values())
+    all_values += list(build_special_claim_index(profile_a).values())
+    all_values += list(build_metric_display_value_index(profile_b).values())
+    all_values += list(build_special_claim_index(profile_b).values())
+    for value in all_values:
+        for digits in re.findall(r"\d+", value):
+            if len(digits) >= 2:
+                forbidden.add(digits)
+
+    found: list[str] = []
+    seen: set[str] = set()
+    for match in re.finditer(r"(?<!\d)\d{2,}(?!\d)", stripped):
+        token = match.group(0)
+        if token in forbidden and token not in seen:
+            seen.add(token)
+            found.append(token)
+    return tuple(found)
+
+
+def _validate_and_resolve_text(
+    text: str,
+    *,
+    profile_a: CanonicalProfile,
+    profile_b: CanonicalProfile,
+    is_mock_provider: bool,
+) -> str:
+    """The grounding gate every rendered `ThemeStatement.text` must pass before it is
+    accepted: first the unauthorized-literal check on the still-placeholder-bearing
+    raw text (skipped for `MockLLMProvider`, exactly like
+    `numra_interpretation.report.pipeline._generate_section` — its deterministic
+    filler echoes raw grounding facts by design, which is not "the model inventing a
+    claim"), then placeholder resolution against the real profile data. Raises
+    `InvalidAnalysisSection` on either an unauthorized literal or an unknown
+    placeholder id — the caller's existing one-repair-attempt pattern catches it."""
+    if not is_mock_provider:
+        unauthorized = _find_unauthorized_numeric_literals(
+            text, profile_a=profile_a, profile_b=profile_b
+        )
+        if unauthorized:
+            raise InvalidAnalysisSection(
+                f"UnauthorizedNumericLiteral: text contains bare digit(s) {unauthorized!r} "
+                "not referenced via a metric/special placeholder"
+            )
+    return _resolve_placeholders(text, profile_a=profile_a, profile_b=profile_b)
+
+
+def _valid_placeholder_ids_block(
+    valid_metric_ids: tuple[str, ...], valid_special_ids: tuple[str, ...]
+) -> ContextBlock:
+    """The ground-truth id listing a model actually needs to comply with the
+    placeholder-only instruction above — same rationale as
+    `numra_interpretation.report.pipeline._generate_section`'s
+    ``valid_placeholder_ids`` block: naming which ids are known guarantees every id the
+    model is told exists actually resolves. Ids here already carry their profile
+    prefix (``a:``/``b:``, see `context.py`), so the model can tell which person's fact
+    a given id belongs to."""
+    return ContextBlock(
+        role="instruction_supplement",
+        label="valid_placeholder_ids",
+        content=(
+            "The only valid ids in the metric placeholder namespace are: "
+            f"{', '.join(valid_metric_ids)}. "
+            "The only valid ids in the special placeholder namespace are: "
+            f"{', '.join(valid_special_ids)}. "
+            "Each id already carries which person it describes as an 'a:' or 'b:' "
+            "prefix. Never invent an id outside these two lists, even if it seems "
+            "descriptive."
+        ),
+    )
 
 
 class _GeneratedText(BaseModel):
@@ -106,17 +247,26 @@ async def _generate_dimension_statement(
     *,
     context: StructuredRelationshipContext,
     dimension_id: str,
+    profile_a: CanonicalProfile,
+    profile_b: CanonicalProfile,
     llm: LLMProviderProtocol,
     attempt: int,
+    is_mock_provider: bool,
 ) -> ThemeStatement:
     blocks = (
-        context.profile_a_blocks + context.profile_b_blocks + context.dimension_blocks[dimension_id]
+        context.profile_a_blocks
+        + context.profile_b_blocks
+        + context.dimension_blocks[dimension_id]
+        + (_valid_placeholder_ids_block(context.valid_metric_ids, context.valid_special_ids),)
     )
-    text = await _render(
+    raw_text = await _render(
         llm=llm,
         system_instructions=_RELATIONSHIP_SYSTEM_INSTRUCTIONS,
         context_blocks=blocks,
         metadata={"dimension_id": dimension_id, "attempt": str(attempt)},
+    )
+    text = _validate_and_resolve_text(
+        raw_text, profile_a=profile_a, profile_b=profile_b, is_mock_provider=is_mock_provider
     )
 
     # Provenance is attached deterministically by the pipeline, never trusted from the
@@ -160,16 +310,31 @@ async def generate_relationship_analysis(
         profile_a=profile_a, profile_b=profile_b, frame=frame_knowledge
     )
 
+    health = await llm.health()
+    is_mock_provider = health.provider == "mock"
+
     dimensions: list[DimensionThemes] = []
     for dimension_id in frame_knowledge.dimensions:
         try:
             statement = await _generate_dimension_statement(
-                context=context, dimension_id=dimension_id, llm=llm, attempt=1
+                context=context,
+                dimension_id=dimension_id,
+                profile_a=profile_a,
+                profile_b=profile_b,
+                llm=llm,
+                attempt=1,
+                is_mock_provider=is_mock_provider,
             )
         except InvalidAnalysisSection as exc:
             try:
                 statement = await _generate_dimension_statement(
-                    context=context, dimension_id=dimension_id, llm=llm, attempt=2
+                    context=context,
+                    dimension_id=dimension_id,
+                    profile_a=profile_a,
+                    profile_b=profile_b,
+                    llm=llm,
+                    attempt=2,
+                    is_mock_provider=is_mock_provider,
                 )
             except InvalidAnalysisSection as retry_exc:
                 raise AnalysisGenerationError(
@@ -198,15 +363,26 @@ async def _generate_shadow_statement(
     profile_blocks: tuple[ContextBlock, ...],
     knowledge_ref: str,
     canonical_refs: tuple[str, ...],
+    profile_a: CanonicalProfile,
+    profile_b: CanonicalProfile,
     llm: LLMProviderProtocol,
     attempt: int,
+    is_mock_provider: bool,
 ) -> ThemeStatement:
-    blocks = profile_blocks + (ContextBlock(role="knowledge", label=label, content=base_content),)
-    text = await _render(
+    blocks = profile_blocks + (
+        ContextBlock(role="knowledge", label=label, content=base_content),
+        _valid_placeholder_ids_block(
+            shadow_context.valid_metric_ids, shadow_context.valid_special_ids
+        ),
+    )
+    raw_text = await _render(
         llm=llm,
         system_instructions=_SHADOW_SYSTEM_INSTRUCTIONS,
         context_blocks=blocks,
         metadata={"component": label, "attempt": str(attempt)},
+    )
+    text = _validate_and_resolve_text(
+        raw_text, profile_a=profile_a, profile_b=profile_b, is_mock_provider=is_mock_provider
     )
     statement = ThemeStatement(
         text=text, canonical_refs=canonical_refs, knowledge_refs=(knowledge_ref,)
@@ -225,7 +401,10 @@ async def _generate_shadow_statement_with_repair(
     profile_blocks: tuple[ContextBlock, ...],
     knowledge_ref: str,
     canonical_refs: tuple[str, ...],
+    profile_a: CanonicalProfile,
+    profile_b: CanonicalProfile,
     llm: LLMProviderProtocol,
+    is_mock_provider: bool,
 ) -> ThemeStatement:
     try:
         return await _generate_shadow_statement(
@@ -235,8 +414,11 @@ async def _generate_shadow_statement_with_repair(
             profile_blocks=profile_blocks,
             knowledge_ref=knowledge_ref,
             canonical_refs=canonical_refs,
+            profile_a=profile_a,
+            profile_b=profile_b,
             llm=llm,
             attempt=1,
+            is_mock_provider=is_mock_provider,
         )
     except InvalidAnalysisSection as exc:
         try:
@@ -247,8 +429,11 @@ async def _generate_shadow_statement_with_repair(
                 profile_blocks=profile_blocks,
                 knowledge_ref=knowledge_ref,
                 canonical_refs=canonical_refs,
+                profile_a=profile_a,
+                profile_b=profile_b,
                 llm=llm,
                 attempt=2,
+                is_mock_provider=is_mock_provider,
             )
         except InvalidAnalysisSection as retry_exc:
             raise AnalysisGenerationError(
@@ -300,6 +485,9 @@ async def generate_shadow_dynamics(
     rule = shadow_context.rule
     knowledge_ref = f"shadow-interaction/rules.yaml#{rule.interaction_pattern_template_id}"
 
+    health = await llm.health()
+    is_mock_provider = health.provider == "mock"
+
     user_a_statement = await _generate_shadow_statement_with_repair(
         shadow_context=shadow_context,
         label="user_a_shadow_theme",
@@ -307,7 +495,10 @@ async def generate_shadow_dynamics(
         profile_blocks=shadow_context.profile_a_blocks,
         knowledge_ref=f"numbers#{shadow_context.shadow_theme_a}",
         canonical_refs=("metric:a:life_path",),
+        profile_a=profile_a,
+        profile_b=profile_b,
         llm=llm,
+        is_mock_provider=is_mock_provider,
     )
     user_b_statement = await _generate_shadow_statement_with_repair(
         shadow_context=shadow_context,
@@ -316,7 +507,10 @@ async def generate_shadow_dynamics(
         profile_blocks=shadow_context.profile_b_blocks,
         knowledge_ref=f"numbers#{shadow_context.shadow_theme_b}",
         canonical_refs=("metric:b:life_path",),
+        profile_a=profile_a,
+        profile_b=profile_b,
         llm=llm,
+        is_mock_provider=is_mock_provider,
     )
     interaction_statement = await _generate_shadow_statement_with_repair(
         shadow_context=shadow_context,
@@ -328,7 +522,10 @@ async def generate_shadow_dynamics(
         profile_blocks=shadow_context.profile_a_blocks + shadow_context.profile_b_blocks,
         knowledge_ref=knowledge_ref,
         canonical_refs=("metric:a:life_path", "metric:b:life_path"),
+        profile_a=profile_a,
+        profile_b=profile_b,
         llm=llm,
+        is_mock_provider=is_mock_provider,
     )
     escalation_statement = await _generate_shadow_statement_with_repair(
         shadow_context=shadow_context,
@@ -337,7 +534,10 @@ async def generate_shadow_dynamics(
         profile_blocks=shadow_context.profile_a_blocks + shadow_context.profile_b_blocks,
         knowledge_ref=knowledge_ref,
         canonical_refs=("metric:a:life_path", "metric:b:life_path"),
+        profile_a=profile_a,
+        profile_b=profile_b,
         llm=llm,
+        is_mock_provider=is_mock_provider,
     )
     deescalation_statement = await _generate_shadow_statement_with_repair(
         shadow_context=shadow_context,
@@ -346,7 +546,10 @@ async def generate_shadow_dynamics(
         profile_blocks=shadow_context.profile_a_blocks + shadow_context.profile_b_blocks,
         knowledge_ref=knowledge_ref,
         canonical_refs=("metric:a:life_path", "metric:b:life_path"),
+        profile_a=profile_a,
+        profile_b=profile_b,
         llm=llm,
+        is_mock_provider=is_mock_provider,
     )
 
     health = await llm.health()

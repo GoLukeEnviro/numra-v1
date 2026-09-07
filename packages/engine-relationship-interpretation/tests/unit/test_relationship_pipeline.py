@@ -8,8 +8,16 @@ import pytest
 
 from numra_interpretation.knowledge_loader import load_knowledge_base
 from numra_interpretation.llm.mock_provider import MockLLMProvider
+from numra_interpretation.llm.types import (
+    GenerationRequest,
+    GenerationResult,
+    ProviderHealth,
+    StructuredGenerationRequest,
+)
+from numra_interpretation.llm.validator import build_metric_display_value_index
 from numra_numerology.engine import calculate_profile
 from numra_numerology.models.person import PersonInput
+from numra_relationship_interpretation.errors import AnalysisGenerationError
 from numra_relationship_interpretation.knowledge_loader import (
     load_relationship_frame,
     load_shadow_interaction_rules,
@@ -125,3 +133,93 @@ async def test_generate_relationship_analysis_mismatched_type_raises(profile_a, 
             llm=MockLLMProvider(),
             knowledge_version="0.1.0",
         )
+
+
+@pytest.mark.asyncio
+async def test_generate_relationship_analysis_rejects_bare_wrong_literal(
+    profile_a, profile_b
+) -> None:
+    """Grounding-Fix (CRITICAL Security-Finding): a non-mock provider that states a
+    numerology fact as a bare literal digit instead of citing it via a
+    ``{{metric:a/b:ID}}`` placeholder must be rejected -- even though the pipeline's own
+    ``canonical_refs``/``knowledge_refs`` are hardcoded and would otherwise look
+    "provenance-covered" regardless of what the LLM actually wrote. The literal here is
+    Person B's own real life-path digits, misattributed to Person A -- the exact class
+    of fabricated-but-plausible claim the missing grounding mechanism could not catch
+    before this fix. Mock output is exempt from this check (see `is_mock_provider` in
+    pipeline.py), so this test deliberately reports itself as a non-mock provider."""
+    frame = load_relationship_frame(KNOWLEDGE_ROOT, "PARTNER")
+    assert frame is not None
+    wrong_digits = next(
+        digits
+        for value in build_metric_display_value_index(profile_b).values()
+        for digits in re.findall(r"\d+", value)
+        if len(digits) >= 2
+    )
+
+    class WrongLiteralProvider:
+        async def health(self) -> ProviderHealth:
+            return ProviderHealth(
+                status="healthy", provider="ollama_cloud", checked_at=dt.datetime.now(dt.UTC)
+            )
+
+        async def generate(self, request: GenerationRequest) -> GenerationResult:
+            raise AssertionError("not used")
+
+        async def generate_structured(self, request: StructuredGenerationRequest, schema: type):  # type: ignore[no-untyped-def]
+            text = (
+                f"Der Lebenspfad von Person A ist buchstäblich {wrong_digits}, "
+                "das prägt dieses Thema."
+            )
+            return schema(text=text)
+
+    with pytest.raises(AnalysisGenerationError):
+        await generate_relationship_analysis(
+            profile_a=profile_a,
+            profile_b=profile_b,
+            relationship_type="PARTNER",
+            frame_knowledge=frame,
+            llm=WrongLiteralProvider(),
+            knowledge_version="0.1.0",
+        )
+
+
+@pytest.mark.asyncio
+async def test_generate_relationship_analysis_resolves_placeholder_to_canonical_value(
+    profile_a, profile_b
+) -> None:
+    """The compliant counterpart to the rejection test above: a provider that cites a
+    numeric fact via the required placeholder syntax validates successfully, and the
+    final `ThemeStatement.text` carries the resolved canonical value with no leftover
+    placeholder syntax."""
+    frame = load_relationship_frame(KNOWLEDGE_ROOT, "PARTNER")
+    assert frame is not None
+    expected_value = build_metric_display_value_index(profile_a)["life_path"]
+
+    class PlaceholderProvider:
+        async def health(self) -> ProviderHealth:
+            return ProviderHealth(
+                status="healthy", provider="ollama_cloud", checked_at=dt.datetime.now(dt.UTC)
+            )
+
+        async def generate(self, request: GenerationRequest) -> GenerationResult:
+            raise AssertionError("not used")
+
+        async def generate_structured(self, request: StructuredGenerationRequest, schema: type):  # type: ignore[no-untyped-def]
+            text = (
+                "Der Lebenspfad von Person A ({{metric:a:life_path}}) prägt dieses Thema spürbar."
+            )
+            return schema(text=text)
+
+    result = await generate_relationship_analysis(
+        profile_a=profile_a,
+        profile_b=profile_b,
+        relationship_type="PARTNER",
+        frame_knowledge=frame,
+        llm=PlaceholderProvider(),
+        knowledge_version="0.1.0",
+    )
+    for dimension in result.dimensions:
+        for statement in dimension.statements:
+            assert "{{" not in statement.text and "}}" not in statement.text
+            assert expected_value in statement.text
