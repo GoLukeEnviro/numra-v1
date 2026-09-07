@@ -1,0 +1,9 @@
+# PLATZHALTER -- PR-V2-05b.
+#
+# Dieser Datei-Platzhalter dokumentiert den geplanten typ-uebergreifenden
+# Shadow-Dynamics-Fallback fuer Beziehungstypen ohne eigenes Relationship-Frame
+# (z.B. FAMILY, WORK, OTHER), sobald PR-V2-05b diesen Pfad implementiert.
+#
+# Der Pipeline-Code dieser PR (PR-V2-05) liest diese Datei NICHT -- Shadow Dynamics
+# ist in PR-V2-05 bewusst typ-uebergreifend ueber knowledge/shadow-interaction/rules.yaml
+# implementiert und braucht diesen Fallback (noch) nicht.
