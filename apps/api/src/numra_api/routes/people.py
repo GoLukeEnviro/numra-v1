@@ -3,6 +3,7 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from numra_api.config import Settings
@@ -16,10 +17,14 @@ from numra_api.repositories.people import (
     list_people,
     update_person,
 )
-from numra_api.schemas.person import NameIdentityOut, PersonOut, PersonPatchRequest
-from numra_api.services.errors import NotFoundError
+from numra_api.schemas.person import (
+    NameIdentityOut,
+    PersonCreateRequest,
+    PersonOut,
+    PersonPatchRequest,
+)
+from numra_api.services.errors import AmbiguousSelfProfile, NotFoundError
 from numra_api.services.person_service import assert_birth_date_not_in_future
-from numra_numerology.models.person import PersonInput
 
 router = APIRouter(prefix="/v1/people", tags=["people"])
 
@@ -50,26 +55,35 @@ async def list_people_route(
 
 @router.post("", response_model=PersonOut, status_code=201, dependencies=[Depends(require_csrf)])
 async def create_person_route(
-    body: PersonInput,
+    body: PersonCreateRequest,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     settings: Settings = Depends(get_settings_dep),
 ) -> PersonOut:
     assert_birth_date_not_in_future(body.birth_date, app_timezone=settings.app_timezone)
-    person = await create_person(
-        db,
-        user_id=user.id,
-        birth_first_names=body.birth_first_names,
-        birth_middle_names=body.birth_middle_names,
-        birth_last_name=body.birth_last_name,
-        birth_date=body.birth_date,
-        birth_time=body.birth_time.model_dump(mode="json") if body.birth_time else None,
-        birth_place=body.birth_place.model_dump(mode="json") if body.birth_place else None,
-        current_first_names=body.current_first_names,
-        current_middle_names=body.current_middle_names,
-        current_last_name=body.current_last_name,
-        preferred_name=body.preferred_name,
-    )
+    try:
+        person = await create_person(
+            db,
+            user_id=user.id,
+            person_account_mode=body.person_account_mode,
+            birth_first_names=body.birth_first_names,
+            birth_middle_names=body.birth_middle_names,
+            birth_last_name=body.birth_last_name,
+            birth_date=body.birth_date,
+            birth_time=body.birth_time.model_dump(mode="json") if body.birth_time else None,
+            birth_place=body.birth_place.model_dump(mode="json") if body.birth_place else None,
+            current_first_names=body.current_first_names,
+            current_middle_names=body.current_middle_names,
+            current_last_name=body.current_last_name,
+            preferred_name=body.preferred_name,
+        )
+    except IntegrityError as exc:
+        # uq_people_user_id_self_mode is the DB-level arbiter for "at most one SELF
+        # Person per user" -- a second SELF create must surface as this application
+        # error, never as a raw driver exception (same rationale as
+        # routes/auth.py::register's EmailAlreadyRegistered translation).
+        await db.rollback()
+        raise AmbiguousSelfProfile("user already has a SELF-mode person") from exc
     await sync_identity_history(db, person=person)
     return _to_out(person)
 
@@ -145,8 +159,17 @@ async def patch_person_route(
         updates["current_last_name"] = body.current_last_name
     if "preferred_name" in set_fields:
         updates["preferred_name"] = body.preferred_name
+    if "person_account_mode" in set_fields:
+        updates["person_account_mode"] = body.person_account_mode
 
-    person = await update_person(db, person=person, **updates)
+    try:
+        person = await update_person(db, person=person, **updates)
+    except IntegrityError as exc:
+        # Same uq_people_user_id_self_mode arbiter as create_person_route -- a PATCH
+        # that would leave this user with a second SELF-mode Person must surface as
+        # AmbiguousSelfProfile, never a raw driver exception.
+        await db.rollback()
+        raise AmbiguousSelfProfile("user already has a SELF-mode person") from exc
     await sync_identity_history(db, person=person)
     return _to_out(person)
 

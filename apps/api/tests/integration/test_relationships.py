@@ -23,7 +23,12 @@ async def test_relationship_comparison_no_percentage(client, sessionmaker, lukas
     headers = await _login(client, sessionmaker)
 
     person_a = (await client.post("/v1/people", json=lukas_payload, headers=headers)).json()
-    other_payload = {**lukas_payload, "birth_first_names": "Anna", "birth_last_name": "Beispiel"}
+    other_payload = {
+        **lukas_payload,
+        "birth_first_names": "Anna",
+        "birth_last_name": "Beispiel",
+        "person_account_mode": "MANAGED_OTHER",
+    }
     person_b = (await client.post("/v1/people", json=other_payload, headers=headers)).json()
 
     calc_a = (
@@ -78,7 +83,12 @@ async def test_relationship_insights_have_no_score_and_cite_knowledge(
     headers = await _login(client, sessionmaker, email="insights@example.com")
 
     person_a = (await client.post("/v1/people", json=lukas_payload, headers=headers)).json()
-    other_payload = {**lukas_payload, "birth_first_names": "Anna", "birth_last_name": "Beispiel"}
+    other_payload = {
+        **lukas_payload,
+        "birth_first_names": "Anna",
+        "birth_last_name": "Beispiel",
+        "person_account_mode": "MANAGED_OTHER",
+    }
     person_b = (await client.post("/v1/people", json=other_payload, headers=headers)).json()
 
     calc_a = (
@@ -147,7 +157,12 @@ async def test_list_relationships_resolves_person_names(
     headers = await _login(client, sessionmaker, email="list-rel@example.com")
 
     person_a = (await client.post("/v1/people", json=lukas_payload, headers=headers)).json()
-    other_payload = {**lukas_payload, "birth_first_names": "Anna", "birth_last_name": "Beispiel"}
+    other_payload = {
+        **lukas_payload,
+        "birth_first_names": "Anna",
+        "birth_last_name": "Beispiel",
+        "person_account_mode": "MANAGED_OTHER",
+    }
     person_b = (await client.post("/v1/people", json=other_payload, headers=headers)).json()
 
     calc_a = (
@@ -188,7 +203,11 @@ async def test_list_relationships_isolated_per_user(client, sessionmaker, lukas_
     person_b = (
         await client.post(
             "/v1/people",
-            json={**lukas_payload, "birth_first_names": "Second"},
+            json={
+                **lukas_payload,
+                "birth_first_names": "Second",
+                "person_account_mode": "MANAGED_OTHER",
+            },
             headers=headers_a,
         )
     ).json()
@@ -228,7 +247,12 @@ async def test_create_relationship_by_person_resolves_latest_calculation(
     headers = await _login(client, sessionmaker, email="rel-by-person@example.com")
 
     person_a = (await client.post("/v1/people", json=lukas_payload, headers=headers)).json()
-    other_payload = {**lukas_payload, "birth_first_names": "Anna", "birth_last_name": "Beispiel"}
+    other_payload = {
+        **lukas_payload,
+        "birth_first_names": "Anna",
+        "birth_last_name": "Beispiel",
+        "person_account_mode": "MANAGED_OTHER",
+    }
     person_b = (await client.post("/v1/people", json=other_payload, headers=headers)).json()
 
     calc_a = (
@@ -271,7 +295,12 @@ async def test_create_relationship_by_person_without_calculation_fails_clearly(
 ) -> None:
     headers = await _login(client, sessionmaker, email="rel-no-calc@example.com")
     person_a = (await client.post("/v1/people", json=lukas_payload, headers=headers)).json()
-    other_payload = {**lukas_payload, "birth_first_names": "Anna", "birth_last_name": "Beispiel"}
+    other_payload = {
+        **lukas_payload,
+        "birth_first_names": "Anna",
+        "birth_last_name": "Beispiel",
+        "person_account_mode": "MANAGED_OTHER",
+    }
     person_b = (await client.post("/v1/people", json=other_payload, headers=headers)).json()
     # Neither person has a calculation yet.
 

@@ -109,3 +109,29 @@ DEFAULT_CONSENT_SCOPES: tuple[ConsentScope, ...] = (
 class ConsentEventType(StrEnum):
     GRANTED = "GRANTED"
     REVOKED = "REVOKED"
+
+
+class PersonAccountMode(StrEnum):
+    """specs/v2/minor-profile-policy.md -- `person_account_mode` on `Person`. Only
+    `SELF` profiles may ever become a `UserConnection` participant or
+    `RelationshipWorkspace` member; `MANAGED_MINOR`/`MANAGED_OTHER` are private,
+    single-owner profiles only."""
+
+    SELF = "SELF"
+    MANAGED_MINOR = "MANAGED_MINOR"
+    MANAGED_OTHER = "MANAGED_OTHER"
+
+
+class RelationshipType(StrEnum):
+    """specs/v2/relationship-type-spec.md -- selectable via PATCH
+    /v1/workspaces/{workspace_id}. The canon never branches on this value, only the
+    interpretation frame (out of scope for this PR, see PR-V2-05)."""
+
+    PARTNER = "PARTNER"
+    DATING = "DATING"
+    FRIENDSHIP = "FRIENDSHIP"
+    FAMILY = "FAMILY"
+    SIBLINGS = "SIBLINGS"
+    PARENT_CHILD = "PARENT_CHILD"
+    WORK = "WORK"
+    OTHER = "OTHER"

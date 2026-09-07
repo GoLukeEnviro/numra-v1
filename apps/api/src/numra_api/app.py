@@ -33,6 +33,7 @@ from numra_api.routes import (
     private_notes,
     private_reflections,
     public,
+    relationship_workspaces,
     relationships,
     reports,
     system_info,
@@ -125,6 +126,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(workspace.router)
     app.include_router(connections.router)
     app.include_router(consent.router)
+    app.include_router(relationship_workspaces.router)
 
     return app
 

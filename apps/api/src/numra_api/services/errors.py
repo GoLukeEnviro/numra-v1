@@ -131,3 +131,13 @@ class ConsentNotGranted(ApplicationError):
 class WorkspaceDissolved(ApplicationError):
     code = "WORKSPACE_DISSOLVED"
     status_code = 409
+
+
+class AmbiguousSelfProfile(ApplicationError):
+    """Raised when a create/update would leave a user with more than one `SELF`-mode
+    `Person` -- the DB-level arbiter is `uq_people_user_id_self_mode`
+    (models/tables.py::Person), this is the translated `IntegrityError` (same
+    rationale as `EmailAlreadyRegistered` in routes/auth.py::register)."""
+
+    code = "AMBIGUOUS_SELF_PROFILE"
+    status_code = 409

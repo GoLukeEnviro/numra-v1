@@ -116,7 +116,11 @@ async def test_list_reports_filters_and_word_count(
     by_calculation = await client.get("/v1/reports", params={"calculation_id": calc["id"]})
     assert len(by_calculation.json()) == 1
 
-    other_person_payload = {**lukas_payload, "birth_first_names": "Other"}
+    other_person_payload = {
+        **lukas_payload,
+        "birth_first_names": "Other",
+        "person_account_mode": "MANAGED_OTHER",
+    }
     other_person = (
         await client.post("/v1/people", json=other_person_payload, headers=headers)
     ).json()
