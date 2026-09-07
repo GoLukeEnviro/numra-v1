@@ -66,6 +66,9 @@ export function buildPersonInput(form: PersonFormState): PersonInput {
     current_middle_names: form.currentMiddleNames.trim() || null,
     current_last_name: form.currentLastName.trim() || null,
     preferred_name: form.preferredName.trim() || null,
+    // Both callers of buildPersonInput (onboarding, people/new) create the user's own
+    // profile -- never a managed profile -- so SELF is the only correct value here.
+    person_account_mode: "SELF",
   };
 }
 
