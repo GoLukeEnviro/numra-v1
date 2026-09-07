@@ -13,6 +13,7 @@ members = [
     "numra-astrology",
     "numra-interpretation",
     "numra-numerology",
+    "numra-relationship-interpretation",
     "numra-v1-workspace",
 ]
 
@@ -1155,6 +1156,25 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [{ name = "pydantic", specifier = ">=2.6" }]
+
+[[package]]
+name = "numra-relationship-interpretation"
+version = "0.1.0"
+source = { editable = "packages/engine-relationship-interpretation" }
+dependencies = [
+    { name = "numra-interpretation" },
+    { name = "numra-numerology" },
+    { name = "pydantic" },
+    { name = "pyyaml" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "numra-interpretation", editable = "packages/engine-interpretation" },
+    { name = "numra-numerology", editable = "packages/engine-numerology" },
+    { name = "pydantic", specifier = ">=2.6" },
+    { name = "pyyaml", specifier = ">=6.0" },
+]
 
 [[package]]
 name = "numra-v1-workspace"
