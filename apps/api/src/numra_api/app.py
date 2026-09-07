@@ -27,10 +27,14 @@ from numra_api.routes import (
     exports,
     health,
     people,
+    personal_tasks,
+    private_notes,
+    private_reflections,
     public,
     relationships,
     reports,
     system_info,
+    workspace,
 )
 from numra_api.services.email_factory import build_email_sender
 from numra_api.services.errors import ApplicationError
@@ -113,6 +117,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(system_info.router)
     app.include_router(admin.router)
     app.include_router(entitlements.router)
+    app.include_router(private_reflections.router)
+    app.include_router(private_notes.router)
+    app.include_router(personal_tasks.router)
+    app.include_router(workspace.router)
 
     return app
 

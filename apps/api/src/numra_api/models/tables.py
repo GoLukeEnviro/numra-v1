@@ -26,6 +26,7 @@ from numra_api.models.enums import (
     ExportStatus,
     ExportType,
     NameIdentityKind,
+    PersonalTaskStatus,
     ReportJobStatus,
     ReportType,
     UserRole,
@@ -436,6 +437,87 @@ class EntitlementAssignment(Base):
     )
 
 
+class PrivateReflection(Base):
+    """PERSONAL_PRIVATE Workspace surface (specs/v2/personal-workspace-spec.md) --
+    never shared unless the user performs an explicit SHARE action into a
+    relationship context (out of scope for this PR). `user_id` is the IDOR security
+    boundary (repository queries always filter on it), `person_id` is the fachliche
+    Zuordnung -- both columns are stored, see repositories/private_reflections.py."""
+
+    __tablename__ = "private_reflections"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    person_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("people.id", ondelete="CASCADE"), index=True
+    )
+    entry_date: Mapped[dt.date] = mapped_column(Date)
+    content: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class PrivateNote(Base):
+    """PERSONAL_PRIVATE Workspace surface, same shape/ownership rules as
+    `PrivateReflection` -- see that class's docstring."""
+
+    __tablename__ = "private_notes"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    person_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("people.id", ondelete="CASCADE"), index=True
+    )
+    title: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    content: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class PersonalTask(Base):
+    """PERSONAL_PRIVATE Workspace surface. Deliberately its own slim table -- no
+    `task_type` discriminator (every row is PERSONAL_PRIVATE by construction) and no
+    `workspace_id` (the V2 `WorkspaceTask`/relationship-task-system entities do not
+    exist yet -- see specs/v2/data-model.md). `completed_at` is set automatically by
+    the route when `status` transitions to COMPLETED (see
+    routes/personal_tasks.py), never accepted directly from the client."""
+
+    __tablename__ = "personal_tasks"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    person_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("people.id", ondelete="CASCADE"), index=True
+    )
+    title: Mapped[str] = mapped_column(String(200))
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    due_date: Mapped[dt.date | None] = mapped_column(Date, nullable=True)
+    status: Mapped[PersonalTaskStatus] = mapped_column(
+        String(20), default=PersonalTaskStatus.ACTIVE
+    )
+    completed_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
 __all__ = [
     "AdminAuditEvent",
     "Base",
@@ -448,6 +530,9 @@ __all__ = [
     "NameIdentity",
     "PasswordResetToken",
     "Person",
+    "PersonalTask",
+    "PrivateNote",
+    "PrivateReflection",
     "Report",
     "ReportJob",
     "ReportSection",

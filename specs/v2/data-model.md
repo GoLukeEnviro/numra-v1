@@ -65,7 +65,20 @@ InsightSnapshot
 EvidenceMetricDefinition
 EvidenceEntry
 PatternAnalysis
+
+PrivateReflection
+PrivateNote
+PersonalTask
 ```
+
+`PrivateReflection`/`PrivateNote`/`PersonalTask` (PR-V2-02, Personal Workspace,
+`specs/v2/personal-workspace-spec.md`): `user_id` + `person_id` both stored on every
+row -- `user_id` is the IDOR security boundary every repository query filters on,
+`person_id` is the fachliche Zuordnung to the profile the entry belongs to.
+`PersonalTask` is intentionally its own slim table, not a row in the later
+relationship `WorkspaceTask`/`TaskAcceptance` system above -- no `task_type`
+discriminator (every row is PERSONAL_PRIVATE by construction) and no
+`workspace_id`.
 
 Each entity's full column list, indexes, and constraints are specified in the PR
 that introduces it (`specs/v2/api-contract.md` §PR structure), reviewed against
