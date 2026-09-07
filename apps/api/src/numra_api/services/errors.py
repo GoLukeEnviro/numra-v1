@@ -133,6 +133,33 @@ class WorkspaceDissolved(ApplicationError):
     status_code = 409
 
 
+class RelationshipTypeNotSet(ApplicationError):
+    """Raised when a relationship-analysis/shadow-dynamics job is requested for a
+    `RelationshipWorkspace` that has no `relationship_type` selected yet (PATCH
+    /v1/workspaces/{workspace_id} must run first)."""
+
+    code = "RELATIONSHIP_TYPE_NOT_SET"
+    status_code = 409
+
+
+class KnowledgeFrameNotAvailable(ApplicationError):
+    """Raised when `numra_relationship_interpretation.knowledge_loader.load_relationship_frame`
+    returns ``None`` for the workspace's `relationship_type` (e.g. `WORK`/`FAMILY` in
+    this PR) -- a real, expected gap in the Knowledge Base content, not a bug."""
+
+    code = "KNOWLEDGE_FRAME_NOT_AVAILABLE"
+    status_code = 409
+
+
+class SelfProfileRequired(ApplicationError):
+    """Raised when one or both workspace members has no `SELF`-mode `Person` yet --
+    relationship/shadow-dynamics analysis needs a real `CanonicalProfile` for both
+    sides."""
+
+    code = "SELF_PROFILE_REQUIRED"
+    status_code = 409
+
+
 class AmbiguousSelfProfile(ApplicationError):
     """Raised when a create/update would leave a user with more than one `SELF`-mode
     `Person` -- the DB-level arbiter is `uq_people_user_id_self_mode`
