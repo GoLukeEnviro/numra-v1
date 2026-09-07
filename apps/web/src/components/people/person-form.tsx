@@ -39,7 +39,10 @@ const INITIAL_STATE: PersonFormState = {
   preferredName: "",
 };
 
-export function buildPersonInput(form: PersonFormState): PersonInput {
+export function buildPersonInput(
+  form: PersonFormState,
+  personAccountMode: PersonInput["person_account_mode"] = "MANAGED_OTHER",
+): PersonInput {
   const birthTime =
     form.birthTimeValue.trim() || form.birthTimePrecision !== "unknown"
       ? {
@@ -66,9 +69,7 @@ export function buildPersonInput(form: PersonFormState): PersonInput {
     current_middle_names: form.currentMiddleNames.trim() || null,
     current_last_name: form.currentLastName.trim() || null,
     preferred_name: form.preferredName.trim() || null,
-    // Both callers of buildPersonInput (onboarding, people/new) create the user's own
-    // profile -- never a managed profile -- so SELF is the only correct value here.
-    person_account_mode: "SELF",
+    person_account_mode: personAccountMode,
   };
 }
 
