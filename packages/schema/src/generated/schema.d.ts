@@ -387,6 +387,126 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/connections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Connections Route */
+        get: operations["list_connections_route_v1_connections_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/connections/invitations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Invitations Route */
+        get: operations["list_invitations_route_v1_connections_invitations_get"];
+        put?: never;
+        /** Create Invitation Route */
+        post: operations["create_invitation_route_v1_connections_invitations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/connections/invitations/redeem": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Redeem Invitation Route */
+        post: operations["redeem_invitation_route_v1_connections_invitations_redeem_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/connections/invitations/redeem/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Preview Invitation Route */
+        get: operations["preview_invitation_route_v1_connections_invitations_redeem__token__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/connections/invitations/{invitation_id}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decline Invitation Route */
+        post: operations["decline_invitation_route_v1_connections_invitations__invitation_id__decline_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/connections/invitations/{invitation_id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke Invitation Route */
+        post: operations["revoke_invitation_route_v1_connections_invitations__invitation_id__revoke_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/connections/{connection_id}/dissolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Dissolve Connection Route */
+        post: operations["dissolve_connection_route_v1_connections__connection_id__dissolve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/exports": {
         parameters: {
             query?: never;
@@ -871,6 +991,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/workspaces/{workspace_id}/consent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Workspace Consent Route */
+        get: operations["list_workspace_consent_route_v1_workspaces__workspace_id__consent_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workspaces/{workspace_id}/consent/grant": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Grant Consent Route */
+        post: operations["grant_consent_route_v1_workspaces__workspace_id__consent_grant_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workspaces/{workspace_id}/consent/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke Consent Route */
+        post: operations["revoke_consent_route_v1_workspaces__workspace_id__consent_revoke_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1081,6 +1252,130 @@ export interface components {
             /** New Password */
             new_password: string;
         };
+        /** ConnectionInvitationCreateRequest */
+        ConnectionInvitationCreateRequest: {
+            /** Invitee Email */
+            invitee_email?: string | null;
+            method: components["schemas"]["InvitationMethod"];
+        };
+        /**
+         * ConnectionInvitationCreatedOut
+         * @description Same shape for every EMAIL invite regardless of whether `invitee_email`
+         *     matches an existing account (anti-enumeration, see services/connection_service.py).
+         *     Carries the one-time plaintext `token`/`redeem_url` -- never persisted, never
+         *     retrievable again after this response.
+         */
+        ConnectionInvitationCreatedOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Invitee Email */
+            invitee_email: string | null;
+            method: components["schemas"]["InvitationMethod"];
+            /** Redeem Url */
+            redeem_url: string;
+            state: components["schemas"]["InvitationState"];
+            /** Token */
+            token: string;
+        };
+        /** ConnectionInvitationOut */
+        ConnectionInvitationOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Invitee Email */
+            invitee_email: string | null;
+            method: components["schemas"]["InvitationMethod"];
+            state: components["schemas"]["InvitationState"];
+        };
+        /**
+         * ConnectionInvitationPreviewOut
+         * @description Redeem-preview -- deliberately carries no PII about the inviter beyond the
+         *     method, shown before the invitee commits to accepting.
+         */
+        ConnectionInvitationPreviewOut: {
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            method: components["schemas"]["InvitationMethod"];
+        };
+        /**
+         * ConnectionStatus
+         * @enum {string}
+         */
+        ConnectionStatus: "ACTIVE" | "DISSOLVED";
+        /** ConsentGrantOut */
+        ConsentGrantOut: {
+            /**
+             * Granted At
+             * Format: date-time
+             */
+            granted_at: string;
+            /**
+             * Grantee User Id
+             * Format: uuid
+             */
+            grantee_user_id: string;
+            /**
+             * Grantor User Id
+             * Format: uuid
+             */
+            grantor_user_id: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Revoked At */
+            revoked_at: string | null;
+            scope: components["schemas"]["ConsentScope"];
+            /** Version */
+            version: number;
+            /**
+             * Workspace Id
+             * Format: uuid
+             */
+            workspace_id: string;
+        };
+        /** ConsentGrantRequest */
+        ConsentGrantRequest: {
+            scope: components["schemas"]["ConsentScope"];
+        };
+        /** ConsentRevokeRequest */
+        ConsentRevokeRequest: {
+            scope: components["schemas"]["ConsentScope"];
+        };
+        /**
+         * ConsentScope
+         * @enum {string}
+         */
+        ConsentScope: "CORE_NUMEROLOGY" | "RELATIONSHIP_INSIGHTS" | "CURRENT_TIMING" | "PRIVATE_JOURNAL" | "PRIVATE_TASKS" | "PRIVATE_COPILOT" | "OTHER_RELATIONSHIPS" | "LIFE_TRACKING";
         /**
          * DailyBriefOut
          * @description Deterministic Daily Brief for one person on one `as_of_date`: identical
@@ -1201,6 +1496,16 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /**
+         * InvitationMethod
+         * @enum {string}
+         */
+        InvitationMethod: "LINK" | "CODE" | "EMAIL";
+        /**
+         * InvitationState
+         * @enum {string}
+         */
+        InvitationState: "PENDING" | "ACCEPTED" | "DECLINED" | "EXPIRED" | "REVOKED";
         /** LoginRequest */
         LoginRequest: {
             /**
@@ -1550,6 +1855,20 @@ export interface components {
             /** Supported Ui Locales */
             supported_ui_locales: string[];
         };
+        /** RedeemInvitationRequest */
+        RedeemInvitationRequest: {
+            /** Token */
+            token: string;
+        };
+        /** RedeemInvitationResponseOut */
+        RedeemInvitationResponseOut: {
+            connection: components["schemas"]["UserConnectionOut"];
+            /**
+             * Workspace Id
+             * Format: uuid
+             */
+            workspace_id: string;
+        };
         /** RegisterRequest */
         RegisterRequest: {
             /**
@@ -1786,6 +2105,32 @@ export interface components {
             /** Session Ttl Hours */
             session_ttl_hours: number;
         };
+        /** UserConnectionOut */
+        UserConnectionOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Dissolved At */
+            dissolved_at: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            status: components["schemas"]["ConnectionStatus"];
+            /**
+             * User A Id
+             * Format: uuid
+             */
+            user_a_id: string;
+            /**
+             * User B Id
+             * Format: uuid
+             */
+            user_b_id: string;
+        };
         /** UserOut */
         UserOut: {
             /** Email */
@@ -1823,6 +2168,17 @@ export interface components {
         VerifyEmailRequest: {
             /** Token */
             token: string;
+        };
+        /**
+         * WorkspaceConsentOut
+         * @description Split by direction -- `granted_by_me` are grants where the caller is the
+         *     grantor, `granted_to_me` where the caller is the grantee.
+         */
+        WorkspaceConsentOut: {
+            /** Granted By Me */
+            granted_by_me: components["schemas"]["ConsentGrantOut"][];
+            /** Granted To Me */
+            granted_to_me: components["schemas"]["ConsentGrantOut"][];
         };
         /**
          * WorkspaceOverviewOut
@@ -2523,6 +2879,289 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CalculationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_connections_route_v1_connections_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserConnectionOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_invitations_route_v1_connections_invitations_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectionInvitationOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_invitation_route_v1_connections_invitations_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectionInvitationCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectionInvitationCreatedOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    redeem_invitation_route_v1_connections_invitations_redeem_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RedeemInvitationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RedeemInvitationResponseOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_invitation_route_v1_connections_invitations_redeem__token__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectionInvitationPreviewOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decline_invitation_route_v1_connections_invitations__invitation_id__decline_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                invitation_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectionInvitationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_invitation_route_v1_connections_invitations__invitation_id__revoke_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                invitation_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectionInvitationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dissolve_connection_route_v1_connections__connection_id__dissolve_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                connection_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserConnectionOut"];
                 };
             };
             /** @description Validation Error */
@@ -3938,6 +4577,119 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SystemInfoOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_workspace_consent_route_v1_workspaces__workspace_id__consent_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceConsentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    grant_consent_route_v1_workspaces__workspace_id__consent_grant_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                workspace_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsentGrantRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsentGrantOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_consent_route_v1_workspaces__workspace_id__consent_revoke_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                workspace_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsentRevokeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsentGrantOut"];
                 };
             };
             /** @description Validation Error */
