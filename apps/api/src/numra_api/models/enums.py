@@ -122,6 +122,26 @@ class PersonAccountMode(StrEnum):
     MANAGED_OTHER = "MANAGED_OTHER"
 
 
+class AnalysisJobStatus(StrEnum):
+    """PR-V2-05 -- job lifecycle for `AnalysisJob` (relationship-analysis and
+    shadow-dynamics generation). Deliberately fewer states than `ReportJobStatus`
+    (no separate OUTLINE/ASSEMBLING phase -- see
+    `numra_relationship_interpretation.pipeline`, which has no outline step)."""
+
+    QUEUED = "QUEUED"
+    GENERATING = "GENERATING"
+    VALIDATING = "VALIDATING"
+    COMPLETE = "COMPLETE"
+    FAILED = "FAILED"
+
+
+class AnalysisType(StrEnum):
+    """PR-V2-05 -- which pipeline an `AnalysisJob` runs."""
+
+    RELATIONSHIP_INTERPRETATION = "RELATIONSHIP_INTERPRETATION"
+    SHADOW_DYNAMICS = "SHADOW_DYNAMICS"
+
+
 class RelationshipType(StrEnum):
     """specs/v2/relationship-type-spec.md -- selectable via PATCH
     /v1/workspaces/{workspace_id}. The canon never branches on this value, only the
