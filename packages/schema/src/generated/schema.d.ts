@@ -480,6 +480,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/me/workspace": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get My Workspace Route
+         * @description Schlanker Index über den Personal Workspace einer Person -- Counts +
+         *     jeweils neuestes Element pro Bereich, kein Mega-Payload. PROFILE/TIMING/
+         *     REPORTS-Details bleiben bei den bestehenden Endpunkten (GET /v1/people/
+         *     {person_id}, .../timing, .../daily-brief) -- die werden hier nicht erneut
+         *     eingebettet. `person_id` ist Pflicht-Query-Parameter, kein impliziter
+         *     Self-Default (specs/v2/personal-workspace-spec.md).
+         */
+        get: operations["get_my_workspace_route_v1_me_workspace_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/people": {
         parameters: {
             query?: never;
@@ -576,6 +601,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/people/{person_id}/personal-tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Personal Tasks Route */
+        get: operations["list_personal_tasks_route_v1_people__person_id__personal_tasks_get"];
+        put?: never;
+        /** Create Personal Task Route */
+        post: operations["create_personal_task_route_v1_people__person_id__personal_tasks_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/people/{person_id}/private-notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Private Notes Route */
+        get: operations["list_private_notes_route_v1_people__person_id__private_notes_get"];
+        put?: never;
+        /** Create Private Note Route */
+        post: operations["create_private_note_route_v1_people__person_id__private_notes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/people/{person_id}/private-reflections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Private Reflections Route */
+        get: operations["list_private_reflections_route_v1_people__person_id__private_reflections_get"];
+        put?: never;
+        /** Create Private Reflection Route */
+        post: operations["create_private_reflection_route_v1_people__person_id__private_reflections_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/people/{person_id}/timing": {
         parameters: {
             query?: never;
@@ -595,6 +674,63 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/v1/personal-tasks/{task_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Personal Task Route */
+        get: operations["get_personal_task_route_v1_personal_tasks__task_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Personal Task Route */
+        delete: operations["delete_personal_task_route_v1_personal_tasks__task_id__delete"];
+        options?: never;
+        head?: never;
+        /** Patch Personal Task Route */
+        patch: operations["patch_personal_task_route_v1_personal_tasks__task_id__patch"];
+        trace?: never;
+    };
+    "/v1/private-notes/{note_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Private Note Route */
+        get: operations["get_private_note_route_v1_private_notes__note_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Private Note Route */
+        delete: operations["delete_private_note_route_v1_private_notes__note_id__delete"];
+        options?: never;
+        head?: never;
+        /** Patch Private Note Route */
+        patch: operations["patch_private_note_route_v1_private_notes__note_id__patch"];
+        trace?: never;
+    };
+    "/v1/private-reflections/{reflection_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Private Reflection Route */
+        get: operations["get_private_reflection_route_v1_private_reflections__reflection_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Private Reflection Route */
+        delete: operations["delete_private_reflection_route_v1_private_reflections__reflection_id__delete"];
+        options?: never;
+        head?: never;
+        /** Patch Private Reflection Route */
+        patch: operations["patch_private_reflection_route_v1_private_reflections__reflection_id__patch"];
         trace?: never;
     };
     "/v1/public/config": {
@@ -1215,6 +1351,189 @@ export interface components {
              */
             id: string;
         };
+        /** PersonalTaskCreateRequest */
+        PersonalTaskCreateRequest: {
+            /** Description */
+            description?: string | null;
+            /** Due Date */
+            due_date?: string | null;
+            /** Title */
+            title: string;
+        };
+        /** PersonalTaskOut */
+        PersonalTaskOut: {
+            /** Completed At */
+            completed_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Description */
+            description: string | null;
+            /** Due Date */
+            due_date: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Person Id
+             * Format: uuid
+             */
+            person_id: string;
+            status: components["schemas"]["PersonalTaskStatus"];
+            /** Title */
+            title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * PersonalTaskPatchRequest
+         * @description Every field optional; `exclude_unset`/`model_fields_set` at the route means
+         *     only fields the client actually sent are applied -- same pattern as
+         *     `PersonPatchRequest` (schemas/person.py). `completed_at` is never accepted here
+         *     -- it is derived server-side from a `status` transition into COMPLETED, see
+         *     routes/personal_tasks.py.
+         */
+        PersonalTaskPatchRequest: {
+            /** Description */
+            description?: string | null;
+            /** Due Date */
+            due_date?: string | null;
+            status?: components["schemas"]["PersonalTaskStatus"] | null;
+            /** Title */
+            title?: string | null;
+        };
+        /**
+         * PersonalTaskStatus
+         * @enum {string}
+         */
+        PersonalTaskStatus: "ACTIVE" | "COMPLETED" | "ARCHIVED";
+        /** PrivateNoteCreateRequest */
+        PrivateNoteCreateRequest: {
+            /** Content */
+            content: string;
+            /** Title */
+            title?: string | null;
+        };
+        /** PrivateNoteOut */
+        PrivateNoteOut: {
+            /** Content */
+            content: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Person Id
+             * Format: uuid
+             */
+            person_id: string;
+            /** Title */
+            title: string | null;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * PrivateNotePatchRequest
+         * @description Every field optional; `exclude_unset`/`model_fields_set` at the route means
+         *     only fields the client actually sent are applied -- same pattern as
+         *     `PersonPatchRequest` (schemas/person.py).
+         */
+        PrivateNotePatchRequest: {
+            /** Content */
+            content?: string | null;
+            /** Title */
+            title?: string | null;
+        };
+        /** PrivateReflectionCreateRequest */
+        PrivateReflectionCreateRequest: {
+            /** Content */
+            content: string;
+            /**
+             * Entry Date
+             * Format: date
+             */
+            entry_date: string;
+        };
+        /** PrivateReflectionOut */
+        PrivateReflectionOut: {
+            /** Content */
+            content: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Entry Date
+             * Format: date
+             */
+            entry_date: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Person Id
+             * Format: uuid
+             */
+            person_id: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * PrivateReflectionPatchRequest
+         * @description Every field optional; `exclude_unset`/`model_fields_set` at the route means
+         *     only fields the client actually sent are applied -- same pattern as
+         *     `PersonPatchRequest` (schemas/person.py).
+         */
+        PrivateReflectionPatchRequest: {
+            /** Content */
+            content?: string | null;
+            /** Entry Date */
+            entry_date?: string | null;
+        };
+        /**
+         * PrivateReflectionSummaryOut
+         * @description Workspace-overview shape: just enough to identify and link to the latest
+         *     entry -- no full `content` payload (see schemas/workspace.py).
+         */
+        PrivateReflectionSummaryOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Entry Date
+             * Format: date
+             */
+            entry_date: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+        };
         /**
          * PublicConfigOut
          * @description Bootstrap config for the pre-login web app (V1.6 B). Unauthenticated, so it may
@@ -1504,6 +1823,47 @@ export interface components {
         VerifyEmailRequest: {
             /** Token */
             token: string;
+        };
+        /**
+         * WorkspaceOverviewOut
+         * @description GET /v1/me/workspace -- a schlanker Index über die Personal-Workspace-
+         *     Bereiche eines Person (Counts + jeweils neuestes Element), kein Mega-Payload.
+         *     PROFILE/TIMING/REPORTS-Detaildaten bleiben bei den bestehenden Endpunkten
+         *     (GET /v1/people/{id}, GET /v1/people/{id}/timing, GET /v1/people/{id}/
+         *     daily-brief) -- hier nur ein Verweis + Zähler, siehe
+         *     specs/v2/personal-workspace-spec.md.
+         */
+        WorkspaceOverviewOut: {
+            latest_calculation: components["schemas"]["CalculationSummaryOut"] | null;
+            person: components["schemas"]["PersonOut"];
+            personal_tasks: components["schemas"]["WorkspacePersonalTasksOut"];
+            private_notes: components["schemas"]["WorkspacePrivateNotesOut"];
+            private_reflections: components["schemas"]["WorkspacePrivateReflectionsOut"];
+            reports: components["schemas"]["WorkspaceReportsOut"];
+        };
+        /** WorkspacePersonalTasksOut */
+        WorkspacePersonalTasksOut: {
+            /** Active */
+            active: number;
+            /** Total */
+            total: number;
+        };
+        /** WorkspacePrivateNotesOut */
+        WorkspacePrivateNotesOut: {
+            /** Total */
+            total: number;
+        };
+        /** WorkspacePrivateReflectionsOut */
+        WorkspacePrivateReflectionsOut: {
+            latest: components["schemas"]["PrivateReflectionSummaryOut"] | null;
+            /** Total */
+            total: number;
+        };
+        /** WorkspaceReportsOut */
+        WorkspaceReportsOut: {
+            latest: components["schemas"]["ReportSummaryOut"] | null;
+            /** Total */
+            total: number;
         };
     };
     responses: never;
@@ -2353,6 +2713,39 @@ export interface operations {
             };
         };
     };
+    get_my_workspace_route_v1_me_workspace_get: {
+        parameters: {
+            query: {
+                person_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceOverviewOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_people_route_v1_people_get: {
         parameters: {
             query?: never;
@@ -2673,6 +3066,235 @@ export interface operations {
             };
         };
     };
+    list_personal_tasks_route_v1_people__person_id__personal_tasks_get: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["PersonalTaskStatus"] | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                person_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonalTaskOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_personal_task_route_v1_people__person_id__personal_tasks_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                person_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PersonalTaskCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonalTaskOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_private_notes_route_v1_people__person_id__private_notes_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                person_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrivateNoteOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_private_note_route_v1_people__person_id__private_notes_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                person_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PrivateNoteCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrivateNoteOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_private_reflections_route_v1_people__person_id__private_reflections_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                person_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrivateReflectionOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_private_reflection_route_v1_people__person_id__private_reflections_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                person_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PrivateReflectionCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrivateReflectionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_timing_route_v1_people__person_id__timing_get: {
         parameters: {
             query: {
@@ -2697,6 +3319,327 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_personal_task_route_v1_personal_tasks__task_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonalTaskOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_personal_task_route_v1_personal_tasks__task_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                task_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_personal_task_route_v1_personal_tasks__task_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                task_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PersonalTaskPatchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonalTaskOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_private_note_route_v1_private_notes__note_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                note_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrivateNoteOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_private_note_route_v1_private_notes__note_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                note_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_private_note_route_v1_private_notes__note_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                note_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PrivateNotePatchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrivateNoteOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_private_reflection_route_v1_private_reflections__reflection_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reflection_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrivateReflectionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_private_reflection_route_v1_private_reflections__reflection_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                reflection_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_private_reflection_route_v1_private_reflections__reflection_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                reflection_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PrivateReflectionPatchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrivateReflectionOut"];
                 };
             };
             /** @description Validation Error */
