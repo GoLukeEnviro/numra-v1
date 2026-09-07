@@ -14,11 +14,13 @@ from numra_api.deps import (
     get_current_session,
     get_current_user,
     get_db,
+    get_email_sender,
     get_settings_dep,
     rate_limit_by_ip,
     rate_limit_by_user,
     require_csrf,
 )
+from numra_api.email.sender import EmailSender
 from numra_api.models import Session as SessionModel
 from numra_api.models import User
 from numra_api.repositories.sessions import (
@@ -30,11 +32,15 @@ from numra_api.repositories.sessions import (
 from numra_api.repositories.users import create_user, get_user_by_email, update_user_password
 from numra_api.schemas.auth import (
     ChangePasswordRequest,
+    ForgotPasswordRequest,
     LoginRequest,
     RegisterRequest,
+    ResetPasswordRequest,
     SessionOut,
     UserOut,
+    VerifyEmailRequest,
 )
+from numra_api.services import auth_recovery_service
 from numra_api.services.errors import (
     EmailAlreadyRegistered,
     InvalidCredentials,
@@ -220,3 +226,77 @@ async def revoke_other_sessions(
     await revoke_all_sessions_except(
         db, user_id=user.id, keep_token_hash=session.token_hash, now=dt.datetime.now(dt.UTC)
     )
+
+
+@router.post(
+    "/request-email-verification",
+    status_code=204,
+    dependencies=[
+        Depends(require_csrf),
+        Depends(
+            rate_limit_by_user("auth:request_email_verification", limit=5, window_seconds=3600)
+        ),
+    ],
+)
+async def request_email_verification(
+    user: User = Depends(get_current_user),
+    settings: Settings = Depends(get_settings_dep),
+    email_sender: EmailSender = Depends(get_email_sender),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """V2: (re-)sends a verification link to the signed-in user's own email address.
+    Invalidates any verification token requested earlier before issuing a new one --
+    see services/auth_recovery_service.request_email_verification."""
+    await auth_recovery_service.request_email_verification(
+        db, user=user, settings=settings, email_sender=email_sender
+    )
+
+
+@router.post(
+    "/verify-email",
+    status_code=204,
+    dependencies=[Depends(rate_limit_by_ip("auth:verify_email", limit=10, window_seconds=3600))],
+)
+async def verify_email(
+    body: VerifyEmailRequest,
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """V2: unauthenticated -- the token itself, not a session, is the proof of
+    ownership. Claims the token atomically; an unknown, already-used, or expired
+    token all surface as the same INVALID_OR_EXPIRED_TOKEN error (see
+    services/auth_recovery_service.verify_email)."""
+    await auth_recovery_service.verify_email(db, token=body.token)
+
+
+@router.post(
+    "/forgot-password",
+    status_code=202,
+    dependencies=[Depends(rate_limit_by_ip("auth:forgot_password", limit=5, window_seconds=3600))],
+)
+async def forgot_password(
+    body: ForgotPasswordRequest,
+    settings: Settings = Depends(get_settings_dep),
+    email_sender: EmailSender = Depends(get_email_sender),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """V2: always answers 202 with no body, whether or not `body.email` belongs to an
+    account -- anti-enumeration (see services/auth_recovery_service.forgot_password,
+    which only touches the database/sends anything on an actual match)."""
+    await auth_recovery_service.forgot_password(
+        db, email=body.email, settings=settings, email_sender=email_sender
+    )
+
+
+@router.post(
+    "/reset-password",
+    status_code=204,
+    dependencies=[Depends(rate_limit_by_ip("auth:reset_password", limit=10, window_seconds=3600))],
+)
+async def reset_password(
+    body: ResetPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """V2: unauthenticated -- the reset token is the proof of ownership. On success,
+    every session for the user is revoked (not "every other" -- there is no caller
+    session here to keep), forcing a fresh login with the new password everywhere."""
+    await auth_recovery_service.reset_password(db, token=body.token, new_password=body.new_password)

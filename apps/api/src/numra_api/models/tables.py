@@ -14,6 +14,9 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
+from sqlalchemy import (
+    true as sa_true,
+)
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
@@ -41,6 +44,13 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(512))
     role: Mapped[UserRole] = mapped_column(String(20), default=UserRole.USER)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    #: NULL means "not yet verified". Set once, by the atomic claim in
+    #: routes/auth.py::verify_email -- never cleared afterwards. Existing V1.6 accounts
+    #: are grandfathered to their `created_at` by the migration that adds this column
+    #: (see alembic/versions -- no bulk unverified backlog).
+    email_verified_at: Mapped[dt.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[dt.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -341,13 +351,102 @@ class AdminAuditEvent(Base):
     )
 
 
+class EmailVerificationToken(Base):
+    """Single-use, hashed bearer token proving control of the account's email
+    address. Same shape as `Session`/`PasswordResetToken` (only the hash is stored,
+    `consumed_at` marks single use) -- see auth/tokens.py for the shared
+    generate/hash primitives."""
+
+    __tablename__ = "email_verification_tokens"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    token_hash: Mapped[str] = mapped_column(String(128), unique=True, index=True)
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    expires_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True))
+    consumed_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class PasswordResetToken(Base):
+    """Single-use, hashed bearer token authorizing one password reset. Deliberately
+    its own table rather than reusing `EmailVerificationToken` -- the two flows must
+    never be able to consume each other's tokens."""
+
+    __tablename__ = "password_reset_tokens"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    token_hash: Mapped[str] = mapped_column(String(128), unique=True, index=True)
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    expires_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True))
+    consumed_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class EntitlementSet(Base):
+    """A named bundle of feature flags/limits (e.g. "beta_default"). Not itself
+    user-scoped -- `EntitlementAssignment` is the join between a `User` and one of
+    these. `max_connections`/`max_workspaces` of NULL means unlimited."""
+
+    __tablename__ = "entitlement_sets"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    key: Mapped[str] = mapped_column(String(60), unique=True, index=True)
+    personal_workspace: Mapped[bool] = mapped_column(Boolean, server_default=sa_true())
+    connections: Mapped[bool] = mapped_column(Boolean, server_default=sa_true())
+    relationship_workspaces: Mapped[bool] = mapped_column(Boolean, server_default=sa_true())
+    relationship_checkins: Mapped[bool] = mapped_column(Boolean, server_default=sa_true())
+    relationship_copilot: Mapped[bool] = mapped_column(Boolean, server_default=sa_true())
+    advanced_relationship_analysis: Mapped[bool] = mapped_column(Boolean, server_default=sa_true())
+    life_tracking: Mapped[bool] = mapped_column(Boolean, server_default=sa_true())
+    premium_reports: Mapped[bool] = mapped_column(Boolean, server_default=sa_true())
+    max_connections: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    max_workspaces: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class EntitlementAssignment(Base):
+    """Which `EntitlementSet` one `User` currently has. `user_id` is unique -- a user
+    has at most one active assignment; a user with none falls back to the
+    "beta_default" `EntitlementSet` (see routes/entitlements.py). `entitlement_set_id`
+    uses `ondelete="RESTRICT"` (unlike the CASCADE everywhere else here) -- an
+    `EntitlementSet` still referenced by an assignment must not be deletable out from
+    under it."""
+
+    __tablename__ = "entitlement_assignments"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), unique=True, index=True
+    )
+    entitlement_set_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("entitlement_sets.id", ondelete="RESTRICT")
+    )
+    assigned_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
 __all__ = [
     "AdminAuditEvent",
     "Base",
     "Calculation",
+    "EmailVerificationToken",
+    "EntitlementAssignment",
+    "EntitlementSet",
     "Export",
     "LLMGeneration",
     "NameIdentity",
+    "PasswordResetToken",
     "Person",
     "Report",
     "ReportJob",

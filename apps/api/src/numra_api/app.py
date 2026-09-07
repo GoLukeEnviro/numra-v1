@@ -23,6 +23,7 @@ from numra_api.routes import (
     admin,
     auth,
     calculations,
+    entitlements,
     exports,
     health,
     people,
@@ -31,6 +32,7 @@ from numra_api.routes import (
     reports,
     system_info,
 )
+from numra_api.services.email_factory import build_email_sender
 from numra_api.services.errors import ApplicationError
 from numra_api.services.pdf_client import PdfServiceClient
 from numra_api.storage.exports import LocalExportStorage
@@ -66,6 +68,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         timeout_seconds=resolved_settings.pdf_render_timeout_seconds,
     )
     app.state.rate_limiter = _build_rate_limiter(resolved_settings)
+    app.state.email_sender = build_email_sender(resolved_settings)
 
     # Middleware chain — order matters (outermost first, applied last-in-first-out by
     # Starlette so the LAST .add_middleware call runs FIRST on the request path).
@@ -109,6 +112,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(account.router)
     app.include_router(system_info.router)
     app.include_router(admin.router)
+    app.include_router(entitlements.router)
 
     return app
 

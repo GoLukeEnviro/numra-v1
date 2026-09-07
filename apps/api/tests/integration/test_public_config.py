@@ -43,9 +43,31 @@ async def test_public_config_is_readable_without_any_cookie(client) -> None:
     assert response.status_code == 200
     assert response.json() == {
         "self_signup_enabled": False,
-        "app_name": "NUMRA",
+        "app_name": "AVENYTH",
         "supported_ui_locales": ["de", "en"],
     }
+
+
+async def test_public_config_app_name_mirrors_settings_app_brand_name(
+    settings: Settings, db_engine
+) -> None:
+    """V2: `app_name` is a deliberate, bounded exception -- it comes from
+    `Settings.app_brand_name`, unlike every other field on this route (see
+    routes/public.py's docstring for why branding is exempt)."""
+    app = create_app(
+        settings=Settings(
+            database_url=settings.database_url,
+            environment="test",
+            app_brand_name="Custom Brand",
+        )
+    )
+    app.state.engine = db_engine
+    app.state.sessionmaker = build_sessionmaker(db_engine)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as c:
+        response = await c.get("/v1/public/config")
+
+    assert response.status_code == 200
+    assert response.json()["app_name"] == "Custom Brand"
 
 
 @pytest.mark.parametrize("enabled", [True, False])

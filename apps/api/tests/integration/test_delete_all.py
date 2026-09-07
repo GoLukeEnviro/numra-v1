@@ -1,15 +1,20 @@
 from __future__ import annotations
 
+import datetime as dt
 from pathlib import Path
 
 import pytest
 from sqlalchemy import func, select
 
 from numra_api.auth.passwords import hash_password
+from numra_api.auth.tokens import generate_token, hash_token
 from numra_api.models import (
     Calculation,
+    EmailVerificationToken,
+    EntitlementAssignment,
     Export,
     LLMGeneration,
+    PasswordResetToken,
     Person,
     RelationshipComparison,
     Report,
@@ -18,7 +23,13 @@ from numra_api.models import (
     Session,
     User,
 )
-from numra_api.repositories.users import create_user
+from numra_api.repositories.entitlements import (
+    DEFAULT_ENTITLEMENT_SET_KEY,
+    get_entitlement_set_by_key,
+)
+from numra_api.repositories.password_reset_tokens import create_password_reset_token
+from numra_api.repositories.users import create_user, get_user_by_email
+from numra_api.repositories.verification_tokens import create_verification_token
 from numra_api.worker import run_one_cycle
 
 pytestmark = pytest.mark.integration
@@ -97,6 +108,22 @@ async def test_delete_all_cascades_every_table(
     export_file_path = Path(settings.export_storage_dir) / f"{export_response.json()['id']}.pdf"
     assert export_file_path.is_file()
 
+    # V2: an email verification token, a password reset token, and an entitlement
+    # assignment for this same user -- all FK-CASCADE to users (see models/tables.py),
+    # exactly like the pre-existing child tables above.
+    async with sessionmaker() as db:
+        user = await get_user_by_email(db, email=email)
+        now = dt.datetime.now(dt.UTC)
+        await create_verification_token(
+            db, user_id=user.id, token_hash=hash_token(generate_token()), expires_at=now
+        )
+        await create_password_reset_token(
+            db, user_id=user.id, token_hash=hash_token(generate_token()), expires_at=now
+        )
+        default_set = await get_entitlement_set_by_key(db, key=DEFAULT_ENTITLEMENT_SET_KEY)
+        db.add(EntitlementAssignment(user_id=user.id, entitlement_set_id=default_set.id))
+        await db.commit()
+
     # Sanity: rows actually exist before deletion.
     assert await _count(sessionmaker, Person) >= 2
     assert await _count(sessionmaker, Calculation) >= 2
@@ -105,6 +132,9 @@ async def test_delete_all_cascades_every_table(
     assert await _count(sessionmaker, ReportJob) >= 1
     assert await _count(sessionmaker, ReportSection) >= 1
     assert await _count(sessionmaker, Export) >= 1
+    assert await _count(sessionmaker, EmailVerificationToken) >= 1
+    assert await _count(sessionmaker, PasswordResetToken) >= 1
+    assert await _count(sessionmaker, EntitlementAssignment) >= 1
 
     delete_response = await client.post(
         "/v1/account/delete-all", json={"password": "password12345"}, headers=headers
@@ -121,6 +151,9 @@ async def test_delete_all_cascades_every_table(
     assert await _count(sessionmaker, ReportSection) == 0
     assert await _count(sessionmaker, LLMGeneration) == 0
     assert await _count(sessionmaker, Export) == 0
+    assert await _count(sessionmaker, EmailVerificationToken) == 0
+    assert await _count(sessionmaker, PasswordResetToken) == 0
+    assert await _count(sessionmaker, EntitlementAssignment) == 0
     assert not export_file_path.exists()
 
     # Session cookie is now invalid — the API must not silently keep serving requests.
