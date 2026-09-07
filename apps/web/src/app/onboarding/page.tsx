@@ -60,7 +60,10 @@ function OnboardingContent() {
     setSubmitting(true);
     setError(null);
     try {
-      const created = await api.people.create(buildPersonInput(form));
+      // Onboarding creates the user's own first profile -- the one and only SELF
+      // person for this account (specs/v2/minor-profile-policy.md). Every later
+      // "add a person" flow (people/new) defaults to MANAGED_OTHER instead.
+      const created = await api.people.create(buildPersonInput(form, "SELF"));
       setPerson(created);
       setPersonLabel(personDisplayName(created));
       setStep("calculation");

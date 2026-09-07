@@ -991,6 +991,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/workspaces": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Workspaces Route */
+        get: operations["list_workspaces_route_v1_workspaces_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workspaces/{workspace_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Workspace Overview Route */
+        get: operations["get_workspace_overview_route_v1_workspaces__workspace_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Patch Workspace Route */
+        patch: operations["patch_workspace_route_v1_workspaces__workspace_id__patch"];
+        trace?: never;
+    };
     "/v1/workspaces/{workspace_id}/consent": {
         parameters: {
             query?: never;
@@ -1420,6 +1455,28 @@ export interface components {
             password: string;
         };
         /**
+         * DualProfileMemberOut
+         * @description One member's side of the DUAL PROFILE grid. `self_person`/`core_numbers` are
+         *     both `None` when the member has never created a SELF-mode Person yet, or when
+         *     the viewer lacks an active CORE_NUMEROLOGY consent grant from this member
+         *     (services/relationship_workspace_service.py::_build_dual_profile_member) -- never
+         *     a 403/500 for either case, the response degrades gracefully per-side.
+         */
+        DualProfileMemberOut: {
+            /** Core Numbers */
+            core_numbers: {
+                [key: string]: unknown;
+            } | null;
+            /** Display Name */
+            display_name: string;
+            self_person: components["schemas"]["PersonRefOut"] | null;
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
+        };
+        /**
          * EntitlementSetOut
          * @description The effective feature/limit bundle for the signed-in user (GET
          *     /v1/me/entitlements) -- either their explicit assignment or the seeded
@@ -1551,10 +1608,23 @@ export interface components {
             valid_from: string | null;
         };
         /**
-         * PersonInput
-         * @description Raw person input as supplied by a caller, before normalization.
+         * PersonAccountMode
+         * @description specs/v2/minor-profile-policy.md -- `person_account_mode` on `Person`. Only
+         *     `SELF` profiles may ever become a `UserConnection` participant or
+         *     `RelationshipWorkspace` member; `MANAGED_MINOR`/`MANAGED_OTHER` are private,
+         *     single-owner profiles only.
+         * @enum {string}
          */
-        PersonInput: {
+        PersonAccountMode: "SELF" | "MANAGED_MINOR" | "MANAGED_OTHER";
+        /**
+         * PersonCreateRequest
+         * @description POST /v1/people body -- extends the engine's canon-input-only `PersonInput`
+         *     (never modified here, see packages/engine-numerology) with the one app-level
+         *     field the engine has no business knowing about (specs/v2/minor-profile-policy.md).
+         *     Defaults to `SELF` so every existing caller that never sends this field keeps
+         *     creating a SELF profile exactly like before this PR (backward-compatible).
+         */
+        PersonCreateRequest: {
             /**
              * Birth Date
              * Format: date
@@ -1574,6 +1644,8 @@ export interface components {
             current_last_name?: string | null;
             /** Current Middle Names */
             current_middle_names?: string | null;
+            /** @default SELF */
+            person_account_mode: components["schemas"]["PersonAccountMode"];
             /** Preferred Name */
             preferred_name?: string | null;
         };
@@ -1608,6 +1680,7 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            person_account_mode: components["schemas"]["PersonAccountMode"];
             /** Preferred Name */
             preferred_name: string | null;
             /**
@@ -1643,6 +1716,7 @@ export interface components {
             current_last_name?: string | null;
             /** Current Middle Names */
             current_middle_names?: string | null;
+            person_account_mode?: components["schemas"]["PersonAccountMode"] | null;
             /** Preferred Name */
             preferred_name?: string | null;
         };
@@ -1961,6 +2035,14 @@ export interface components {
             person_a: components["schemas"]["PersonRefOut"];
             person_b: components["schemas"]["PersonRefOut"];
         };
+        /**
+         * RelationshipType
+         * @description specs/v2/relationship-type-spec.md -- selectable via PATCH
+         *     /v1/workspaces/{workspace_id}. The canon never branches on this value, only the
+         *     interpretation frame (out of scope for this PR, see PR-V2-05).
+         * @enum {string}
+         */
+        RelationshipType: "PARTNER" | "DATING" | "FRIENDSHIP" | "FAMILY" | "SIBLINGS" | "PARENT_CHILD" | "WORK" | "OTHER";
         /** ReportCreateRequest */
         ReportCreateRequest: {
             /** Calculation Id */
@@ -2180,22 +2262,27 @@ export interface components {
             /** Granted To Me */
             granted_to_me: components["schemas"]["ConsentGrantOut"][];
         };
-        /**
-         * WorkspaceOverviewOut
-         * @description GET /v1/me/workspace -- a schlanker Index über die Personal-Workspace-
-         *     Bereiche eines Person (Counts + jeweils neuestes Element), kein Mega-Payload.
-         *     PROFILE/TIMING/REPORTS-Detaildaten bleiben bei den bestehenden Endpunkten
-         *     (GET /v1/people/{id}, GET /v1/people/{id}/timing, GET /v1/people/{id}/
-         *     daily-brief) -- hier nur ein Verweis + Zähler, siehe
-         *     specs/v2/personal-workspace-spec.md.
-         */
-        WorkspaceOverviewOut: {
-            latest_calculation: components["schemas"]["CalculationSummaryOut"] | null;
-            person: components["schemas"]["PersonOut"];
-            personal_tasks: components["schemas"]["WorkspacePersonalTasksOut"];
-            private_notes: components["schemas"]["WorkspacePrivateNotesOut"];
-            private_reflections: components["schemas"]["WorkspacePrivateReflectionsOut"];
-            reports: components["schemas"]["WorkspaceReportsOut"];
+        /** WorkspaceOut */
+        WorkspaceOut: {
+            /**
+             * Connection Id
+             * Format: uuid
+             */
+            connection_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Dissolved At */
+            dissolved_at: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            relationship_type: components["schemas"]["RelationshipType"] | null;
+            status: components["schemas"]["WorkspaceStatus"];
         };
         /** WorkspacePersonalTasksOut */
         WorkspacePersonalTasksOut: {
@@ -2220,6 +2307,60 @@ export interface components {
             latest: components["schemas"]["ReportSummaryOut"] | null;
             /** Total */
             total: number;
+        };
+        /**
+         * WorkspaceStatus
+         * @enum {string}
+         */
+        WorkspaceStatus: "ACTIVE" | "DISSOLVED";
+        /** WorkspaceSummaryOut */
+        WorkspaceSummaryOut: {
+            /**
+             * Connection Id
+             * Format: uuid
+             */
+            connection_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Dissolved At */
+            dissolved_at: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            relationship_type: components["schemas"]["RelationshipType"] | null;
+            status: components["schemas"]["WorkspaceStatus"];
+        };
+        /** WorkspaceUpdateRequest */
+        WorkspaceUpdateRequest: {
+            relationship_type: components["schemas"]["RelationshipType"];
+        };
+        /** WorkspaceOverviewOut */
+        numra_api__schemas__relationship_workspace__WorkspaceOverviewOut: {
+            /** Dual Profile */
+            dual_profile: components["schemas"]["DualProfileMemberOut"][];
+            workspace: components["schemas"]["WorkspaceOut"];
+        };
+        /**
+         * WorkspaceOverviewOut
+         * @description GET /v1/me/workspace -- a schlanker Index über die Personal-Workspace-
+         *     Bereiche eines Person (Counts + jeweils neuestes Element), kein Mega-Payload.
+         *     PROFILE/TIMING/REPORTS-Detaildaten bleiben bei den bestehenden Endpunkten
+         *     (GET /v1/people/{id}, GET /v1/people/{id}/timing, GET /v1/people/{id}/
+         *     daily-brief) -- hier nur ein Verweis + Zähler, siehe
+         *     specs/v2/personal-workspace-spec.md.
+         */
+        numra_api__schemas__workspace__WorkspaceOverviewOut: {
+            latest_calculation: components["schemas"]["CalculationSummaryOut"] | null;
+            person: components["schemas"]["PersonOut"];
+            personal_tasks: components["schemas"]["WorkspacePersonalTasksOut"];
+            private_notes: components["schemas"]["WorkspacePrivateNotesOut"];
+            private_reflections: components["schemas"]["WorkspacePrivateReflectionsOut"];
+            reports: components["schemas"]["WorkspaceReportsOut"];
         };
     };
     responses: never;
@@ -3371,7 +3512,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WorkspaceOverviewOut"];
+                    "application/json": components["schemas"]["numra_api__schemas__workspace__WorkspaceOverviewOut"];
                 };
             };
             /** @description Validation Error */
@@ -3430,7 +3571,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["PersonInput"];
+                "application/json": components["schemas"]["PersonCreateRequest"];
             };
         };
         responses: {
@@ -4577,6 +4718,110 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SystemInfoOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_workspaces_route_v1_workspaces_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceSummaryOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_workspace_overview_route_v1_workspaces__workspace_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["numra_api__schemas__relationship_workspace__WorkspaceOverviewOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_workspace_route_v1_workspaces__workspace_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                workspace_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkspaceUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceOut"];
                 };
             };
             /** @description Validation Error */

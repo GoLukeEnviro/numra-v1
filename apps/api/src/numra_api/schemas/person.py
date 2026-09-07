@@ -5,8 +5,18 @@ import uuid
 
 from pydantic import BaseModel
 
-from numra_api.models.enums import NameIdentityKind
-from numra_numerology.models.person import BirthPlace, BirthTime
+from numra_api.models.enums import NameIdentityKind, PersonAccountMode
+from numra_numerology.models.person import BirthPlace, BirthTime, PersonInput
+
+
+class PersonCreateRequest(PersonInput):
+    """POST /v1/people body -- extends the engine's canon-input-only `PersonInput`
+    (never modified here, see packages/engine-numerology) with the one app-level
+    field the engine has no business knowing about (specs/v2/minor-profile-policy.md).
+    Defaults to `SELF` so every existing caller that never sends this field keeps
+    creating a SELF profile exactly like before this PR (backward-compatible)."""
+
+    person_account_mode: PersonAccountMode = PersonAccountMode.SELF
 
 
 class PersonPatchRequest(BaseModel):
@@ -29,6 +39,7 @@ class PersonPatchRequest(BaseModel):
     current_middle_names: str | None = None
     current_last_name: str | None = None
     preferred_name: str | None = None
+    person_account_mode: PersonAccountMode | None = None
 
 
 class PersonOut(BaseModel):
@@ -43,6 +54,7 @@ class PersonOut(BaseModel):
     current_middle_names: str | None
     current_last_name: str | None
     preferred_name: str | None
+    person_account_mode: PersonAccountMode
     created_at: dt.datetime
     updated_at: dt.datetime
 

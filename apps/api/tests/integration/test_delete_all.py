@@ -63,7 +63,12 @@ async def test_delete_all_cascades_every_table(
     headers = await _login(client, sessionmaker, email)
 
     person_a = (await client.post("/v1/people", json=lukas_payload, headers=headers)).json()
-    other_payload = {**lukas_payload, "birth_first_names": "Second", "birth_last_name": "Person"}
+    other_payload = {
+        **lukas_payload,
+        "birth_first_names": "Second",
+        "birth_last_name": "Person",
+        "person_account_mode": "MANAGED_OTHER",
+    }
     person_b = (await client.post("/v1/people", json=other_payload, headers=headers)).json()
 
     calc_a = (

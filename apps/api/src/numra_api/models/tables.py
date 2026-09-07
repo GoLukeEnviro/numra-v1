@@ -32,6 +32,7 @@ from numra_api.models.enums import (
     InvitationMethod,
     InvitationState,
     NameIdentityKind,
+    PersonAccountMode,
     PersonalTaskStatus,
     ReportJobStatus,
     ReportType,
@@ -87,10 +88,29 @@ class Session(Base):
 
 class Person(Base):
     __tablename__ = "people"
+    __table_args__ = (
+        #: Partial unique index -- at most one SELF-mode Person per user, DB-enforced
+        #: (not just checked in the service layer), analogous to
+        #: `UserConnection.uq_user_connections_pair` (see PR-V2-03). `text(...)` on the
+        #: not-yet-bound mapped_column attributes, same Context7-verified pattern.
+        Index(
+            "uq_people_user_id_self_mode",
+            "user_id",
+            unique=True,
+            postgresql_where=text("person_account_mode = 'SELF'"),
+        ),
+    )
 
     id: Mapped[uuid.UUID] = _uuid_pk()
     user_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    #: specs/v2/minor-profile-policy.md -- SELF | MANAGED_MINOR | MANAGED_OTHER. Only
+    #: `SELF` profiles may become a `UserConnection`/`RelationshipWorkspace` member.
+    #: `server_default="SELF"` grandfathers every pre-PR-V2-04 row (see the migration's
+    #: backfill, which then re-derives the true value per user_id).
+    person_account_mode: Mapped[PersonAccountMode] = mapped_column(
+        String(20), nullable=False, server_default="SELF"
     )
 
     birth_first_names: Mapped[str] = mapped_column(String(200))
@@ -603,6 +623,10 @@ class RelationshipWorkspace(Base):
         ForeignKey("user_connections.id", ondelete="CASCADE"), unique=True, index=True
     )
     status: Mapped[WorkspaceStatus] = mapped_column(String(20), default=WorkspaceStatus.ACTIVE)
+    #: specs/v2/relationship-type-spec.md -- nullable (unset until a member chooses one
+    #: via PATCH /v1/workspaces/{workspace_id}). The canon never branches on this value;
+    #: only the (later, PR-V2-05) interpretation frame does.
+    relationship_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
     created_at: Mapped[dt.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

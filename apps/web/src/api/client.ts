@@ -4,7 +4,10 @@ export type LoginRequest = components["schemas"]["LoginRequest"];
 export type RegisterRequest = components["schemas"]["RegisterRequest"];
 export type PublicConfigOut = components["schemas"]["PublicConfigOut"];
 export type UserOut = components["schemas"]["UserOut"];
-export type PersonInput = components["schemas"]["PersonInput"];
+// PersonCreateRequest (POST /v1/people body) supersedes the engine-only PersonInput
+// schema with an app-level `person_account_mode` field (specs/v2/minor-profile-policy.md).
+// Kept as `PersonInput` here to avoid touching every existing caller of this alias.
+export type PersonInput = components["schemas"]["PersonCreateRequest"];
 export type PersonOut = components["schemas"]["PersonOut"];
 export type PersonPatchRequest = components["schemas"]["PersonPatchRequest"];
 export type NameIdentityOut = components["schemas"]["NameIdentityOut"];

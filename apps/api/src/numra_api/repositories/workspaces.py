@@ -6,8 +6,8 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from numra_api.models import RelationshipWorkspace, WorkspaceMember
-from numra_api.models.enums import WorkspaceMemberStatus, WorkspaceStatus
+from numra_api.models import Person, RelationshipWorkspace, WorkspaceMember
+from numra_api.models.enums import PersonAccountMode, WorkspaceMemberStatus, WorkspaceStatus
 
 
 async def create_relationship_workspace(
@@ -67,3 +67,51 @@ async def list_workspace_members(
     stmt = select(WorkspaceMember).where(WorkspaceMember.workspace_id == workspace_id)
     result = await db.execute(stmt)
     return list(result.scalars().all())
+
+
+async def get_workspace_by_id(
+    db: AsyncSession, *, workspace_id: uuid.UUID
+) -> RelationshipWorkspace | None:
+    return await db.get(RelationshipWorkspace, workspace_id)
+
+
+async def list_workspaces_for_user(
+    db: AsyncSession, *, user_id: uuid.UUID
+) -> list[RelationshipWorkspace]:
+    """Every `RelationshipWorkspace` where `user_id` has an ACTIVE `WorkspaceMember`
+    row -- ACTIVE membership survives a workspace-level DISSOLVE (only
+    `RelationshipWorkspace.status` changes then, see `dissolve_workspace`), so this
+    intentionally still lists dissolved workspaces (read-only history)."""
+    stmt = (
+        select(RelationshipWorkspace)
+        .join(WorkspaceMember, WorkspaceMember.workspace_id == RelationshipWorkspace.id)
+        .where(
+            WorkspaceMember.user_id == user_id,
+            WorkspaceMember.status == WorkspaceMemberStatus.ACTIVE,
+        )
+        .order_by(RelationshipWorkspace.created_at.desc())
+    )
+    result = await db.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def update_relationship_type(
+    db: AsyncSession, *, workspace: RelationshipWorkspace, relationship_type: str
+) -> RelationshipWorkspace:
+    workspace.relationship_type = relationship_type
+    await db.flush()
+    await db.refresh(workspace)
+    return workspace
+
+
+async def get_self_person_for_member(db: AsyncSession, *, user_id: uuid.UUID) -> Person | None:
+    """The one `SELF`-mode Person representing `user_id` (uniqueness DB-enforced by
+    `uq_people_user_id_self_mode`, see models/tables.py::Person). Returns `None`, not
+    an error, when the user has never created a Person -- callers (e.g.
+    services/relationship_workspace_service.py) must render `self_person: null` for
+    that case, never a 500."""
+    stmt = select(Person).where(
+        Person.user_id == user_id, Person.person_account_mode == PersonAccountMode.SELF
+    )
+    result = await db.execute(stmt)
+    return result.scalar_one_or_none()
