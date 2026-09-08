@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from numra_api.deps import get_current_user, get_db, require_csrf
-from numra_api.models import PrivateReflection, User
+from numra_api.models import PrivateReflection, SharedReflection, User
 from numra_api.repositories.people import get_person
 from numra_api.repositories.private_reflections import (
     create_private_reflection,
@@ -20,13 +20,19 @@ from numra_api.schemas.private_reflection import (
     PrivateReflectionOut,
     PrivateReflectionPatchRequest,
 )
+from numra_api.schemas.shared_reflection import SharedReflectionOut, SharePrivateReflectionRequest
 from numra_api.services.errors import NotFoundError
+from numra_api.services.shared_reflection_service import share_private_reflection
 
 router = APIRouter(prefix="/v1", tags=["private-reflections"])
 
 
 def _to_out(reflection: PrivateReflection) -> PrivateReflectionOut:
     return PrivateReflectionOut.model_validate(reflection, from_attributes=True)
+
+
+def _shared_out(reflection: SharedReflection) -> SharedReflectionOut:
+    return SharedReflectionOut.model_validate(reflection, from_attributes=True)
 
 
 @router.post(
@@ -127,3 +133,21 @@ async def delete_private_reflection_route(
     if reflection is None:
         raise NotFoundError(f"private reflection {reflection_id} not found")
     await delete_private_reflection(db, reflection=reflection)
+
+
+@router.post(
+    "/private-reflections/{reflection_id}/share",
+    response_model=SharedReflectionOut,
+    status_code=201,
+    dependencies=[Depends(require_csrf)],
+)
+async def share_private_reflection_route(
+    reflection_id: uuid.UUID,
+    body: SharePrivateReflectionRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> SharedReflectionOut:
+    reflection = await share_private_reflection(
+        db, reflection_id=reflection_id, user_id=user.id, workspace_id=body.workspace_id
+    )
+    return _shared_out(reflection)

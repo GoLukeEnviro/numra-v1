@@ -35,9 +35,11 @@ from numra_api.routes import (
     private_reflections,
     public,
     relationship_analysis,
+    relationship_roadmaps,
     relationship_workspaces,
     relationships,
     reports,
+    shared_reflections,
     system_info,
     workspace,
     workspace_tasks,
@@ -133,6 +135,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(relationship_analysis.router)
     app.include_router(checkins.router)
     app.include_router(workspace_tasks.router)
+    app.include_router(relationship_roadmaps.router)
+    app.include_router(shared_reflections.router)
 
     return app
 
