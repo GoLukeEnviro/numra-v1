@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime as dt
 import uuid
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import (
@@ -12,6 +13,8 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    Numeric,
+    SmallInteger,
     String,
     Text,
     UniqueConstraint,
@@ -1394,6 +1397,211 @@ class ThreadSummary(Base):
     )
 
 
+class LifeTrackingEntry(Base):
+    """PR-V2-11 -- specs/v2/evidence-policy.md Life Tracking data model. Same
+    dual-ownership shape as `PrivateReflection` (`user_id` is the IDOR boundary,
+    `person_id` the fachliche Zuordnung) -- covers SELF/MANAGED_MINOR/
+    MANAGED_OTHER alike. The 5 standard metrics (mood/energy/sleep/stress/focus)
+    are fixed columns here for a fast default read; only custom metrics live in
+    the narrow `LifeTrackingMetricValue` key-value table (see that class's
+    docstring). `calculation_id` is pure provenance (which `Calculation`
+    snapshot was active when the entry was made) -- it is NEVER a source for
+    Personal Day/Month/Year: those are always re-derived at read time from
+    `entry_date` via `numra_numerology.timing.lookup.
+    compute_personal_day_for_date` (see services/evidence_service.py). This
+    table deliberately has NO column for a persisted Personal Day/Month/Year
+    value (specs/v2/evidence-policy.md: 'never stores a new Personal Day/Month/
+    Year value... always derived from the canon at read time'). `note` is free
+    text and is NEVER read by evidence_analysis_service.py's correlation
+    computation."""
+
+    __tablename__ = "life_tracking_entries"
+    __table_args__ = (
+        UniqueConstraint("person_id", "entry_date", name="uq_life_tracking_entries_person_date"),
+        CheckConstraint(
+            "mood IS NULL OR mood BETWEEN 1 AND 10", name="ck_life_tracking_entries_mood_range"
+        ),
+        CheckConstraint(
+            "energy IS NULL OR energy BETWEEN 1 AND 10",
+            name="ck_life_tracking_entries_energy_range",
+        ),
+        CheckConstraint(
+            "sleep IS NULL OR sleep BETWEEN 1 AND 10", name="ck_life_tracking_entries_sleep_range"
+        ),
+        CheckConstraint(
+            "stress IS NULL OR stress BETWEEN 1 AND 10",
+            name="ck_life_tracking_entries_stress_range",
+        ),
+        CheckConstraint(
+            "focus IS NULL OR focus BETWEEN 1 AND 10", name="ck_life_tracking_entries_focus_range"
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    person_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("people.id", ondelete="CASCADE"), index=True
+    )
+    entry_date: Mapped[dt.date] = mapped_column(Date)
+    calculation_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("calculations.id", ondelete="SET NULL"), nullable=True
+    )
+    #: 1..10 Selbstauskunft-Skala -- `sleep` ist eine Schlafqualitaets-Einschaetzung,
+    #: NICHT Schlafstunden (specs/v2/evidence-policy.md).
+    mood: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    energy: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    sleep: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    stress: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    focus: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    #: `lazy="selectin"` ist hier Pflicht, nicht Komfort: unter `AsyncSession` wuerde
+    #: ein Default-Lazy-Load beim Serialisieren in `LifeTrackingEntryOut` mit
+    #: `MissingGreenlet` scheitern. `delete-orphan` laesst PATCH die Custom-Werte eines
+    #: Eintrags ersetzen, ohne einzelne DELETEs im Repository zu formulieren.
+    metric_values: Mapped[list[LifeTrackingMetricValue]] = relationship(
+        cascade="all, delete-orphan", lazy="selectin"
+    )
+
+
+class CustomMetricDefinition(Base):
+    """PR-V2-11 -- one Person-scoped custom tracking metric (e.g.
+    "caffeine_intake"), same `semantic_key`-immutability/`retired_at`
+    soft-delete pattern as `CheckinDimension` (see that class's docstring:
+    `metric_key` is provably immutable once referenced by any
+    `LifeTrackingMetricValue`, enforced by the unique constraint below plus the
+    app-level check in routes/life_tracking.py, which raises
+    `services.errors.MetricKeyImmutable`). Daily values live in
+    the narrow `LifeTrackingMetricValue` key-value table, never as a new column
+    here."""
+
+    __tablename__ = "custom_metric_definitions"
+    __table_args__ = (
+        UniqueConstraint(
+            "person_id", "metric_key", name="uq_custom_metric_definitions_person_metric_key"
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    person_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("people.id", ondelete="CASCADE"), index=True
+    )
+    metric_key: Mapped[str] = mapped_column(String(60))
+    label: Mapped[str] = mapped_column(String(120))
+    scale_min: Mapped[int] = mapped_column(Integer, default=1)
+    scale_max: Mapped[int] = mapped_column(Integer, default=10)
+    active: Mapped[bool] = mapped_column(Boolean, server_default=sa_true())
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    retired_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class LifeTrackingMetricValue(Base):
+    """PR-V2-11 -- one custom-metric value for one `LifeTrackingEntry` day,
+    keyed by `CustomMetricDefinition.metric_key` (denormalized, not a FK to the
+    definition's `id` -- same denormalization rationale as
+    `CheckinResponse.semantic_key`: `evidence_service.py` groups by the key
+    directly, without a join). The 5 standard metrics never appear here -- they
+    are fixed columns on `LifeTrackingEntry` itself."""
+
+    __tablename__ = "life_tracking_metric_values"
+    __table_args__ = (
+        UniqueConstraint(
+            "entry_id", "metric_key", name="uq_life_tracking_metric_values_entry_metric_key"
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    entry_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("life_tracking_entries.id", ondelete="CASCADE"), index=True
+    )
+    metric_key: Mapped[str] = mapped_column(String(60))
+    value: Mapped[int] = mapped_column(SmallInteger)
+
+
+class EvidencePolicy(Base):
+    """PR-V2-11 -- specs/v2/evidence-policy.md versioned, admin-managed
+    correlation-statistics policy. Deliberately NOT Person-/User-scoped -- one
+    global, versioned ruleset shared by every `evidence_service.py` computation.
+    `active` is DB-enforced to at most one row via the partial unique index
+    below -- the same "genau eine aktive X"-pattern as
+    `uq_people_user_id_self_mode` (models/tables.py::Person), not just a
+    service-layer convention. `rationale` is a mandatory changelog
+    justification -- specs/v2/evidence-policy.md Principle: "no magic number
+    without justification". No route in this PR creates a new version -- only
+    the migration seeds version 1 (see alembic/versions/
+    d4e5f6a7b8c9_evidence_layer.py)."""
+
+    __tablename__ = "evidence_policies"
+    __table_args__ = (
+        Index(
+            "uq_evidence_policies_one_active",
+            "active",
+            unique=True,
+            postgresql_where=text("active = true"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    version: Mapped[int] = mapped_column(Integer, unique=True)
+    active: Mapped[bool] = mapped_column(Boolean, server_default=sa_true())
+    minimum_total_sample_count: Mapped[int] = mapped_column(Integer)
+    minimum_sample_count_per_bucket: Mapped[int] = mapped_column(Integer)
+    minimum_observation_window_days: Mapped[int] = mapped_column(Integer)
+    missing_data_handling: Mapped[str] = mapped_column(String(30))
+    outlier_policy: Mapped[str] = mapped_column(String(30))
+    multiple_comparison_protection: Mapped[str] = mapped_column(String(30))
+    effect_size_threshold: Mapped[Decimal] = mapped_column(Numeric(4, 3))
+    confidence_category_thresholds: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    rationale: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class PatternAnalysis(Base):
+    """PR-V2-11 -- an explicit, user-triggered "Save"-snapshot of one
+    server-computed `EvidenceResult` (see services/evidence_service.py::
+    save_pattern_analysis). `POST .../pattern-analyses` always recomputes the
+    result server-side from the SAME code path as `GET .../evidence-results`
+    before persisting it here -- it never accepts a client-supplied result
+    payload (this would let a client fake `sample_size`/`confidence_category`).
+    `evidence_policy_version` is a snapshot integer (like
+    `RelationshipAnalysis.calculation_version`), deliberately NOT a FK -- the
+    active `EvidencePolicy` may later change version without rewriting this
+    row's history."""
+
+    __tablename__ = "pattern_analyses"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    person_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("people.id", ondelete="CASCADE"), index=True
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    evidence_policy_version: Mapped[int] = mapped_column(Integer)
+    metric_key: Mapped[str] = mapped_column(String(60))
+    correlation_target: Mapped[str] = mapped_column(String(30))
+    correlation_target_value: Mapped[int] = mapped_column(Integer)
+    #: {sample_size, observation_window_days, confidence_category, effect_size,
+    #: baseline_mean, bucket_mean, statement_text} -- shape returned by
+    #: `services/evidence_analysis_service.py::compute_evidence_result`.
+    result_json: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
 __all__ = [
     "AdminAuditEvent",
     "AnalysisJob",
@@ -1408,13 +1616,18 @@ __all__ = [
     "ConnectionInvitation",
     "ConsentEvent",
     "ConsentGrant",
+    "CustomMetricDefinition",
     "EmailVerificationToken",
     "EntitlementAssignment",
     "EntitlementSet",
+    "EvidencePolicy",
     "Export",
+    "LifeTrackingEntry",
+    "LifeTrackingMetricValue",
     "LLMGeneration",
     "NameIdentity",
     "PasswordResetToken",
+    "PatternAnalysis",
     "Person",
     "PersonalTask",
     "PrivateNote",

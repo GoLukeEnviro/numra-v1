@@ -288,6 +288,51 @@ class MilestoneNotInWorkspace(ApplicationError):
     status_code = 422
 
 
+class MetricKeyImmutable(ApplicationError):
+    """PR-V2-11 -- eine `CustomMetricDefinition` mit diesem `metric_key` existiert
+    fuer die Person bereits (aktiv oder stillgelegt). Gleiche Regel und gleiche
+    Begruendung wie `SemanticKeyImmutable`: ein Key darf nie semantisch umgedeutet
+    werden, weil bereits erfasste `LifeTrackingMetricValue`-Zeilen ihn tragen."""
+
+    code = "METRIC_KEY_IMMUTABLE"
+    status_code = 409
+
+
+class MetricValueOutOfScale(ApplicationError):
+    """PR-V2-11 -- ein Custom-Metrik-Wert liegt ausserhalb der `scale_min`/
+    `scale_max` seiner eigenen `CustomMetricDefinition`. Die fuenf festen Metriken
+    brauchen das nicht: deren 1..10-Grenze steht im Pydantic-Schema UND als
+    CHECK-Constraint auf `life_tracking_entries`; eine Custom-Skala ist dagegen pro
+    Definition frei und daher nur zur Laufzeit pruefbar."""
+
+    code = "METRIC_VALUE_OUT_OF_SCALE"
+    status_code = 422
+
+
+class EvidencePolicyNotFound(ApplicationError):
+    """PR-V2-11 -- keine aktive `EvidencePolicy` in der Datenbank. Ein
+    Deployment-Fehler, kein Nutzerfehler: die Migration
+    `d4e5f6a7b8c9_evidence_layer` seedet Version 1, und ohne Policy darf ueberhaupt
+    keine Korrelationsaussage entstehen (specs/v2/evidence-policy.md: nie eine ad
+    hoc gewaehlte Schwelle). Deshalb 503 statt eines stillen Defaults."""
+
+    code = "EVIDENCE_POLICY_NOT_FOUND"
+    status_code = 503
+
+
+class EvidenceStatementLintFailed(ApplicationError):
+    """PR-V2-11 -- `numra_interpretation.report.evidence_linter.
+    lint_structured_statement` hat ein bereits berechnetes Ergebnis abgelehnt. Das
+    ist strukturell unerreichbar, solange das feste Template in
+    `services/evidence_analysis_service.py` die Quelle ist -- die Pruefung ist die
+    Sicherung dagegen, dass eine spaetere Aenderung dort still einen Pflicht-
+    Qualifier verliert. Lieber 500 als eine Aussage ohne Stichprobengroesse,
+    Beobachtungszeitraum und Konfidenzkategorie ausliefern."""
+
+    code = "EVIDENCE_STATEMENT_LINT_FAILED"
+    status_code = 500
+
+
 class ThreadArchiveForbidden(ApplicationError):
     """PR-V2-09 -- raised by `services/copilot_service.py::archive_thread_route`
     when the caller may not archive a `ChatThread`: RELATIONSHIP_PRIVATE is
