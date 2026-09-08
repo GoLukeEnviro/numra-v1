@@ -11,8 +11,8 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from numra_api.models import RelationshipWorkspace
-from numra_api.models.enums import ConsentScope, WorkspaceStatus
+from numra_api.models import RelationshipWorkspace, User
+from numra_api.models.enums import ConsentScope
 from numra_api.repositories.calculations import get_latest_calculation_for_person
 from numra_api.repositories.users import get_user_by_id
 from numra_api.repositories.workspaces import (
@@ -27,7 +27,8 @@ from numra_api.schemas.person_ref import PersonRefOut, person_display_name
 from numra_api.schemas.relationship_workspace import DualProfileMemberOut
 from numra_api.services.checkin_service import auto_retire_restricted_dimensions
 from numra_api.services.consent_service import assert_consent
-from numra_api.services.errors import ConsentNotGranted, NotFoundError, WorkspaceDissolved
+from numra_api.services.errors import ConsentNotGranted, NotFoundError
+from numra_api.services.workspace_guard import assert_workspace_active_by_id
 
 #: specs/v2/relationship-workspace-spec.md DUAL PROFILE -- pure canon numbers, no
 #: interpretation. Mirrors services/relationship_service.py's metric set.
@@ -67,6 +68,17 @@ def _build_core_numbers(profile: dict[str, Any]) -> dict[str, Any]:
     return numbers
 
 
+def _fallback_display_name(user: User | None, *, member_user_id: uuid.UUID) -> str:
+    """Anzeigename, wenn kein sichtbares `SELF`-Person-Profil existiert (kein Profil
+    angelegt, oder CORE_NUMEROLOGY nicht/nicht mehr freigegeben). `display_name_override`
+    hat IMMER Vorrang vor `email`: bei einem gelöschten Account trägt es
+    "Ehemaliges Mitglied" (services/account_deletion_service.py), und dessen -- beim
+    Löschen ohnehin überschriebene -- E-Mail darf hier nie durchschlagen."""
+    if user is None:
+        return str(member_user_id)
+    return user.display_name_override or user.email
+
+
 async def _build_dual_profile_member(
     db: AsyncSession,
     *,
@@ -84,7 +96,7 @@ async def _build_dual_profile_member(
     member_user = await get_user_by_id(db, user_id=member_user_id)
     self_person = await get_self_person_for_member(db, user_id=member_user_id)
 
-    display_name = member_user.email if member_user else str(member_user_id)
+    display_name = _fallback_display_name(member_user, member_user_id=member_user_id)
     person_ref: PersonRefOut | None = None
     core_numbers: dict[str, Any] | None = None
 
@@ -157,11 +169,7 @@ async def patch_relationship_type(
     if member is None:
         raise NotFoundError(f"workspace {workspace_id} not found")
 
-    workspace = await get_workspace_by_id(db, workspace_id=workspace_id)
-    if workspace is None:
-        raise NotFoundError(f"workspace {workspace_id} not found")
-    if workspace.status == WorkspaceStatus.DISSOLVED:
-        raise WorkspaceDissolved(f"workspace {workspace_id} is dissolved")
+    workspace = await assert_workspace_active_by_id(db, workspace_id=workspace_id)
 
     updated = await update_relationship_type(
         db, workspace=workspace, relationship_type=relationship_type

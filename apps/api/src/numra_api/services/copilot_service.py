@@ -39,6 +39,7 @@ from numra_api.services.copilot_context_builder import (
     build_shared_context,
 )
 from numra_api.services.errors import ApplicationError, NotFoundError, ThreadArchiveForbidden
+from numra_api.services.workspace_guard import assert_workspace_active_by_id
 from numra_interpretation.llm.errors import LLMProviderError
 from numra_interpretation.llm.types import LLMProvider
 from numra_relationship_interpretation.copilot_pipeline import (
@@ -70,6 +71,7 @@ async def get_or_create_shared_thread(
     member = await get_workspace_member(db, workspace_id=workspace_id, user_id=requester_user_id)
     if member is None:
         raise NotFoundError(f"workspace {workspace_id} not found")
+    await assert_workspace_active_by_id(db, workspace_id=workspace_id)
 
     existing = await get_shared_thread_for_workspace(db, workspace_id=workspace_id)
     if existing is not None:
@@ -101,6 +103,7 @@ async def get_or_create_private_thread(
     member = await get_workspace_member(db, workspace_id=workspace_id, user_id=requester_user_id)
     if member is None:
         raise NotFoundError(f"workspace {workspace_id} not found")
+    await assert_workspace_active_by_id(db, workspace_id=workspace_id)
 
     existing = await get_private_thread_for_owner(
         db, workspace_id=workspace_id, owner_user_id=requester_user_id
@@ -257,6 +260,14 @@ async def post_message(
     thread = await get_thread_for_caller(
         db, workspace_id=workspace_id, thread_id=thread_id, requester_user_id=requester_user_id
     )
+
+    # PR-V2-10 -- Dissolved-Gate NACH dem IDOR-Gate von `get_thread_for_caller` und
+    # VOR dem Consent-Gate: nach einem Dissolve sind alle Grants revoked, ein
+    # Consent-Check zuerst würde die eigentliche Ursache als 403 verschleiern statt
+    # als 409. Bewusst außerhalb des try-Blocks unten -- ein dissolvter Workspace ist
+    # eine harte Vorbedingung (409), keine Generierungs-Störung, die als FAILED-
+    # ASSISTANT-Row mit 201 endet.
+    await assert_workspace_active_by_id(db, workspace_id=workspace_id)
 
     # Consent-Gate, checked as an upfront precondition (same tier as the
     # ownership/scope gate above) for RELATIONSHIP_SHARED -- a missing mutual grant

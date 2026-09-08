@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime as dt
 import uuid
 
-from sqlalchemy import or_, select
+from sqlalchemy import or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from numra_api.models import UserConnection
@@ -62,11 +62,19 @@ async def list_connections_for_user(
     return list(result.scalars().all())
 
 
-async def dissolve_connection(
-    db: AsyncSession, *, connection: UserConnection, now: dt.datetime
-) -> UserConnection:
-    connection.status = ConnectionStatus.DISSOLVED
-    connection.dissolved_at = now
+async def conditionally_dissolve_connection(
+    db: AsyncSession, *, connection_id: uuid.UUID, now: dt.datetime
+) -> bool:
+    """Atomic `UPDATE ... WHERE id=? AND status='ACTIVE'` -- TOCTOU-safe, not a plain
+    read-then-setattr-then-flush (PR-V2-10), same discipline as
+    `conditionally_dissolve_workspace`. `False` means the connection was already
+    DISSOLVED -- every caller treats that as an idempotent no-op."""
+    stmt = (
+        update(UserConnection)
+        .where(UserConnection.id == connection_id, UserConnection.status == ConnectionStatus.ACTIVE)
+        .values(status=ConnectionStatus.DISSOLVED, dissolved_at=now)
+        .returning(UserConnection.id)
+    )
+    result = await db.execute(stmt)
     await db.flush()
-    await db.refresh(connection)
-    return connection
+    return result.scalar_one_or_none() is not None

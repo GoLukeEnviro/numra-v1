@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime as dt
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from numra_api.models import Person, RelationshipWorkspace, WorkspaceMember
@@ -27,14 +27,28 @@ async def get_workspace_for_connection(
     return result.scalar_one_or_none()
 
 
-async def dissolve_workspace(
-    db: AsyncSession, *, workspace: RelationshipWorkspace, now: dt.datetime
-) -> RelationshipWorkspace:
-    workspace.status = WorkspaceStatus.DISSOLVED
-    workspace.dissolved_at = now
+async def conditionally_dissolve_workspace(
+    db: AsyncSession, *, workspace_id: uuid.UUID, now: dt.datetime
+) -> bool:
+    """Atomic `UPDATE ... WHERE id=? AND status='ACTIVE'` -- TOCTOU-safe, not a plain
+    read-then-setattr-then-flush (PR-V2-10), same discipline as
+    repositories/workspace_tasks.py::conditionally_transition_status. `False` means
+    the workspace was already DISSOLVED -- every caller (e.g.
+    services/connection_service.py::dissolve_own_connection,
+    services/account_deletion_service.py) treats that as an idempotent no-op, never
+    a conflict."""
+    stmt = (
+        update(RelationshipWorkspace)
+        .where(
+            RelationshipWorkspace.id == workspace_id,
+            RelationshipWorkspace.status == WorkspaceStatus.ACTIVE,
+        )
+        .values(status=WorkspaceStatus.DISSOLVED, dissolved_at=now)
+        .returning(RelationshipWorkspace.id)
+    )
+    result = await db.execute(stmt)
     await db.flush()
-    await db.refresh(workspace)
-    return workspace
+    return result.scalar_one_or_none() is not None
 
 
 async def create_workspace_member(

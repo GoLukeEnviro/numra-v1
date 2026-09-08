@@ -52,13 +52,20 @@ async def _login(client, sessionmaker, email: str) -> dict:
     return {"x-csrf-token": client.cookies["numra_csrf"]}
 
 
-async def test_delete_all_cascades_every_table(
+async def test_delete_all_removes_every_private_table(
     client, sessionmaker, llm, settings, lukas_payload
 ) -> None:
-    """master prompt §138: create a user, person, calculation, relationship, report,
-    report job, PDF export — then Delete All — and verify zero rows remain in every
-    dependent table for that user, with no orphans, AND the export's physical file is
-    actually gone from disk (not just its DB row) — see routes/account.py."""
+    """master prompt §138, in der PR-V2-10-Fassung: create a user, person, calculation,
+    relationship, report, report job, PDF export — then Delete All — and verify zero
+    rows remain in every *privately owned* dependent table, AND the export's physical
+    file is actually gone from disk (not just its DB row).
+
+    Der `users`-Row selbst überlebt seit PR-V2-10 bewusst als getilgter Tombstone
+    (Soft-Delete, siehe services/account_deletion_service.py): ein `DELETE FROM users`
+    würde dem Partner die geteilten Relationship-Artefakte mit wegreißen. Statt
+    "0 User-Rows" ist der Beweis hier deshalb, dass die Row keine PII mehr trägt --
+    siehe test_account_deletion.py für den vollständigen Scrub-/Pseudonym-Nachweis.
+    """
     email = "delete-me@example.com"
     headers = await _login(client, sessionmaker, email)
 
@@ -146,7 +153,14 @@ async def test_delete_all_cascades_every_table(
     )
     assert delete_response.status_code == 204
 
-    assert await _count(sessionmaker, User) == 0
+    async with sessionmaker() as db:
+        tombstone = (await db.execute(select(User))).scalars().one()
+        assert tombstone.email != email
+        assert tombstone.email.endswith("@deleted.avenyth.invalid")
+        assert tombstone.is_active is False
+        assert tombstone.deleted_at is not None
+        assert tombstone.display_name_override == "Ehemaliges Mitglied"
+
     assert await _count(sessionmaker, Session) == 0
     assert await _count(sessionmaker, Person) == 0
     assert await _count(sessionmaker, Calculation) == 0
@@ -158,7 +172,9 @@ async def test_delete_all_cascades_every_table(
     assert await _count(sessionmaker, Export) == 0
     assert await _count(sessionmaker, EmailVerificationToken) == 0
     assert await _count(sessionmaker, PasswordResetToken) == 0
-    assert await _count(sessionmaker, EntitlementAssignment) == 0
+    # `EntitlementAssignment` trägt keine PII und hängt am überlebenden Tombstone-Row --
+    # PR-V2-10 löscht bewusst nur inhaltstragende Privatdaten (Blueprint §2.3).
+    assert await _count(sessionmaker, EntitlementAssignment) == 1
     assert not export_file_path.exists()
 
     # Session cookie is now invalid — the API must not silently keep serving requests.

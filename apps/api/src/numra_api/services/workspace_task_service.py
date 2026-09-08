@@ -15,7 +15,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import numra_api.repositories.relationship_roadmaps as roadmaps_repo
 import numra_api.repositories.workspace_tasks as tasks_repo
 from numra_api.models import WorkspaceTask
-from numra_api.models.enums import TaskAcceptanceEventType, TaskType, WorkspaceTaskStatus
+from numra_api.models.enums import (
+    TaskAcceptanceEventType,
+    TaskType,
+    WorkspaceMemberStatus,
+    WorkspaceTaskStatus,
+)
 from numra_api.repositories.workspaces import get_workspace_member, list_workspace_members
 from numra_api.services.errors import (
     AvenythSuggestedNotUserCreatable,
@@ -25,6 +30,7 @@ from numra_api.services.errors import (
     TaskNotDeletable,
     TaskTransitionConflict,
 )
+from numra_api.services.workspace_guard import assert_workspace_active_by_id
 
 #: PATCH .../tasks/{task_id} may only move status into one of these two terminal-
 #: ish states -- PROPOSED/ACCEPTED/ACTIVE transitions are exclusively driven by
@@ -55,12 +61,16 @@ async def _other_member_user_id(
 ) -> uuid.UUID:
     """Same rationale as services/consent_service.py::_other_member_user_id -- the
     recipient of a FOR_PARTNER_PROPOSED task is always derived from membership,
-    never trusted from client input."""
+    never trusted from client input. ACTIVE-gefiltert wie
+    services/copilot_context_builder.py::_resolve_partner_user_id -- ein
+    REMOVED-Mitglied (z.B. nach Account-Löschung des Partners) darf nie als
+    Empfänger aufgelöst werden."""
     members = await list_workspace_members(db, workspace_id=workspace_id)
-    for member in members:
-        if member.user_id != user_id:
-            return member.user_id
-    raise NotFoundError(f"workspace {workspace_id} has no counterpart member")
+    active_user_ids = [m.user_id for m in members if m.status == WorkspaceMemberStatus.ACTIVE]
+    other_user_ids = [uid for uid in active_user_ids if uid != user_id]
+    if not other_user_ids:
+        raise NotFoundError(f"workspace {workspace_id} has no counterpart member")
+    return other_user_ids[0]
 
 
 async def _record_event(
@@ -105,6 +115,8 @@ async def create_task(
 ) -> WorkspaceTask:
     member = await get_workspace_member(db, workspace_id=workspace_id, user_id=user_id)
     _require_member(member, workspace_id=workspace_id)
+
+    await assert_workspace_active_by_id(db, workspace_id=workspace_id)
 
     if task_type == TaskType.AVENYTH_SUGGESTED:
         # Never user-creatable -- only services.workspace_task_service.
@@ -178,6 +190,8 @@ async def create_avenyth_suggestion(
     """Internal-only creation path -- no route calls this. Never sets `status` to
     anything but PROPOSED; only an explicit user `accept`/`decline`/PATCH-edit can
     move it further (specs/v2/task-system-spec.md: "never auto-activates")."""
+    await assert_workspace_active_by_id(db, workspace_id=workspace_id)
+
     task = await tasks_repo.create_workspace_task(
         db,
         workspace_id=workspace_id,
@@ -252,6 +266,8 @@ async def accept_task(
     member = await get_workspace_member(db, workspace_id=workspace_id, user_id=user_id)
     _require_member(member, workspace_id=workspace_id)
 
+    await assert_workspace_active_by_id(db, workspace_id=workspace_id)
+
     task = await tasks_repo.get_workspace_task_for_member(
         db, task_id=task_id, workspace_id=workspace_id, user_id=user_id
     )
@@ -290,6 +306,8 @@ async def decline_task(
 ) -> WorkspaceTask:
     member = await get_workspace_member(db, workspace_id=workspace_id, user_id=user_id)
     _require_member(member, workspace_id=workspace_id)
+
+    await assert_workspace_active_by_id(db, workspace_id=workspace_id)
 
     task = await tasks_repo.get_workspace_task_for_member(
         db, task_id=task_id, workspace_id=workspace_id, user_id=user_id
@@ -332,6 +350,8 @@ async def patch_task(
 ) -> WorkspaceTask:
     member = await get_workspace_member(db, workspace_id=workspace_id, user_id=user_id)
     _require_member(member, workspace_id=workspace_id)
+
+    await assert_workspace_active_by_id(db, workspace_id=workspace_id)
 
     task = await tasks_repo.get_workspace_task_for_member(
         db, task_id=task_id, workspace_id=workspace_id, user_id=user_id
