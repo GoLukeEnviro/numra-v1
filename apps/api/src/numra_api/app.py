@@ -23,6 +23,7 @@ from numra_api.routes import (
     admin,
     auth,
     calculations,
+    checkins,
     connections,
     consent,
     entitlements,
@@ -129,6 +130,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(consent.router)
     app.include_router(relationship_workspaces.router)
     app.include_router(relationship_analysis.router)
+    app.include_router(checkins.router)
 
     return app
 

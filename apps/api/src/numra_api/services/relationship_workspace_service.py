@@ -25,6 +25,7 @@ from numra_api.repositories.workspaces import (
 )
 from numra_api.schemas.person_ref import PersonRefOut, person_display_name
 from numra_api.schemas.relationship_workspace import DualProfileMemberOut
+from numra_api.services.checkin_service import auto_retire_restricted_dimensions
 from numra_api.services.consent_service import assert_consent
 from numra_api.services.errors import ConsentNotGranted, NotFoundError, WorkspaceDissolved
 
@@ -162,9 +163,17 @@ async def patch_relationship_type(
     if workspace.status == WorkspaceStatus.DISSOLVED:
         raise WorkspaceDissolved(f"workspace {workspace_id} is dissolved")
 
-    return await update_relationship_type(
+    updated = await update_relationship_type(
         db, workspace=workspace, relationship_type=relationship_type
     )
+    # PR-V2-06 minimal hook: a relationship_type change into a restricted type
+    # (PARENT_CHILD/SIBLINGS/WORK) auto-retires any active sexual_connection-class
+    # check-in dimension -- specs/v2/checkin-spec.md gating, enforced here as well as
+    # at dimension-creation time (see services/checkin_service.py).
+    await auto_retire_restricted_dimensions(
+        db, workspace_id=workspace_id, relationship_type=relationship_type
+    )
+    return updated
 
 
 async def list_workspaces_for_viewer(
