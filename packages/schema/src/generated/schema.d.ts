@@ -524,6 +524,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/custom-metric-definitions/{definition_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Patch Custom Metric Definition Route
+         * @description Nur `label` und `active` sind aenderbar. `metric_key` steht gar nicht im
+         *     Request-Schema -- Unveraenderlichkeit ist hier keine Laufzeitpruefung, sondern
+         *     strukturell nicht ausdrueckbar.
+         */
+        patch: operations["patch_custom_metric_definition_route_v1_custom_metric_definitions__definition_id__patch"];
+        trace?: never;
+    };
     "/v1/exports": {
         parameters: {
             query?: never;
@@ -593,6 +615,25 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/life-tracking-entries/{entry_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Life Tracking Entry Route */
+        get: operations["get_life_tracking_entry_route_v1_life_tracking_entries__entry_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Life Tracking Entry Route */
+        delete: operations["delete_life_tracking_entry_route_v1_life_tracking_entries__entry_id__delete"];
+        options?: never;
+        head?: never;
+        /** Patch Life Tracking Entry Route */
+        patch: operations["patch_life_tracking_entry_route_v1_life_tracking_entries__entry_id__patch"];
+        trace?: never;
+    };
     "/v1/me/entitlements": {
         parameters: {
             query?: never;
@@ -637,6 +678,24 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/pattern-analyses/{analysis_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Pattern Analysis Route */
+        get: operations["get_pattern_analysis_route_v1_pattern_analyses__analysis_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Pattern Analysis Route */
+        delete: operations["delete_pattern_analysis_route_v1_pattern_analyses__analysis_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -697,6 +756,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/people/{person_id}/custom-metric-definitions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Custom Metric Definitions Route */
+        get: operations["list_custom_metric_definitions_route_v1_people__person_id__custom_metric_definitions_get"];
+        put?: never;
+        /** Create Custom Metric Definition Route */
+        post: operations["create_custom_metric_definition_route_v1_people__person_id__custom_metric_definitions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/people/{person_id}/daily-brief": {
         parameters: {
             query?: never;
@@ -721,6 +798,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/people/{person_id}/evidence-results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Evidence Result Route
+         * @description Antwortet immer mit 200, sobald Person und Metrik existieren --
+         *     `confidence_category=NO_RELIABLE_PATTERN` ist ein Ergebnis, kein Fehler.
+         */
+        get: operations["get_evidence_result_route_v1_people__person_id__evidence_results_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/people/{person_id}/identities": {
         parameters: {
             query?: never;
@@ -732,6 +830,42 @@ export interface paths {
         get: operations["list_identities_route_v1_people__person_id__identities_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/people/{person_id}/life-tracking-entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Life Tracking Entries Route */
+        get: operations["list_life_tracking_entries_route_v1_people__person_id__life_tracking_entries_get"];
+        put?: never;
+        /** Create Life Tracking Entry Route */
+        post: operations["create_life_tracking_entry_route_v1_people__person_id__life_tracking_entries_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/people/{person_id}/pattern-analyses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Pattern Analyses Route */
+        get: operations["list_pattern_analyses_route_v1_people__person_id__pattern_analyses_get"];
+        put?: never;
+        /** Create Pattern Analysis Route */
+        post: operations["create_pattern_analysis_route_v1_people__person_id__pattern_analyses_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2017,6 +2151,14 @@ export interface components {
             /** Version */
             version: number;
         };
+        /**
+         * ConfidenceCategory
+         * @description PR-V2-11 -- specs/v2/evidence-policy.md. `NO_RELIABLE_PATTERN` is a valid,
+         *     expected result (not an error state) whenever the active `EvidencePolicy`'s
+         *     minimums are not met.
+         * @enum {string}
+         */
+        ConfidenceCategory: "NO_RELIABLE_PATTERN" | "LOW" | "MEDIUM" | "HIGH";
         /** ConnectionInvitationCreateRequest */
         ConnectionInvitationCreateRequest: {
             /** Invitee Email */
@@ -2142,6 +2284,72 @@ export interface components {
          */
         ConsentScope: "CORE_NUMEROLOGY" | "RELATIONSHIP_INSIGHTS" | "CURRENT_TIMING" | "PRIVATE_JOURNAL" | "PRIVATE_TASKS" | "PRIVATE_COPILOT" | "OTHER_RELATIONSHIPS" | "LIFE_TRACKING";
         /**
+         * CorrelationTarget
+         * @description PR-V2-11 -- which canonical timing metric an `EvidenceResult`/
+         *     `PatternAnalysis` correlates a Life Tracking metric against.
+         * @enum {string}
+         */
+        CorrelationTarget: "PERSONAL_DAY" | "PERSONAL_MONTH" | "PERSONAL_YEAR";
+        /** CustomMetricDefinitionCreateRequest */
+        CustomMetricDefinitionCreateRequest: {
+            /** Label */
+            label: string;
+            /** Metric Key */
+            metric_key: string;
+            /**
+             * Scale Max
+             * @default 10
+             */
+            scale_max: number;
+            /**
+             * Scale Min
+             * @default 1
+             */
+            scale_min: number;
+        };
+        /** CustomMetricDefinitionOut */
+        CustomMetricDefinitionOut: {
+            /** Active */
+            active: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Label */
+            label: string;
+            /** Metric Key */
+            metric_key: string;
+            /**
+             * Person Id
+             * Format: uuid
+             */
+            person_id: string;
+            /** Retired At */
+            retired_at: string | null;
+            /** Scale Max */
+            scale_max: number;
+            /** Scale Min */
+            scale_min: number;
+        };
+        /**
+         * CustomMetricDefinitionPatchRequest
+         * @description `metric_key` fehlt hier bewusst: er ist unveraenderlich (siehe
+         *     `services.errors.MetricKeyImmutable`). Stilllegen und einen neuen Key anlegen
+         *     ist der einzige Weg, eine Metrik semantisch zu aendern.
+         */
+        CustomMetricDefinitionPatchRequest: {
+            /** Active */
+            active?: boolean | null;
+            /** Label */
+            label?: string | null;
+        };
+        /**
          * DailyBriefOut
          * @description Deterministic Daily Brief for one person on one `as_of_date`: identical
          *     inputs (person + date + knowledge version) always produce a byte-identical
@@ -2250,6 +2458,33 @@ export interface components {
             /** Relationship Workspaces */
             relationship_workspaces: boolean;
         };
+        /**
+         * EvidenceResultOut
+         * @description Reines Lese-Ergebnis, kein DB-Artefakt (specs/v2/evidence-policy.md).
+         *
+         *     `confidence_category == NO_RELIABLE_PATTERN` ist ein gueltiges, erwartetes
+         *     Ergebnis mit HTTP 200 -- dann sind `effect_size`, `baseline_mean`, `bucket_mean`
+         *     und `statement_text` allesamt `None`, waehrend `sample_size` und
+         *     `observation_window_days` weiterhin gefuellt sind: der Nutzer soll sehen, wie
+         *     weit er von einer belastbaren Aussage entfernt ist.
+         */
+        EvidenceResultOut: {
+            /** Baseline Mean */
+            baseline_mean: number | null;
+            /** Bucket Mean */
+            bucket_mean: number | null;
+            confidence_category: components["schemas"]["ConfidenceCategory"];
+            /** Effect Size */
+            effect_size: number | null;
+            /** Evidence Policy Version */
+            evidence_policy_version: number;
+            /** Observation Window Days */
+            observation_window_days: number;
+            /** Sample Size */
+            sample_size: number;
+            /** Statement Text */
+            statement_text: string | null;
+        };
         /** ExportCreateRequest */
         ExportCreateRequest: {
             /** @default pdf */
@@ -2308,6 +2543,107 @@ export interface components {
          * @enum {string}
          */
         InvitationState: "PENDING" | "ACCEPTED" | "DECLINED" | "EXPIRED" | "REVOKED";
+        /** LifeTrackingEntryCreateRequest */
+        LifeTrackingEntryCreateRequest: {
+            /** Calculation Id */
+            calculation_id?: string | null;
+            /** Custom Metrics */
+            custom_metrics?: {
+                [key: string]: number;
+            };
+            /** Energy */
+            energy?: number | null;
+            /**
+             * Entry Date
+             * Format: date
+             */
+            entry_date: string;
+            /** Focus */
+            focus?: number | null;
+            /** Mood */
+            mood?: number | null;
+            /** Note */
+            note?: string | null;
+            /** Sleep */
+            sleep?: number | null;
+            /** Stress */
+            stress?: number | null;
+        };
+        /** LifeTrackingEntryOut */
+        LifeTrackingEntryOut: {
+            /** Calculation Id */
+            calculation_id: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Custom Metrics */
+            custom_metrics: {
+                [key: string]: number;
+            };
+            /** Energy */
+            energy: number | null;
+            /**
+             * Entry Date
+             * Format: date
+             */
+            entry_date: string;
+            /** Focus */
+            focus: number | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Mood */
+            mood: number | null;
+            /** Note */
+            note: string | null;
+            /**
+             * Person Id
+             * Format: uuid
+             */
+            person_id: string;
+            /** Sleep */
+            sleep: number | null;
+            /** Stress */
+            stress: number | null;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * LifeTrackingEntryPatchRequest
+         * @description Jedes Feld optional; die Route wertet `model_fields_set` aus, sodass nur
+         *     tatsaechlich gesendete Felder angewendet werden -- gleiches Muster wie
+         *     `PrivateReflectionPatchRequest`. `custom_metrics` ersetzt beim Senden die
+         *     gesamte Custom-Wertmenge des Eintrags (kein partielles Merge).
+         */
+        LifeTrackingEntryPatchRequest: {
+            /** Calculation Id */
+            calculation_id?: string | null;
+            /** Custom Metrics */
+            custom_metrics?: {
+                [key: string]: number;
+            } | null;
+            /** Energy */
+            energy?: number | null;
+            /** Entry Date */
+            entry_date?: string | null;
+            /** Focus */
+            focus?: number | null;
+            /** Mood */
+            mood?: number | null;
+            /** Note */
+            note?: string | null;
+            /** Sleep */
+            sleep?: number | null;
+            /** Stress */
+            stress?: number | null;
+        };
         /** LoginRequest */
         LoginRequest: {
             /**
@@ -2377,6 +2713,46 @@ export interface components {
             recorded_at: string;
             /** Valid From */
             valid_from: string | null;
+        };
+        /**
+         * PatternAnalysisCreateRequest
+         * @description Exakt die Query-Parameter von `GET .../evidence-results` -- und bewusst NICHT
+         *     das Ergebnis: `POST .../pattern-analyses` rechnet serverseitig neu ueber
+         *     denselben Codepfad. Ein clientgeliefertes `result_json` wuerde erlauben,
+         *     `sample_size`/`confidence_category` frei zu erfinden.
+         */
+        PatternAnalysisCreateRequest: {
+            correlation_target: components["schemas"]["CorrelationTarget"];
+            /** Correlation Target Value */
+            correlation_target_value: number;
+            /** Metric Key */
+            metric_key: string;
+        };
+        /** PatternAnalysisOut */
+        PatternAnalysisOut: {
+            correlation_target: components["schemas"]["CorrelationTarget"];
+            /** Correlation Target Value */
+            correlation_target_value: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Evidence Policy Version */
+            evidence_policy_version: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Metric Key */
+            metric_key: string;
+            /**
+             * Person Id
+             * Format: uuid
+             */
+            person_id: string;
+            result: components["schemas"]["EvidenceResultOut"];
         };
         /**
          * PersonAccountMode
@@ -4508,6 +4884,46 @@ export interface operations {
             };
         };
     };
+    patch_custom_metric_definition_route_v1_custom_metric_definitions__definition_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                definition_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomMetricDefinitionPatchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomMetricDefinitionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_exports_route_v1_exports_get: {
         parameters: {
             query?: never;
@@ -4654,6 +5070,113 @@ export interface operations {
             };
         };
     };
+    get_life_tracking_entry_route_v1_life_tracking_entries__entry_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entry_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LifeTrackingEntryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_life_tracking_entry_route_v1_life_tracking_entries__entry_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                entry_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_life_tracking_entry_route_v1_life_tracking_entries__entry_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                entry_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LifeTrackingEntryPatchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LifeTrackingEntryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_my_entitlements_v1_me_entitlements_get: {
         parameters: {
             query?: never;
@@ -4706,6 +5229,73 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["numra_api__schemas__workspace__WorkspaceOverviewOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_pattern_analysis_route_v1_pattern_analyses__analysis_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                analysis_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatternAnalysisOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_pattern_analysis_route_v1_pattern_analyses__analysis_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                analysis_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -4970,6 +5560,79 @@ export interface operations {
             };
         };
     };
+    list_custom_metric_definitions_route_v1_people__person_id__custom_metric_definitions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                person_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomMetricDefinitionOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_custom_metric_definition_route_v1_people__person_id__custom_metric_definitions_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                person_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomMetricDefinitionCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomMetricDefinitionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_daily_brief_route_v1_people__person_id__daily_brief_get: {
         parameters: {
             query: {
@@ -5005,6 +5668,43 @@ export interface operations {
             };
         };
     };
+    get_evidence_result_route_v1_people__person_id__evidence_results_get: {
+        parameters: {
+            query: {
+                metric_key: string;
+                correlation_target: components["schemas"]["CorrelationTarget"];
+                correlation_target_value: number;
+            };
+            header?: never;
+            path: {
+                person_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvidenceResultOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_identities_route_v1_people__person_id__identities_get: {
         parameters: {
             query?: never;
@@ -5025,6 +5725,160 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NameIdentityOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_life_tracking_entries_route_v1_people__person_id__life_tracking_entries_get: {
+        parameters: {
+            query?: {
+                from?: string | null;
+                to?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                person_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LifeTrackingEntryOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_life_tracking_entry_route_v1_people__person_id__life_tracking_entries_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                person_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LifeTrackingEntryCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LifeTrackingEntryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_pattern_analyses_route_v1_people__person_id__pattern_analyses_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                person_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatternAnalysisOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_pattern_analysis_route_v1_people__person_id__pattern_analyses_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                person_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PatternAnalysisCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatternAnalysisOut"];
                 };
             };
             /** @description Validation Error */

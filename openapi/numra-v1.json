@@ -1158,6 +1158,17 @@
         "title": "CheckinTemplateOut",
         "type": "object"
       },
+      "ConfidenceCategory": {
+        "description": "PR-V2-11 -- specs/v2/evidence-policy.md. `NO_RELIABLE_PATTERN` is a valid,\nexpected result (not an error state) whenever the active `EvidencePolicy`'s\nminimums are not met.",
+        "enum": [
+          "NO_RELIABLE_PATTERN",
+          "LOW",
+          "MEDIUM",
+          "HIGH"
+        ],
+        "title": "ConfidenceCategory",
+        "type": "string"
+      },
       "ConnectionInvitationCreateRequest": {
         "properties": {
           "invitee_email": {
@@ -1409,6 +1420,144 @@
         "title": "ConsentScope",
         "type": "string"
       },
+      "CorrelationTarget": {
+        "description": "PR-V2-11 -- which canonical timing metric an `EvidenceResult`/\n`PatternAnalysis` correlates a Life Tracking metric against.",
+        "enum": [
+          "PERSONAL_DAY",
+          "PERSONAL_MONTH",
+          "PERSONAL_YEAR"
+        ],
+        "title": "CorrelationTarget",
+        "type": "string"
+      },
+      "CustomMetricDefinitionCreateRequest": {
+        "properties": {
+          "label": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "metric_key": {
+            "maxLength": 60,
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "title": "Metric Key",
+            "type": "string"
+          },
+          "scale_max": {
+            "default": 10,
+            "title": "Scale Max",
+            "type": "integer"
+          },
+          "scale_min": {
+            "default": 1,
+            "title": "Scale Min",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "metric_key",
+          "label"
+        ],
+        "title": "CustomMetricDefinitionCreateRequest",
+        "type": "object"
+      },
+      "CustomMetricDefinitionOut": {
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "metric_key": {
+            "title": "Metric Key",
+            "type": "string"
+          },
+          "person_id": {
+            "format": "uuid",
+            "title": "Person Id",
+            "type": "string"
+          },
+          "retired_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retired At"
+          },
+          "scale_max": {
+            "title": "Scale Max",
+            "type": "integer"
+          },
+          "scale_min": {
+            "title": "Scale Min",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "person_id",
+          "metric_key",
+          "label",
+          "scale_min",
+          "scale_max",
+          "active",
+          "created_at",
+          "retired_at"
+        ],
+        "title": "CustomMetricDefinitionOut",
+        "type": "object"
+      },
+      "CustomMetricDefinitionPatchRequest": {
+        "description": "`metric_key` fehlt hier bewusst: er ist unveraenderlich (siehe\n`services.errors.MetricKeyImmutable`). Stilllegen und einen neuen Key anlegen\nist der einzige Weg, eine Metrik semantisch zu aendern.",
+        "properties": {
+          "active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          }
+        },
+        "title": "CustomMetricDefinitionPatchRequest",
+        "type": "object"
+      },
       "DailyBriefOut": {
         "description": "Deterministic Daily Brief for one person on one `as_of_date`: identical\ninputs (person + date + knowledge version) always produce a byte-identical\nresponse -- there is no LLM call and no randomness anywhere in this path.",
         "properties": {
@@ -1647,6 +1796,82 @@
         "title": "EntitlementSetOut",
         "type": "object"
       },
+      "EvidenceResultOut": {
+        "description": "Reines Lese-Ergebnis, kein DB-Artefakt (specs/v2/evidence-policy.md).\n\n`confidence_category == NO_RELIABLE_PATTERN` ist ein gueltiges, erwartetes\nErgebnis mit HTTP 200 -- dann sind `effect_size`, `baseline_mean`, `bucket_mean`\nund `statement_text` allesamt `None`, waehrend `sample_size` und\n`observation_window_days` weiterhin gefuellt sind: der Nutzer soll sehen, wie\nweit er von einer belastbaren Aussage entfernt ist.",
+        "properties": {
+          "baseline_mean": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Mean"
+          },
+          "bucket_mean": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bucket Mean"
+          },
+          "confidence_category": {
+            "$ref": "#/components/schemas/ConfidenceCategory"
+          },
+          "effect_size": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effect Size"
+          },
+          "evidence_policy_version": {
+            "title": "Evidence Policy Version",
+            "type": "integer"
+          },
+          "observation_window_days": {
+            "title": "Observation Window Days",
+            "type": "integer"
+          },
+          "sample_size": {
+            "title": "Sample Size",
+            "type": "integer"
+          },
+          "statement_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Statement Text"
+          }
+        },
+        "required": [
+          "sample_size",
+          "observation_window_days",
+          "confidence_category",
+          "effect_size",
+          "baseline_mean",
+          "bucket_mean",
+          "statement_text",
+          "evidence_policy_version"
+        ],
+        "title": "EvidenceResultOut",
+        "type": "object"
+      },
       "ExportCreateRequest": {
         "properties": {
           "export_type": {
@@ -1792,6 +2017,367 @@
         "title": "InvitationState",
         "type": "string"
       },
+      "LifeTrackingEntryCreateRequest": {
+        "properties": {
+          "calculation_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calculation Id"
+          },
+          "custom_metrics": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Custom Metrics",
+            "type": "object"
+          },
+          "energy": {
+            "anyOf": [
+              {
+                "maximum": 10.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Energy"
+          },
+          "entry_date": {
+            "format": "date",
+            "title": "Entry Date",
+            "type": "string"
+          },
+          "focus": {
+            "anyOf": [
+              {
+                "maximum": 10.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Focus"
+          },
+          "mood": {
+            "anyOf": [
+              {
+                "maximum": 10.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mood"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "sleep": {
+            "anyOf": [
+              {
+                "maximum": 10.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sleep"
+          },
+          "stress": {
+            "anyOf": [
+              {
+                "maximum": 10.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stress"
+          }
+        },
+        "required": [
+          "entry_date"
+        ],
+        "title": "LifeTrackingEntryCreateRequest",
+        "type": "object"
+      },
+      "LifeTrackingEntryOut": {
+        "properties": {
+          "calculation_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calculation Id"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "custom_metrics": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Custom Metrics",
+            "type": "object"
+          },
+          "energy": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Energy"
+          },
+          "entry_date": {
+            "format": "date",
+            "title": "Entry Date",
+            "type": "string"
+          },
+          "focus": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Focus"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "mood": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mood"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "person_id": {
+            "format": "uuid",
+            "title": "Person Id",
+            "type": "string"
+          },
+          "sleep": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sleep"
+          },
+          "stress": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stress"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "person_id",
+          "entry_date",
+          "calculation_id",
+          "mood",
+          "energy",
+          "sleep",
+          "stress",
+          "focus",
+          "note",
+          "custom_metrics",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "LifeTrackingEntryOut",
+        "type": "object"
+      },
+      "LifeTrackingEntryPatchRequest": {
+        "description": "Jedes Feld optional; die Route wertet `model_fields_set` aus, sodass nur\ntatsaechlich gesendete Felder angewendet werden -- gleiches Muster wie\n`PrivateReflectionPatchRequest`. `custom_metrics` ersetzt beim Senden die\ngesamte Custom-Wertmenge des Eintrags (kein partielles Merge).",
+        "properties": {
+          "calculation_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calculation Id"
+          },
+          "custom_metrics": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custom Metrics"
+          },
+          "energy": {
+            "anyOf": [
+              {
+                "maximum": 10.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Energy"
+          },
+          "entry_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entry Date"
+          },
+          "focus": {
+            "anyOf": [
+              {
+                "maximum": 10.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Focus"
+          },
+          "mood": {
+            "anyOf": [
+              {
+                "maximum": 10.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mood"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "sleep": {
+            "anyOf": [
+              {
+                "maximum": 10.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sleep"
+          },
+          "stress": {
+            "anyOf": [
+              {
+                "maximum": 10.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stress"
+          }
+        },
+        "title": "LifeTrackingEntryPatchRequest",
+        "type": "object"
+      },
       "LoginRequest": {
         "properties": {
           "email": {
@@ -1928,6 +2514,81 @@
           "recorded_at"
         ],
         "title": "NameIdentityOut",
+        "type": "object"
+      },
+      "PatternAnalysisCreateRequest": {
+        "description": "Exakt die Query-Parameter von `GET .../evidence-results` -- und bewusst NICHT\ndas Ergebnis: `POST .../pattern-analyses` rechnet serverseitig neu ueber\ndenselben Codepfad. Ein clientgeliefertes `result_json` wuerde erlauben,\n`sample_size`/`confidence_category` frei zu erfinden.",
+        "properties": {
+          "correlation_target": {
+            "$ref": "#/components/schemas/CorrelationTarget"
+          },
+          "correlation_target_value": {
+            "minimum": 0.0,
+            "title": "Correlation Target Value",
+            "type": "integer"
+          },
+          "metric_key": {
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Metric Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "metric_key",
+          "correlation_target",
+          "correlation_target_value"
+        ],
+        "title": "PatternAnalysisCreateRequest",
+        "type": "object"
+      },
+      "PatternAnalysisOut": {
+        "properties": {
+          "correlation_target": {
+            "$ref": "#/components/schemas/CorrelationTarget"
+          },
+          "correlation_target_value": {
+            "title": "Correlation Target Value",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "evidence_policy_version": {
+            "title": "Evidence Policy Version",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "metric_key": {
+            "title": "Metric Key",
+            "type": "string"
+          },
+          "person_id": {
+            "format": "uuid",
+            "title": "Person Id",
+            "type": "string"
+          },
+          "result": {
+            "$ref": "#/components/schemas/EvidenceResultOut"
+          }
+        },
+        "required": [
+          "id",
+          "person_id",
+          "evidence_policy_version",
+          "metric_key",
+          "correlation_target",
+          "correlation_target_value",
+          "result",
+          "created_at"
+        ],
+        "title": "PatternAnalysisOut",
         "type": "object"
       },
       "PersonAccountMode": {
@@ -6792,6 +7453,108 @@
         ]
       }
     },
+    "/v1/custom-metric-definitions/{definition_id}": {
+      "patch": {
+        "description": "Nur `label` und `active` sind aenderbar. `metric_key` steht gar nicht im\nRequest-Schema -- Unveraenderlichkeit ist hier keine Laufzeitpruefung, sondern\nstrukturell nicht ausdrueckbar.",
+        "operationId": "patch_custom_metric_definition_route_v1_custom_metric_definitions__definition_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "definition_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Definition Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-csrf-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_csrf",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Csrf"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomMetricDefinitionPatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomMetricDefinitionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Patch Custom Metric Definition Route",
+        "tags": [
+          "life-tracking"
+        ]
+      }
+    },
     "/v1/exports": {
       "get": {
         "operationId": "list_exports_route_v1_exports_get",
@@ -7039,6 +7802,246 @@
         ]
       }
     },
+    "/v1/life-tracking-entries/{entry_id}": {
+      "delete": {
+        "operationId": "delete_life_tracking_entry_route_v1_life_tracking_entries__entry_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entry_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Entry Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-csrf-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_csrf",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Csrf"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Life Tracking Entry Route",
+        "tags": [
+          "life-tracking"
+        ]
+      },
+      "get": {
+        "operationId": "get_life_tracking_entry_route_v1_life_tracking_entries__entry_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entry_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Entry Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LifeTrackingEntryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Life Tracking Entry Route",
+        "tags": [
+          "life-tracking"
+        ]
+      },
+      "patch": {
+        "operationId": "patch_life_tracking_entry_route_v1_life_tracking_entries__entry_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entry_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Entry Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-csrf-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_csrf",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Csrf"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LifeTrackingEntryPatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LifeTrackingEntryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Patch Life Tracking Entry Route",
+        "tags": [
+          "life-tracking"
+        ]
+      }
+    },
     "/v1/me/entitlements": {
       "get": {
         "description": "The signed-in user's effective feature/limit bundle: their explicit\n`EntitlementAssignment` if one exists, otherwise the seeded \"beta_default\"\n`EntitlementSet` (see repositories/entitlements.py). A missing default set is a\nseed/migration inconsistency, not a normal runtime state -- surfaced as 404 rather\nthan silently defaulting to some hardcoded shape.",
@@ -7146,6 +8149,147 @@
         "summary": "Get My Workspace Route",
         "tags": [
           "workspace"
+        ]
+      }
+    },
+    "/v1/pattern-analyses/{analysis_id}": {
+      "delete": {
+        "operationId": "delete_pattern_analysis_route_v1_pattern_analyses__analysis_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "analysis_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Analysis Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-csrf-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_csrf",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Csrf"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Pattern Analysis Route",
+        "tags": [
+          "evidence"
+        ]
+      },
+      "get": {
+        "operationId": "get_pattern_analysis_route_v1_pattern_analyses__analysis_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "analysis_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Analysis Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatternAnalysisOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Pattern Analysis Route",
+        "tags": [
+          "evidence"
         ]
       }
     },
@@ -7716,6 +8860,168 @@
         ]
       }
     },
+    "/v1/people/{person_id}/custom-metric-definitions": {
+      "get": {
+        "operationId": "list_custom_metric_definitions_route_v1_people__person_id__custom_metric_definitions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "person_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Person Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CustomMetricDefinitionOut"
+                  },
+                  "title": "Response List Custom Metric Definitions Route V1 People  Person Id  Custom Metric Definitions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Custom Metric Definitions Route",
+        "tags": [
+          "life-tracking"
+        ]
+      },
+      "post": {
+        "operationId": "create_custom_metric_definition_route_v1_people__person_id__custom_metric_definitions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "person_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Person Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-csrf-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_csrf",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Csrf"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomMetricDefinitionCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomMetricDefinitionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Custom Metric Definition Route",
+        "tags": [
+          "life-tracking"
+        ]
+      }
+    },
     "/v1/people/{person_id}/daily-brief": {
       "get": {
         "description": "V1.5 Epic K: a deterministic, reproducible Daily Brief -- Personal Day/Month/\nYear composed with knowledge-sourced reflection text. Ad-hoc and non-persisted,\nsame as /timing: recomputed from the engine for the given as_of_date, no LLM call,\nno randomness. Identical person + as_of_date + knowledge version always produce a\nbyte-identical response.",
@@ -7786,6 +9092,95 @@
         ]
       }
     },
+    "/v1/people/{person_id}/evidence-results": {
+      "get": {
+        "description": "Antwortet immer mit 200, sobald Person und Metrik existieren --\n`confidence_category=NO_RELIABLE_PATTERN` ist ein Ergebnis, kein Fehler.",
+        "operationId": "get_evidence_result_route_v1_people__person_id__evidence_results_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "person_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Person Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "metric_key",
+            "required": true,
+            "schema": {
+              "maxLength": 60,
+              "minLength": 1,
+              "title": "Metric Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "correlation_target",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/CorrelationTarget"
+            }
+          },
+          {
+            "in": "query",
+            "name": "correlation_target_value",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "title": "Correlation Target Value",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvidenceResultOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Evidence Result Route",
+        "tags": [
+          "evidence"
+        ]
+      }
+    },
     "/v1/people/{person_id}/identities": {
       "get": {
         "operationId": "list_identities_route_v1_people__person_id__identities_get",
@@ -7846,6 +9241,410 @@
         "summary": "List Identities Route",
         "tags": [
           "people"
+        ]
+      }
+    },
+    "/v1/people/{person_id}/life-tracking-entries": {
+      "get": {
+        "operationId": "list_life_tracking_entries_route_v1_people__person_id__life_tracking_entries_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "person_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Person Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LifeTrackingEntryOut"
+                  },
+                  "title": "Response List Life Tracking Entries Route V1 People  Person Id  Life Tracking Entries Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Life Tracking Entries Route",
+        "tags": [
+          "life-tracking"
+        ]
+      },
+      "post": {
+        "operationId": "create_life_tracking_entry_route_v1_people__person_id__life_tracking_entries_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "person_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Person Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-csrf-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_csrf",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Csrf"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LifeTrackingEntryCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LifeTrackingEntryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Life Tracking Entry Route",
+        "tags": [
+          "life-tracking"
+        ]
+      }
+    },
+    "/v1/people/{person_id}/pattern-analyses": {
+      "get": {
+        "operationId": "list_pattern_analyses_route_v1_people__person_id__pattern_analyses_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "person_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Person Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PatternAnalysisOut"
+                  },
+                  "title": "Response List Pattern Analyses Route V1 People  Person Id  Pattern Analyses Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Pattern Analyses Route",
+        "tags": [
+          "evidence"
+        ]
+      },
+      "post": {
+        "operationId": "create_pattern_analysis_route_v1_people__person_id__pattern_analyses_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "person_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Person Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-csrf-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_csrf",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Csrf"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatternAnalysisCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatternAnalysisOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Pattern Analysis Route",
+        "tags": [
+          "evidence"
         ]
       }
     },
