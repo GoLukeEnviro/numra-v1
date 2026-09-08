@@ -34,11 +34,15 @@ from numra_api.models.enums import (
     ExportType,
     InvitationMethod,
     InvitationState,
+    MilestoneStatus,
+    MilestoneType,
     NameIdentityKind,
     PersonAccountMode,
     PersonalTaskStatus,
     ReportJobStatus,
     ReportType,
+    RoadmapStatus,
+    RoadmapType,
     TaskAcceptanceEventType,
     TaskType,
     UserRole,
@@ -1075,6 +1079,14 @@ class WorkspaceTask(Base):
     source_analysis_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     prompt_version: Mapped[str | None] = mapped_column(String(20), nullable=True)
     knowledge_version: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    #: PR-V2-08 -- optional link into the Roadmap system (specs/v2/roadmap-spec.md
+    #: Structure: `Roadmap > Milestone > Task`). `ondelete=SET NULL` so deleting a
+    #: milestone never cascades into deleting the task it was linked from; the
+    #: repository/service layer enforces the milestone belongs to the same
+    #: `workspace_id` (see repositories/workspace_tasks.py).
+    roadmap_milestone_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("roadmap_milestones.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     created_at: Mapped[dt.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -1104,6 +1116,113 @@ class TaskAcceptance(Base):
     )
 
 
+class RelationshipRoadmap(Base):
+    """PR-V2-08 -- specs/v2/roadmap-spec.md. `proposer_user_id` NULL means
+    AVENYTH-proposed (same discriminator convention as `WorkspaceTask`), never
+    user-creatable via a route -- only the internal
+    `services.relationship_roadmap_service.create_avenyth_suggested_roadmap`
+    (no route) may create such a row. `source_analysis_id` is a polymorph
+    provenance pointer (NOT a FK, no single source table), only ever set together
+    with `prompt_version`/`knowledge_version`, only when AVENYTH-proposed --
+    enforced by `ck_relationship_roadmaps_provenance_only_avenyth_suggested`."""
+
+    __tablename__ = "relationship_roadmaps"
+    __table_args__ = (
+        CheckConstraint(
+            "proposer_user_id IS NULL OR "
+            "(source_analysis_id IS NULL AND prompt_version IS NULL "
+            "AND knowledge_version IS NULL)",
+            name="ck_relationship_roadmaps_provenance_only_avenyth_suggested",
+        ),
+        Index("ix_relationship_roadmaps_workspace_id_status", "workspace_id", "status"),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("relationship_workspaces.id", ondelete="CASCADE"), index=True
+    )
+    roadmap_type: Mapped[RoadmapType] = mapped_column(String(20))
+    title: Mapped[str] = mapped_column(String(200))
+    status: Mapped[RoadmapStatus] = mapped_column(String(20), default=RoadmapStatus.PROPOSED)
+    proposer_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    source_analysis_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    prompt_version: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    knowledge_version: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class RoadmapMilestone(Base):
+    """PR-V2-08 -- specs/v2/roadmap-spec.md Structure: one milestone or review-point
+    within a `RelationshipRoadmap`, discriminated by `milestone_type`. `sequence`
+    is plain client-editable ordering (reordering is CRUD, never regenerated from
+    the LLM). `completed_at` is server-derived on the COMPLETED transition, only
+    ever set via an explicit user PATCH
+    (services/relationship_roadmap_service.py), never automatically/via LLM."""
+
+    __tablename__ = "roadmap_milestones"
+    __table_args__ = (Index("ix_roadmap_milestones_roadmap_id_sequence", "roadmap_id", "sequence"),)
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    roadmap_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("relationship_roadmaps.id", ondelete="CASCADE"), index=True
+    )
+    milestone_type: Mapped[MilestoneType] = mapped_column(String(20))
+    title: Mapped[str] = mapped_column(String(200))
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    target_date: Mapped[dt.date | None] = mapped_column(Date, nullable=True)
+    sequence: Mapped[int] = mapped_column(Integer)
+    status: Mapped[MilestoneStatus] = mapped_column(String(20), default=MilestoneStatus.PENDING)
+    completed_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class SharedReflection(Base):
+    """PR-V2-08 -- specs/v2/personal-workspace-spec.md SHARE flow. A snapshot COPY
+    of a `PrivateReflection`'s `entry_date`/`content` at share time -- deliberately
+    NOT a live link, so a later edit/delete of the source `PrivateReflection` never
+    changes what the partner already saw (`source_private_reflection_id` uses
+    `ondelete=SET NULL` purely for provenance/audit, the copied `content` is
+    unaffected either way). Immutable after creation -- no PATCH route; the
+    explicit SHARE click is the consent act (no separate consent-scope gate, see
+    services/shared_reflection_service.py)."""
+
+    __tablename__ = "shared_reflections"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("relationship_workspaces.id", ondelete="CASCADE"), index=True
+    )
+    author_user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    source_private_reflection_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("private_reflections.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    entry_date: Mapped[dt.date] = mapped_column(Date)
+    content: Mapped[str] = mapped_column(Text)
+    shared_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
 __all__ = [
     "AdminAuditEvent",
     "AnalysisJob",
@@ -1129,12 +1248,15 @@ __all__ = [
     "PrivateReflection",
     "RelationshipAnalysis",
     "RelationshipCheckin",
+    "RelationshipRoadmap",
     "RelationshipWorkspace",
     "Report",
     "ReportJob",
     "ReportSection",
     "RelationshipComparison",
+    "RoadmapMilestone",
     "ShadowDynamicsAnalysis",
+    "SharedReflection",
     "Session",
     "TaskAcceptance",
     "User",
