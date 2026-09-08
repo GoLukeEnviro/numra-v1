@@ -155,3 +155,14 @@ class RelationshipType(StrEnum):
     PARENT_CHILD = "PARENT_CHILD"
     WORK = "WORK"
     OTHER = "OTHER"
+
+
+class CheckinStatus(StrEnum):
+    """PR-V2-06 -- lifecycle of one `RelationshipCheckin` cycle. `ANALYZED` is set
+    synchronously, in the same transaction as the second member's submission, once
+    `CheckinAnalysisService` has computed the shared derived result (see
+    services/checkin_service.py::submit_checkin) -- there is no separate job/worker
+    for this, unlike `ReportJobStatus`/`AnalysisJobStatus`."""
+
+    AWAITING_SUBMISSIONS = "AWAITING_SUBMISSIONS"
+    ANALYZED = "ANALYZED"
