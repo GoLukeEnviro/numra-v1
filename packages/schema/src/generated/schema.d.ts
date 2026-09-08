@@ -1250,6 +1250,77 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/workspaces/{workspace_id}/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Tasks Route */
+        get: operations["list_tasks_route_v1_workspaces__workspace_id__tasks_get"];
+        put?: never;
+        /** Create Task Route */
+        post: operations["create_task_route_v1_workspaces__workspace_id__tasks_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workspaces/{workspace_id}/tasks/{task_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Task Route */
+        get: operations["get_task_route_v1_workspaces__workspace_id__tasks__task_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Task Route */
+        delete: operations["delete_task_route_v1_workspaces__workspace_id__tasks__task_id__delete"];
+        options?: never;
+        head?: never;
+        /** Patch Task Route */
+        patch: operations["patch_task_route_v1_workspaces__workspace_id__tasks__task_id__patch"];
+        trace?: never;
+    };
+    "/v1/workspaces/{workspace_id}/tasks/{task_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept Task Route */
+        post: operations["accept_task_route_v1_workspaces__workspace_id__tasks__task_id__accept_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workspaces/{workspace_id}/tasks/{task_id}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decline Task Route */
+        post: operations["decline_task_route_v1_workspaces__workspace_id__tasks__task_id__decline_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2675,6 +2746,16 @@ export interface components {
             /** Session Ttl Hours */
             session_ttl_hours: number;
         };
+        /**
+         * TaskType
+         * @description PR-V2-07 -- specs/v2/task-system-spec.md. Deliberately its own value space,
+         *     NOT shared with `PersonalTaskStatus` -- `PERSONAL_PRIVATE` tasks stay on the
+         *     slim `PersonalTask` table (no `task_type` discriminator there at all, see
+         *     models/tables.py::PersonalTask); every row on `WorkspaceTask` is one of the
+         *     three relationship-facing types below.
+         * @enum {string}
+         */
+        TaskType: "FOR_PARTNER_PROPOSED" | "JOINT_SHARED" | "AVENYTH_SUGGESTED";
         /** UserConnectionOut */
         UserConnectionOut: {
             /**
@@ -2823,6 +2904,87 @@ export interface components {
             relationship_type: components["schemas"]["RelationshipType"] | null;
             status: components["schemas"]["WorkspaceStatus"];
         };
+        /** WorkspaceTaskCreateRequest */
+        WorkspaceTaskCreateRequest: {
+            /** Description */
+            description?: string | null;
+            /** Due Date */
+            due_date?: string | null;
+            /** Recipient User Id */
+            recipient_user_id?: string | null;
+            task_type: components["schemas"]["TaskType"];
+            /** Title */
+            title: string;
+        };
+        /** WorkspaceTaskOut */
+        WorkspaceTaskOut: {
+            /** Completed At */
+            completed_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Description */
+            description: string | null;
+            /** Due Date */
+            due_date: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Knowledge Version */
+            knowledge_version: string | null;
+            /** Prompt Version */
+            prompt_version: string | null;
+            /** Proposer User Id */
+            proposer_user_id: string | null;
+            /** Recipient User Id */
+            recipient_user_id: string | null;
+            /** Source Analysis Id */
+            source_analysis_id: string | null;
+            status: components["schemas"]["WorkspaceTaskStatus"];
+            task_type: components["schemas"]["TaskType"];
+            /** Title */
+            title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /**
+             * Workspace Id
+             * Format: uuid
+             */
+            workspace_id: string;
+        };
+        /**
+         * WorkspaceTaskPatchRequest
+         * @description Every field optional; `model_fields_set` at the route means only fields
+         *     the client actually sent are applied -- same pattern as
+         *     `PersonalTaskPatchRequest`.
+         */
+        WorkspaceTaskPatchRequest: {
+            /** Description */
+            description?: string | null;
+            /** Due Date */
+            due_date?: string | null;
+            /** Status */
+            status?: ("COMPLETED" | "ARCHIVED") | null;
+            /** Title */
+            title?: string | null;
+        };
+        /**
+         * WorkspaceTaskStatus
+         * @description PR-V2-07 -- lifecycle of one `WorkspaceTask`
+         *     (specs/v2/task-system-spec.md Lifecycle): PROPOSED -> ACCEPTED -> ACTIVE ->
+         *     COMPLETED, or PROPOSED -> DECLINED, or any non-terminal state -> ARCHIVED.
+         *     Server-authoritative -- no client ever writes this column directly except via
+         *     the accept/decline/PATCH state-machine in services/workspace_task_service.py.
+         * @enum {string}
+         */
+        WorkspaceTaskStatus: "PROPOSED" | "ACCEPTED" | "ACTIVE" | "COMPLETED" | "DECLINED" | "ARCHIVED";
         /** WorkspaceUpdateRequest */
         WorkspaceUpdateRequest: {
             relationship_type: components["schemas"]["RelationshipType"];
@@ -5888,6 +6050,268 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ShadowDynamicsAnalysisOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_tasks_route_v1_workspaces__workspace_id__tasks_get: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["WorkspaceTaskStatus"] | null;
+                task_type?: components["schemas"]["TaskType"] | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                workspace_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceTaskOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_task_route_v1_workspaces__workspace_id__tasks_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                workspace_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkspaceTaskCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceTaskOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_task_route_v1_workspaces__workspace_id__tasks__task_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace_id: string;
+                task_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceTaskOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_task_route_v1_workspaces__workspace_id__tasks__task_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                workspace_id: string;
+                task_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_task_route_v1_workspaces__workspace_id__tasks__task_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                workspace_id: string;
+                task_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkspaceTaskPatchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceTaskOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    accept_task_route_v1_workspaces__workspace_id__tasks__task_id__accept_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                workspace_id: string;
+                task_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceTaskOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decline_task_route_v1_workspaces__workspace_id__tasks__task_id__decline_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                workspace_id: string;
+                task_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceTaskOut"];
                 };
             };
             /** @description Validation Error */

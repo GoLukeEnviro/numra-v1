@@ -201,3 +201,42 @@ class SemanticKeyImmutable(ApplicationError):
 
     code = "SEMANTIC_KEY_IMMUTABLE"
     status_code = 409
+
+
+class InvalidRecipient(ApplicationError):
+    """PR-V2-07 -- raised when a `POST .../tasks` body for `FOR_PARTNER_PROPOSED`
+    supplies a `recipient_user_id` that is not the other ACTIVE member of the
+    workspace. The recipient is always derived from workspace membership; the
+    body field is only accepted for spoofing-detection (see
+    services/workspace_task_service.py), never trusted as the source of truth."""
+
+    code = "INVALID_RECIPIENT"
+    status_code = 422
+
+
+class AvenythSuggestedNotUserCreatable(ApplicationError):
+    """PR-V2-07 -- `task_type=AVENYTH_SUGGESTED` may never be created via
+    `POST .../tasks` -- only `services.workspace_task_service.
+    create_avenyth_suggestion` (an internal function, no route) may create such a
+    row (specs/v2/task-system-spec.md: server-authoritative provenance)."""
+
+    code = "AVENYTH_SUGGESTED_NOT_USER_CREATABLE"
+    status_code = 422
+
+
+class TaskTransitionConflict(ApplicationError):
+    """PR-V2-07 -- raised by accept/decline on a `WorkspaceTask` that is no longer
+    in `PROPOSED` state (e.g. a second accept/decline attempt) -- a conflict, not
+    a validation error, same rationale as `CheckinAlreadySubmitted`."""
+
+    code = "TASK_TRANSITION_CONFLICT"
+    status_code = 409
+
+
+class TaskNotDeletable(ApplicationError):
+    """PR-V2-07 -- raised by DELETE .../tasks/{task_id} unless the task is
+    PROPOSED/DECLINED/ARCHIVED (an ACTIVE/ACCEPTED/COMPLETED task must be
+    archived first, never deleted directly)."""
+
+    code = "TASK_NOT_DELETABLE"
+    status_code = 422

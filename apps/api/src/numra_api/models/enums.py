@@ -157,6 +157,46 @@ class RelationshipType(StrEnum):
     OTHER = "OTHER"
 
 
+class TaskType(StrEnum):
+    """PR-V2-07 -- specs/v2/task-system-spec.md. Deliberately its own value space,
+    NOT shared with `PersonalTaskStatus` -- `PERSONAL_PRIVATE` tasks stay on the
+    slim `PersonalTask` table (no `task_type` discriminator there at all, see
+    models/tables.py::PersonalTask); every row on `WorkspaceTask` is one of the
+    three relationship-facing types below."""
+
+    FOR_PARTNER_PROPOSED = "FOR_PARTNER_PROPOSED"
+    JOINT_SHARED = "JOINT_SHARED"
+    AVENYTH_SUGGESTED = "AVENYTH_SUGGESTED"
+
+
+class WorkspaceTaskStatus(StrEnum):
+    """PR-V2-07 -- lifecycle of one `WorkspaceTask`
+    (specs/v2/task-system-spec.md Lifecycle): PROPOSED -> ACCEPTED -> ACTIVE ->
+    COMPLETED, or PROPOSED -> DECLINED, or any non-terminal state -> ARCHIVED.
+    Server-authoritative -- no client ever writes this column directly except via
+    the accept/decline/PATCH state-machine in services/workspace_task_service.py."""
+
+    PROPOSED = "PROPOSED"
+    ACCEPTED = "ACCEPTED"
+    ACTIVE = "ACTIVE"
+    COMPLETED = "COMPLETED"
+    DECLINED = "DECLINED"
+    ARCHIVED = "ARCHIVED"
+
+
+class TaskAcceptanceEventType(StrEnum):
+    """PR-V2-07 -- append-only audit trail for one `WorkspaceTask`
+    (`TaskAcceptance`), same rationale/shape as `ConsentEventType` for
+    `ConsentEvent`."""
+
+    PROPOSED = "PROPOSED"
+    ACCEPTED = "ACCEPTED"
+    DECLINED = "DECLINED"
+    ACTIVATED = "ACTIVATED"
+    COMPLETED = "COMPLETED"
+    ARCHIVED = "ARCHIVED"
+
+
 class CheckinStatus(StrEnum):
     """PR-V2-06 -- lifecycle of one `RelationshipCheckin` cycle. `ANALYZED` is set
     synchronously, in the same transaction as the second member's submission, once

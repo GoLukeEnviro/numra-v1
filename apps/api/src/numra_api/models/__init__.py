@@ -32,9 +32,11 @@ from numra_api.models.tables import (
     ReportSection,
     Session,
     ShadowDynamicsAnalysis,
+    TaskAcceptance,
     User,
     UserConnection,
     WorkspaceMember,
+    WorkspaceTask,
 )
 
 __all__ = [
@@ -69,7 +71,9 @@ __all__ = [
     "ReportSection",
     "ShadowDynamicsAnalysis",
     "Session",
+    "TaskAcceptance",
     "User",
     "UserConnection",
     "WorkspaceMember",
+    "WorkspaceTask",
 ]
