@@ -1197,6 +1197,76 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/workspaces/{workspace_id}/copilot/threads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Threads Route */
+        get: operations["list_threads_route_v1_workspaces__workspace_id__copilot_threads_get"];
+        put?: never;
+        /** Create Thread Route */
+        post: operations["create_thread_route_v1_workspaces__workspace_id__copilot_threads_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workspaces/{workspace_id}/copilot/threads/{thread_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Thread Route */
+        get: operations["get_thread_route_v1_workspaces__workspace_id__copilot_threads__thread_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workspaces/{workspace_id}/copilot/threads/{thread_id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Archive Thread Route Handler */
+        post: operations["archive_thread_route_handler_v1_workspaces__workspace_id__copilot_threads__thread_id__archive_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workspaces/{workspace_id}/copilot/threads/{thread_id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Messages Route */
+        get: operations["list_messages_route_v1_workspaces__workspace_id__copilot_threads__thread_id__messages_get"];
+        put?: never;
+        /** Post Message Route */
+        post: operations["post_message_route_v1_workspaces__workspace_id__copilot_threads__thread_id__messages_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/workspaces/{workspace_id}/relationship-analysis": {
         parameters: {
             query?: never;
@@ -1703,6 +1773,82 @@ export interface components {
             /** New Password */
             new_password: string;
         };
+        /** ChatMessageOut */
+        ChatMessageOut: {
+            /** Author User Id */
+            author_user_id: string | null;
+            /** Basis Type */
+            basis_type: string | null;
+            /** Content */
+            content: string;
+            /** Context Snapshot Id */
+            context_snapshot_id: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Error Code */
+            error_code: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Knowledge Version */
+            knowledge_version: string | null;
+            /** Model Name */
+            model_name: string | null;
+            /** Model Provider */
+            model_provider: string | null;
+            /** Prompt Version */
+            prompt_version: string | null;
+            role: components["schemas"]["ChatMessageRole"];
+            status: components["schemas"]["ChatMessageStatus"];
+            /**
+             * Thread Id
+             * Format: uuid
+             */
+            thread_id: string;
+        };
+        /**
+         * ChatMessageRole
+         * @description PR-V2-09 -- who authored one `ChatMessage` row.
+         * @enum {string}
+         */
+        ChatMessageRole: "USER" | "ASSISTANT";
+        /**
+         * ChatMessageStatus
+         * @description PR-V2-09 -- lifecycle of one `ChatMessage` row. A USER row is always created
+         *     COMPLETE (it needs no generation); an ASSISTANT row starts PENDING, moves through
+         *     GENERATING while the synchronous Copilot pipeline runs, and ends COMPLETE or
+         *     FAILED (services/copilot_service.py) -- there is no job/worker for this, unlike
+         *     `AnalysisJobStatus` (interactive chat latency, specs/v2/copilot-grounding-spec.md).
+         * @enum {string}
+         */
+        ChatMessageStatus: "PENDING" | "GENERATING" | "COMPLETE" | "FAILED";
+        /** ChatThreadOut */
+        ChatThreadOut: {
+            /** Archived At */
+            archived_at: string | null;
+            /** Context Version */
+            context_version: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Owner User Id */
+            owner_user_id: string | null;
+            scope: components["schemas"]["ThreadScope"];
+            /** Workspace Id */
+            workspace_id: string | null;
+        };
         /** CheckinAnalysisOut */
         CheckinAnalysisOut: {
             /**
@@ -2171,6 +2317,16 @@ export interface components {
             email: string;
             /** Password */
             password: string;
+        };
+        /** MessageCreateRequest */
+        MessageCreateRequest: {
+            /** Content */
+            content: string;
+        };
+        /** MessagePairOut */
+        MessagePairOut: {
+            assistant_message: components["schemas"]["ChatMessageOut"];
+            user_message: components["schemas"]["ChatMessageOut"];
         };
         /**
          * MilestoneStatus
@@ -3088,6 +3244,21 @@ export interface components {
          * @enum {string}
          */
         TaskType: "FOR_PARTNER_PROPOSED" | "JOINT_SHARED" | "AVENYTH_SUGGESTED";
+        /** ThreadCreateRequest */
+        ThreadCreateRequest: {
+            /** @description RELATIONSHIP_SHARED or RELATIONSHIP_PRIVATE only -- PERSONAL_PRIVATE is rejected (PR-V2-09b, not implemented in this PR). */
+            scope: components["schemas"]["ThreadScope"];
+        };
+        /**
+         * ThreadScope
+         * @description PR-V2-09 -- specs/v2/copilot-grounding-spec.md Thread model. Only
+         *     `RELATIONSHIP_SHARED`/`RELATIONSHIP_PRIVATE` are ever created by a route in this
+         *     PR -- `PERSONAL_PRIVATE`'s column shape (workspace_id NULL, owner_user_id set) is
+         *     reserved on `ChatThread`/its CHECK constraint so PR-V2-09b can reuse this table
+         *     without a migration, but no route/service in this PR creates that scope.
+         * @enum {string}
+         */
+        ThreadScope: "PERSONAL_PRIVATE" | "RELATIONSHIP_PRIVATE" | "RELATIONSHIP_SHARED";
         /** UserConnectionOut */
         UserConnectionOut: {
             /**
@@ -6220,6 +6391,228 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConsentGrantOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_threads_route_v1_workspaces__workspace_id__copilot_threads_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatThreadOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_thread_route_v1_workspaces__workspace_id__copilot_threads_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                workspace_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ThreadCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatThreadOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_thread_route_v1_workspaces__workspace_id__copilot_threads__thread_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace_id: string;
+                thread_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatThreadOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    archive_thread_route_handler_v1_workspaces__workspace_id__copilot_threads__thread_id__archive_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                workspace_id: string;
+                thread_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatThreadOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_messages_route_v1_workspaces__workspace_id__copilot_threads__thread_id__messages_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                workspace_id: string;
+                thread_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatMessageOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_message_route_v1_workspaces__workspace_id__copilot_threads__thread_id__messages_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                workspace_id: string;
+                thread_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MessageCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessagePairOut"];
                 };
             };
             /** @description Validation Error */
