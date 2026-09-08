@@ -24,6 +24,7 @@ from numra_api.services.errors import (
 )
 from numra_api.services.pdf_client import PdfServiceClient
 from numra_api.storage.exports import ExportStorage
+from numra_interpretation.llm.types import LLMProvider
 
 
 async def get_db(request: Request) -> AsyncIterator[AsyncSession]:
@@ -56,6 +57,16 @@ def get_rate_limiter(request: Request) -> RateLimiter:
 def get_email_sender(request: Request) -> EmailSender:
     sender: EmailSender = request.app.state.email_sender
     return sender
+
+
+def get_llm_provider(request: Request) -> LLMProvider:
+    """PR-V2-09 -- the Copilot pipeline is the first surface that calls the LLM
+    synchronously inside a route (interactive chat latency, no job/worker, unlike
+    report/relationship-analysis generation which only ever runs inside
+    analysis_worker.py). Built once in `app.py::create_app` via the same
+    `services.llm_factory.build_llm_provider` factory every other caller uses."""
+    provider: LLMProvider = request.app.state.llm_provider
+    return provider
 
 
 async def _enforce_rate_limit(

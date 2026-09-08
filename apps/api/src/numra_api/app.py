@@ -26,6 +26,7 @@ from numra_api.routes import (
     checkins,
     connections,
     consent,
+    copilot_threads,
     entitlements,
     exports,
     health,
@@ -46,6 +47,7 @@ from numra_api.routes import (
 )
 from numra_api.services.email_factory import build_email_sender
 from numra_api.services.errors import ApplicationError
+from numra_api.services.llm_factory import build_llm_provider
 from numra_api.services.pdf_client import PdfServiceClient
 from numra_api.storage.exports import LocalExportStorage
 
@@ -81,6 +83,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.rate_limiter = _build_rate_limiter(resolved_settings)
     app.state.email_sender = build_email_sender(resolved_settings)
+    app.state.llm_provider = build_llm_provider(resolved_settings)
 
     # Middleware chain — order matters (outermost first, applied last-in-first-out by
     # Starlette so the LAST .add_middleware call runs FIRST on the request path).
@@ -137,6 +140,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(workspace_tasks.router)
     app.include_router(relationship_roadmaps.router)
     app.include_router(shared_reflections.router)
+    app.include_router(copilot_threads.router)
 
     return app
 
