@@ -32,6 +32,7 @@ from numra_interpretation.errors import InvalidReportSection
 from numra_interpretation.llm.types import LLMProvider as LLMProviderProtocol
 from numra_interpretation.llm.types import NumericClaim, StructuredGenerationRequest
 from numra_interpretation.llm.validator import validate_numeric_claims
+from numra_interpretation.report.evidence_linter import lint_free_text_for_causal_language
 from numra_numerology.models.profile import CanonicalProfile
 from numra_relationship_interpretation.errors import AnalysisGenerationError
 
@@ -101,6 +102,14 @@ def _validate_reply(
             f"INVALID_BASIS_TYPE: {reply.basis_type!r} is not one of {sorted(VALID_BASIS_TYPES)}"
         )
     _validate_claims_against_profiles(reply.numeric_claims, grounding_profiles)
+    # PR-V2-11, specs/v2/evidence-policy.md "Correlation language": unbedingt, nicht
+    # nur fuer OBSERVED_WORKSPACE_DATA/MIXED. Ein Modell kann kausal formulieren,
+    # waehrend es sich selbst als NUMEROLOGY_MODEL deklariert -- die Klassifikation
+    # wird hier ohnehin nie auf Wort genommen (siehe Modul-Docstring). Defense in
+    # Depth neben dem strukturellen Linter in evidence_service.py.
+    causal_lint = lint_free_text_for_causal_language(reply.text)
+    if not causal_lint.is_valid:
+        raise AnalysisGenerationError(f"CAUSAL_LANGUAGE_REJECTED: {'; '.join(causal_lint.errors)}")
 
 
 async def _generate_once(

@@ -28,8 +28,10 @@ from numra_api.routes import (
     consent,
     copilot_threads,
     entitlements,
+    evidence,
     exports,
     health,
+    life_tracking,
     people,
     personal_tasks,
     private_notes,
@@ -141,6 +143,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(relationship_roadmaps.router)
     app.include_router(shared_reflections.router)
     app.include_router(copilot_threads.router)
+    app.include_router(life_tracking.router)
+    app.include_router(evidence.router)
 
     return app
 

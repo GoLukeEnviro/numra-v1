@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import AsyncIterator
+from decimal import Decimal
 
 import pytest
 import pytest_asyncio
@@ -11,7 +12,7 @@ from numra_api.app import create_app
 from numra_api.config import Settings
 from numra_api.db import build_engine, build_sessionmaker
 from numra_api.email.sender import EmailSender
-from numra_api.models import Base, EntitlementSet
+from numra_api.models import Base, EntitlementSet, EvidencePolicy
 from numra_api.repositories.entitlements import DEFAULT_ENTITLEMENT_SET_KEY
 from numra_api.services.llm_factory import build_llm_provider
 from numra_interpretation.llm.types import LLMProvider
@@ -55,6 +56,27 @@ async def db_engine(settings: Settings):
     # production (see repositories/entitlements.py).
     async with build_sessionmaker(engine)() as db:
         db.add(EntitlementSet(key=DEFAULT_ENTITLEMENT_SET_KEY))
+        # Gleicher Grund wie beim EntitlementSet oben: die Evidence-Policy-Version 1
+        # wird von alembic/versions/d4e5f6a7b8c9_evidence_layer.py geseedet, das hier
+        # aber nie laeuft. Ohne aktive Policy verweigert evidence_service.py jede
+        # Berechnung (EVIDENCE_POLICY_NOT_FOUND) -- die Werte sind bewusst identisch
+        # zu denen der Migration; siehe deren `_POLICY_V1_RATIONALE` fuer die
+        # Begruendung jeder einzelnen Schwelle.
+        db.add(
+            EvidencePolicy(
+                version=1,
+                active=True,
+                minimum_total_sample_count=30,
+                minimum_sample_count_per_bucket=5,
+                minimum_observation_window_days=45,
+                missing_data_handling="EXCLUDE",
+                outlier_policy="WINSORIZE_P95",
+                multiple_comparison_protection="NONE",
+                effect_size_threshold=Decimal("0.500"),
+                confidence_category_thresholds={"LOW": 0.5, "MEDIUM": 0.65, "HIGH": 0.8},
+                rationale="Testfixture -- entspricht Version 1 aus der Migration.",
+            )
+        )
         await db.commit()
     yield engine
     await engine.dispose()

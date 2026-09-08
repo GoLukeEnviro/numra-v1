@@ -278,3 +278,46 @@ class ChatMessageStatus(StrEnum):
     GENERATING = "GENERATING"
     COMPLETE = "COMPLETE"
     FAILED = "FAILED"
+
+
+class MissingDataHandling(StrEnum):
+    """PR-V2-11 -- specs/v2/evidence-policy.md `EvidencePolicy` field. How
+    `evidence_analysis_service.py` treats a day with no `LifeTrackingEntry` value
+    for the metric under analysis."""
+
+    EXCLUDE = "EXCLUDE"
+    INTERPOLATE_NONE = "INTERPOLATE_NONE"
+
+
+class OutlierPolicy(StrEnum):
+    """PR-V2-11 -- specs/v2/evidence-policy.md `EvidencePolicy` field."""
+
+    NONE = "NONE"
+    WINSORIZE_P95 = "WINSORIZE_P95"
+
+
+class MultipleComparisonProtection(StrEnum):
+    """PR-V2-11 -- specs/v2/evidence-policy.md `EvidencePolicy` field."""
+
+    NONE = "NONE"
+    BONFERRONI = "BONFERRONI"
+
+
+class ConfidenceCategory(StrEnum):
+    """PR-V2-11 -- specs/v2/evidence-policy.md. `NO_RELIABLE_PATTERN` is a valid,
+    expected result (not an error state) whenever the active `EvidencePolicy`'s
+    minimums are not met."""
+
+    NO_RELIABLE_PATTERN = "NO_RELIABLE_PATTERN"
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+
+
+class CorrelationTarget(StrEnum):
+    """PR-V2-11 -- which canonical timing metric an `EvidenceResult`/
+    `PatternAnalysis` correlates a Life Tracking metric against."""
+
+    PERSONAL_DAY = "PERSONAL_DAY"
+    PERSONAL_MONTH = "PERSONAL_MONTH"
+    PERSONAL_YEAR = "PERSONAL_YEAR"
