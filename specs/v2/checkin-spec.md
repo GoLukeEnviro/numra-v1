@@ -58,6 +58,14 @@ Only after **both** participants have submitted for a given check-in cycle does
 `CheckinAnalysisService` compute the shared derived result. Partners see only the
 derived shared analysis, never raw values.
 
+**Accepted trade-off:** `absolute_gap` is a difference of two raw values. A viewer
+who already knows their own submitted value can trivially derive the two candidate
+values for their partner's answer (`own_value ± absolute_gap`) — usually resolvable
+to one, given the fixed scale. This is an inherent property of exposing *any*
+two-party gap metric, not an implementation flaw; PR-V2-06's review confirmed no
+other field (raw values, partial nulls, error messages) leaks the partner's answer.
+Documented here so it is never mistaken for a closed gap in a later audit.
+
 ## Deterministic analysis (Section 20)
 
 The LLM computes **none** of: gap, trend, mean, delta, sample size. A backend

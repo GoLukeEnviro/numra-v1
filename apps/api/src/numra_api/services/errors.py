@@ -168,3 +168,36 @@ class AmbiguousSelfProfile(ApplicationError):
 
     code = "AMBIGUOUS_SELF_PROFILE"
     status_code = 409
+
+
+class DimensionNotAllowedForRelationshipType(ApplicationError):
+    """PR-V2-06 -- raised when a `sexual_connection`-class `CheckinDimension` is
+    created/reactivated for a workspace whose `relationship_type` is one of
+    `_RESTRICTED_RELATIONSHIP_TYPES` (see services/checkin_service.py). Server-side
+    enforcement per specs/v2/checkin-spec.md, not just a UI hide."""
+
+    code = "DIMENSION_NOT_ALLOWED_FOR_RELATIONSHIP_TYPE"
+    status_code = 422
+
+
+class CheckinAlreadySubmitted(ApplicationError):
+    """PR-V2-06 -- a second submission attempt by the same user for the same
+    `RelationshipCheckin` cycle. Append-only: there is no update path, so this is a
+    conflict, not a validation error. The message deliberately carries only the
+    `checkin_id`, never any submitted value (specs/v2/checkin-spec.md Privacy)."""
+
+    code = "CHECKIN_ALREADY_SUBMITTED"
+    status_code = 409
+
+    def __init__(self, checkin_id: object) -> None:
+        super().__init__(f"checkin {checkin_id} was already submitted by this user")
+
+
+class SemanticKeyImmutable(ApplicationError):
+    """PR-V2-06 -- raised when a custom-dimension create attempts to reuse a
+    `semantic_key` that already exists (active or retired) for the workspace. A
+    semantic redefinition of an existing key is never allowed -- retire it and
+    introduce a new key instead (specs/v2/checkin-spec.md)."""
+
+    code = "SEMANTIC_KEY_IMMUTABLE"
+    status_code = 409

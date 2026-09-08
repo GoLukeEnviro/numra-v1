@@ -1043,6 +1043,92 @@ export interface paths {
         patch: operations["patch_workspace_route_v1_workspaces__workspace_id__patch"];
         trace?: never;
     };
+    "/v1/workspaces/{workspace_id}/checkin-dimensions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Checkin Dimension Route */
+        post: operations["create_checkin_dimension_route_v1_workspaces__workspace_id__checkin_dimensions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workspaces/{workspace_id}/checkin-dimensions/{dimension_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Checkin Dimension Route */
+        patch: operations["update_checkin_dimension_route_v1_workspaces__workspace_id__checkin_dimensions__dimension_id__patch"];
+        trace?: never;
+    };
+    "/v1/workspaces/{workspace_id}/checkin-template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Checkin Template Route */
+        get: operations["get_checkin_template_route_v1_workspaces__workspace_id__checkin_template_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workspaces/{workspace_id}/checkins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Checkins Route */
+        get: operations["list_checkins_route_v1_workspaces__workspace_id__checkins_get"];
+        put?: never;
+        /** Submit Checkin Route */
+        post: operations["submit_checkin_route_v1_workspaces__workspace_id__checkins_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workspaces/{workspace_id}/checkins/{checkin_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Checkin Route */
+        get: operations["get_checkin_route_v1_workspaces__workspace_id__checkins__checkin_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/workspaces/{workspace_id}/consent": {
         parameters: {
             query?: never;
@@ -1420,6 +1506,174 @@ export interface components {
             /** New Password */
             new_password: string;
         };
+        /** CheckinAnalysisOut */
+        CheckinAnalysisOut: {
+            /**
+             * Computed At
+             * Format: date-time
+             */
+            computed_at: string;
+            /** Result */
+            result: {
+                [key: string]: components["schemas"]["DimensionAnalysisOut"];
+            };
+        };
+        /** CheckinDimensionCreateRequest */
+        CheckinDimensionCreateRequest: {
+            /** Description */
+            description?: string | null;
+            /** Label */
+            label: string;
+            /**
+             * Scale Max
+             * @default 10
+             */
+            scale_max: number;
+            /**
+             * Scale Min
+             * @default 1
+             */
+            scale_min: number;
+            /** Semantic Key */
+            semantic_key: string;
+            /**
+             * Sort Order
+             * @default 0
+             */
+            sort_order: number;
+        };
+        /** CheckinDimensionOut */
+        CheckinDimensionOut: {
+            /** Active */
+            active: boolean;
+            /** Description */
+            description: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Label */
+            label: string;
+            /** Retired At */
+            retired_at: string | null;
+            /** Scale Max */
+            scale_max: number;
+            /** Scale Min */
+            scale_min: number;
+            /** Semantic Key */
+            semantic_key: string;
+            /** Sort Order */
+            sort_order: number;
+        };
+        /** CheckinDimensionUpdateRequest */
+        CheckinDimensionUpdateRequest: {
+            /** Active */
+            active?: boolean | null;
+            /** Description */
+            description?: string | null;
+            /** Label */
+            label?: string | null;
+        };
+        /** CheckinOut */
+        CheckinOut: {
+            analysis: components["schemas"]["CheckinAnalysisOut"] | null;
+            /** Checkin Template Version */
+            checkin_template_version: number;
+            /**
+             * Cycle Started At
+             * Format: date-time
+             */
+            cycle_started_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** My Responses */
+            my_responses: components["schemas"]["CheckinResponseOut"][];
+            status: components["schemas"]["CheckinStatus"];
+            /**
+             * Workspace Id
+             * Format: uuid
+             */
+            workspace_id: string;
+        };
+        /** CheckinResponseIn */
+        CheckinResponseIn: {
+            /**
+             * Dimension Id
+             * Format: uuid
+             */
+            dimension_id: string;
+            /** Value */
+            value: number;
+        };
+        /**
+         * CheckinResponseOut
+         * @description Always the CALLER's own submitted value -- see module docstring.
+         */
+        CheckinResponseOut: {
+            /**
+             * Dimension Id
+             * Format: uuid
+             */
+            dimension_id: string;
+            /** Semantic Key */
+            semantic_key: string;
+            /**
+             * Submitted At
+             * Format: date-time
+             */
+            submitted_at: string;
+            /** Value */
+            value: number;
+        };
+        /**
+         * CheckinStatus
+         * @description PR-V2-06 -- lifecycle of one `RelationshipCheckin` cycle. `ANALYZED` is set
+         *     synchronously, in the same transaction as the second member's submission, once
+         *     `CheckinAnalysisService` has computed the shared derived result (see
+         *     services/checkin_service.py::submit_checkin) -- there is no separate job/worker
+         *     for this, unlike `ReportJobStatus`/`AnalysisJobStatus`.
+         * @enum {string}
+         */
+        CheckinStatus: "AWAITING_SUBMISSIONS" | "ANALYZED";
+        /** CheckinSubmitRequest */
+        CheckinSubmitRequest: {
+            /** Responses */
+            responses: components["schemas"]["CheckinResponseIn"][];
+        };
+        /** CheckinSummaryOut */
+        CheckinSummaryOut: {
+            /** Checkin Template Version */
+            checkin_template_version: number;
+            /**
+             * Cycle Started At
+             * Format: date-time
+             */
+            cycle_started_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            status: components["schemas"]["CheckinStatus"];
+        };
+        /** CheckinTemplateOut */
+        CheckinTemplateOut: {
+            /** Active */
+            active: boolean;
+            /** Dimensions */
+            dimensions: components["schemas"]["CheckinDimensionOut"][];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Version */
+            version: number;
+        };
         /** ConnectionInvitationCreateRequest */
         ConnectionInvitationCreateRequest: {
             /** Invitee Email */
@@ -1586,6 +1840,21 @@ export interface components {
         DeleteAccountRequest: {
             /** Password */
             password: string;
+        };
+        /** DimensionAnalysisOut */
+        DimensionAnalysisOut: {
+            /** Absolute Gap */
+            absolute_gap: number;
+            /** Direction */
+            direction: string;
+            /** Historical Delta */
+            historical_delta: number | null;
+            /** Rolling Trend */
+            rolling_trend: number;
+            /** Sample Size */
+            sample_size: number;
+            /** Sufficient Evidence */
+            sufficient_evidence: boolean;
         };
         /**
          * DualProfileMemberOut
@@ -5074,6 +5343,230 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WorkspaceOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_checkin_dimension_route_v1_workspaces__workspace_id__checkin_dimensions_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                workspace_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckinDimensionCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinDimensionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_checkin_dimension_route_v1_workspaces__workspace_id__checkin_dimensions__dimension_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                workspace_id: string;
+                dimension_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckinDimensionUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinDimensionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_checkin_template_route_v1_workspaces__workspace_id__checkin_template_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinTemplateOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_checkins_route_v1_workspaces__workspace_id__checkins_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                workspace_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinSummaryOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_checkin_route_v1_workspaces__workspace_id__checkins_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                workspace_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckinSubmitRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_checkin_route_v1_workspaces__workspace_id__checkins__checkin_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace_id: string;
+                checkin_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinOut"];
                 };
             };
             /** @description Validation Error */

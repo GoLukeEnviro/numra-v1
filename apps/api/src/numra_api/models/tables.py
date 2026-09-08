@@ -28,6 +28,7 @@ from numra_api.db import Base
 from numra_api.models.enums import (
     AnalysisJobStatus,
     AnalysisType,
+    CheckinStatus,
     ConnectionStatus,
     ExportStatus,
     ExportType,
@@ -840,11 +841,187 @@ class ShadowDynamicsAnalysis(Base):
     )
 
 
+class CheckinTemplate(Base):
+    """specs/v2/checkin-spec.md -- one versioned dimension set for a
+    `RelationshipWorkspace`. Lazily created on first check-in access (see
+    services/checkin_service.py::get_or_create_active_template), never in
+    services/connection_service.py::accept_invitation. `version` is a plain
+    monotonically increasing integer per workspace (no re-versioning flow yet in this
+    PR -- exactly one `active=True` row per workspace at a time)."""
+
+    __tablename__ = "checkin_templates"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "version", name="uq_checkin_templates_workspace_version"),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("relationship_workspaces.id", ondelete="CASCADE"), index=True
+    )
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    active: Mapped[bool] = mapped_column(Boolean, server_default=sa_true())
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class CheckinDimension(Base):
+    """specs/v2/checkin-spec.md -- one configurable dimension (`closeness`,
+    `communication`, ... or a custom key) within a workspace's template.
+    `semantic_key` is provably immutable once referenced by any `CheckinResponse` --
+    enforced by `uq_checkin_dimensions_workspace_semantic_key` (one semantic_key ever
+    exists per workspace, never duplicated even across template versions) plus the
+    app-level check in services/checkin_service.py (a reused key raises
+    `SemanticKeyImmutable`). `retired_at` is a deliberate soft-delete exception (see
+    coding-style "kein Dead Code" -- this is not dead code, historical
+    `CheckinResponse`/`CheckinAnalysis` rows keep referencing the row via
+    `semantic_key`/`dimension_id`, so it must never be hard-deleted). A label/
+    description edit mutates this row in place; a semantic redefinition is not
+    allowed -- that requires retiring this row and creating a new `semantic_key`."""
+
+    __tablename__ = "checkin_dimensions"
+    __table_args__ = (
+        UniqueConstraint(
+            "workspace_id", "semantic_key", name="uq_checkin_dimensions_workspace_semantic_key"
+        ),
+        CheckConstraint("scale_min < scale_max", name="ck_checkin_dimensions_scale_min_lt_max"),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("relationship_workspaces.id", ondelete="CASCADE"), index=True
+    )
+    template_version: Mapped[int] = mapped_column(Integer)
+    semantic_key: Mapped[str] = mapped_column(String(60))
+    label: Mapped[str] = mapped_column(String(120))
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    scale_min: Mapped[int] = mapped_column(Integer, default=1)
+    scale_max: Mapped[int] = mapped_column(Integer, default=10)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    active: Mapped[bool] = mapped_column(Boolean, server_default=sa_true())
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    retired_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class RelationshipCheckin(Base):
+    """specs/v2/checkin-spec.md -- one check-in cycle for a workspace.
+    `checkin_template_version` is a snapshot integer (like `Report.report_type`), NOT
+    a FK to `CheckinTemplate.id` -- the template may gain new versions later without
+    rewriting history. Synchronous status transition, no job/worker: `ANALYZED` is
+    set in the same transaction as the second member's submission (see
+    services/checkin_service.py::submit_checkin)."""
+
+    __tablename__ = "relationship_checkins"
+
+    __table_args__ = (
+        #: Race-safety net for two members submitting their first response for a new
+        #: round at (near-)the same time: without this, both concurrent transactions
+        #: read `get_awaiting_checkin` -> None under READ COMMITTED (neither commit is
+        #: visible yet) and each creates its own round, so the two submissions never
+        #: land on the same `RelationshipCheckin` and the analysis never triggers. A
+        #: partial unique index makes the loser's INSERT fail with an IntegrityError
+        #: instead, which `submit_checkin` catches and retries against the winner's
+        #: round (see services/checkin_service.py).
+        Index(
+            "uq_relationship_checkins_one_awaiting_per_workspace",
+            "workspace_id",
+            unique=True,
+            postgresql_where=text("status = 'AWAITING_SUBMISSIONS'"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("relationship_workspaces.id", ondelete="CASCADE"), index=True
+    )
+    checkin_template_version: Mapped[int] = mapped_column(Integer)
+    cycle_started_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    status: Mapped[CheckinStatus] = mapped_column(
+        String(20), default=CheckinStatus.AWAITING_SUBMISSIONS
+    )
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class CheckinResponse(Base):
+    """specs/v2/checkin-spec.md Privacy (Section 19) -- raw answers are
+    `SUBMITTER_ONLY`. `user_id` is the IDOR/privacy boundary: every repository read of
+    this table must filter on it (see repositories/checkins.py::
+    get_responses_for_checkin_and_user) -- there must be no repository function that
+    returns raw values without a `user_id` filter reachable from a route. Append-only
+    (no update path): `uq_checkin_responses_checkin_user_dimension` guarantees at
+    most one value per (checkin, user, dimension) -- a second submission attempt for
+    the same round raises `CheckinAlreadySubmitted` rather than overwriting.
+    `semantic_key` is denormalized from `CheckinDimension` so trend aggregation can
+    group strictly by `(semantic_key, checkin_template_version)` without a join, per
+    the spec's segmentation rule."""
+
+    __tablename__ = "checkin_responses"
+    __table_args__ = (
+        UniqueConstraint(
+            "checkin_id",
+            "user_id",
+            "dimension_id",
+            name="uq_checkin_responses_checkin_user_dimension",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    checkin_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("relationship_checkins.id", ondelete="CASCADE"), index=True
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    dimension_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("checkin_dimensions.id", ondelete="CASCADE")
+    )
+    semantic_key: Mapped[str] = mapped_column(String(60))
+    value: Mapped[int] = mapped_column(Integer)
+    submitted_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class CheckinAnalysis(Base):
+    """specs/v2/checkin-spec.md Deterministic analysis (Section 20) -- one
+    LLM-free, deterministically computed shared result per `RelationshipCheckin`
+    (1:1 via the unique FK below), produced by
+    services/checkin_analysis_service.py. `result_json` shape:
+    ``{semantic_key: {absolute_gap, direction, rolling_trend, sample_size,
+    historical_delta, sufficient_evidence}}`` -- never raw per-user values, only the
+    already-aggregated gap/trend numbers both members may see."""
+
+    __tablename__ = "checkin_analyses"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    checkin_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("relationship_checkins.id", ondelete="CASCADE"), unique=True
+    )
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("relationship_workspaces.id", ondelete="CASCADE"), index=True
+    )
+    checkin_template_version: Mapped[int] = mapped_column(Integer)
+    result_json: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    computed_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
 __all__ = [
     "AdminAuditEvent",
     "AnalysisJob",
     "Base",
     "Calculation",
+    "CheckinAnalysis",
+    "CheckinDimension",
+    "CheckinResponse",
+    "CheckinTemplate",
     "ConnectionInvitation",
     "ConsentEvent",
     "ConsentGrant",
@@ -860,6 +1037,7 @@ __all__ = [
     "PrivateNote",
     "PrivateReflection",
     "RelationshipAnalysis",
+    "RelationshipCheckin",
     "RelationshipWorkspace",
     "Report",
     "ReportJob",
