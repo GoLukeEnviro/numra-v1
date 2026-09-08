@@ -288,6 +288,99 @@ async def test_submission_flow_first_awaiting_second_analyzed(client, sessionmak
     assert body_b["my_responses"][0]["value"] == 5
 
 
+async def test_concurrent_first_submissions_land_on_one_round_not_two(
+    client, sessionmaker, monkeypatch
+) -> None:
+    """Regression for the HIGH review finding on this PR: two members submitting
+    their first response for a new round at (near-)the same time must not each
+    create their own AWAITING_SUBMISSIONS round (which would silently orphan both --
+    `count_distinct_submitters` would never reach 2 for either). Simulates the race
+    deterministically: a competing round already exists in the DB (as the *other*
+    member's concurrent transaction would have committed first), but this call's
+    `get_awaiting_checkin` read is patched to have missed it once -- exactly what
+    happens under READ COMMITTED when both transactions read before either commits.
+    `submit_checkin` must catch the resulting IntegrityError from
+    `uq_relationship_checkins_one_awaiting_per_workspace`, roll back its own losing
+    insert, and re-fetch onto the real (winning) round instead."""
+    import uuid as uuid_module
+
+    import numra_api.repositories.checkins as checkins_repo
+    import numra_api.services.checkin_service as checkin_service_module
+    from numra_api.repositories.workspaces import get_workspace_by_id
+    from numra_api.services.checkin_service import get_or_create_active_template, submit_checkin
+
+    workspace_id = await _connect(client, sessionmaker, "race-a@example.com", "race-b@example.com")
+    headers_a = await _switch_user(client, "race-a@example.com")
+    template_body = (
+        await client.get(f"/v1/workspaces/{workspace_id}/checkin-template", headers=headers_a)
+    ).json()
+    # dimensions_by_id downstream keys on uuid.UUID, not the JSON-serialized str id.
+    closeness_dimension_id = uuid_module.UUID(
+        next(d["id"] for d in template_body["dimensions"] if d["semantic_key"] == "closeness")
+    )
+
+    async with sessionmaker() as db:
+        from sqlalchemy import select
+
+        from numra_api.models import RelationshipCheckin, User
+
+        user_a_id = (
+            await db.execute(select(User.id).where(User.email == "race-a@example.com"))
+        ).scalar_one()
+        workspace = await get_workspace_by_id(db, workspace_id=workspace_id)
+        assert workspace is not None
+        template = await get_or_create_active_template(db, workspace_id=workspace_id)
+
+        # The "winning" concurrent transaction: already committed its round before
+        # this call's (stale) read below.
+        winning_checkin = await checkins_repo.create_checkin(
+            db, workspace_id=workspace_id, checkin_template_version=template.version
+        )
+        await db.commit()
+
+        real_get_awaiting = checkins_repo.get_awaiting_checkin
+        call_count = {"n": 0}
+
+        async def _stale_read_once(db_inner, *, workspace_id):  # noqa: ANN001
+            call_count["n"] += 1
+            if call_count["n"] == 1:
+                return None  # simulates the race: didn't see the winner's commit yet
+            return await real_get_awaiting(db_inner, workspace_id=workspace_id)
+
+        monkeypatch.setattr(
+            checkin_service_module.checkins_repo, "get_awaiting_checkin", _stale_read_once
+        )
+
+        result = await submit_checkin(
+            db,
+            workspace_id=workspace_id,
+            user_id=user_a_id,
+            responses=[(closeness_dimension_id, 8)],
+        )
+        await db.commit()
+
+        assert result.checkin.id == winning_checkin.id, (
+            "submit_checkin must land on the pre-existing (winning) round, not a "
+            "second orphaned one"
+        )
+
+        rows = (
+            (
+                await db.execute(
+                    select(RelationshipCheckin).where(
+                        RelationshipCheckin.workspace_id == workspace_id
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert len(rows) == 1, (
+            f"expected exactly one RelationshipCheckin for this workspace after the "
+            f"race, found {len(rows)} -- the losing insert must have been rolled back"
+        )
+
+
 async def test_double_submission_is_409_and_does_not_overwrite(client, sessionmaker) -> None:
     workspace_id = await _connect(client, sessionmaker, "ds-a@example.com", "ds-b@example.com")
     headers_a = await _switch_user(client, "ds-a@example.com")

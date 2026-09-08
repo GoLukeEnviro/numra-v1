@@ -915,6 +915,23 @@ class RelationshipCheckin(Base):
 
     __tablename__ = "relationship_checkins"
 
+    __table_args__ = (
+        #: Race-safety net for two members submitting their first response for a new
+        #: round at (near-)the same time: without this, both concurrent transactions
+        #: read `get_awaiting_checkin` -> None under READ COMMITTED (neither commit is
+        #: visible yet) and each creates its own round, so the two submissions never
+        #: land on the same `RelationshipCheckin` and the analysis never triggers. A
+        #: partial unique index makes the loser's INSERT fail with an IntegrityError
+        #: instead, which `submit_checkin` catches and retries against the winner's
+        #: round (see services/checkin_service.py).
+        Index(
+            "uq_relationship_checkins_one_awaiting_per_workspace",
+            "workspace_id",
+            unique=True,
+            postgresql_where=text("status = 'AWAITING_SUBMISSIONS'"),
+        ),
+    )
+
     id: Mapped[uuid.UUID] = _uuid_pk()
     workspace_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("relationship_workspaces.id", ondelete="CASCADE"), index=True

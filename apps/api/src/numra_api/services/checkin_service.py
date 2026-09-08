@@ -225,9 +225,22 @@ async def submit_checkin(
 
     checkin = await checkins_repo.get_awaiting_checkin(db, workspace_id=workspace_id)
     if checkin is None:
-        checkin = await checkins_repo.create_checkin(
-            db, workspace_id=workspace_id, checkin_template_version=template.version
-        )
+        try:
+            checkin = await checkins_repo.create_checkin(
+                db, workspace_id=workspace_id, checkin_template_version=template.version
+            )
+            await db.flush()
+        except IntegrityError:
+            # uq_relationship_checkins_one_awaiting_per_workspace -- the other member's
+            # first-submission request created the round in a concurrent transaction
+            # between our read above and this insert (both saw None under READ
+            # COMMITTED). Roll back our losing insert and submit onto the winner's
+            # round instead of silently starting a second, orphaned cycle that would
+            # never reach two submitters.
+            await db.rollback()
+            checkin = await checkins_repo.get_awaiting_checkin(db, workspace_id=workspace_id)
+            if checkin is None:  # pragma: no cover -- should be unreachable
+                raise
 
     already_submitted = await checkins_repo.count_user_responses(
         db, checkin_id=checkin.id, user_id=user_id

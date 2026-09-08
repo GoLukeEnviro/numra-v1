@@ -95,6 +95,17 @@ def upgrade() -> None:
     op.create_index(
         "ix_relationship_checkins_workspace_id", "relationship_checkins", ["workspace_id"]
     )
+    # Race-safety net: two members submitting their first response for a new round at
+    # (near-)the same time would otherwise each create their own AWAITING_SUBMISSIONS
+    # round under READ COMMITTED (neither sees the other's uncommitted INSERT), so the
+    # two submissions never land on the same round and the analysis never triggers.
+    op.create_index(
+        "uq_relationship_checkins_one_awaiting_per_workspace",
+        "relationship_checkins",
+        ["workspace_id"],
+        unique=True,
+        postgresql_where=sa.text("status = 'AWAITING_SUBMISSIONS'"),
+    )
 
     op.create_table(
         "checkin_responses",
@@ -169,6 +180,10 @@ def downgrade() -> None:
     op.drop_index("ix_checkin_responses_checkin_id", table_name="checkin_responses")
     op.drop_table("checkin_responses")
 
+    op.drop_index(
+        "uq_relationship_checkins_one_awaiting_per_workspace",
+        table_name="relationship_checkins",
+    )
     op.drop_index("ix_relationship_checkins_workspace_id", table_name="relationship_checkins")
     op.drop_table("relationship_checkins")
 
