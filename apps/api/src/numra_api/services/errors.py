@@ -286,3 +286,13 @@ class MilestoneNotInWorkspace(ApplicationError):
 
     code = "MILESTONE_NOT_IN_WORKSPACE"
     status_code = 422
+
+
+class ThreadArchiveForbidden(ApplicationError):
+    """PR-V2-09 -- raised by `services/copilot_service.py::archive_thread_route`
+    when the caller may not archive a `ChatThread`: RELATIONSHIP_PRIVATE is
+    owner-only (an ACTIVE partner still may not archive the requester's private
+    thread, even though membership alone passes the IDOR gate)."""
+
+    code = "THREAD_ARCHIVE_FORBIDDEN"
+    status_code = 403

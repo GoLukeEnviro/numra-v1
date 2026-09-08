@@ -73,11 +73,19 @@ class ContextBlock(BaseModel):
     ``role`` distinguishes provenance so a provider adapter can decide how to present
     each block (e.g. as a separate system/tool message) without ever merging it into a
     single unstructured string alongside ``user_instructions``.
+
+    ``"untrusted_user_content"`` (PR-V2-09, Copilot) is a distinct role from the three
+    developer-assembled ones above: it carries content a real end user authored (a
+    prior chat turn, a shared journal entry) that must never be treated as an
+    instruction or as grounding fact. A provider adapter renders it as its own,
+    clearly-scoped chat message (see `ollama_provider.py::_build_messages`) — never
+    folded into ``system_instructions`` or presented with the same trust level as a
+    ``profile_fact``/``knowledge`` block.
     """
 
     model_config = ConfigDict(frozen=True)
 
-    role: Literal["profile_fact", "knowledge", "instruction_supplement"]
+    role: Literal["profile_fact", "knowledge", "instruction_supplement", "untrusted_user_content"]
     label: str
     content: str
 
