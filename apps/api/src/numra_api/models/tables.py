@@ -26,6 +26,8 @@ from sqlalchemy.sql import func
 
 from numra_api.db import Base
 from numra_api.models.enums import (
+    AnalysisJobStatus,
+    AnalysisType,
     ConnectionStatus,
     ExportStatus,
     ExportType,
@@ -719,8 +721,128 @@ class ConsentEvent(Base):
     )
 
 
+class AnalysisJob(Base):
+    """PR-V2-05 -- job lifecycle for one relationship-analysis or shadow-dynamics
+    generation, same shape/rationale as `ReportJob` (SELECT...FOR UPDATE SKIP LOCKED
+    claiming, lease/backoff retry columns, idempotency). ``requested_by_user_id`` is
+    whichever workspace member triggered the job -- both members may later read the
+    result (see `repositories/analysis.py::get_analysis_job_for_user`), not just the
+    requester."""
+
+    __tablename__ = "analysis_jobs"
+    __table_args__ = (
+        Index(
+            "uq_analysis_jobs_user_id_idempotency_key",
+            "requested_by_user_id",
+            "idempotency_key",
+            unique=True,
+            postgresql_where=text("idempotency_key IS NOT NULL"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("relationship_workspaces.id", ondelete="CASCADE"), index=True
+    )
+    requested_by_user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    analysis_type: Mapped[AnalysisType] = mapped_column(String(40))
+    status: Mapped[AnalysisJobStatus] = mapped_column(String(20), default=AnalysisJobStatus.QUEUED)
+    progress: Mapped[int] = mapped_column(Integer, default=0)
+    attempt_count: Mapped[int] = mapped_column(Integer, default=0)
+    locked_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    lease_until: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    next_attempt_at: Mapped[dt.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    last_error_at: Mapped[dt.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    error_code: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    idempotency_key: Mapped[str | None] = mapped_column(String(128), nullable=True)
+
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class RelationshipAnalysis(Base):
+    """PR-V2-05 -- one completed (or in-progress) relationship-analysis result,
+    1:1 with the `AnalysisJob` that produced it. `relationship_type` is a snapshot
+    (the workspace's type may change later) -- same rationale as
+    `Report.report_type` snapshotting `report_type` independent of later changes."""
+
+    __tablename__ = "relationship_analyses"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("relationship_workspaces.id", ondelete="CASCADE"), index=True
+    )
+    job_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("analysis_jobs.id", ondelete="CASCADE"), unique=True
+    )
+    relationship_type: Mapped[str] = mapped_column(String(20))
+    calculation_a_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("calculations.id", ondelete="CASCADE")
+    )
+    calculation_b_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("calculations.id", ondelete="CASCADE")
+    )
+    calculation_version: Mapped[str] = mapped_column(String(20))
+    knowledge_version: Mapped[str] = mapped_column(String(20))
+    prompt_version: Mapped[str] = mapped_column(String(40))
+    model_provider: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    model_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="PENDING")
+    result_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    generated_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class ShadowDynamicsAnalysis(Base):
+    """PR-V2-05 -- one completed (or in-progress) shadow-dynamics result. Same shape
+    as `RelationshipAnalysis` (its own table/job_id FK, see blueprint: "identisches
+    Grundmuster") -- kept as a separate table rather than a discriminator column so
+    each result type can evolve its own columns independently."""
+
+    __tablename__ = "shadow_dynamics_analyses"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("relationship_workspaces.id", ondelete="CASCADE"), index=True
+    )
+    job_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("analysis_jobs.id", ondelete="CASCADE"), unique=True
+    )
+    relationship_type: Mapped[str] = mapped_column(String(20))
+    calculation_a_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("calculations.id", ondelete="CASCADE")
+    )
+    calculation_b_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("calculations.id", ondelete="CASCADE")
+    )
+    calculation_version: Mapped[str] = mapped_column(String(20))
+    knowledge_version: Mapped[str] = mapped_column(String(20))
+    prompt_version: Mapped[str] = mapped_column(String(40))
+    model_provider: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    model_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="PENDING")
+    result_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    generated_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
 __all__ = [
     "AdminAuditEvent",
+    "AnalysisJob",
     "Base",
     "Calculation",
     "ConnectionInvitation",
@@ -737,11 +859,13 @@ __all__ = [
     "PersonalTask",
     "PrivateNote",
     "PrivateReflection",
+    "RelationshipAnalysis",
     "RelationshipWorkspace",
     "Report",
     "ReportJob",
     "ReportSection",
     "RelationshipComparison",
+    "ShadowDynamicsAnalysis",
     "Session",
     "User",
     "UserConnection",

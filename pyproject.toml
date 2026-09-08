@@ -5,7 +5,7 @@ requires-python = ">=3.11"
 dependencies = []
 
 [tool.uv.workspace]
-members = ["packages/engine-numerology", "packages/engine-interpretation", "packages/engine-astrology", "apps/api"]
+members = ["packages/engine-numerology", "packages/engine-interpretation", "packages/engine-relationship-interpretation", "packages/engine-astrology", "apps/api"]
 
 [dependency-groups]
 dev = [
@@ -22,6 +22,7 @@ dev = [
 [tool.uv.sources]
 numra-numerology = { workspace = true }
 numra-interpretation = { workspace = true }
+numra-relationship-interpretation = { workspace = true }
 numra-astrology = { workspace = true }
 numra-api = { workspace = true }
 
@@ -36,7 +37,13 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 ignore = ["B008"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["numra_numerology", "numra_interpretation", "numra_astrology", "numra_api"]
+known-first-party = [
+  "numra_numerology",
+  "numra_interpretation",
+  "numra_relationship_interpretation",
+  "numra_astrology",
+  "numra_api",
+]
 
 [tool.mypy]
 strict = true

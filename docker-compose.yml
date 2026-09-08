@@ -95,6 +95,33 @@ services:
       redis:
         condition: service_healthy
 
+  analysis-worker:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+      target: analysis-worker
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://numra:${POSTGRES_PASSWORD:-numra_dev_password}@postgres:5432/numra
+      APP_TIMEZONE: ${APP_TIMEZONE:-Europe/Berlin}
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
+      NUMRA_LLM_PROVIDER: ${NUMRA_LLM_PROVIDER:-disabled}
+      NUMRA_LLM_MAX_RETRIES: ${NUMRA_LLM_MAX_RETRIES:-3}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-}
+      OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
+      # Same rationale as the `worker` service above: constructs the shared Settings
+      # model, whose production validator forbids RATE_LIMIT_BACKEND=memory.
+      RATE_LIMIT_BACKEND: ${RATE_LIMIT_BACKEND:-redis}
+      REDIS_URL: redis://redis:6379/0
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
   redis:
     image: redis:7-alpine
     restart: unless-stopped

@@ -140,6 +140,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/analysis-jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Analysis Job Route */
+        get: operations["get_analysis_job_route_v1_analysis_jobs__job_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/auth/change-password": {
         parameters: {
             query?: never;
@@ -1077,6 +1094,76 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/workspaces/{workspace_id}/relationship-analysis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Latest Relationship Analysis Route */
+        get: operations["get_latest_relationship_analysis_route_v1_workspaces__workspace_id__relationship_analysis_get"];
+        put?: never;
+        /** Create Relationship Analysis Route */
+        post: operations["create_relationship_analysis_route_v1_workspaces__workspace_id__relationship_analysis_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workspaces/{workspace_id}/relationship-analysis/{analysis_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Relationship Analysis Route */
+        get: operations["get_relationship_analysis_route_v1_workspaces__workspace_id__relationship_analysis__analysis_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workspaces/{workspace_id}/shadow-dynamics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Latest Shadow Dynamics Route */
+        get: operations["get_latest_shadow_dynamics_route_v1_workspaces__workspace_id__shadow_dynamics_get"];
+        put?: never;
+        /** Create Shadow Dynamics Route */
+        post: operations["create_shadow_dynamics_route_v1_workspaces__workspace_id__shadow_dynamics_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workspaces/{workspace_id}/shadow-dynamics/{analysis_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Shadow Dynamics Route */
+        get: operations["get_shadow_dynamics_route_v1_workspaces__workspace_id__shadow_dynamics__analysis_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1146,6 +1233,52 @@ export interface components {
             /** Role */
             role: string;
         };
+        /** AnalysisJobOut */
+        AnalysisJobOut: {
+            analysis_type: components["schemas"]["AnalysisType"];
+            /** Attempt Count */
+            attempt_count: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Error Code */
+            error_code: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Progress */
+            progress: number;
+            status: components["schemas"]["AnalysisJobStatus"];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /**
+             * Workspace Id
+             * Format: uuid
+             */
+            workspace_id: string;
+        };
+        /**
+         * AnalysisJobStatus
+         * @description PR-V2-05 -- job lifecycle for `AnalysisJob` (relationship-analysis and
+         *     shadow-dynamics generation). Deliberately fewer states than `ReportJobStatus`
+         *     (no separate OUTLINE/ASSEMBLING phase -- see
+         *     `numra_relationship_interpretation.pipeline`, which has no outline step).
+         * @enum {string}
+         */
+        AnalysisJobStatus: "QUEUED" | "GENERATING" | "VALIDATING" | "COMPLETE" | "FAILED";
+        /**
+         * AnalysisType
+         * @description PR-V2-05 -- which pipeline an `AnalysisJob` runs.
+         * @enum {string}
+         */
+        AnalysisType: "RELATIONSHIP_INTERPRETATION" | "SHADOW_DYNAMICS";
         /**
          * AuditAction
          * @enum {string}
@@ -1953,6 +2086,49 @@ export interface components {
             /** Password */
             password: string;
         };
+        /** RelationshipAnalysisOut */
+        RelationshipAnalysisOut: {
+            /** Calculation Version */
+            calculation_version: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Generated At */
+            generated_at: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** Knowledge Version */
+            knowledge_version: string;
+            /** Model Name */
+            model_name: string | null;
+            /** Model Provider */
+            model_provider: string | null;
+            /** Prompt Version */
+            prompt_version: string;
+            /** Relationship Type */
+            relationship_type: string;
+            /** Result */
+            result: {
+                [key: string]: unknown;
+            } | null;
+            /** Status */
+            status: string;
+            /**
+             * Workspace Id
+             * Format: uuid
+             */
+            workspace_id: string;
+        };
         /**
          * RelationshipCreateRequest
          * @description V1.5 Epic E: the primary, product-facing way to start a comparison is by
@@ -2165,6 +2341,49 @@ export interface components {
             id: string;
             /** Is Current */
             is_current: boolean;
+        };
+        /** ShadowDynamicsAnalysisOut */
+        ShadowDynamicsAnalysisOut: {
+            /** Calculation Version */
+            calculation_version: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Generated At */
+            generated_at: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** Knowledge Version */
+            knowledge_version: string;
+            /** Model Name */
+            model_name: string | null;
+            /** Model Provider */
+            model_provider: string | null;
+            /** Prompt Version */
+            prompt_version: string;
+            /** Relationship Type */
+            relationship_type: string;
+            /** Result */
+            result: {
+                [key: string]: unknown;
+            } | null;
+            /** Status */
+            status: string;
+            /**
+             * Workspace Id
+             * Format: uuid
+             */
+            workspace_id: string;
         };
         /**
          * SystemInfoOut
@@ -2634,6 +2853,39 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_analysis_job_route_v1_analysis_jobs__job_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalysisJobOut"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -4935,6 +5187,214 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConsentGrantOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_latest_relationship_analysis_route_v1_workspaces__workspace_id__relationship_analysis_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RelationshipAnalysisOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_relationship_analysis_route_v1_workspaces__workspace_id__relationship_analysis_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                workspace_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RelationshipAnalysisOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_relationship_analysis_route_v1_workspaces__workspace_id__relationship_analysis__analysis_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace_id: string;
+                analysis_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RelationshipAnalysisOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_latest_shadow_dynamics_route_v1_workspaces__workspace_id__shadow_dynamics_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShadowDynamicsAnalysisOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_shadow_dynamics_route_v1_workspaces__workspace_id__shadow_dynamics_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                workspace_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShadowDynamicsAnalysisOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_shadow_dynamics_route_v1_workspaces__workspace_id__shadow_dynamics__analysis_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace_id: string;
+                analysis_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShadowDynamicsAnalysisOut"];
                 };
             };
             /** @description Validation Error */

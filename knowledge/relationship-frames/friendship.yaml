@@ -1,0 +1,108 @@
+relationship_type: FRIENDSHIP
+dimensions:
+  communication:
+    semantic_context_de: >-
+      Wie beide Freunde typischerweise im Austausch miteinander stehen -- Tonfall,
+      Direktheit, Zuhoerverhalten in einer nicht-romantischen, gleichberechtigten
+      Beziehung. Eine deskriptive Linse, keine Bewertung.
+    number_modifiers:
+      "1": "direkt, meinungsstark, initiiert oft den Kontakt"
+      "2": "einfuehlsam, haelt Kontakt verlaesslich, vermeidet Konfrontation"
+      "3": "unterhaltsam, gespraechig, bringt Leichtigkeit in den Austausch"
+      "4": "verlaesslich im Austausch, bevorzugt klare Verabredungen"
+      "5": "spontan, abwechslungsreich, meldet sich unregelmaessig aber lebhaft"
+      "6": "fuersorglich, fragt oft aktiv nach dem Wohlergehen"
+      "7": "reflektiert, tiefgehend, braucht keinen staendigen Austausch"
+      "8": "zielgerichtet, bringt Themen oft pragmatisch auf den Punkt"
+      "9": "offen, idealistisch, interessiert an groesseren Themen"
+      "11": "intuitiv, nimmt Stimmungen des Gegenuebers schnell wahr"
+      "22": "strukturiert und weitblickend, denkt oft an gemeinsame Vorhaben"
+      "33": "warmherzig, stellt sich in Gespraechen oft zurueck"
+  closeness:
+    semantic_context_de: >-
+      Wie Naehe und Verbundenheit in der Freundschaft typischerweise erlebt werden --
+      Haeufigkeit des Kontakts, emotionale Tiefe, bevorzugte gemeinsame Aktivitaeten.
+    number_modifiers:
+      "1": "schaetzt Naehe, die die eigene Unabhaengigkeit nicht einschraenkt"
+      "2": "sucht regelmaessigen, verlaesslichen Kontakt"
+      "3": "erlebt Naehe ueber gemeinsame Erlebnisse und Humor"
+      "4": "baut Naehe langsam ueber wiederkehrende, verlaessliche Kontakte auf"
+      "5": "erlebt Naehe episodisch, oft intensiv bei gemeinsamen Unternehmungen"
+      "6": "zeigt Naehe durch praktische Unterstuetzung und Fuersorge"
+      "7": "braucht auch in engen Freundschaften klare Rueckzugsraeume"
+      "8": "verbindet Naehe oft mit gemeinsamen Projekten oder Zielen"
+      "9": "erlebt Freundschaft als Teil eines groesseren, mitfuehlenden Netzwerks"
+      "11": "erlebt Naehe intensiv, reagiert sensibel auf Distanzierung"
+      "22": "verbindet Naehe mit langfristig gemeinsam verfolgten Vorhaben"
+      "33": "gibt viel in der Freundschaft, sollte auf Gegenseitigkeit achten"
+  autonomy:
+    semantic_context_de: >-
+      Wie viel eigenstaendiger Raum innerhalb der Freundschaft typischerweise
+      gebraucht wird -- Kontakthaeufigkeit, eigene Interessen, Unabhaengigkeit von
+      gemeinsamen Plaenen.
+    number_modifiers:
+      "1": "hoher Bedarf an eigenstaendigen Entscheidungen, auch in der Freundschaft"
+      "2": "geringerer eigener Autonomiebedarf, orientiert sich am Miteinander"
+      "3": "braucht Raum fuer wechselnde soziale Kreise"
+      "4": "definiert Freiraum oft ueber feste eigene Routinen"
+      "5": "hoher Freiheitsbedarf, meldet sich unregelmaessig ohne Bindungsverlust"
+      "6": "stellt eigenen Freiraum haeufig hinter das Wohl der Freundschaft zurueck"
+      "7": "hoher Bedarf an ungestoertem Rueckzug, auch von engen Freunden"
+      "8": "braucht Autonomie vor allem bei eigenen Projekten und Zielen"
+      "9": "definiert Freiraum oft ueber eigene Wertefragen und Engagements"
+      "11": "braucht Freiraum zur Verarbeitung sensibler sozialer Eindruecke"
+      "22": "verbindet Autonomie mit Verantwortung fuer groessere gemeinsame Vorhaben"
+      "33": "sollte aktiv eigenen Freiraum einfordern, statt ihn stillschweigend aufzugeben"
+  needs:
+    semantic_context_de: >-
+      Beschreibende Reflexion typischer emotionaler Grundbeduerfnisse innerhalb einer
+      Freundschaft -- Anerkennung, Verlaesslichkeit, Anregung. Ein symbolisches
+      Deutungsangebot, keine klinische Einordnung.
+    number_modifiers:
+      "1": "Anerkennung der eigenen Initiative innerhalb der Freundschaft"
+      "2": "Verlaesslichkeit und das Gefuehl, gebraucht zu werden"
+      "3": "Wertschaetzung fuer Lebendigkeit und Ausdrucksfreude"
+      "4": "Sicherheit durch verlaessliche, wiederkehrende Kontakte"
+      "5": "Abwechslung, ohne dafuer verurteilt zu werden"
+      "6": "Wertschaetzung der eigenen Fuersorge innerhalb der Freundschaft"
+      "7": "Respekt vor dem eigenen Rueckzugsbeduerfnis"
+      "8": "Anerkennung von gemeinsam erreichten Zielen"
+      "9": "das Gefuehl, dass geteilte Ideale respektiert werden"
+      "11": "Verstaendnis fuer die eigene emotionale Sensibilitaet"
+      "22": "Unterstuetzung fuer langfristige gemeinsame Vorhaben"
+      "33": "Ausgleich -- das eigene Geben sollte auch erwidert werden"
+  strengths:
+    semantic_context_de: >-
+      Woraus die Freundschaft typischerweise Kraft zieht -- komplementaere oder
+      gemeinsame Staerken beider Zahlen, symbolisch gelesen, nicht als Garantie.
+    number_modifiers:
+      "1": "bringt Initiative und Tatkraft in gemeinsame Vorhaben ein"
+      "2": "bringt Verlaesslichkeit und Feingefuehl ein"
+      "3": "bringt Leichtigkeit und Verbindungskraft ein"
+      "4": "bringt Verlaesslichkeit und praktische Unterstuetzung ein"
+      "5": "bringt Abwechslung und neue Perspektiven ein"
+      "6": "bringt Fuersorge und Verantwortungsbewusstsein ein"
+      "7": "bringt Tiefe und ehrliche Reflexion ein"
+      "8": "bringt Zielstrebigkeit und Verlaesslichkeit bei Vorhaben ein"
+      "9": "bringt Grosszuegigkeit und weiten Blick ein"
+      "11": "bringt Intuition und Sensibilitaet ein"
+      "22": "bringt visionaeres, strukturiertes Denken ein"
+      "33": "bringt warmherzige, ausgleichende Praesenz ein"
+  conflict_dynamics:
+    semantic_context_de: >-
+      Wie Konflikte innerhalb der Freundschaft typischerweise entstehen und
+      ausgetragen werden -- symbolisch aus dem Zahlenprofil gelesen, nie als
+      Vorhersage, sondern als Reflexionsangebot.
+    number_modifiers:
+      "1": "neigt bei Widerstand zu Ungeduld oder Rueckzug aus der Freundschaft"
+      "2": "neigt zu Konfliktvermeidung statt offener Aussprache"
+      "3": "neigt zu Themenwechsel oder Ablenkung statt Klaerung"
+      "4": "neigt zu Rigiditaet und Festhalten am eigenen Standpunkt"
+      "5": "neigt zu Rueckzug oder Kontaktabbruch statt Auseinandersetzung"
+      "6": "neigt zu Ueberverantwortung -- uebernimmt Schuld, um Frieden zu wahren"
+      "7": "neigt zu stillem Rueckzug statt offener Aussprache"
+      "8": "neigt zu Kontrolle oder Statuskonflikten statt Kompromiss"
+      "9": "neigt zu Selbstaufgabe, um Harmonie zu erzwingen"
+      "11": "neigt zu Ueberempfindlichkeit bei wahrgenommener Zurueckweisung"
+      "22": "neigt dazu, gemeinsame Vorhaben ueber akute Spannungen zu stellen"
+      "33": "neigt dazu, eigene Grenzen zu spaet zu setzen"

@@ -1,0 +1,323 @@
+# Deterministische Lookup-Tabelle (shadow_theme_a, shadow_theme_b) -> Interaktionsmuster-Templates.
+# Deckt alle paarweisen Kombinationen der primaeren Schattenthemen ab, die bei Life Path 1-9
+# zwischen zwei Profilen auftreten koennen (aus knowledge/numbers/*.yaml shadows[0] abgeleitet).
+# Der primaere Schattenwert eines Profils ist deterministisch shadows[0] der Life-Path-Zahl --
+# siehe context.py::_primary_shadow_theme. Diese Vereinfachung (ein Thema statt der vollen
+# shadows-Liste pro Zahl) haelt die Tabelle auf 45 Zeilen (9 choose 2 + 9 Diagonal-Faelle)
+# statt kombinatorisch zu explodieren; dokumentiert im PR-Abschlussbericht.
+rules:
+  - shadow_theme_a: "Dominanz"
+    shadow_theme_b: "Dominanz"
+    interaction_pattern_template_id: "pattern_1_1"
+    escalation_loop_template: >-
+      Wenn beide Seiten zu Dominanz neigen, kann sich dieses Muster gegenseitig verstaerken: keine Seite bringt eine ausgleichende Gegenbewegung ein, wodurch sich die Dynamik unbemerkt vertiefen kann.
+    deescalation_template: >-
+      Beide Seiten koennen die gemeinsame Neigung zu Dominanz offen benennen und bewusst eine ergaenzende Verhaltensweise einbringen, statt sich gegenseitig darin zu bestaerken.
+  - shadow_theme_a: "Dominanz"
+    shadow_theme_b: "Unentschlossenheit"
+    interaction_pattern_template_id: "pattern_1_2"
+    escalation_loop_template: >-
+      Wenn die Neigung zu Dominanz bei der einen Seite auf die Neigung zu Unentschlossenheit bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig verstaerken, solange keine Seite die eigene Neigung bewusst reflektiert.
+    deescalation_template: >-
+      Ein bewusstes Benennen der eigenen Neigung zu Dominanz bzw. Unentschlossenheit kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klaerung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  - shadow_theme_a: "Dominanz"
+    shadow_theme_b: "Zerstreuung"
+    interaction_pattern_template_id: "pattern_1_3"
+    escalation_loop_template: >-
+      Wenn die Neigung zu Dominanz bei der einen Seite auf die Neigung zu Zerstreuung bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig verstaerken, solange keine Seite die eigene Neigung bewusst reflektiert.
+    deescalation_template: >-
+      Ein bewusstes Benennen der eigenen Neigung zu Dominanz bzw. Zerstreuung kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klaerung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  - shadow_theme_a: "Dominanz"
+    shadow_theme_b: "Rigiditaet"
+    interaction_pattern_template_id: "pattern_1_4"
+    escalation_loop_template: >-
+      Wenn die Neigung zu Dominanz bei der einen Seite auf die Neigung zu Rigiditaet bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig verstaerken, solange keine Seite die eigene Neigung bewusst reflektiert.
+    deescalation_template: >-
+      Ein bewusstes Benennen der eigenen Neigung zu Dominanz bzw. Rigiditaet kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klaerung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  - shadow_theme_a: "Dominanz"
+    shadow_theme_b: "Rastlosigkeit"
+    interaction_pattern_template_id: "pattern_1_5"
+    escalation_loop_template: >-
+      Wenn die Neigung zu Dominanz bei der einen Seite auf die Neigung zu Rastlosigkeit bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig verstaerken, solange keine Seite die eigene Neigung bewusst reflektiert.
+    deescalation_template: >-
+      Ein bewusstes Benennen der eigenen Neigung zu Dominanz bzw. Rastlosigkeit kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klaerung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  - shadow_theme_a: "Dominanz"
+    shadow_theme_b: "Ueberverantwortung"
+    interaction_pattern_template_id: "pattern_1_6"
+    escalation_loop_template: >-
+      Wenn die Neigung zu Dominanz bei der einen Seite auf die Neigung zu Ueberverantwortung bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig verstaerken, solange keine Seite die eigene Neigung bewusst reflektiert.
+    deescalation_template: >-
+      Ein bewusstes Benennen der eigenen Neigung zu Dominanz bzw. Ueberverantwortung kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klaerung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  - shadow_theme_a: "Dominanz"
+    shadow_theme_b: "Rueckzug"
+    interaction_pattern_template_id: "pattern_1_7"
+    escalation_loop_template: >-
+      Wenn die Neigung zu Dominanz bei der einen Seite auf die Neigung zu Rueckzug bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig verstaerken, solange keine Seite die eigene Neigung bewusst reflektiert.
+    deescalation_template: >-
+      Ein bewusstes Benennen der eigenen Neigung zu Dominanz bzw. Rueckzug kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klaerung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  - shadow_theme_a: "Dominanz"
+    shadow_theme_b: "Kontrolle"
+    interaction_pattern_template_id: "pattern_1_8"
+    escalation_loop_template: >-
+      Wenn die Neigung zu Dominanz bei der einen Seite auf die Neigung zu Kontrolle bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig verstaerken, solange keine Seite die eigene Neigung bewusst reflektiert.
+    deescalation_template: >-
+      Ein bewusstes Benennen der eigenen Neigung zu Dominanz bzw. Kontrolle kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klaerung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  - shadow_theme_a: "Dominanz"
+    shadow_theme_b: "Selbstaufgabe"
+    interaction_pattern_template_id: "pattern_1_9"
+    escalation_loop_template: >-
+      Wenn die Neigung zu Dominanz bei der einen Seite auf die Neigung zu Selbstaufgabe bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig verstaerken, solange keine Seite die eigene Neigung bewusst reflektiert.
+    deescalation_template: >-
+      Ein bewusstes Benennen der eigenen Neigung zu Dominanz bzw. Selbstaufgabe kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klaerung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  - shadow_theme_a: "Unentschlossenheit"
+    shadow_theme_b: "Unentschlossenheit"
+    interaction_pattern_template_id: "pattern_2_2"
+    escalation_loop_template: >-
+      Wenn beide Seiten zu Unentschlossenheit neigen, kann sich dieses Muster gegenseitig verstaerken: keine Seite bringt eine ausgleichende Gegenbewegung ein, wodurch sich die Dynamik unbemerkt vertiefen kann.
+    deescalation_template: >-
+      Beide Seiten koennen die gemeinsame Neigung zu Unentschlossenheit offen benennen und bewusst eine ergaenzende Verhaltensweise einbringen, statt sich gegenseitig darin zu bestaerken.
+  - shadow_theme_a: "Unentschlossenheit"
+    shadow_theme_b: "Zerstreuung"
+    interaction_pattern_template_id: "pattern_2_3"
+    escalation_loop_template: >-
+      Wenn die Neigung zu Unentschlossenheit bei der einen Seite auf die Neigung zu Zerstreuung bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig verstaerken, solange keine Seite die eigene Neigung bewusst reflektiert.
+    deescalation_template: >-
+      Ein bewusstes Benennen der eigenen Neigung zu Unentschlossenheit bzw. Zerstreuung kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klaerung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  - shadow_theme_a: "Unentschlossenheit"
+    shadow_theme_b: "Rigiditaet"
+    interaction_pattern_template_id: "pattern_2_4"
+    escalation_loop_template: >-
+      Wenn die Neigung zu Unentschlossenheit bei der einen Seite auf die Neigung zu Rigiditaet bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig verstaerken, solange keine Seite die eigene Neigung bewusst reflektiert.
+    deescalation_template: >-
+      Ein bewusstes Benennen der eigenen Neigung zu Unentschlossenheit bzw. Rigiditaet kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klaerung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  - shadow_theme_a: "Unentschlossenheit"
+    shadow_theme_b: "Rastlosigkeit"
+    interaction_pattern_template_id: "pattern_2_5"
+    escalation_loop_template: >-
+      Wenn die Neigung zu Unentschlossenheit bei der einen Seite auf die Neigung zu Rastlosigkeit bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig verstaerken, solange keine Seite die eigene Neigung bewusst reflektiert.
+    deescalation_template: >-
+      Ein bewusstes Benennen der eigenen Neigung zu Unentschlossenheit bzw. Rastlosigkeit kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klaerung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  - shadow_theme_a: "Unentschlossenheit"
+    shadow_theme_b: "Ueberverantwortung"
+    interaction_pattern_template_id: "pattern_2_6"
+    escalation_loop_template: >-
+      Wenn die Neigung zu Unentschlossenheit bei der einen Seite auf die Neigung zu Ueberverantwortung bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig verstaerken, solange keine Seite die eigene Neigung bewusst reflektiert.
+    deescalation_template: >-
+      Ein bewusstes Benennen der eigenen Neigung zu Unentschlossenheit bzw. Ueberverantwortung kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klaerung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  - shadow_theme_a: "Unentschlossenheit"
+    shadow_theme_b: "Rueckzug"
+    interaction_pattern_template_id: "pattern_2_7"
+    escalation_loop_template: >-
+      Wenn die Neigung zu Unentschlossenheit bei der einen Seite auf die Neigung zu Rueckzug bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig verstaerken, solange keine Seite die eigene Neigung bewusst reflektiert.
+    deescalation_template: >-
+      Ein bewusstes Benennen der eigenen Neigung zu Unentschlossenheit bzw. Rueckzug kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klaerung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  - shadow_theme_a: "Unentschlossenheit"
+    shadow_theme_b: "Kontrolle"
+    interaction_pattern_template_id: "pattern_2_8"
+    escalation_loop_template: >-
+      Wenn die Neigung zu Unentschlossenheit bei der einen Seite auf die Neigung zu Kontrolle bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig verstaerken, solange keine Seite die eigene Neigung bewusst reflektiert.
+    deescalation_template: >-
+      Ein bewusstes Benennen der eigenen Neigung zu Unentschlossenheit bzw. Kontrolle kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klaerung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  - shadow_theme_a: "Unentschlossenheit"
+    shadow_theme_b: "Selbstaufgabe"
+    interaction_pattern_template_id: "pattern_2_9"
+    escalation_loop_template: >-
+      Wenn die Neigung zu Unentschlossenheit bei der einen Seite auf die Neigung zu Selbstaufgabe bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig verstaerken, solange keine Seite die eigene Neigung bewusst reflektiert.
+    deescalation_template: >-
+      Ein bewusstes Benennen der eigenen Neigung zu Unentschlossenheit bzw. Selbstaufgabe kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klaerung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  - shadow_theme_a: "Zerstreuung"
+    shadow_theme_b: "Zerstreuung"
+    interaction_pattern_template_id: "pattern_3_3"
+    escalation_loop_template: >-
+      Wenn beide Seiten zu Zerstreuung neigen, kann sich dieses Muster gegenseitig verstaerken: keine Seite bringt eine ausgleichende Gegenbewegung ein, wodurch sich die Dynamik unbemerkt vertiefen kann.
+    deescalation_template: >-
+      Beide Seiten koennen die gemeinsame Neigung zu Zerstreuung offen benennen und bewusst eine ergaenzende Verhaltensweise einbringen, statt sich gegenseitig darin zu bestaerken.
+  - shadow_theme_a: "Zerstreuung"
+    shadow_theme_b: "Rigiditaet"
+    interaction_pattern_template_id: "pattern_3_4"
+    escalation_loop_template: >-
+      Wenn die Neigung zu Zerstreuung bei der einen Seite auf die Neigung zu Rigiditaet bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig verstaerken, solange keine Seite die eigene Neigung bewusst reflektiert.
+    deescalation_template: >-
+      Ein bewusstes Benennen der eigenen Neigung zu Zerstreuung bzw. Rigiditaet kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klaerung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  - shadow_theme_a: "Zerstreuung"
+    shadow_theme_b: "Rastlosigkeit"
+    interaction_pattern_template_id: "pattern_3_5"
+    escalation_loop_template: >-
+      Wenn die Neigung zu Zerstreuung bei der einen Seite auf die Neigung zu Rastlosigkeit bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig verstaerken, solange keine Seite die eigene Neigung bewusst reflektiert.
+    deescalation_template: >-
+      Ein bewusstes Benennen der eigenen Neigung zu Zerstreuung bzw. Rastlosigkeit kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klaerung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  - shadow_theme_a: "Zerstreuung"
+    shadow_theme_b: "Ueberverantwortung"
+    interaction_pattern_template_id: "pattern_3_6"
+    escalation_loop_template: >-
+      Wenn die Neigung zu Zerstreuung bei der einen Seite auf die Neigung zu Ueberverantwortung bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig verstaerken, solange keine Seite die eigene Neigung bewusst reflektiert.
+    deescalation_template: >-
+      Ein bewusstes Benennen der eigenen Neigung zu Zerstreuung bzw. Ueberverantwortung kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klaerung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  - shadow_theme_a: "Zerstreuung"
+    shadow_theme_b: "Rueckzug"
+    interaction_pattern_template_id: "pattern_3_7"
+    escalation_loop_template: >-
+      Wenn die Neigung zu Zerstreuung bei der einen Seite auf die Neigung zu Rueckzug bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig verstaerken, solange keine Seite die eigene Neigung bewusst reflektiert.
+    deescalation_template: >-
+      Ein bewusstes Benennen der eigenen Neigung zu Zerstreuung bzw. Rueckzug kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klaerung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  - shadow_theme_a: "Zerstreuung"
+    shadow_theme_b: "Kontrolle"
+    interaction_pattern_template_id: "pattern_3_8"
+    escalation_loop_template: >-
+      Wenn die Neigung zu Zerstreuung bei der einen Seite auf die Neigung zu Kontrolle bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig verstaerken, solange keine Seite die eigene Neigung bewusst reflektiert.
+    deescalation_template: >-
+      Ein bewusstes Benennen der eigenen Neigung zu Zerstreuung bzw. Kontrolle kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klaerung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  - shadow_theme_a: "Zerstreuung"
+    shadow_theme_b: "Selbstaufgabe"
+    interaction_pattern_template_id: "pattern_3_9"
+    escalation_loop_template: >-
+      Wenn die Neigung zu Zerstreuung bei der einen Seite auf die Neigung zu Selbstaufgabe bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig verstaerken, solange keine Seite die eigene Neigung bewusst reflektiert.
+    deescalation_template: >-
+      Ein bewusstes Benennen der eigenen Neigung zu Zerstreuung bzw. Selbstaufgabe kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klaerung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  - shadow_theme_a: "Rigiditaet"
+    shadow_theme_b: "Rigiditaet"
+    interaction_pattern_template_id: "pattern_4_4"
+    escalation_loop_template: >-
+      Wenn beide Seiten zu Rigiditaet neigen, kann sich dieses Muster gegenseitig verstaerken: keine Seite bringt eine ausgleichende Gegenbewegung ein, wodurch sich die Dynamik unbemerkt vertiefen kann.
+    deescalation_template: >-
+      Beide Seiten koennen die gemeinsame Neigung zu Rigiditaet offen benennen und bewusst eine ergaenzende Verhaltensweise einbringen, statt sich gegenseitig darin zu bestaerken.
+  - shadow_theme_a: "Rigiditaet"
+    shadow_theme_b: "Rastlosigkeit"
+    interaction_pattern_template_id: "pattern_4_5"
+    escalation_loop_template: >-
+      Wenn die Neigung zu Rigiditaet bei der einen Seite auf die Neigung zu Rastlosigkeit bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig verstaerken, solange keine Seite die eigene Neigung bewusst reflektiert.
+    deescalation_template: >-
+      Ein bewusstes Benennen der eigenen Neigung zu Rigiditaet bzw. Rastlosigkeit kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klaerung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  - shadow_theme_a: "Rigiditaet"
+    shadow_theme_b: "Ueberverantwortung"
+    interaction_pattern_template_id: "pattern_4_6"
+    escalation_loop_template: >-
+      Wenn die Neigung zu Rigiditaet bei der einen Seite auf die Neigung zu Ueberverantwortung bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig verstaerken, solange keine Seite die eigene Neigung bewusst reflektiert.
+    deescalation_template: >-
+      Ein bewusstes Benennen der eigenen Neigung zu Rigiditaet bzw. Ueberverantwortung kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klaerung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  - shadow_theme_a: "Rigiditaet"
+    shadow_theme_b: "Rueckzug"
+    interaction_pattern_template_id: "pattern_4_7"
+    escalation_loop_template: >-
+      Wenn die Neigung zu Rigiditaet bei der einen Seite auf die Neigung zu Rueckzug bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig verstaerken, solange keine Seite die eigene Neigung bewusst reflektiert.
+    deescalation_template: >-
+      Ein bewusstes Benennen der eigenen Neigung zu Rigiditaet bzw. Rueckzug kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klaerung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  - shadow_theme_a: "Rigiditaet"
+    shadow_theme_b: "Kontrolle"
+    interaction_pattern_template_id: "pattern_4_8"
+    escalation_loop_template: >-
+      Wenn die Neigung zu Rigiditaet bei der einen Seite auf die Neigung zu Kontrolle bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig verstaerken, solange keine Seite die eigene Neigung bewusst reflektiert.
+    deescalation_template: >-
+      Ein bewusstes Benennen der eigenen Neigung zu Rigiditaet bzw. Kontrolle kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klaerung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  - shadow_theme_a: "Rigiditaet"
+    shadow_theme_b: "Selbstaufgabe"
+    interaction_pattern_template_id: "pattern_4_9"
+    escalation_loop_template: >-
+      Wenn die Neigung zu Rigiditaet bei der einen Seite auf die Neigung zu Selbstaufgabe bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig verstaerken, solange keine Seite die eigene Neigung bewusst reflektiert.
+    deescalation_template: >-
+      Ein bewusstes Benennen der eigenen Neigung zu Rigiditaet bzw. Selbstaufgabe kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klaerung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  - shadow_theme_a: "Rastlosigkeit"
+    shadow_theme_b: "Rastlosigkeit"
+    interaction_pattern_template_id: "pattern_5_5"
+    escalation_loop_template: >-
+      Wenn beide Seiten zu Rastlosigkeit neigen, kann sich dieses Muster gegenseitig verstaerken: keine Seite bringt eine ausgleichende Gegenbewegung ein, wodurch sich die Dynamik unbemerkt vertiefen kann.
+    deescalation_template: >-
+      Beide Seiten koennen die gemeinsame Neigung zu Rastlosigkeit offen benennen und bewusst eine ergaenzende Verhaltensweise einbringen, statt sich gegenseitig darin zu bestaerken.
+  - shadow_theme_a: "Rastlosigkeit"
+    shadow_theme_b: "Ueberverantwortung"
+    interaction_pattern_template_id: "pattern_5_6"
+    escalation_loop_template: >-
+      Wenn die Neigung zu Rastlosigkeit bei der einen Seite auf die Neigung zu Ueberverantwortung bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig verstaerken, solange keine Seite die eigene Neigung bewusst reflektiert.
+    deescalation_template: >-
+      Ein bewusstes Benennen der eigenen Neigung zu Rastlosigkeit bzw. Ueberverantwortung kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klaerung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  - shadow_theme_a: "Rastlosigkeit"
+    shadow_theme_b: "Rueckzug"
+    interaction_pattern_template_id: "pattern_5_7"
+    escalation_loop_template: >-
+      Wenn die Neigung zu Rastlosigkeit bei der einen Seite auf die Neigung zu Rueckzug bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig verstaerken, solange keine Seite die eigene Neigung bewusst reflektiert.
+    deescalation_template: >-
+      Ein bewusstes Benennen der eigenen Neigung zu Rastlosigkeit bzw. Rueckzug kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klaerung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  - shadow_theme_a: "Rastlosigkeit"
+    shadow_theme_b: "Kontrolle"
+    interaction_pattern_template_id: "pattern_5_8"
+    escalation_loop_template: >-
+      Wenn die Neigung zu Rastlosigkeit bei der einen Seite auf die Neigung zu Kontrolle bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig verstaerken, solange keine Seite die eigene Neigung bewusst reflektiert.
+    deescalation_template: >-
+      Ein bewusstes Benennen der eigenen Neigung zu Rastlosigkeit bzw. Kontrolle kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klaerung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  - shadow_theme_a: "Rastlosigkeit"
+    shadow_theme_b: "Selbstaufgabe"
+    interaction_pattern_template_id: "pattern_5_9"
+    escalation_loop_template: >-
+      Wenn die Neigung zu Rastlosigkeit bei der einen Seite auf die Neigung zu Selbstaufgabe bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig verstaerken, solange keine Seite die eigene Neigung bewusst reflektiert.
+    deescalation_template: >-
+      Ein bewusstes Benennen der eigenen Neigung zu Rastlosigkeit bzw. Selbstaufgabe kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klaerung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  - shadow_theme_a: "Ueberverantwortung"
+    shadow_theme_b: "Ueberverantwortung"
+    interaction_pattern_template_id: "pattern_6_6"
+    escalation_loop_template: >-
+      Wenn beide Seiten zu Ueberverantwortung neigen, kann sich dieses Muster gegenseitig verstaerken: keine Seite bringt eine ausgleichende Gegenbewegung ein, wodurch sich die Dynamik unbemerkt vertiefen kann.
+    deescalation_template: >-
+      Beide Seiten koennen die gemeinsame Neigung zu Ueberverantwortung offen benennen und bewusst eine ergaenzende Verhaltensweise einbringen, statt sich gegenseitig darin zu bestaerken.
+  - shadow_theme_a: "Ueberverantwortung"
+    shadow_theme_b: "Rueckzug"
+    interaction_pattern_template_id: "pattern_6_7"
+    escalation_loop_template: >-
+      Wenn die Neigung zu Ueberverantwortung bei der einen Seite auf die Neigung zu Rueckzug bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig verstaerken, solange keine Seite die eigene Neigung bewusst reflektiert.
+    deescalation_template: >-
+      Ein bewusstes Benennen der eigenen Neigung zu Ueberverantwortung bzw. Rueckzug kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klaerung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  - shadow_theme_a: "Ueberverantwortung"
+    shadow_theme_b: "Kontrolle"
+    interaction_pattern_template_id: "pattern_6_8"
+    escalation_loop_template: >-
+      Wenn die Neigung zu Ueberverantwortung bei der einen Seite auf die Neigung zu Kontrolle bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig verstaerken, solange keine Seite die eigene Neigung bewusst reflektiert.
+    deescalation_template: >-
+      Ein bewusstes Benennen der eigenen Neigung zu Ueberverantwortung bzw. Kontrolle kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klaerung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  - shadow_theme_a: "Ueberverantwortung"
+    shadow_theme_b: "Selbstaufgabe"
+    interaction_pattern_template_id: "pattern_6_9"
+    escalation_loop_template: >-
+      Wenn die Neigung zu Ueberverantwortung bei der einen Seite auf die Neigung zu Selbstaufgabe bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig verstaerken, solange keine Seite die eigene Neigung bewusst reflektiert.
+    deescalation_template: >-
+      Ein bewusstes Benennen der eigenen Neigung zu Ueberverantwortung bzw. Selbstaufgabe kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klaerung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  - shadow_theme_a: "Rueckzug"
+    shadow_theme_b: "Rueckzug"
+    interaction_pattern_template_id: "pattern_7_7"
+    escalation_loop_template: >-
+      Wenn beide Seiten zu Rueckzug neigen, kann sich dieses Muster gegenseitig verstaerken: keine Seite bringt eine ausgleichende Gegenbewegung ein, wodurch sich die Dynamik unbemerkt vertiefen kann.
+    deescalation_template: >-
+      Beide Seiten koennen die gemeinsame Neigung zu Rueckzug offen benennen und bewusst eine ergaenzende Verhaltensweise einbringen, statt sich gegenseitig darin zu bestaerken.
+  - shadow_theme_a: "Rueckzug"
+    shadow_theme_b: "Kontrolle"
+    interaction_pattern_template_id: "pattern_7_8"
+    escalation_loop_template: >-
+      Wenn die Neigung zu Rueckzug bei der einen Seite auf die Neigung zu Kontrolle bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig verstaerken, solange keine Seite die eigene Neigung bewusst reflektiert.
+    deescalation_template: >-
+      Ein bewusstes Benennen der eigenen Neigung zu Rueckzug bzw. Kontrolle kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klaerung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  - shadow_theme_a: "Rueckzug"
+    shadow_theme_b: "Selbstaufgabe"
+    interaction_pattern_template_id: "pattern_7_9"
+    escalation_loop_template: >-
+      Wenn die Neigung zu Rueckzug bei der einen Seite auf die Neigung zu Selbstaufgabe bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig verstaerken, solange keine Seite die eigene Neigung bewusst reflektiert.
+    deescalation_template: >-
+      Ein bewusstes Benennen der eigenen Neigung zu Rueckzug bzw. Selbstaufgabe kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klaerung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  - shadow_theme_a: "Kontrolle"
+    shadow_theme_b: "Kontrolle"
+    interaction_pattern_template_id: "pattern_8_8"
+    escalation_loop_template: >-
+      Wenn beide Seiten zu Kontrolle neigen, kann sich dieses Muster gegenseitig verstaerken: keine Seite bringt eine ausgleichende Gegenbewegung ein, wodurch sich die Dynamik unbemerkt vertiefen kann.
+    deescalation_template: >-
+      Beide Seiten koennen die gemeinsame Neigung zu Kontrolle offen benennen und bewusst eine ergaenzende Verhaltensweise einbringen, statt sich gegenseitig darin zu bestaerken.
+  - shadow_theme_a: "Kontrolle"
+    shadow_theme_b: "Selbstaufgabe"
+    interaction_pattern_template_id: "pattern_8_9"
+    escalation_loop_template: >-
+      Wenn die Neigung zu Kontrolle bei der einen Seite auf die Neigung zu Selbstaufgabe bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig verstaerken, solange keine Seite die eigene Neigung bewusst reflektiert.
+    deescalation_template: >-
+      Ein bewusstes Benennen der eigenen Neigung zu Kontrolle bzw. Selbstaufgabe kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klaerung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  - shadow_theme_a: "Selbstaufgabe"
+    shadow_theme_b: "Selbstaufgabe"
+    interaction_pattern_template_id: "pattern_9_9"
+    escalation_loop_template: >-
+      Wenn beide Seiten zu Selbstaufgabe neigen, kann sich dieses Muster gegenseitig verstaerken: keine Seite bringt eine ausgleichende Gegenbewegung ein, wodurch sich die Dynamik unbemerkt vertiefen kann.
+    deescalation_template: >-
+      Beide Seiten koennen die gemeinsame Neigung zu Selbstaufgabe offen benennen und bewusst eine ergaenzende Verhaltensweise einbringen, statt sich gegenseitig darin zu bestaerken.
