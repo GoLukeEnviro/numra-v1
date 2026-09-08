@@ -14,7 +14,7 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from sqlalchemy import ColumnElement, and_, or_, select
+from sqlalchemy import ColumnElement, and_, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from numra_api.models import TaskAcceptance, WorkspaceTask
@@ -83,6 +83,32 @@ async def update_workspace_task(
     await db.flush()
     await db.refresh(task)
     return task
+
+
+async def conditionally_transition_status(
+    db: AsyncSession,
+    *,
+    task_id: uuid.UUID,
+    expected_status: Any,
+    new_status: Any,
+) -> bool:
+    """Atomic `UPDATE ... WHERE id=? AND status=?` -- the actual TOCTOU-safety
+    guarantee for accept/decline (a plain read-then-`setattr`-then-flush is
+    racy: two concurrent requests can both pass the Python-side status check
+    before either commits). Returns whether this call won the transition;
+    `False` means someone else already moved the task out of
+    `expected_status` and the caller must treat it as a conflict, not retry
+    silently -- same discipline as repositories/checkins.py's partial unique
+    index for the analogous first-submission race."""
+    stmt = (
+        update(WorkspaceTask)
+        .where(WorkspaceTask.id == task_id, WorkspaceTask.status == expected_status)
+        .values(status=new_status)
+        .returning(WorkspaceTask.id)
+    )
+    result = await db.execute(stmt)
+    await db.flush()
+    return result.scalar_one_or_none() is not None
 
 
 async def delete_workspace_task(db: AsyncSession, *, task: WorkspaceTask) -> None:

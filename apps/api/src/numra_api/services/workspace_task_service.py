@@ -233,12 +233,23 @@ async def accept_task(
 
     if not _can_accept_or_decline(task, user_id=user_id):
         raise NotFoundError(f"task {task_id} not found")
-    if task.status != WorkspaceTaskStatus.PROPOSED:
+
+    # Atomic conditional UPDATE, not read-then-write: two concurrent accept/decline
+    # requests for the same task must not both pass a Python-side status check
+    # before either commits (see repositories/workspace_tasks.py::
+    # conditionally_transition_status docstring).
+    won = await tasks_repo.conditionally_transition_status(
+        db,
+        task_id=task.id,
+        expected_status=WorkspaceTaskStatus.PROPOSED,
+        new_status=WorkspaceTaskStatus.ACTIVE,
+    )
+    if not won:
         raise TaskTransitionConflict(f"task {task_id} is not in PROPOSED state")
+    await db.refresh(task)
 
     # PROPOSED -> ACCEPTED -> ACTIVE as one step; ACCEPTED is only ever visible
     # as a task_acceptances log entry (specs/v2/task-system-spec.md).
-    task = await tasks_repo.update_workspace_task(db, task=task, status=WorkspaceTaskStatus.ACTIVE)
     await _record_event(
         db, task_id=task.id, event_type=TaskAcceptanceEventType.ACCEPTED, actor_user_id=user_id
     )
@@ -261,12 +272,17 @@ async def decline_task(
 
     if not _can_accept_or_decline(task, user_id=user_id):
         raise NotFoundError(f"task {task_id} not found")
-    if task.status != WorkspaceTaskStatus.PROPOSED:
-        raise TaskTransitionConflict(f"task {task_id} is not in PROPOSED state")
 
-    task = await tasks_repo.update_workspace_task(
-        db, task=task, status=WorkspaceTaskStatus.DECLINED
+    won = await tasks_repo.conditionally_transition_status(
+        db,
+        task_id=task.id,
+        expected_status=WorkspaceTaskStatus.PROPOSED,
+        new_status=WorkspaceTaskStatus.DECLINED,
     )
+    if not won:
+        raise TaskTransitionConflict(f"task {task_id} is not in PROPOSED state")
+    await db.refresh(task)
+
     await _record_event(
         db, task_id=task.id, event_type=TaskAcceptanceEventType.DECLINED, actor_user_id=user_id
     )
