@@ -1586,6 +1586,25 @@
         "title": "LoginRequest",
         "type": "object"
       },
+      "MilestoneStatus": {
+        "description": "PR-V2-08 -- lifecycle of one `RoadmapMilestone`. `completed_at` is\nserver-derived on the COMPLETED transition, only ever set via an explicit user\nPATCH (services/relationship_roadmap_service.py), never automatically.",
+        "enum": [
+          "PENDING",
+          "COMPLETED",
+          "ARCHIVED"
+        ],
+        "title": "MilestoneStatus",
+        "type": "string"
+      },
+      "MilestoneType": {
+        "description": "PR-V2-08 -- specs/v2/roadmap-spec.md Structure: a `RoadmapMilestone` row is\neither a concrete milestone or a review-point marker, discriminated by this\ncolumn so both are filterable from the same table.",
+        "enum": [
+          "MILESTONE",
+          "REVIEW_POINT"
+        ],
+        "title": "MilestoneType",
+        "type": "string"
+      },
       "NameIdentityKind": {
         "enum": [
           "birth",
@@ -2779,6 +2798,165 @@
         "title": "RelationshipOut",
         "type": "object"
       },
+      "RelationshipRoadmapCreateRequest": {
+        "properties": {
+          "roadmap_type": {
+            "$ref": "#/components/schemas/RoadmapType"
+          },
+          "title": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "roadmap_type",
+          "title"
+        ],
+        "title": "RelationshipRoadmapCreateRequest",
+        "type": "object"
+      },
+      "RelationshipRoadmapOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "knowledge_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Knowledge Version"
+          },
+          "prompt_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt Version"
+          },
+          "proposer_user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposer User Id"
+          },
+          "roadmap_type": {
+            "$ref": "#/components/schemas/RoadmapType"
+          },
+          "source_analysis_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Analysis Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RoadmapStatus"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "workspace_id": {
+            "format": "uuid",
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "workspace_id",
+          "roadmap_type",
+          "title",
+          "status",
+          "proposer_user_id",
+          "source_analysis_id",
+          "prompt_version",
+          "knowledge_version",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "RelationshipRoadmapOut",
+        "type": "object"
+      },
+      "RelationshipRoadmapPatchRequest": {
+        "description": "Every field optional; `model_fields_set` at the route means only fields\nthe client actually sent are applied -- same pattern as\n`WorkspaceTaskPatchRequest`. `title`/`roadmap_type` are rejected once the\nroadmap is ARCHIVED (see services/relationship_roadmap_service.py).",
+        "properties": {
+          "roadmap_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RoadmapType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "ACCEPTED",
+                  "ARCHIVED"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "title": "RelationshipRoadmapPatchRequest",
+        "type": "object"
+      },
       "RelationshipSummaryOut": {
         "description": "Relationship-library list shape: resolved person names instead of raw\ncalculation UUIDs, so a list card never needs a LocalStorage cache to say who\nPerson A/B are. No `comparison` payload \u2014 that's a detail-view concern.",
         "properties": {
@@ -3075,6 +3253,225 @@
         "title": "ResetPasswordRequest",
         "type": "object"
       },
+      "RoadmapMilestoneCreateRequest": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "milestone_type": {
+            "$ref": "#/components/schemas/MilestoneType"
+          },
+          "sequence": {
+            "default": 0,
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "target_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Date"
+          },
+          "title": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "milestone_type",
+          "title"
+        ],
+        "title": "RoadmapMilestoneCreateRequest",
+        "type": "object"
+      },
+      "RoadmapMilestoneOut": {
+        "properties": {
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "milestone_type": {
+            "$ref": "#/components/schemas/MilestoneType"
+          },
+          "roadmap_id": {
+            "format": "uuid",
+            "title": "Roadmap Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/MilestoneStatus"
+          },
+          "target_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Date"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "roadmap_id",
+          "milestone_type",
+          "title",
+          "description",
+          "target_date",
+          "sequence",
+          "status",
+          "completed_at",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "RoadmapMilestoneOut",
+        "type": "object"
+      },
+      "RoadmapMilestonePatchRequest": {
+        "description": "Every field optional; `model_fields_set` at the route means only fields\nthe client actually sent are applied. `status=COMPLETED` sets\n`completed_at` server-side (see services/relationship_roadmap_service.py) --\nno route can trigger this automatically or via an LLM.",
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "sequence": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sequence"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MilestoneStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "target_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Date"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "title": "RoadmapMilestonePatchRequest",
+        "type": "object"
+      },
+      "RoadmapStatus": {
+        "description": "PR-V2-08 -- lifecycle of one `RelationshipRoadmap`\n(specs/v2/roadmap-spec.md Acceptance checks): PROPOSED -> ACCEPTED, or\nPROPOSED/ACCEPTED -> ARCHIVED. Server-authoritative, same discipline as\n`WorkspaceTaskStatus`.",
+        "enum": [
+          "PROPOSED",
+          "ACCEPTED",
+          "ARCHIVED"
+        ],
+        "title": "RoadmapStatus",
+        "type": "string"
+      },
+      "RoadmapType": {
+        "description": "PR-V2-08 -- specs/v2/roadmap-spec.md Types. Member names cannot start with a\ndigit, hence the spelled-out names; the wire value is the spec's literal\nstring.",
+        "enum": [
+          "14_DAY",
+          "30_DAY",
+          "QUARTER"
+        ],
+        "title": "RoadmapType",
+        "type": "string"
+      },
       "SessionOut": {
         "description": "One active session (V1.5 Epic N). No IP address or device identifier is\nstored or returned \u2014 sessions carry only a token hash, timestamps, and the\nowning user (see models.tables.Session).",
         "properties": {
@@ -3211,6 +3608,88 @@
           "created_at"
         ],
         "title": "ShadowDynamicsAnalysisOut",
+        "type": "object"
+      },
+      "SharePrivateReflectionRequest": {
+        "properties": {
+          "workspace_id": {
+            "format": "uuid",
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "workspace_id"
+        ],
+        "title": "SharePrivateReflectionRequest",
+        "type": "object"
+      },
+      "SharedReflectionOut": {
+        "properties": {
+          "author_user_id": {
+            "format": "uuid",
+            "title": "Author User Id",
+            "type": "string"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "entry_date": {
+            "format": "date",
+            "title": "Entry Date",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "shared_at": {
+            "format": "date-time",
+            "title": "Shared At",
+            "type": "string"
+          },
+          "source_private_reflection_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Private Reflection Id"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "workspace_id": {
+            "format": "uuid",
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "workspace_id",
+          "author_user_id",
+          "source_private_reflection_id",
+          "entry_date",
+          "content",
+          "shared_at",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "SharedReflectionOut",
         "type": "object"
       },
       "SystemInfoOut": {
@@ -3660,6 +4139,18 @@
             ],
             "title": "Recipient User Id"
           },
+          "roadmap_milestone_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Roadmap Milestone Id"
+          },
           "task_type": {
             "$ref": "#/components/schemas/TaskType"
           },
@@ -3770,6 +4261,18 @@
             ],
             "title": "Recipient User Id"
           },
+          "roadmap_milestone_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Roadmap Milestone Id"
+          },
           "source_analysis_id": {
             "anyOf": [
               {
@@ -3817,6 +4320,7 @@
           "source_analysis_id",
           "prompt_version",
           "knowledge_version",
+          "roadmap_milestone_id",
           "created_at",
           "updated_at"
         ],
@@ -3848,6 +4352,18 @@
               }
             ],
             "title": "Due Date"
+          },
+          "roadmap_milestone_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Roadmap Milestone Id"
           },
           "status": {
             "anyOf": [
@@ -8417,6 +8933,107 @@
         ]
       }
     },
+    "/v1/private-reflections/{reflection_id}/share": {
+      "post": {
+        "operationId": "share_private_reflection_route_v1_private_reflections__reflection_id__share_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reflection_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Reflection Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-csrf-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_csrf",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Csrf"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SharePrivateReflectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedReflectionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Share Private Reflection Route",
+        "tags": [
+          "private-reflections"
+        ]
+      }
+    },
     "/v1/public/config": {
       "get": {
         "description": "Unauthenticated by design: the sign-in page has to know whether self-signup is\nopen before anyone can possibly hold a session.\n\n`app_name` deliberately comes from `settings.app_brand_name` even though this\nendpoint is unauthenticated -- a bounded, intentional exception to the \"no\nSettings field on this route\" rule that otherwise applies here (see\nPublicConfigOut's docstring): branding is not a security-relevant value the way\n`allow_self_signup` or a URL/secret would be, so a deployment configuring its own\nproduct name carries none of the risk that motivated keeping this route\nSettings-free in the first place.",
@@ -10292,6 +10909,959 @@
         ]
       }
     },
+    "/v1/workspaces/{workspace_id}/roadmaps": {
+      "get": {
+        "operationId": "list_roadmaps_route_v1_workspaces__workspace_id__roadmaps_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RelationshipRoadmapOut"
+                  },
+                  "title": "Response List Roadmaps Route V1 Workspaces  Workspace Id  Roadmaps Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Roadmaps Route",
+        "tags": [
+          "relationship-roadmaps"
+        ]
+      },
+      "post": {
+        "operationId": "create_roadmap_route_v1_workspaces__workspace_id__roadmaps_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-csrf-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_csrf",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Csrf"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RelationshipRoadmapCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelationshipRoadmapOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Roadmap Route",
+        "tags": [
+          "relationship-roadmaps"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspace_id}/roadmaps/{roadmap_id}": {
+      "delete": {
+        "operationId": "delete_roadmap_route_v1_workspaces__workspace_id__roadmaps__roadmap_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "roadmap_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Roadmap Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-csrf-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_csrf",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Csrf"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Roadmap Route",
+        "tags": [
+          "relationship-roadmaps"
+        ]
+      },
+      "get": {
+        "operationId": "get_roadmap_route_v1_workspaces__workspace_id__roadmaps__roadmap_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "roadmap_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Roadmap Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelationshipRoadmapOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Roadmap Route",
+        "tags": [
+          "relationship-roadmaps"
+        ]
+      },
+      "patch": {
+        "operationId": "patch_roadmap_route_v1_workspaces__workspace_id__roadmaps__roadmap_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "roadmap_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Roadmap Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-csrf-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_csrf",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Csrf"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RelationshipRoadmapPatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelationshipRoadmapOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Patch Roadmap Route",
+        "tags": [
+          "relationship-roadmaps"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspace_id}/roadmaps/{roadmap_id}/milestones": {
+      "get": {
+        "operationId": "list_milestones_route_v1_workspaces__workspace_id__roadmaps__roadmap_id__milestones_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "roadmap_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Roadmap Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "milestone_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/MilestoneType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Milestone Type"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RoadmapMilestoneOut"
+                  },
+                  "title": "Response List Milestones Route V1 Workspaces  Workspace Id  Roadmaps  Roadmap Id  Milestones Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Milestones Route",
+        "tags": [
+          "relationship-roadmaps"
+        ]
+      },
+      "post": {
+        "operationId": "create_milestone_route_v1_workspaces__workspace_id__roadmaps__roadmap_id__milestones_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "roadmap_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Roadmap Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-csrf-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_csrf",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Csrf"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoadmapMilestoneCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoadmapMilestoneOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Milestone Route",
+        "tags": [
+          "relationship-roadmaps"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspace_id}/roadmaps/{roadmap_id}/milestones/{milestone_id}": {
+      "delete": {
+        "operationId": "delete_milestone_route_v1_workspaces__workspace_id__roadmaps__roadmap_id__milestones__milestone_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "roadmap_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Roadmap Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "milestone_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Milestone Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-csrf-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_csrf",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Csrf"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Milestone Route",
+        "tags": [
+          "relationship-roadmaps"
+        ]
+      },
+      "get": {
+        "operationId": "get_milestone_route_v1_workspaces__workspace_id__roadmaps__roadmap_id__milestones__milestone_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "roadmap_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Roadmap Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "milestone_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Milestone Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoadmapMilestoneOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Milestone Route",
+        "tags": [
+          "relationship-roadmaps"
+        ]
+      },
+      "patch": {
+        "operationId": "patch_milestone_route_v1_workspaces__workspace_id__roadmaps__roadmap_id__milestones__milestone_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "roadmap_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Roadmap Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "milestone_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Milestone Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-csrf-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_csrf",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Csrf"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoadmapMilestonePatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoadmapMilestoneOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Patch Milestone Route",
+        "tags": [
+          "relationship-roadmaps"
+        ]
+      }
+    },
     "/v1/workspaces/{workspace_id}/shadow-dynamics": {
       "get": {
         "operationId": "get_latest_shadow_dynamics_route_v1_workspaces__workspace_id__shadow_dynamics_get",
@@ -10522,6 +12092,253 @@
         "summary": "Get Shadow Dynamics Route",
         "tags": [
           "relationship-analysis"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspace_id}/shared-reflections": {
+      "get": {
+        "operationId": "list_shared_reflections_route_v1_workspaces__workspace_id__shared_reflections_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SharedReflectionOut"
+                  },
+                  "title": "Response List Shared Reflections Route V1 Workspaces  Workspace Id  Shared Reflections Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Shared Reflections Route",
+        "tags": [
+          "shared-reflections"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspace_id}/shared-reflections/{reflection_id}": {
+      "delete": {
+        "operationId": "delete_shared_reflection_route_v1_workspaces__workspace_id__shared_reflections__reflection_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "reflection_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Reflection Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-csrf-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_csrf",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Csrf"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Shared Reflection Route",
+        "tags": [
+          "shared-reflections"
+        ]
+      },
+      "get": {
+        "operationId": "get_shared_reflection_route_v1_workspaces__workspace_id__shared_reflections__reflection_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "reflection_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Reflection Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedReflectionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Shared Reflection Route",
+        "tags": [
+          "shared-reflections"
         ]
       }
     },

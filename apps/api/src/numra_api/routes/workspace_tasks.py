@@ -55,6 +55,7 @@ async def create_task_route(
         description=body.description,
         due_date=body.due_date,
         recipient_user_id=body.recipient_user_id,
+        roadmap_milestone_id=body.roadmap_milestone_id,
     )
     return _to_out(task)
 
@@ -144,6 +145,8 @@ async def patch_task_route(
         due_date=body.due_date,
         due_date_set="due_date" in set_fields,
         status=body.status,
+        roadmap_milestone_id=body.roadmap_milestone_id,
+        roadmap_milestone_id_set="roadmap_milestone_id" in set_fields,
     )
     return _to_out(task)
 

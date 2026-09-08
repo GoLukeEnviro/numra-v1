@@ -206,3 +206,43 @@ class CheckinStatus(StrEnum):
 
     AWAITING_SUBMISSIONS = "AWAITING_SUBMISSIONS"
     ANALYZED = "ANALYZED"
+
+
+class RoadmapType(StrEnum):
+    """PR-V2-08 -- specs/v2/roadmap-spec.md Types. Member names cannot start with a
+    digit, hence the spelled-out names; the wire value is the spec's literal
+    string."""
+
+    FOURTEEN_DAY = "14_DAY"
+    THIRTY_DAY = "30_DAY"
+    QUARTER = "QUARTER"
+
+
+class RoadmapStatus(StrEnum):
+    """PR-V2-08 -- lifecycle of one `RelationshipRoadmap`
+    (specs/v2/roadmap-spec.md Acceptance checks): PROPOSED -> ACCEPTED, or
+    PROPOSED/ACCEPTED -> ARCHIVED. Server-authoritative, same discipline as
+    `WorkspaceTaskStatus`."""
+
+    PROPOSED = "PROPOSED"
+    ACCEPTED = "ACCEPTED"
+    ARCHIVED = "ARCHIVED"
+
+
+class MilestoneType(StrEnum):
+    """PR-V2-08 -- specs/v2/roadmap-spec.md Structure: a `RoadmapMilestone` row is
+    either a concrete milestone or a review-point marker, discriminated by this
+    column so both are filterable from the same table."""
+
+    MILESTONE = "MILESTONE"
+    REVIEW_POINT = "REVIEW_POINT"
+
+
+class MilestoneStatus(StrEnum):
+    """PR-V2-08 -- lifecycle of one `RoadmapMilestone`. `completed_at` is
+    server-derived on the COMPLETED transition, only ever set via an explicit user
+    PATCH (services/relationship_roadmap_service.py), never automatically."""
+
+    PENDING = "PENDING"
+    COMPLETED = "COMPLETED"
+    ARCHIVED = "ARCHIVED"

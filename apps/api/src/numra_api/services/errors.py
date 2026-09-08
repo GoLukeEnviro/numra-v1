@@ -240,3 +240,49 @@ class TaskNotDeletable(ApplicationError):
 
     code = "TASK_NOT_DELETABLE"
     status_code = 422
+
+
+class RoadmapTransitionConflict(ApplicationError):
+    """PR-V2-08 -- raised by PATCH .../roadmaps/{roadmap_id} status=ACCEPTED on a
+    `RelationshipRoadmap` that is no longer PROPOSED (e.g. a second accept
+    attempt) -- a conflict, not a validation error, same rationale as
+    `TaskTransitionConflict`."""
+
+    code = "ROADMAP_TRANSITION_CONFLICT"
+    status_code = 409
+
+
+class RoadmapNotDeletable(ApplicationError):
+    """PR-V2-08 -- raised by DELETE .../roadmaps/{roadmap_id} unless the roadmap is
+    PROPOSED/ARCHIVED (an ACCEPTED roadmap must be archived first, never deleted
+    directly)."""
+
+    code = "ROADMAP_NOT_DELETABLE"
+    status_code = 422
+
+
+class RoadmapArchived(ApplicationError):
+    """PR-V2-08 -- raised by PATCH .../roadmaps/{roadmap_id} (title/roadmap_type)
+    once the roadmap is ARCHIVED -- an archived roadmap is read-only."""
+
+    code = "ROADMAP_ARCHIVED"
+    status_code = 422
+
+
+class InvalidRoadmapStatusTransition(ApplicationError):
+    """PR-V2-08 -- raised when PATCH .../roadmaps/{roadmap_id} is given a `status`
+    value other than ACCEPTED/ARCHIVED, or a transition that isn't legal from the
+    roadmap's current state (e.g. ARCHIVED -> ACCEPTED)."""
+
+    code = "INVALID_ROADMAP_STATUS_TRANSITION"
+    status_code = 422
+
+
+class MilestoneNotInWorkspace(ApplicationError):
+    """PR-V2-08 -- raised when a `workspace_tasks.roadmap_milestone_id` link is
+    set to a `RoadmapMilestone` that does not belong to the task's own
+    `workspace_id` (specs/v2 build order: Task<->Milestone link, cross-workspace
+    must be rejected, never silently cross-linked)."""
+
+    code = "MILESTONE_NOT_IN_WORKSPACE"
+    status_code = 422

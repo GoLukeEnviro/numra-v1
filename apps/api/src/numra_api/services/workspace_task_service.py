@@ -12,6 +12,7 @@ import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import numra_api.repositories.relationship_roadmaps as roadmaps_repo
 import numra_api.repositories.workspace_tasks as tasks_repo
 from numra_api.models import WorkspaceTask
 from numra_api.models.enums import TaskAcceptanceEventType, TaskType, WorkspaceTaskStatus
@@ -19,6 +20,7 @@ from numra_api.repositories.workspaces import get_workspace_member, list_workspa
 from numra_api.services.errors import (
     AvenythSuggestedNotUserCreatable,
     InvalidRecipient,
+    MilestoneNotInWorkspace,
     NotFoundError,
     TaskNotDeletable,
     TaskTransitionConflict,
@@ -73,6 +75,22 @@ async def _record_event(
     )
 
 
+async def _require_milestone_in_workspace(
+    db: AsyncSession, *, workspace_id: uuid.UUID, roadmap_milestone_id: uuid.UUID
+) -> None:
+    """PR-V2-08 -- a `roadmap_milestone_id` link may only ever target a
+    `RoadmapMilestone` whose own `RelationshipRoadmap` belongs to the same
+    `workspace_id` as the task -- cross-workspace linking is a validation error,
+    not an IDOR case (the caller is a legitimate member of `workspace_id`)."""
+    milestone = await roadmaps_repo.get_milestone_in_workspace(
+        db, milestone_id=roadmap_milestone_id, workspace_id=workspace_id
+    )
+    if milestone is None:
+        raise MilestoneNotInWorkspace(
+            f"milestone {roadmap_milestone_id} does not belong to workspace {workspace_id}"
+        )
+
+
 async def create_task(
     db: AsyncSession,
     *,
@@ -83,6 +101,7 @@ async def create_task(
     description: str | None,
     due_date: dt.date | None,
     recipient_user_id: uuid.UUID | None,
+    roadmap_milestone_id: uuid.UUID | None = None,
 ) -> WorkspaceTask:
     member = await get_workspace_member(db, workspace_id=workspace_id, user_id=user_id)
     _require_member(member, workspace_id=workspace_id)
@@ -93,6 +112,11 @@ async def create_task(
         # task_type.
         raise AvenythSuggestedNotUserCreatable(
             "AVENYTH_SUGGESTED tasks cannot be created via this endpoint"
+        )
+
+    if roadmap_milestone_id is not None:
+        await _require_milestone_in_workspace(
+            db, workspace_id=workspace_id, roadmap_milestone_id=roadmap_milestone_id
         )
 
     if task_type == TaskType.FOR_PARTNER_PROPOSED:
@@ -111,6 +135,7 @@ async def create_task(
             title=title,
             description=description,
             due_date=due_date,
+            roadmap_milestone_id=roadmap_milestone_id,
         )
         await _record_event(
             db,
@@ -131,6 +156,7 @@ async def create_task(
         title=title,
         description=description,
         due_date=due_date,
+        roadmap_milestone_id=roadmap_milestone_id,
     )
     await _record_event(
         db, task_id=task.id, event_type=TaskAcceptanceEventType.ACTIVATED, actor_user_id=user_id
@@ -301,6 +327,8 @@ async def patch_task(
     due_date_set: bool,
     description_set: bool,
     status: WorkspaceTaskStatus | None,
+    roadmap_milestone_id: uuid.UUID | None = None,
+    roadmap_milestone_id_set: bool = False,
 ) -> WorkspaceTask:
     member = await get_workspace_member(db, workspace_id=workspace_id, user_id=user_id)
     _require_member(member, workspace_id=workspace_id)
@@ -317,6 +345,12 @@ async def patch_task(
         updates["description"] = description
     if due_date_set:
         updates["due_date"] = due_date
+    if roadmap_milestone_id_set:
+        if roadmap_milestone_id is not None:
+            await _require_milestone_in_workspace(
+                db, workspace_id=workspace_id, roadmap_milestone_id=roadmap_milestone_id
+            )
+        updates["roadmap_milestone_id"] = roadmap_milestone_id
 
     event_type: TaskAcceptanceEventType | None = None
     if status is not None:
