@@ -28,6 +28,8 @@ from numra_api.db import Base
 from numra_api.models.enums import (
     AnalysisJobStatus,
     AnalysisType,
+    ChatMessageRole,
+    ChatMessageStatus,
     CheckinStatus,
     ConnectionStatus,
     ExportStatus,
@@ -45,6 +47,7 @@ from numra_api.models.enums import (
     RoadmapType,
     TaskAcceptanceEventType,
     TaskType,
+    ThreadScope,
     UserRole,
     WorkspaceMemberStatus,
     WorkspaceStatus,
@@ -1223,11 +1226,164 @@ class SharedReflection(Base):
     )
 
 
+class ChatThread(Base):
+    """PR-V2-09 -- specs/v2/copilot-grounding-spec.md Thread model. The CHECK
+    constraint below is the DB-level arbiter of which `workspace_id`/`owner_user_id`
+    shape is legal for each `scope`, mirrored (never trusted alone) by
+    services/copilot_service.py; the two partial unique indexes are what make
+    `POST .../copilot/threads` idempotent get-or-create (at most one non-archived
+    SHARED thread per workspace, at most one non-archived PRIVATE thread per
+    (workspace, owner)) safe under concurrent creation, not just app-level locking."""
+
+    __tablename__ = "chat_threads"
+    __table_args__ = (
+        CheckConstraint(
+            "(scope = 'RELATIONSHIP_SHARED' AND workspace_id IS NOT NULL "
+            "AND owner_user_id IS NULL) "
+            "OR (scope = 'RELATIONSHIP_PRIVATE' AND workspace_id IS NOT NULL "
+            "AND owner_user_id IS NOT NULL) "
+            "OR (scope = 'PERSONAL_PRIVATE' AND workspace_id IS NULL "
+            "AND owner_user_id IS NOT NULL)",
+            name="ck_chat_threads_scope_participant_shape",
+        ),
+        Index(
+            "uq_chat_threads_one_shared_per_workspace",
+            "workspace_id",
+            unique=True,
+            postgresql_where=text("scope = 'RELATIONSHIP_SHARED' AND archived_at IS NULL"),
+        ),
+        Index(
+            "uq_chat_threads_one_private_per_owner",
+            "workspace_id",
+            "owner_user_id",
+            unique=True,
+            postgresql_where=text("scope = 'RELATIONSHIP_PRIVATE' AND archived_at IS NULL"),
+        ),
+        Index("ix_chat_threads_workspace_id_scope", "workspace_id", "scope"),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    workspace_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("relationship_workspaces.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    owner_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    scope: Mapped[ThreadScope] = mapped_column(String(24), nullable=False)
+    context_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    archived_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class ThreadContextSnapshot(Base):
+    """PR-V2-09 -- audit artefact: the exact `ContextBlock` tuple assembled by
+    `services/copilot_context_builder.py` for one Copilot request, and which
+    `consent_scopes_checked` were evaluated to build it. Never read back into a
+    prompt -- write-only audit trail, queried only by tests/ops. `scope` is a
+    denormalized copy of `chat_threads.scope` -- defense-in-depth, see
+    copilot_context_builder.py module docstring: every query filters `thread_id`
+    AND `scope` together, never `thread_id` alone."""
+
+    __tablename__ = "thread_context_snapshots"
+    __table_args__ = (
+        Index("ix_thread_context_snapshots_thread_id_created_at", "thread_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    thread_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("chat_threads.id", ondelete="CASCADE"), index=True
+    )
+    requester_user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    scope: Mapped[ThreadScope] = mapped_column(String(24), nullable=False)
+    context_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    context_blocks_json: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False)
+    consent_scopes_checked: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class ChatMessage(Base):
+    """PR-V2-09 -- one turn in a `ChatThread`. ``content`` is `UNTRUSTED_USER_DATA`
+    for `role=USER` rows (specs/v2/copilot-grounding-spec.md "Prompt injection
+    defense") -- never interpolated into `system_instructions`, always packed as a
+    `ContextBlock(role="untrusted_user_content", ...)` when replayed as prior-turn
+    context (see copilot_context_builder.py). ``author_user_id`` is NULL for every
+    ASSISTANT row and uses `ondelete=SET NULL` so a deleted account's prior USER
+    turns stay attributable in audit history without blocking account deletion."""
+
+    __tablename__ = "chat_messages"
+    __table_args__ = (Index("ix_chat_messages_thread_id_created_at", "thread_id", "created_at"),)
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    thread_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("chat_threads.id", ondelete="CASCADE"), index=True
+    )
+    role: Mapped[ChatMessageRole] = mapped_column(String(16), nullable=False)
+    status: Mapped[ChatMessageStatus] = mapped_column(
+        String(16), nullable=False, default=ChatMessageStatus.PENDING
+    )
+    author_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    #: Only ever set on ASSISTANT rows -- one of NUMEROLOGY_MODEL/
+    #: OBSERVED_WORKSPACE_DATA/MIXED/INSUFFICIENT_EVIDENCE
+    #: (numra_relationship_interpretation.copilot_pipeline), validated before write.
+    basis_type: Mapped[str | None] = mapped_column(String(24), nullable=True)
+    prompt_version: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    knowledge_version: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    context_snapshot_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("thread_context_snapshots.id", ondelete="SET NULL"), nullable=True
+    )
+    model_provider: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    model_name: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    error_code: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class ThreadSummary(Base):
+    """PR-V2-09 -- a rolling summary of one thread's earlier turns (used once a
+    thread grows long enough that replaying every raw `ChatMessage` as context
+    becomes impractical -- summarization itself is out of scope for this PR, only
+    the storage shape). ``scope`` is a denormalized copy of `chat_threads.scope` --
+    same defense-in-depth rationale as `ThreadContextSnapshot.scope`: a
+    `RELATIONSHIP_SHARED` thread's context assembly must never be able to pick up a
+    `RELATIONSHIP_PRIVATE` thread's summary by `thread_id` alone if a future bug ever
+    mixed up thread ids -- every summary query filters `thread_id` AND `scope`."""
+
+    __tablename__ = "thread_summaries"
+    __table_args__ = (Index("ix_thread_summaries_thread_id_created_at", "thread_id", "created_at"),)
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    thread_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("chat_threads.id", ondelete="CASCADE"), index=True
+    )
+    scope: Mapped[ThreadScope] = mapped_column(String(24), nullable=False)
+    summary_text: Mapped[str] = mapped_column(Text, nullable=False)
+    covers_up_to_message_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("chat_messages.id", ondelete="CASCADE"), nullable=False
+    )
+    context_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    prompt_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
 __all__ = [
     "AdminAuditEvent",
     "AnalysisJob",
     "Base",
     "Calculation",
+    "ChatMessage",
+    "ChatThread",
     "CheckinAnalysis",
     "CheckinDimension",
     "CheckinResponse",
@@ -1259,6 +1415,8 @@ __all__ = [
     "SharedReflection",
     "Session",
     "TaskAcceptance",
+    "ThreadContextSnapshot",
+    "ThreadSummary",
     "User",
     "UserConnection",
     "WorkspaceMember",

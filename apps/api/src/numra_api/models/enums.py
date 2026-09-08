@@ -246,3 +246,35 @@ class MilestoneStatus(StrEnum):
     PENDING = "PENDING"
     COMPLETED = "COMPLETED"
     ARCHIVED = "ARCHIVED"
+
+
+class ThreadScope(StrEnum):
+    """PR-V2-09 -- specs/v2/copilot-grounding-spec.md Thread model. Only
+    `RELATIONSHIP_SHARED`/`RELATIONSHIP_PRIVATE` are ever created by a route in this
+    PR -- `PERSONAL_PRIVATE`'s column shape (workspace_id NULL, owner_user_id set) is
+    reserved on `ChatThread`/its CHECK constraint so PR-V2-09b can reuse this table
+    without a migration, but no route/service in this PR creates that scope."""
+
+    PERSONAL_PRIVATE = "PERSONAL_PRIVATE"
+    RELATIONSHIP_PRIVATE = "RELATIONSHIP_PRIVATE"
+    RELATIONSHIP_SHARED = "RELATIONSHIP_SHARED"
+
+
+class ChatMessageRole(StrEnum):
+    """PR-V2-09 -- who authored one `ChatMessage` row."""
+
+    USER = "USER"
+    ASSISTANT = "ASSISTANT"
+
+
+class ChatMessageStatus(StrEnum):
+    """PR-V2-09 -- lifecycle of one `ChatMessage` row. A USER row is always created
+    COMPLETE (it needs no generation); an ASSISTANT row starts PENDING, moves through
+    GENERATING while the synchronous Copilot pipeline runs, and ends COMPLETE or
+    FAILED (services/copilot_service.py) -- there is no job/worker for this, unlike
+    `AnalysisJobStatus` (interactive chat latency, specs/v2/copilot-grounding-spec.md)."""
+
+    PENDING = "PENDING"
+    GENERATING = "GENERATING"
+    COMPLETE = "COMPLETE"
+    FAILED = "FAILED"
