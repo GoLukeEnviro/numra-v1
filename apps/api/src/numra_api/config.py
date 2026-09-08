@@ -3,12 +3,12 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import model_validator
+from pydantic import SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 LLMProviderName = Literal["ollama", "mock", "disabled"]
 RateLimitBackend = Literal["memory", "redis"]
-EmailBackend = Literal["logging", "disabled"]
+EmailBackend = Literal["logging", "disabled", "smtp"]
 
 
 class Settings(BaseSettings):
@@ -88,10 +88,32 @@ class Settings(BaseSettings):
     #: mislabeled "sent". Same three-way shape as `numra_llm_provider`.
     email_backend: EmailBackend = "logging"
     #: Base URL of the web app the verification/reset links point to (no trailing
-    #: slash assumed by callers -- see services/auth_recovery_service.py).
+    #: slash assumed by callers -- see services/auth_recovery_service.py). This is
+    #: also the "PUBLIC_APP_BASE_URL" the SMTP mail templates build absolute links
+    #: from -- it already is exactly that (a public, absolute app base URL), so the
+    #: SMTP work reuses it instead of introducing a second, duplicate setting.
     web_app_base_url: str = "http://localhost:5173"
     email_verification_token_ttl_hours: int = 24
     password_reset_token_ttl_minutes: int = 60
+
+    #: The "smtp" `EmailBackend` -- a real provider (see email/smtp_sender.py). All
+    #: fields below are only meaningful when `email_backend="smtp"`; `None`/defaults
+    #: elsewhere are harmless. `smtp_password` is a `SecretStr` so it can never be
+    #: logged or `repr()`-ed in plaintext (see `_require_smtp_config_in_production`
+    #: and `email/smtp_sender.py` for the one place `.get_secret_value()` is called).
+    smtp_host: str | None = None
+    smtp_port: int | None = None
+    smtp_username: str | None = None
+    smtp_password: SecretStr | None = None
+    smtp_from_email: str | None = None
+    smtp_from_name: str | None = None
+    #: STARTTLS upgrade on a plaintext connection (typically port 587) -- the common
+    #: default for most providers.
+    smtp_starttls: bool = True
+    #: Implicit TLS from the first byte (typically port 465). Mutually exclusive with
+    #: `smtp_starttls` -- see `_forbid_conflicting_smtp_tls_modes`.
+    smtp_use_tls: bool = False
+    smtp_timeout_seconds: float = 10.0
 
     @property
     def cookies_secure(self) -> bool:
@@ -116,6 +138,44 @@ class Settings(BaseSettings):
                 "— a real user must actually receive verification/reset emails, not "
                 "have them written to the server log. Configure a real backend."
             )
+        return self
+
+    @model_validator(mode="after")
+    def _forbid_conflicting_smtp_tls_modes(self) -> Settings:
+        if self.smtp_starttls and self.smtp_use_tls:
+            raise ValueError(
+                "SMTP_STARTTLS and SMTP_USE_TLS cannot both be true — STARTTLS upgrades "
+                "a plaintext connection, SMTP_USE_TLS connects with TLS from the first "
+                "byte; they are two different, mutually exclusive transport modes. Set "
+                "exactly one of them true."
+            )
+        return self
+
+    @model_validator(mode="after")
+    def _require_smtp_config_in_production(self) -> Settings:
+        if self.environment == "production" and self.email_backend == "smtp":
+            missing = [
+                name
+                for name, value in (
+                    ("SMTP_HOST", self.smtp_host),
+                    ("SMTP_PORT", self.smtp_port),
+                    ("SMTP_FROM_EMAIL", self.smtp_from_email),
+                )
+                if not value
+            ]
+            if missing:
+                raise ValueError(
+                    "EMAIL_BACKEND=smtp requires "
+                    f"{', '.join(missing)} to be set when ENVIRONMENT=production — a real "
+                    "user must actually receive verification/reset emails, not have the "
+                    "SMTP backend fail to connect for a missing setting."
+                )
+            if bool(self.smtp_username) != bool(self.smtp_password):
+                raise ValueError(
+                    "SMTP_USERNAME and SMTP_PASSWORD must both be set or both be unset "
+                    "when ENVIRONMENT=production and EMAIL_BACKEND=smtp — a lone username "
+                    "or password is always a misconfiguration, never a valid credential."
+                )
         return self
 
     @model_validator(mode="after")

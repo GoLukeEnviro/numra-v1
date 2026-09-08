@@ -66,6 +66,46 @@ class EmailDeliveryUnavailable(ApplicationError):
 
     code = "EMAIL_DELIVERY_UNAVAILABLE"
     status_code = 503
+    #: Whether a caller could reasonably expect a retry (later, e.g. via a queued
+    #: retry mechanism) to succeed. `False` here (the base default) means "retrying
+    #: with the exact same configuration would fail again" -- overridden `True` by
+    #: the specific SMTP subclasses below for which that is not the case. Not read
+    #: by anything in V1 (no retry mechanism exists yet) -- it exists so a future
+    #: caller can distinguish the two without inventing a second error hierarchy.
+    retryable: bool = False
+
+
+class SmtpConnectionError(EmailDeliveryUnavailable):
+    """`email.smtp_sender.SmtpEmailSender.send` -- the network connection to
+    `Settings.smtp_host`/`smtp_port` could not be established (DNS, refused, reset,
+    ...). Retryable: a transient network condition, not a configuration problem."""
+
+    retryable = True
+
+
+class SmtpTimeoutError(EmailDeliveryUnavailable):
+    """`email.smtp_sender.SmtpEmailSender.send` -- connecting, authenticating, or
+    sending exceeded `Settings.smtp_timeout_seconds`. Retryable: the server may simply
+    be slow or briefly overloaded."""
+
+    retryable = True
+
+
+class SmtpAuthenticationError(EmailDeliveryUnavailable):
+    """`email.smtp_sender.SmtpEmailSender.send` -- the SMTP server rejected
+    `Settings.smtp_username`/`smtp_password`. Non-retryable: retrying with the same
+    (wrong) credentials cannot succeed -- an operator must fix the configuration."""
+
+    retryable = False
+
+
+class SmtpConfigurationError(EmailDeliveryUnavailable):
+    """`email.smtp_sender.SmtpEmailSender.send` -- `EMAIL_BACKEND=smtp` is selected
+    but a value required to actually send (`smtp_host`/`smtp_port`/`smtp_from_email`)
+    is missing. Non-retryable: this is `Settings._require_smtp_config_in_production`'s
+    counterpart for non-production environments, where that validator does not run."""
+
+    retryable = False
 
 
 class InvalidOrExpiredToken(ApplicationError):
