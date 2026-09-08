@@ -870,6 +870,23 @@ export interface paths {
         patch: operations["patch_private_reflection_route_v1_private_reflections__reflection_id__patch"];
         trace?: never;
     };
+    "/v1/private-reflections/{reflection_id}/share": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Share Private Reflection Route */
+        post: operations["share_private_reflection_route_v1_private_reflections__reflection_id__share_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/public/config": {
         parameters: {
             query?: never;
@@ -1215,6 +1232,80 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/workspaces/{workspace_id}/roadmaps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Roadmaps Route */
+        get: operations["list_roadmaps_route_v1_workspaces__workspace_id__roadmaps_get"];
+        put?: never;
+        /** Create Roadmap Route */
+        post: operations["create_roadmap_route_v1_workspaces__workspace_id__roadmaps_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workspaces/{workspace_id}/roadmaps/{roadmap_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Roadmap Route */
+        get: operations["get_roadmap_route_v1_workspaces__workspace_id__roadmaps__roadmap_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Roadmap Route */
+        delete: operations["delete_roadmap_route_v1_workspaces__workspace_id__roadmaps__roadmap_id__delete"];
+        options?: never;
+        head?: never;
+        /** Patch Roadmap Route */
+        patch: operations["patch_roadmap_route_v1_workspaces__workspace_id__roadmaps__roadmap_id__patch"];
+        trace?: never;
+    };
+    "/v1/workspaces/{workspace_id}/roadmaps/{roadmap_id}/milestones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Milestones Route */
+        get: operations["list_milestones_route_v1_workspaces__workspace_id__roadmaps__roadmap_id__milestones_get"];
+        put?: never;
+        /** Create Milestone Route */
+        post: operations["create_milestone_route_v1_workspaces__workspace_id__roadmaps__roadmap_id__milestones_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workspaces/{workspace_id}/roadmaps/{roadmap_id}/milestones/{milestone_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Milestone Route */
+        get: operations["get_milestone_route_v1_workspaces__workspace_id__roadmaps__roadmap_id__milestones__milestone_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Milestone Route */
+        delete: operations["delete_milestone_route_v1_workspaces__workspace_id__roadmaps__roadmap_id__milestones__milestone_id__delete"];
+        options?: never;
+        head?: never;
+        /** Patch Milestone Route */
+        patch: operations["patch_milestone_route_v1_workspaces__workspace_id__roadmaps__roadmap_id__milestones__milestone_id__patch"];
+        trace?: never;
+    };
     "/v1/workspaces/{workspace_id}/shadow-dynamics": {
         parameters: {
             query?: never;
@@ -1245,6 +1336,41 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workspaces/{workspace_id}/shared-reflections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Shared Reflections Route */
+        get: operations["list_shared_reflections_route_v1_workspaces__workspace_id__shared_reflections_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workspaces/{workspace_id}/shared-reflections/{reflection_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Shared Reflection Route */
+        get: operations["get_shared_reflection_route_v1_workspaces__workspace_id__shared_reflections__reflection_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Shared Reflection Route */
+        delete: operations["delete_shared_reflection_route_v1_workspaces__workspace_id__shared_reflections__reflection_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2047,6 +2173,22 @@ export interface components {
             password: string;
         };
         /**
+         * MilestoneStatus
+         * @description PR-V2-08 -- lifecycle of one `RoadmapMilestone`. `completed_at` is
+         *     server-derived on the COMPLETED transition, only ever set via an explicit user
+         *     PATCH (services/relationship_roadmap_service.py), never automatically.
+         * @enum {string}
+         */
+        MilestoneStatus: "PENDING" | "COMPLETED" | "ARCHIVED";
+        /**
+         * MilestoneType
+         * @description PR-V2-08 -- specs/v2/roadmap-spec.md Structure: a `RoadmapMilestone` row is
+         *     either a concrete milestone or a review-point marker, discriminated by this
+         *     column so both are filterable from the same table.
+         * @enum {string}
+         */
+        MilestoneType: "MILESTONE" | "REVIEW_POINT";
+        /**
          * NameIdentityKind
          * @enum {string}
          */
@@ -2534,6 +2676,61 @@ export interface components {
             person_a: components["schemas"]["PersonRefOut"];
             person_b: components["schemas"]["PersonRefOut"];
         };
+        /** RelationshipRoadmapCreateRequest */
+        RelationshipRoadmapCreateRequest: {
+            roadmap_type: components["schemas"]["RoadmapType"];
+            /** Title */
+            title: string;
+        };
+        /** RelationshipRoadmapOut */
+        RelationshipRoadmapOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Knowledge Version */
+            knowledge_version: string | null;
+            /** Prompt Version */
+            prompt_version: string | null;
+            /** Proposer User Id */
+            proposer_user_id: string | null;
+            roadmap_type: components["schemas"]["RoadmapType"];
+            /** Source Analysis Id */
+            source_analysis_id: string | null;
+            status: components["schemas"]["RoadmapStatus"];
+            /** Title */
+            title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /**
+             * Workspace Id
+             * Format: uuid
+             */
+            workspace_id: string;
+        };
+        /**
+         * RelationshipRoadmapPatchRequest
+         * @description Every field optional; `model_fields_set` at the route means only fields
+         *     the client actually sent are applied -- same pattern as
+         *     `WorkspaceTaskPatchRequest`. `title`/`roadmap_type` are rejected once the
+         *     roadmap is ARCHIVED (see services/relationship_roadmap_service.py).
+         */
+        RelationshipRoadmapPatchRequest: {
+            roadmap_type?: components["schemas"]["RoadmapType"] | null;
+            /** Status */
+            status?: ("ACCEPTED" | "ARCHIVED") | null;
+            /** Title */
+            title?: string | null;
+        };
         /**
          * RelationshipSummaryOut
          * @description Relationship-library list shape: resolved person names instead of raw
@@ -2660,6 +2857,91 @@ export interface components {
             /** Token */
             token: string;
         };
+        /** RoadmapMilestoneCreateRequest */
+        RoadmapMilestoneCreateRequest: {
+            /** Description */
+            description?: string | null;
+            milestone_type: components["schemas"]["MilestoneType"];
+            /**
+             * Sequence
+             * @default 0
+             */
+            sequence: number;
+            /** Target Date */
+            target_date?: string | null;
+            /** Title */
+            title: string;
+        };
+        /** RoadmapMilestoneOut */
+        RoadmapMilestoneOut: {
+            /** Completed At */
+            completed_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Description */
+            description: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            milestone_type: components["schemas"]["MilestoneType"];
+            /**
+             * Roadmap Id
+             * Format: uuid
+             */
+            roadmap_id: string;
+            /** Sequence */
+            sequence: number;
+            status: components["schemas"]["MilestoneStatus"];
+            /** Target Date */
+            target_date: string | null;
+            /** Title */
+            title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * RoadmapMilestonePatchRequest
+         * @description Every field optional; `model_fields_set` at the route means only fields
+         *     the client actually sent are applied. `status=COMPLETED` sets
+         *     `completed_at` server-side (see services/relationship_roadmap_service.py) --
+         *     no route can trigger this automatically or via an LLM.
+         */
+        RoadmapMilestonePatchRequest: {
+            /** Description */
+            description?: string | null;
+            /** Sequence */
+            sequence?: number | null;
+            status?: components["schemas"]["MilestoneStatus"] | null;
+            /** Target Date */
+            target_date?: string | null;
+            /** Title */
+            title?: string | null;
+        };
+        /**
+         * RoadmapStatus
+         * @description PR-V2-08 -- lifecycle of one `RelationshipRoadmap`
+         *     (specs/v2/roadmap-spec.md Acceptance checks): PROPOSED -> ACCEPTED, or
+         *     PROPOSED/ACCEPTED -> ARCHIVED. Server-authoritative, same discipline as
+         *     `WorkspaceTaskStatus`.
+         * @enum {string}
+         */
+        RoadmapStatus: "PROPOSED" | "ACCEPTED" | "ARCHIVED";
+        /**
+         * RoadmapType
+         * @description PR-V2-08 -- specs/v2/roadmap-spec.md Types. Member names cannot start with a
+         *     digit, hence the spelled-out names; the wire value is the spec's literal
+         *     string.
+         * @enum {string}
+         */
+        RoadmapType: "14_DAY" | "30_DAY" | "QUARTER";
         /**
          * SessionOut
          * @description One active session (V1.5 Epic N). No IP address or device identifier is
@@ -2719,6 +3001,56 @@ export interface components {
             } | null;
             /** Status */
             status: string;
+            /**
+             * Workspace Id
+             * Format: uuid
+             */
+            workspace_id: string;
+        };
+        /** SharePrivateReflectionRequest */
+        SharePrivateReflectionRequest: {
+            /**
+             * Workspace Id
+             * Format: uuid
+             */
+            workspace_id: string;
+        };
+        /** SharedReflectionOut */
+        SharedReflectionOut: {
+            /**
+             * Author User Id
+             * Format: uuid
+             */
+            author_user_id: string;
+            /** Content */
+            content: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Entry Date
+             * Format: date
+             */
+            entry_date: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Shared At
+             * Format: date-time
+             */
+            shared_at: string;
+            /** Source Private Reflection Id */
+            source_private_reflection_id: string | null;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
             /**
              * Workspace Id
              * Format: uuid
@@ -2912,6 +3244,8 @@ export interface components {
             due_date?: string | null;
             /** Recipient User Id */
             recipient_user_id?: string | null;
+            /** Roadmap Milestone Id */
+            roadmap_milestone_id?: string | null;
             task_type: components["schemas"]["TaskType"];
             /** Title */
             title: string;
@@ -2942,6 +3276,8 @@ export interface components {
             proposer_user_id: string | null;
             /** Recipient User Id */
             recipient_user_id: string | null;
+            /** Roadmap Milestone Id */
+            roadmap_milestone_id: string | null;
             /** Source Analysis Id */
             source_analysis_id: string | null;
             status: components["schemas"]["WorkspaceTaskStatus"];
@@ -2970,6 +3306,8 @@ export interface components {
             description?: string | null;
             /** Due Date */
             due_date?: string | null;
+            /** Roadmap Milestone Id */
+            roadmap_milestone_id?: string | null;
             /** Status */
             status?: ("COMPLETED" | "ARCHIVED") | null;
             /** Title */
@@ -5116,6 +5454,46 @@ export interface operations {
             };
         };
     };
+    share_private_reflection_route_v1_private_reflections__reflection_id__share_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                reflection_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SharePrivateReflectionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SharedReflectionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_public_config_v1_public_config_get: {
         parameters: {
             query?: never;
@@ -5959,6 +6337,382 @@ export interface operations {
             };
         };
     };
+    list_roadmaps_route_v1_workspaces__workspace_id__roadmaps_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                workspace_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RelationshipRoadmapOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_roadmap_route_v1_workspaces__workspace_id__roadmaps_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                workspace_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RelationshipRoadmapCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RelationshipRoadmapOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_roadmap_route_v1_workspaces__workspace_id__roadmaps__roadmap_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace_id: string;
+                roadmap_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RelationshipRoadmapOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_roadmap_route_v1_workspaces__workspace_id__roadmaps__roadmap_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                workspace_id: string;
+                roadmap_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_roadmap_route_v1_workspaces__workspace_id__roadmaps__roadmap_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                workspace_id: string;
+                roadmap_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RelationshipRoadmapPatchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RelationshipRoadmapOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_milestones_route_v1_workspaces__workspace_id__roadmaps__roadmap_id__milestones_get: {
+        parameters: {
+            query?: {
+                milestone_type?: components["schemas"]["MilestoneType"] | null;
+            };
+            header?: never;
+            path: {
+                workspace_id: string;
+                roadmap_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoadmapMilestoneOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_milestone_route_v1_workspaces__workspace_id__roadmaps__roadmap_id__milestones_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                workspace_id: string;
+                roadmap_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoadmapMilestoneCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoadmapMilestoneOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_milestone_route_v1_workspaces__workspace_id__roadmaps__roadmap_id__milestones__milestone_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace_id: string;
+                roadmap_id: string;
+                milestone_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoadmapMilestoneOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_milestone_route_v1_workspaces__workspace_id__roadmaps__roadmap_id__milestones__milestone_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                workspace_id: string;
+                roadmap_id: string;
+                milestone_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_milestone_route_v1_workspaces__workspace_id__roadmaps__roadmap_id__milestones__milestone_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                workspace_id: string;
+                roadmap_id: string;
+                milestone_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoadmapMilestonePatchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoadmapMilestoneOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_latest_shadow_dynamics_route_v1_workspaces__workspace_id__shadow_dynamics_get: {
         parameters: {
             query?: never;
@@ -6051,6 +6805,111 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ShadowDynamicsAnalysisOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_shared_reflections_route_v1_workspaces__workspace_id__shared_reflections_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                workspace_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SharedReflectionOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_shared_reflection_route_v1_workspaces__workspace_id__shared_reflections__reflection_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace_id: string;
+                reflection_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SharedReflectionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_shared_reflection_route_v1_workspaces__workspace_id__shared_reflections__reflection_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                workspace_id: string;
+                reflection_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
