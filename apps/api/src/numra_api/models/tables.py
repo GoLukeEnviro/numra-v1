@@ -39,9 +39,12 @@ from numra_api.models.enums import (
     PersonalTaskStatus,
     ReportJobStatus,
     ReportType,
+    TaskAcceptanceEventType,
+    TaskType,
     UserRole,
     WorkspaceMemberStatus,
     WorkspaceStatus,
+    WorkspaceTaskStatus,
 )
 
 
@@ -1013,6 +1016,94 @@ class CheckinAnalysis(Base):
     )
 
 
+class WorkspaceTask(Base):
+    """PR-V2-07 -- specs/v2/task-system-spec.md. Deliberately a separate table from
+    `PersonalTask` (see that class's docstring) -- `task_type` discriminates the
+    three relationship-facing kinds (`TaskType`). `source_analysis_id` is
+    intentionally NOT a FK (polymorph provenance pointer, no single target table
+    yet) -- only ever set for `AVENYTH_SUGGESTED` rows, enforced by
+    `ck_workspace_tasks_provenance_only_avenyth_suggested`. `completed_at` is
+    server-derived on the COMPLETED transition, same discipline as
+    `PersonalTask.completed_at` (see services/workspace_task_service.py, never
+    accepted directly from a client)."""
+
+    __tablename__ = "workspace_tasks"
+    __table_args__ = (
+        CheckConstraint(
+            "task_type = 'AVENYTH_SUGGESTED' OR "
+            "(source_analysis_id IS NULL AND prompt_version IS NULL "
+            "AND knowledge_version IS NULL)",
+            name="ck_workspace_tasks_provenance_only_avenyth_suggested",
+        ),
+        #: One CHECK covering all three `task_type` cases (analogous to
+        #: `ck_user_connections_distinct_users`'s single-expression style):
+        #: FOR_PARTNER_PROPOSED needs both proposer and recipient set,
+        #: JOINT_SHARED needs a proposer but no recipient, AVENYTH_SUGGESTED needs
+        #: no proposer (recipient irrelevant -- whichever member accepts it).
+        CheckConstraint(
+            "(task_type = 'FOR_PARTNER_PROPOSED' "
+            "AND proposer_user_id IS NOT NULL AND recipient_user_id IS NOT NULL) "
+            "OR (task_type = 'JOINT_SHARED' "
+            "AND proposer_user_id IS NOT NULL AND recipient_user_id IS NULL) "
+            "OR (task_type = 'AVENYTH_SUGGESTED' AND proposer_user_id IS NULL)",
+            name="ck_workspace_tasks_type_participant_shape",
+        ),
+        Index("ix_workspace_tasks_workspace_id_status", "workspace_id", "status"),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("relationship_workspaces.id", ondelete="CASCADE"), index=True
+    )
+    task_type: Mapped[TaskType] = mapped_column(String(30))
+    status: Mapped[WorkspaceTaskStatus] = mapped_column(
+        String(20), default=WorkspaceTaskStatus.PROPOSED
+    )
+    proposer_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    recipient_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    title: Mapped[str] = mapped_column(String(200))
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    due_date: Mapped[dt.date | None] = mapped_column(Date, nullable=True)
+    completed_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    #: Polymorph provenance pointer -- NOT a FK (no single source table). Only ever
+    #: set together with prompt_version/knowledge_version, only for
+    #: AVENYTH_SUGGESTED (see the CHECK constraint above).
+    source_analysis_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    prompt_version: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    knowledge_version: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class TaskAcceptance(Base):
+    """PR-V2-07 -- append-only audit trail for one `WorkspaceTask` state
+    transition, same shape/rationale as `ConsentEvent` for `ConsentGrant`
+    (`actor_user_id` uses `ondelete=SET NULL` so history survives a deleted
+    account)."""
+
+    __tablename__ = "task_acceptances"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    task_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("workspace_tasks.id", ondelete="CASCADE"), index=True
+    )
+    event_type: Mapped[TaskAcceptanceEventType] = mapped_column(String(20))
+    actor_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    occurred_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
 __all__ = [
     "AdminAuditEvent",
     "AnalysisJob",
@@ -1045,7 +1136,9 @@ __all__ = [
     "RelationshipComparison",
     "ShadowDynamicsAnalysis",
     "Session",
+    "TaskAcceptance",
     "User",
     "UserConnection",
     "WorkspaceMember",
+    "WorkspaceTask",
 ]

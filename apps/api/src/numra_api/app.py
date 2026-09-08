@@ -40,6 +40,7 @@ from numra_api.routes import (
     reports,
     system_info,
     workspace,
+    workspace_tasks,
 )
 from numra_api.services.email_factory import build_email_sender
 from numra_api.services.errors import ApplicationError
@@ -131,6 +132,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(relationship_workspaces.router)
     app.include_router(relationship_analysis.router)
     app.include_router(checkins.router)
+    app.include_router(workspace_tasks.router)
 
     return app
 
