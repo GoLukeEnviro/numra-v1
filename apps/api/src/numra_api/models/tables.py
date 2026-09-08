@@ -74,6 +74,18 @@ class User(Base):
     email_verified_at: Mapped[dt.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    #: PR-V2-10 -- canonical "Account ist weg"-Marker (soft delete, siehe
+    #: services/account_deletion_service.py). Wird gemeinsam mit `is_active=False`
+    #: gesetzt, damit der bestehende `deps.py::get_current_user`-Login-Gate den
+    #: gelöschten Account automatisch blockiert -- keine `deps.py`-Änderung nötig.
+    #: `NULL` heißt "nie gelöscht".
+    deleted_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    #: PR-V2-10 -- auf "Ehemaliges Mitglied" gesetzt bei Account-Löschung. `NULL`
+    #: heißt "kein Override", der Aufrufer fällt dann auf einen anderen Anzeigenamen
+    #: zurück (siehe services/relationship_workspace_service.py::resolve_display_name).
+    #: Jede Stelle, die einen User-Anzeigenamen auflöst, muss dieses Feld VOR `email`
+    #: prüfen -- ein gelöschter User darf nie mehr über `email` identifizierbar sein.
+    display_name_override: Mapped[str | None] = mapped_column(String(120), nullable=True)
     created_at: Mapped[dt.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -797,11 +809,15 @@ class RelationshipAnalysis(Base):
         ForeignKey("analysis_jobs.id", ondelete="CASCADE"), unique=True
     )
     relationship_type: Mapped[str] = mapped_column(String(20))
-    calculation_a_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("calculations.id", ondelete="CASCADE")
+    #: PR-V2-10 -- SET NULL statt CASCADE: die Analyse selbst ist retained-read-only
+    #: fuer beide ehemaligen Teilnehmer (specs/v2/dissolution-policy.md), auch wenn
+    #: einer der beiden per account_deletion_service seine Calculation/Person
+    #: verliert. Gleiches Pattern wie ChatMessage.author_user_id.
+    calculation_a_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("calculations.id", ondelete="SET NULL"), nullable=True
     )
-    calculation_b_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("calculations.id", ondelete="CASCADE")
+    calculation_b_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("calculations.id", ondelete="SET NULL"), nullable=True
     )
     calculation_version: Mapped[str] = mapped_column(String(20))
     knowledge_version: Mapped[str] = mapped_column(String(20))
@@ -832,11 +848,12 @@ class ShadowDynamicsAnalysis(Base):
         ForeignKey("analysis_jobs.id", ondelete="CASCADE"), unique=True
     )
     relationship_type: Mapped[str] = mapped_column(String(20))
-    calculation_a_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("calculations.id", ondelete="CASCADE")
+    #: PR-V2-10 -- SET NULL statt CASCADE, siehe RelationshipAnalysis oben.
+    calculation_a_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("calculations.id", ondelete="SET NULL"), nullable=True
     )
-    calculation_b_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("calculations.id", ondelete="CASCADE")
+    calculation_b_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("calculations.id", ondelete="SET NULL"), nullable=True
     )
     calculation_version: Mapped[str] = mapped_column(String(20))
     knowledge_version: Mapped[str] = mapped_column(String(20))

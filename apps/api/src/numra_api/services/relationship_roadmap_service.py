@@ -25,6 +25,7 @@ from numra_api.services.errors import (
     RoadmapNotDeletable,
     RoadmapTransitionConflict,
 )
+from numra_api.services.workspace_guard import assert_workspace_active_by_id
 
 #: PATCH .../roadmaps/{roadmap_id} may only move status into one of these two
 #: values -- see docstring on routes/relationship_roadmaps.py.
@@ -68,6 +69,8 @@ async def create_roadmap(
     member = await get_workspace_member(db, workspace_id=workspace_id, user_id=user_id)
     _require_member(member, workspace_id=workspace_id)
 
+    await assert_workspace_active_by_id(db, workspace_id=workspace_id)
+
     return await roadmaps_repo.create_roadmap(
         db,
         workspace_id=workspace_id,
@@ -91,6 +94,8 @@ async def create_avenyth_suggested_roadmap(
     """Internal-only creation path -- no route calls this. Never sets `status` to
     anything but PROPOSED; only an explicit user PATCH (accept/archive) can move
     it further (specs/v2/roadmap-spec.md: "never pre-marked complete")."""
+    await assert_workspace_active_by_id(db, workspace_id=workspace_id)
+
     return await roadmaps_repo.create_roadmap(
         db,
         workspace_id=workspace_id,
@@ -139,6 +144,8 @@ async def patch_roadmap(
 ) -> RelationshipRoadmap:
     member = await get_workspace_member(db, workspace_id=workspace_id, user_id=user_id)
     _require_member(member, workspace_id=workspace_id)
+
+    await assert_workspace_active_by_id(db, workspace_id=workspace_id)
 
     roadmap = await roadmaps_repo.get_roadmap_for_workspace(
         db, roadmap_id=roadmap_id, workspace_id=workspace_id
@@ -219,6 +226,9 @@ async def create_milestone(
 ) -> RoadmapMilestone:
     member = await get_workspace_member(db, workspace_id=workspace_id, user_id=user_id)
     _require_member(member, workspace_id=workspace_id)
+
+    await assert_workspace_active_by_id(db, workspace_id=workspace_id)
+
     await _require_roadmap_for_workspace(db, workspace_id=workspace_id, roadmap_id=roadmap_id)
 
     return await roadmaps_repo.create_milestone(
@@ -285,6 +295,9 @@ async def patch_milestone(
 ) -> RoadmapMilestone:
     member = await get_workspace_member(db, workspace_id=workspace_id, user_id=user_id)
     _require_member(member, workspace_id=workspace_id)
+
+    await assert_workspace_active_by_id(db, workspace_id=workspace_id)
+
     await _require_roadmap_for_workspace(db, workspace_id=workspace_id, roadmap_id=roadmap_id)
 
     milestone = await roadmaps_repo.get_milestone_for_roadmap(

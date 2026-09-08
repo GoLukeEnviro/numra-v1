@@ -18,6 +18,7 @@ from numra_api.config import Settings
 from numra_api.models import ConnectionInvitation, RelationshipWorkspace, User, UserConnection
 from numra_api.models.enums import (
     DEFAULT_CONSENT_SCOPES,
+    ConnectionStatus,
     ConsentEventType,
     InvitationMethod,
     InvitationState,
@@ -32,19 +33,20 @@ from numra_api.repositories.connection_invitations import (
     revoke_invitation,
 )
 from numra_api.repositories.connections import (
+    conditionally_dissolve_connection,
     create_user_connection,
-    dissolve_connection,
     get_active_connection_between,
     get_connection_for_user,
     list_connections_for_user,
 )
 from numra_api.repositories.consent import create_consent_event, create_consent_grant
 from numra_api.repositories.workspaces import (
+    conditionally_dissolve_workspace,
     create_relationship_workspace,
     create_workspace_member,
-    dissolve_workspace,
     get_workspace_for_connection,
 )
+from numra_api.services.consent_service import revoke_all_workspace_consent
 from numra_api.services.errors import (
     CannotInviteSelf,
     ConnectionAlreadyExists,
@@ -201,12 +203,31 @@ async def list_connections(
 async def dissolve_own_connection(
     db: AsyncSession, *, connection_id: uuid.UUID, user_id: uuid.UUID
 ) -> UserConnection:
+    """PR-V2-10 -- gehärteter Dissolve-Pfad: atomarer TOCTOU-safe Status-Übergang
+    (statt read-then-setattr-then-flush) plus kaskadierender Consent-Revoke. Bereits
+    `DISSOLVED` ist ein No-Op (idempotent) -- ein zweiter Dissolve-Aufruf darf weder
+    crashen noch die Consent-Revoke-Side-Effects doppelt feuern."""
     connection = await get_connection_for_user(db, connection_id=connection_id, user_id=user_id)
     if connection is None:
         raise NotFoundError(f"connection {connection_id} not found")
+
+    if connection.status == ConnectionStatus.DISSOLVED:
+        return connection
+
     now = dt.datetime.now(dt.UTC)
-    connection = await dissolve_connection(db, connection=connection, now=now)
+    won = await conditionally_dissolve_connection(db, connection_id=connection.id, now=now)
+    await db.refresh(connection)
+    if not won:
+        # Ein konkurrierender Dissolve-Aufruf hat gewonnen, während wir den Status
+        # oben noch als ACTIVE gelesen haben -- derselbe Idempotenz-Vertrag wie oben,
+        # kein Fehler, keine doppelten Side-Effects.
+        return connection
+
     workspace = await get_workspace_for_connection(db, connection_id=connection.id)
     if workspace is not None:
-        await dissolve_workspace(db, workspace=workspace, now=now)
+        await conditionally_dissolve_workspace(db, workspace_id=workspace.id, now=now)
+        await revoke_all_workspace_consent(
+            db, workspace_id=workspace.id, actor_user_id=user_id, now=now
+        )
+
     return connection

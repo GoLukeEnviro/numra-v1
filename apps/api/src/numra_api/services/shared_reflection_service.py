@@ -18,6 +18,7 @@ from numra_api.models import SharedReflection
 from numra_api.repositories.private_reflections import get_private_reflection_for_user
 from numra_api.repositories.workspaces import get_workspace_member
 from numra_api.services.errors import NotFoundError
+from numra_api.services.workspace_guard import assert_workspace_active_by_id
 
 
 def _require_member(member: object, *, workspace_id: uuid.UUID) -> None:
@@ -43,6 +44,8 @@ async def share_private_reflection(
 ) -> SharedReflection:
     member = await get_workspace_member(db, workspace_id=workspace_id, user_id=user_id)
     _require_member(member, workspace_id=workspace_id)
+
+    await assert_workspace_active_by_id(db, workspace_id=workspace_id)
 
     source = await get_private_reflection_for_user(db, reflection_id=reflection_id, user_id=user_id)
     if source is None:

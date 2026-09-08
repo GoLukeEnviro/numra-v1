@@ -53,6 +53,7 @@ from numra_api.services.errors import (
     RelationshipTypeNotSet,
     SelfProfileRequired,
 )
+from numra_api.services.workspace_guard import assert_workspace_active
 from numra_interpretation.knowledge_loader import load_knowledge_base
 from numra_interpretation.llm.errors import LLMProviderError
 from numra_interpretation.llm.types import LLMProvider
@@ -109,6 +110,11 @@ async def _check_workspace_preconditions(
         # IDOR: requester is not an ACTIVE member of this workspace -- 404, not 403
         # (never confirm the workspace exists to a non-member).
         raise NotFoundError(f"workspace {workspace_id} not found")
+
+    # PR-V2-10 -- immer NACH dem IDOR-Gate, nie davor (siehe
+    # services/workspace_guard.py docstring): kein neuer Analysis-Job für einen
+    # DISSOLVED Workspace, weder Relationship-Interpretation noch Shadow-Dynamics.
+    await assert_workspace_active(db, workspace=workspace)
 
     if workspace.relationship_type is None:
         raise RelationshipTypeNotSet(f"workspace {workspace_id} has no relationship_type set")

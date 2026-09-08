@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime as dt
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from numra_api.models import ConsentEvent, ConsentGrant
@@ -79,6 +79,28 @@ async def revoke_grant(db: AsyncSession, *, grant: ConsentGrant, now: dt.datetim
     await db.flush()
     await db.refresh(grant)
     return grant
+
+
+async def revoke_all_active_grants_for_workspace(
+    db: AsyncSession, *, workspace_id: uuid.UUID, now: dt.datetime
+) -> list[ConsentGrant]:
+    """PR-V2-10 -- kaskadierender Revoke für Dissolution/Account-Deletion: ein
+    einziges `UPDATE ... WHERE workspace_id=? AND revoked_at IS NULL RETURNING *`
+    revoked jede aktive `ConsentGrant`-Row des Workspace, beide Richtungen, alle
+    Scopes. Der Aufrufer (services/connection_service.py::dissolve_own_connection,
+    services/account_deletion_service.py::delete_own_account) fügt für jede
+    zurückgegebene Row anschließend ein `ConsentEvent(REVOKED)` ein -- ein Event pro
+    Grant, gemäß dem bestehenden "jeder Revoke hat ein Event"-Invariant
+    (repositories/consent.py::revoke_grant)."""
+    stmt = (
+        update(ConsentGrant)
+        .where(ConsentGrant.workspace_id == workspace_id, ConsentGrant.revoked_at.is_(None))
+        .values(revoked_at=now)
+        .returning(ConsentGrant)
+    )
+    result = await db.execute(stmt)
+    await db.flush()
+    return list(result.scalars().all())
 
 
 async def create_consent_event(

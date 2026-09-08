@@ -12,13 +12,14 @@ import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from numra_api.models import ConsentGrant
-from numra_api.models.enums import ConsentEventType
+from numra_api.models.enums import ConsentEventType, WorkspaceMemberStatus
 from numra_api.repositories.consent import (
     create_consent_event,
     create_consent_grant,
     get_active_grant,
     get_grant_for_workspace,
     list_grants_for_workspace,
+    revoke_all_active_grants_for_workspace,
     revoke_grant,
 )
 from numra_api.repositories.workspaces import get_workspace_member, list_workspace_members
@@ -101,6 +102,25 @@ async def revoke_consent(
     return grant
 
 
+async def revoke_all_workspace_consent(
+    db: AsyncSession, *, workspace_id: uuid.UUID, actor_user_id: uuid.UUID, now: dt.datetime
+) -> list[ConsentGrant]:
+    """PR-V2-10 -- kaskadierender Revoke aller noch aktiven Grants eines Workspace,
+    beide Richtungen, in EINEM atomaren `UPDATE ... RETURNING`, plus je ein
+    `ConsentEvent(REVOKED)` pro tatsächlich revoktem Grant. Bewusst ohne
+    IDOR-/Grantor-Gate: die beiden Aufrufer (Dissolve und Account-Löschung) haben
+    ihre Berechtigung bereits geprüft und revoken systemseitig beide Richtungen --
+    anders als `revoke_consent`, wo nur der Grantor seinen eigenen Grant zurücknimmt.
+    Idempotent: ein zweiter Aufruf findet nichts Aktives mehr und schreibt keine
+    doppelten Events."""
+    revoked = await revoke_all_active_grants_for_workspace(db, workspace_id=workspace_id, now=now)
+    for grant in revoked:
+        await create_consent_event(
+            db, grant_id=grant.id, event_type=ConsentEventType.REVOKED, actor_user_id=actor_user_id
+        )
+    return revoked
+
+
 async def assert_consent(
     db: AsyncSession,
     *,
@@ -139,14 +159,18 @@ async def list_consent_for_workspace_member(
 async def _other_member_user_id(
     db: AsyncSession, *, workspace_id: uuid.UUID, user_id: uuid.UUID
 ) -> uuid.UUID:
-    """A `RelationshipWorkspace` always has exactly two ACTIVE members (see
-    services/connection_service.py) -- resolves the counterpart from membership
-    rather than trusting a client-supplied grantee id."""
+    """A `RelationshipWorkspace` always has exactly two ACTIVE members while both
+    are still present (see services/connection_service.py) -- resolves the
+    counterpart from membership rather than trusting a client-supplied grantee id.
+    ACTIVE-gefiltert wie services/copilot_context_builder.py::
+    _resolve_partner_user_id -- ein REMOVED-Mitglied (z.B. nach Account-Löschung
+    des Partners) darf nie als Grantor/Grantee aufgelöst werden."""
     members = await list_workspace_members(db, workspace_id=workspace_id)
-    for member in members:
-        if member.user_id != user_id:
-            return member.user_id
-    raise NotFoundError(f"workspace {workspace_id} has no counterpart member")
+    active_user_ids = [m.user_id for m in members if m.status == WorkspaceMemberStatus.ACTIVE]
+    other_user_ids = [uid for uid in active_user_ids if uid != user_id]
+    if not other_user_ids:
+        raise NotFoundError(f"workspace {workspace_id} has no counterpart member")
+    return other_user_ids[0]
 
 
 # Re-exported for callers that only need the read/lookup, not the mutating flows.
@@ -155,5 +179,6 @@ __all__ = [
     "get_grant_for_workspace",
     "grant_consent",
     "list_consent_for_workspace_member",
+    "revoke_all_workspace_consent",
     "revoke_consent",
 ]

@@ -29,6 +29,7 @@ from numra_api.services.errors import (
     NotFoundError,
     SemanticKeyImmutable,
 )
+from numra_api.services.workspace_guard import assert_workspace_active_by_id
 
 #: specs/v2/checkin-spec.md -- dimensions of this "class" are gated per
 #: `_RESTRICTED_RELATIONSHIP_TYPES`, enforced at BOTH creation time
@@ -220,6 +221,8 @@ async def submit_checkin(
 ) -> CheckinSubmissionResult:
     member = await get_workspace_member(db, workspace_id=workspace_id, user_id=user_id)
     _require_member(member, workspace_id=workspace_id)
+
+    await assert_workspace_active_by_id(db, workspace_id=workspace_id)
 
     template = await get_or_create_active_template(db, workspace_id=workspace_id)
 
