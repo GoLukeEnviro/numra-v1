@@ -557,6 +557,382 @@
         "title": "ChangePasswordRequest",
         "type": "object"
       },
+      "CheckinAnalysisOut": {
+        "properties": {
+          "computed_at": {
+            "format": "date-time",
+            "title": "Computed At",
+            "type": "string"
+          },
+          "result": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/DimensionAnalysisOut"
+            },
+            "title": "Result",
+            "type": "object"
+          }
+        },
+        "required": [
+          "computed_at",
+          "result"
+        ],
+        "title": "CheckinAnalysisOut",
+        "type": "object"
+      },
+      "CheckinDimensionCreateRequest": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "label": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "scale_max": {
+            "default": 10,
+            "maximum": 100.0,
+            "title": "Scale Max",
+            "type": "integer"
+          },
+          "scale_min": {
+            "default": 1,
+            "minimum": 0.0,
+            "title": "Scale Min",
+            "type": "integer"
+          },
+          "semantic_key": {
+            "maxLength": 60,
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "title": "Semantic Key",
+            "type": "string"
+          },
+          "sort_order": {
+            "default": 0,
+            "title": "Sort Order",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "semantic_key",
+          "label"
+        ],
+        "title": "CheckinDimensionCreateRequest",
+        "type": "object"
+      },
+      "CheckinDimensionOut": {
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "retired_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retired At"
+          },
+          "scale_max": {
+            "title": "Scale Max",
+            "type": "integer"
+          },
+          "scale_min": {
+            "title": "Scale Min",
+            "type": "integer"
+          },
+          "semantic_key": {
+            "title": "Semantic Key",
+            "type": "string"
+          },
+          "sort_order": {
+            "title": "Sort Order",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "semantic_key",
+          "label",
+          "description",
+          "scale_min",
+          "scale_max",
+          "sort_order",
+          "active",
+          "retired_at"
+        ],
+        "title": "CheckinDimensionOut",
+        "type": "object"
+      },
+      "CheckinDimensionUpdateRequest": {
+        "properties": {
+          "active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          }
+        },
+        "title": "CheckinDimensionUpdateRequest",
+        "type": "object"
+      },
+      "CheckinOut": {
+        "properties": {
+          "analysis": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CheckinAnalysisOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "checkin_template_version": {
+            "title": "Checkin Template Version",
+            "type": "integer"
+          },
+          "cycle_started_at": {
+            "format": "date-time",
+            "title": "Cycle Started At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "my_responses": {
+            "items": {
+              "$ref": "#/components/schemas/CheckinResponseOut"
+            },
+            "title": "My Responses",
+            "type": "array"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CheckinStatus"
+          },
+          "workspace_id": {
+            "format": "uuid",
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "workspace_id",
+          "checkin_template_version",
+          "status",
+          "cycle_started_at",
+          "my_responses",
+          "analysis"
+        ],
+        "title": "CheckinOut",
+        "type": "object"
+      },
+      "CheckinResponseIn": {
+        "properties": {
+          "dimension_id": {
+            "format": "uuid",
+            "title": "Dimension Id",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "dimension_id",
+          "value"
+        ],
+        "title": "CheckinResponseIn",
+        "type": "object"
+      },
+      "CheckinResponseOut": {
+        "description": "Always the CALLER's own submitted value -- see module docstring.",
+        "properties": {
+          "dimension_id": {
+            "format": "uuid",
+            "title": "Dimension Id",
+            "type": "string"
+          },
+          "semantic_key": {
+            "title": "Semantic Key",
+            "type": "string"
+          },
+          "submitted_at": {
+            "format": "date-time",
+            "title": "Submitted At",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "dimension_id",
+          "semantic_key",
+          "value",
+          "submitted_at"
+        ],
+        "title": "CheckinResponseOut",
+        "type": "object"
+      },
+      "CheckinStatus": {
+        "description": "PR-V2-06 -- lifecycle of one `RelationshipCheckin` cycle. `ANALYZED` is set\nsynchronously, in the same transaction as the second member's submission, once\n`CheckinAnalysisService` has computed the shared derived result (see\nservices/checkin_service.py::submit_checkin) -- there is no separate job/worker\nfor this, unlike `ReportJobStatus`/`AnalysisJobStatus`.",
+        "enum": [
+          "AWAITING_SUBMISSIONS",
+          "ANALYZED"
+        ],
+        "title": "CheckinStatus",
+        "type": "string"
+      },
+      "CheckinSubmitRequest": {
+        "properties": {
+          "responses": {
+            "items": {
+              "$ref": "#/components/schemas/CheckinResponseIn"
+            },
+            "minItems": 1,
+            "title": "Responses",
+            "type": "array"
+          }
+        },
+        "required": [
+          "responses"
+        ],
+        "title": "CheckinSubmitRequest",
+        "type": "object"
+      },
+      "CheckinSummaryOut": {
+        "properties": {
+          "checkin_template_version": {
+            "title": "Checkin Template Version",
+            "type": "integer"
+          },
+          "cycle_started_at": {
+            "format": "date-time",
+            "title": "Cycle Started At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CheckinStatus"
+          }
+        },
+        "required": [
+          "id",
+          "checkin_template_version",
+          "status",
+          "cycle_started_at"
+        ],
+        "title": "CheckinSummaryOut",
+        "type": "object"
+      },
+      "CheckinTemplateOut": {
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "dimensions": {
+            "items": {
+              "$ref": "#/components/schemas/CheckinDimensionOut"
+            },
+            "title": "Dimensions",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "active",
+          "dimensions"
+        ],
+        "title": "CheckinTemplateOut",
+        "type": "object"
+      },
       "ConnectionInvitationCreateRequest": {
         "properties": {
           "invitee_email": {
@@ -882,6 +1258,51 @@
           "password"
         ],
         "title": "DeleteAccountRequest",
+        "type": "object"
+      },
+      "DimensionAnalysisOut": {
+        "properties": {
+          "absolute_gap": {
+            "title": "Absolute Gap",
+            "type": "integer"
+          },
+          "direction": {
+            "title": "Direction",
+            "type": "string"
+          },
+          "historical_delta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Historical Delta"
+          },
+          "rolling_trend": {
+            "title": "Rolling Trend",
+            "type": "number"
+          },
+          "sample_size": {
+            "title": "Sample Size",
+            "type": "integer"
+          },
+          "sufficient_evidence": {
+            "title": "Sufficient Evidence",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "absolute_gap",
+          "direction",
+          "rolling_trend",
+          "sample_size",
+          "historical_delta",
+          "sufficient_evidence"
+        ],
+        "title": "DimensionAnalysisOut",
         "type": "object"
       },
       "DualProfileMemberOut": {
@@ -8568,6 +8989,531 @@
         "summary": "Patch Workspace Route",
         "tags": [
           "relationship-workspaces"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspace_id}/checkin-dimensions": {
+      "post": {
+        "operationId": "create_checkin_dimension_route_v1_workspaces__workspace_id__checkin_dimensions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-csrf-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_csrf",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Csrf"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckinDimensionCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinDimensionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Checkin Dimension Route",
+        "tags": [
+          "checkins"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspace_id}/checkin-dimensions/{dimension_id}": {
+      "patch": {
+        "operationId": "update_checkin_dimension_route_v1_workspaces__workspace_id__checkin_dimensions__dimension_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "dimension_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Dimension Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-csrf-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_csrf",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Csrf"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckinDimensionUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinDimensionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Checkin Dimension Route",
+        "tags": [
+          "checkins"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspace_id}/checkin-template": {
+      "get": {
+        "operationId": "get_checkin_template_route_v1_workspaces__workspace_id__checkin_template_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinTemplateOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Checkin Template Route",
+        "tags": [
+          "checkins"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspace_id}/checkins": {
+      "get": {
+        "operationId": "list_checkins_route_v1_workspaces__workspace_id__checkins_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CheckinSummaryOut"
+                  },
+                  "title": "Response List Checkins Route V1 Workspaces  Workspace Id  Checkins Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Checkins Route",
+        "tags": [
+          "checkins"
+        ]
+      },
+      "post": {
+        "operationId": "submit_checkin_route_v1_workspaces__workspace_id__checkins_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-csrf-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_csrf",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Csrf"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckinSubmitRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Submit Checkin Route",
+        "tags": [
+          "checkins"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspace_id}/checkins/{checkin_id}": {
+      "get": {
+        "operationId": "get_checkin_route_v1_workspaces__workspace_id__checkins__checkin_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "checkin_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Checkin Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Checkin Route",
+        "tags": [
+          "checkins"
         ]
       }
     },
