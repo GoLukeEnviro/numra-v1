@@ -15,6 +15,7 @@ import datetime as dt
 import logging
 import uuid
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from numra_api.models import ChatMessage, ChatThread
@@ -73,9 +74,22 @@ async def get_or_create_shared_thread(
     existing = await get_shared_thread_for_workspace(db, workspace_id=workspace_id)
     if existing is not None:
         return existing
-    return await create_thread(
-        db, workspace_id=workspace_id, owner_user_id=None, scope=ThreadScope.RELATIONSHIP_SHARED
-    )
+    try:
+        return await create_thread(
+            db,
+            workspace_id=workspace_id,
+            owner_user_id=None,
+            scope=ThreadScope.RELATIONSHIP_SHARED,
+        )
+    except IntegrityError:
+        # uq_chat_threads_one_shared_per_workspace -- the other member's concurrent
+        # first-call won the race. Same translate-and-retry pattern as
+        # checkin_service.py's first-submission race handling.
+        await db.rollback()
+        winner = await get_shared_thread_for_workspace(db, workspace_id=workspace_id)
+        if winner is None:  # pragma: no cover -- should be unreachable
+            raise
+        return winner
 
 
 async def get_or_create_private_thread(
@@ -93,12 +107,23 @@ async def get_or_create_private_thread(
     )
     if existing is not None:
         return existing
-    return await create_thread(
-        db,
-        workspace_id=workspace_id,
-        owner_user_id=requester_user_id,
-        scope=ThreadScope.RELATIONSHIP_PRIVATE,
-    )
+    try:
+        return await create_thread(
+            db,
+            workspace_id=workspace_id,
+            owner_user_id=requester_user_id,
+            scope=ThreadScope.RELATIONSHIP_PRIVATE,
+        )
+    except IntegrityError:
+        # uq_chat_threads_one_private_per_owner -- a concurrent duplicate call from
+        # the same caller (e.g. a double-click) won the race.
+        await db.rollback()
+        winner = await get_private_thread_for_owner(
+            db, workspace_id=workspace_id, owner_user_id=requester_user_id
+        )
+        if winner is None:  # pragma: no cover -- should be unreachable
+            raise
+        return winner
 
 
 async def list_threads_for_caller(
@@ -307,14 +332,14 @@ async def post_message(
             db,
             message=assistant_message,
             status=ChatMessageStatus.FAILED,
-            error_code=f"ANALYSIS_GENERATION_ERROR: {exc}",
+            error_code=f"ANALYSIS_GENERATION_ERROR: {exc}"[:80],
         )
     except LLMProviderError as exc:
         assistant_message = await update_message(
             db,
             message=assistant_message,
             status=ChatMessageStatus.FAILED,
-            error_code=f"LLM_PROVIDER_ERROR: {exc}",
+            error_code=f"LLM_PROVIDER_ERROR: {exc}"[:80],
         )
     except ApplicationError as exc:
         # A consent gate (build_shared_context's mutual-consent requirement) or
