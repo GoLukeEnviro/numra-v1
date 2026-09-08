@@ -91,8 +91,8 @@ class FakeEmailSender:
     def __init__(self) -> None:
         self.sent: list[dict] = []
 
-    async def send(self, *, to: str, subject: str, body: str) -> None:
-        self.sent.append({"to": to, "subject": subject, "body": body})
+    async def send(self, *, to: str, subject: str, body: str, html_body: str | None = None) -> None:
+        self.sent.append({"to": to, "subject": subject, "body": body, "html_body": html_body})
 
 
 @pytest_asyncio.fixture

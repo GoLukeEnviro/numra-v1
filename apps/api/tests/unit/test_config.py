@@ -86,6 +86,55 @@ def test_logging_email_backend_allowed_outside_production() -> None:
     Settings(database_url=_DB_URL, environment="test", email_backend="logging")  # must not raise
 
 
+def test_smtp_email_backend_requires_host_port_from_email_in_production() -> None:
+    with pytest.raises(ValidationError, match="EMAIL_BACKEND=smtp requires"):
+        Settings(
+            database_url=_DB_URL,
+            environment="production",
+            email_backend="smtp",
+            rate_limit_backend="redis",
+            redis_url="redis://redis:6379/0",
+        )
+
+
+def test_smtp_email_backend_allowed_in_production_with_full_config() -> None:
+    Settings(
+        database_url=_DB_URL,
+        environment="production",
+        email_backend="smtp",
+        smtp_host="smtp.example.invalid",
+        smtp_port=587,
+        smtp_from_email="no-reply@example.invalid",
+        rate_limit_backend="redis",
+        redis_url="redis://redis:6379/0",
+    )  # must not raise
+
+
+def test_smtp_email_backend_requires_both_username_and_password_in_production() -> None:
+    with pytest.raises(ValidationError, match="SMTP_USERNAME and SMTP_PASSWORD must both"):
+        Settings(
+            database_url=_DB_URL,
+            environment="production",
+            email_backend="smtp",
+            smtp_host="smtp.example.invalid",
+            smtp_port=587,
+            smtp_from_email="no-reply@example.invalid",
+            smtp_username="user",
+            rate_limit_backend="redis",
+            redis_url="redis://redis:6379/0",
+        )
+
+
+def test_smtp_starttls_and_use_tls_both_true_forbidden() -> None:
+    with pytest.raises(ValidationError, match="SMTP_STARTTLS and SMTP_USE_TLS cannot both be true"):
+        Settings(
+            database_url=_DB_URL,
+            environment="test",
+            smtp_starttls=True,
+            smtp_use_tls=True,
+        )
+
+
 def test_disabled_email_backend_allowed_in_production() -> None:
     # "disabled" is the numra_llm_provider="disabled" analogue -- no real EmailSender
     # exists in V1 (see email/sender.py), so this is what a production deployment

@@ -40,6 +40,27 @@ from numra_api.services.errors import EmailDeliveryUnavailable, InvalidOrExpired
 logger = logging.getLogger(__name__)
 
 
+def _verification_email_content(*, link: str, brand: str) -> tuple[str, str, str]:
+    subject = f"Verify your {brand} email address"
+    text_body = f"Confirm your email address by opening this link: {link}"
+    html_body = (
+        f"<p>Confirm your {brand} email address by opening this link:</p>"
+        f'<p><a href="{link}">{link}</a></p>'
+    )
+    return subject, text_body, html_body
+
+
+def _password_reset_email_content(*, link: str, brand: str) -> tuple[str, str, str]:
+    subject = f"Reset your {brand} password"
+    text_body = f"Reset your password by opening this link: {link}"
+    html_body = (
+        f"<p>Reset your {brand} password by opening this link:</p>"
+        f'<p><a href="{link}">{link}</a></p>'
+        "<p>If you did not request this, you can safely ignore this email.</p>"
+    )
+    return subject, text_body, html_body
+
+
 async def request_email_verification(
     db: AsyncSession, *, user: User, settings: Settings, email_sender: EmailSender
 ) -> None:
@@ -51,11 +72,10 @@ async def request_email_verification(
         db, user_id=user.id, token_hash=hash_token(token), expires_at=expires_at
     )
     link = f"{settings.web_app_base_url}/verify-email?token={token}"
-    await email_sender.send(
-        to=user.email,
-        subject=f"Verify your {settings.app_brand_name} email address",
-        body=f"Confirm your email address by opening this link: {link}",
+    subject, text_body, html_body = _verification_email_content(
+        link=link, brand=settings.app_brand_name
     )
+    await email_sender.send(to=user.email, subject=subject, body=text_body, html_body=html_body)
 
 
 async def verify_email(db: AsyncSession, *, token: str) -> None:
@@ -96,12 +116,11 @@ async def forgot_password(
         db, user_id=user.id, token_hash=hash_token(token), expires_at=expires_at
     )
     link = f"{settings.web_app_base_url}/reset-password?token={token}"
+    subject, text_body, html_body = _password_reset_email_content(
+        link=link, brand=settings.app_brand_name
+    )
     try:
-        await email_sender.send(
-            to=user.email,
-            subject=f"Reset your {settings.app_brand_name} password",
-            body=f"Reset your password by opening this link: {link}",
-        )
+        await email_sender.send(to=user.email, subject=subject, body=text_body, html_body=html_body)
     except EmailDeliveryUnavailable:
         logger.warning("password reset email could not be sent (EMAIL_BACKEND unavailable)")
 

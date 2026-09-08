@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from numra_api.config import Settings
 from numra_api.email.sender import DisabledEmailSender, EmailSender, LoggingEmailSender
+from numra_api.email.smtp_sender import SmtpEmailSender
 
 __all__ = ["build_email_sender"]
 
@@ -28,4 +29,6 @@ def build_email_sender(settings: Settings) -> EmailSender:
         return LoggingEmailSender()
     if settings.email_backend == "disabled":
         return DisabledEmailSender()
+    if settings.email_backend == "smtp":
+        return SmtpEmailSender(settings)
     raise ValueError(f"unknown EMAIL_BACKEND: {settings.email_backend!r}")
