@@ -16,6 +16,7 @@ WORKDIR /app
 COPY pyproject.toml uv.lock ./
 COPY packages/engine-numerology packages/engine-numerology
 COPY packages/engine-interpretation packages/engine-interpretation
+COPY packages/engine-relationship-interpretation packages/engine-relationship-interpretation
 COPY packages/engine-astrology packages/engine-astrology
 COPY apps/api apps/api
 COPY knowledge knowledge
@@ -56,3 +57,6 @@ CMD ["uvicorn", "numra_api.app:app", "--host", "0.0.0.0", "--port", "8000"]
 
 FROM base AS worker
 CMD ["python", "-m", "numra_api.worker"]
+
+FROM base AS analysis-worker
+CMD ["python", "-m", "numra_api.analysis_worker"]
