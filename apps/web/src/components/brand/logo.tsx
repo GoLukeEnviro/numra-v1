@@ -1,17 +1,29 @@
 import { cn } from "@/lib/utils";
+import { BRAND_NAME } from "@/lib/brand";
 
 /**
- * Numra brand marks — the "constructed N": three straight lines ending in four
- * nodes. Geometry and symbolism are specified in docs/brand/visual-identity.md
- * §2. Keep this component in sync with src/app/icon.svg.
+ * AVENYTH brand marks — the "constructed A": two diverging legs (two
+ * individuals) joined by a crossbar at ~61% height (the shared moment during
+ * the journey, not only at the end). Geometry and symbolism are specified in
+ * docs/brand/visual-identity.md. Keep this component in sync with
+ * src/app/icon.svg.
  */
-const N_STROKES = ["M10.5 21.5V10.5", "M10.5 10.5L21.5 21.5", "M21.5 10.5V21.5"];
+const A_LEGS = [
+  { x1: 16, y1: 7, x2: 9, y2: 25 },
+  { x1: 16, y1: 7, x2: 23, y2: 25 },
+];
 
-const NODES = [
-  { x: 10.5, y: 10.5 },
-  { x: 10.5, y: 21.5 },
-  { x: 21.5, y: 10.5 },
-  { x: 21.5, y: 21.5 },
+const CROSSBAR = { x1: 11.72, y1: 18, x2: 20.28, y2: 18 };
+
+const APEX_NODES = [
+  { x: 16, y: 7 },
+  { x: 9, y: 25 },
+  { x: 23, y: 25 },
+];
+
+const CROSSBAR_NODES = [
+  { x: 11.72, y: 18 },
+  { x: 20.28, y: 18 },
 ];
 
 export function BrandMark({ className }: { className?: string }) {
@@ -22,14 +34,25 @@ export function BrandMark({ className }: { className?: string }) {
       aria-hidden="true"
       focusable="false"
     >
-      <rect width="32" height="32" rx="7" fill="#0B0B0F" />
-      <g stroke="#C8A96B" strokeWidth="2" fill="none">
-        {N_STROKES.map((d) => (
-          <path key={d} d={d} />
+      <rect x="0" y="0" width="32" height="32" rx="7" fill="#0B0B0F" />
+      <g stroke="#C8A96B" strokeWidth="1.4" strokeLinecap="round">
+        {A_LEGS.map(({ x1, y1, x2, y2 }) => (
+          <line key={`${x1}-${y1}-${x2}-${y2}`} x1={x1} y1={y1} x2={x2} y2={y2} />
         ))}
+        <line
+          x1={CROSSBAR.x1}
+          y1={CROSSBAR.y1}
+          x2={CROSSBAR.x2}
+          y2={CROSSBAR.y2}
+        />
       </g>
       <g fill="#F2EBDD">
-        {NODES.map(({ x, y }) => (
+        {APEX_NODES.map(({ x, y }) => (
+          <circle key={`${x}-${y}`} cx={x} cy={y} r="1.3" />
+        ))}
+      </g>
+      <g fill="#604B72">
+        {CROSSBAR_NODES.map(({ x, y }) => (
           <circle key={`${x}-${y}`} cx={x} cy={y} r="1.6" />
         ))}
       </g>
@@ -38,8 +61,9 @@ export function BrandMark({ className }: { className?: string }) {
 }
 
 /**
- * Emblem + wordmark with the signature node dot. Size via className props —
- * there is deliberately no size variant system: each call site owns its scale.
+ * Emblem + wordmark with the signature crossbar nodes. Size via className
+ * props — there is deliberately no size variant system: each call site owns
+ * its scale.
  */
 export function Logo({
   className,
@@ -54,7 +78,7 @@ export function Logo({
     <span className={cn("inline-flex items-center gap-2.5", className)}>
       <BrandMark className={cn("h-7 w-7 shrink-0", markClassName)} />
       <span className={cn("font-serif leading-none text-ivory", textClassName)}>
-        Numra
+        {BRAND_NAME}
       </span>
       <span
         aria-hidden="true"
