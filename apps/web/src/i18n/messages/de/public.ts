@@ -59,6 +59,59 @@ export const dePublic = {
   "public.login.submit": "Anmelden",
   "public.login.noAccount": "Noch kein Konto?",
   "public.login.createAccount": "Konto erstellen",
+  "public.login.forgotPassword": "Passwort vergessen?",
+
+  // Passwort vergessen
+  "public.forgotPassword.title": "Passwort vergessen",
+  "public.forgotPassword.subtitle": "Wir senden dir einen Link zum Zurücksetzen.",
+  "public.forgotPassword.email": "E-Mail",
+  "public.forgotPassword.submit": "Link anfordern",
+  "public.forgotPassword.successTitle": "Anfrage gesendet",
+  "public.forgotPassword.successBody":
+    "Falls ein Konto mit dieser Adresse existiert, haben wir einen Link zum Zurücksetzen gesendet.",
+  "public.forgotPassword.errorRateLimited": "Zu viele Versuche. Bitte versuche es später erneut.",
+  "public.forgotPassword.backToLogin": "Zurück zum Login",
+
+  // Passwort zurücksetzen
+  "public.resetPassword.title": "Neues Passwort festlegen",
+  "public.resetPassword.subtitle": "Lege ein neues Passwort für dein Konto fest.",
+  "public.resetPassword.newPassword": "Neues Passwort",
+  "public.resetPassword.passwordHint": "Mindestens 12 Zeichen.",
+  "public.resetPassword.confirmPassword": "Neues Passwort bestätigen",
+  "public.resetPassword.submit": "Passwort festlegen",
+  "public.resetPassword.errorMismatch": "Die Passwörter stimmen nicht überein.",
+  "public.resetPassword.errorTooShort": "Das Passwort muss mindestens 12 Zeichen lang sein.",
+  "public.resetPassword.missingTokenTitle": "Link unvollständig",
+  "public.resetPassword.missingTokenBody":
+    "Dieser Link enthält kein gültiges Token. Fordere einen neuen Link an.",
+  "public.resetPassword.successTitle": "Passwort geändert",
+  "public.resetPassword.successBody":
+    "Passwort wurde geändert. Alle Sitzungen wurden abgemeldet — bitte melde dich erneut an.",
+  "public.resetPassword.successCta": "Zum Login",
+  "public.resetPassword.invalidTitle": "Link nicht mehr gültig",
+  "public.resetPassword.invalidBody":
+    "Dieser Link kann nicht mehr verwendet werden. Fordere einen neuen Link an.",
+  "public.resetPassword.invalidCta": "Neuen Link anfordern",
+  "public.resetPassword.errorRateLimited": "Zu viele Versuche. Bitte versuche es später erneut.",
+
+  // E-Mail bestätigen
+  "public.verifyEmail.title": "E-Mail bestätigen",
+  "public.verifyEmail.verifying": "E-Mail wird bestätigt…",
+  "public.verifyEmail.successTitle": "E-Mail bestätigt",
+  "public.verifyEmail.successBody": "Deine E-Mail-Adresse wurde erfolgreich bestätigt.",
+  "public.verifyEmail.successCtaDashboard": "Zur Übersicht",
+  "public.verifyEmail.successCtaLogin": "Zum Login",
+  "public.verifyEmail.missingTokenTitle": "Link unvollständig",
+  "public.verifyEmail.missingTokenBody": "Dieser Link enthält kein gültiges Token.",
+  "public.verifyEmail.invalidTitle": "Link nicht mehr gültig",
+  "public.verifyEmail.invalidBodySignedIn":
+    "Dieser Bestätigungslink kann nicht mehr verwendet werden. Fordere einen neuen an.",
+  "public.verifyEmail.invalidBodySignedOut":
+    "Dieser Bestätigungslink kann nicht mehr verwendet werden. Melde dich an, um einen neuen anzufordern.",
+  "public.verifyEmail.resendButton": "Neuen Bestätigungslink senden",
+  "public.verifyEmail.resendSent": "Ein neuer Bestätigungslink wurde gesendet.",
+  "public.verifyEmail.toLogin": "Zum Login",
+  "public.verifyEmail.errorRateLimited": "Zu viele Versuche. Bitte versuche es später erneut.",
 
   // Registrierung
   "public.register.title": "Konto erstellen",

@@ -316,6 +316,36 @@ export const enApp: Record<keyof typeof deApp, string> = {
   "app.security.logoutOthers": "Log out other devices",
   "app.security.othersLoggedOut": "Other devices have been signed out.",
 
+  // Settings: account — email verification
+  "app.account.emailVerified": "Email verified",
+  "app.account.emailUnverified": "Email not verified",
+  "app.account.emailUnverifiedBody": "Verify your email address to secure your account.",
+  "app.account.resendVerification": "Resend link",
+  "app.account.resendVerificationSent": "A new verification link has been sent.",
+
+  // Email verification banner
+  "app.emailVerificationBanner.body": "Please verify your email address to secure your account.",
+  "app.emailVerificationBanner.resend": "Resend link",
+  "app.emailVerificationBanner.resendSent": "A new verification link has been sent.",
+  "app.emailVerificationBanner.dismiss": "Dismiss",
+
+  // Settings: entitlements
+  "app.entitlements.title": "Entitlements",
+  "app.entitlements.body": "Your current feature set — for your information only.",
+  "app.entitlements.loading": "Loading entitlements…",
+  "app.entitlements.errorTitle": "Entitlements could not be loaded",
+  "app.entitlements.unlimited": "Unlimited",
+  "app.entitlements.personalWorkspace": "Personal workspace",
+  "app.entitlements.connections": "Connections",
+  "app.entitlements.relationshipWorkspaces": "Relationship workspaces",
+  "app.entitlements.relationshipCheckins": "Relationship check-ins",
+  "app.entitlements.relationshipCopilot": "Relationship copilot",
+  "app.entitlements.advancedRelationshipAnalysis": "Advanced relationship analysis",
+  "app.entitlements.lifeTracking": "Life tracking",
+  "app.entitlements.premiumReports": "Premium reports",
+  "app.entitlements.maxConnections": "Max connections",
+  "app.entitlements.maxWorkspaces": "Max workspaces",
+
   // Settings: system info
   "app.systemInfo.title": "System info",
   "app.systemInfo.body": "What this AVENYTH instance is running.",
