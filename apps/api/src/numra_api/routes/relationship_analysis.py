@@ -21,6 +21,7 @@ from numra_api.schemas.relationship_analysis import (
     ShadowDynamicsAnalysisOut,
 )
 from numra_api.services.errors import NotFoundError
+from numra_api.services.feature_flags import require_v2_phase
 from numra_api.services.relationship_analysis_service import (
     create_relationship_analysis_job,
     create_shadow_dynamics_job,
@@ -38,7 +39,11 @@ async def _require_membership(
         raise NotFoundError(f"workspace {workspace_id} not found")
 
 
-router = APIRouter(prefix="/v1", tags=["relationship-analysis"])
+router = APIRouter(
+    prefix="/v1",
+    tags=["relationship-analysis"],
+    dependencies=[Depends(require_v2_phase("relationship_workspaces"))],
+)
 
 
 def _job_to_out(job: AnalysisJob) -> AnalysisJobOut:

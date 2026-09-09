@@ -39,8 +39,13 @@ from numra_api.services.checkin_service import (
     submit_checkin,
     update_dimension,
 )
+from numra_api.services.feature_flags import require_v2_phase
 
-router = APIRouter(prefix="/v1/workspaces/{workspace_id}", tags=["checkins"])
+router = APIRouter(
+    prefix="/v1/workspaces/{workspace_id}",
+    tags=["checkins"],
+    dependencies=[Depends(require_v2_phase("checkins"))],
+)
 
 
 def _dimension_to_out(dimension: CheckinDimension) -> CheckinDimensionOut:

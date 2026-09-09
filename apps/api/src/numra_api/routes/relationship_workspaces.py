@@ -18,13 +18,18 @@ from numra_api.schemas.relationship_workspace import (
     WorkspaceSummaryOut,
     WorkspaceUpdateRequest,
 )
+from numra_api.services.feature_flags import require_v2_phase
 from numra_api.services.relationship_workspace_service import (
     get_workspace_overview,
     list_workspaces_for_viewer,
     patch_relationship_type,
 )
 
-router = APIRouter(prefix="/v1/workspaces", tags=["relationship-workspaces"])
+router = APIRouter(
+    prefix="/v1/workspaces",
+    tags=["relationship-workspaces"],
+    dependencies=[Depends(require_v2_phase("relationship_workspaces"))],
+)
 
 
 def _workspace_to_out(workspace: RelationshipWorkspace) -> WorkspaceOut:

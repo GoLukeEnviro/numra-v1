@@ -40,6 +40,17 @@ async def settings(tmp_path) -> Settings:
         pdf_internal_url=TEST_PDF_URL,
         pdf_internal_token=TEST_PDF_TOKEN,
         export_storage_dir=str(tmp_path / "exports"),
+        # AVENYTH V2 Runtime-Feature-Flags (services/feature_flags.py) sind
+        # produktionsseitig alle False -- die ~350 bestehenden Integrationstests
+        # kennen diese Flags nicht und muessen unveraendert gruen bleiben, daher hier
+        # die einzige Stelle mit einem Nicht-False-Default: alle 7 explizit True.
+        avenyth_v2_enabled=True,
+        avenyth_connections_enabled=True,
+        avenyth_relationship_workspaces_enabled=True,
+        avenyth_checkins_enabled=True,
+        avenyth_tasks_enabled=True,
+        avenyth_copilot_enabled=True,
+        avenyth_evidence_layer_enabled=True,
     )
 
 

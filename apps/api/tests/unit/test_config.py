@@ -135,6 +135,17 @@ def test_smtp_starttls_and_use_tls_both_true_forbidden() -> None:
         )
 
 
+def test_v2_flags_default_false() -> None:
+    settings = Settings(database_url=_DB_URL)
+    assert settings.avenyth_v2_enabled is False
+    assert settings.avenyth_connections_enabled is False
+    assert settings.avenyth_relationship_workspaces_enabled is False
+    assert settings.avenyth_checkins_enabled is False
+    assert settings.avenyth_tasks_enabled is False
+    assert settings.avenyth_copilot_enabled is False
+    assert settings.avenyth_evidence_layer_enabled is False
+
+
 def test_disabled_email_backend_allowed_in_production() -> None:
     # "disabled" is the numra_llm_provider="disabled" analogue -- no real EmailSender
     # exists in V1 (see email/sender.py), so this is what a production deployment

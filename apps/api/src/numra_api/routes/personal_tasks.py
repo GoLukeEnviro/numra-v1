@@ -23,8 +23,11 @@ from numra_api.schemas.personal_task import (
     PersonalTaskPatchRequest,
 )
 from numra_api.services.errors import NotFoundError
+from numra_api.services.feature_flags import require_v2_master
 
-router = APIRouter(prefix="/v1", tags=["personal-tasks"])
+router = APIRouter(
+    prefix="/v1", tags=["personal-tasks"], dependencies=[Depends(require_v2_master())]
+)
 
 
 def _to_out(task: PersonalTask) -> PersonalTaskOut:

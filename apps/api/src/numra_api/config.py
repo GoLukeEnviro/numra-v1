@@ -115,6 +115,18 @@ class Settings(BaseSettings):
     smtp_use_tls: bool = False
     smtp_timeout_seconds: float = 10.0
 
+    #: AVENYTH V2 rollout flags (specs/v2/architecture.md "Feature flags"). Alle Default
+    #: False in JEDER Umgebung -- explizites Opt-in ueberall noetig, nicht nur in
+    #: Production. avenyth_v2_enabled ist der Master-Switch; die anderen 6 sind UND-
+    #: verknuepft damit, nie unabhaengig ausreichend.
+    avenyth_v2_enabled: bool = False
+    avenyth_connections_enabled: bool = False
+    avenyth_relationship_workspaces_enabled: bool = False
+    avenyth_checkins_enabled: bool = False
+    avenyth_tasks_enabled: bool = False
+    avenyth_copilot_enabled: bool = False
+    avenyth_evidence_layer_enabled: bool = False
+
     @property
     def cookies_secure(self) -> bool:
         return self.environment == "production"

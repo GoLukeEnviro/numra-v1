@@ -45,8 +45,13 @@ from numra_api.services.errors import (
     MetricValueOutOfScale,
     NotFoundError,
 )
+from numra_api.services.feature_flags import require_v2_phase
 
-router = APIRouter(prefix="/v1", tags=["life-tracking"])
+router = APIRouter(
+    prefix="/v1",
+    tags=["life-tracking"],
+    dependencies=[Depends(require_v2_phase("evidence_layer"))],
+)
 
 #: Felder, die beim PATCH direkt auf den Eintrag durchgereicht werden.
 #: `custom_metrics` ist bewusst nicht dabei -- es landet in einer eigenen Tabelle.
