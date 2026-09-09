@@ -62,12 +62,17 @@ for (const [viewportName, size] of Object.entries(VIEWPORTS)) {
     await shoot(page, `dashboard-nav-${viewportName}`);
   });
 
-  test(`(c) /connections placeholder -- ${viewportName}`, async ({ page }) => {
+  test(`(c) /connections -- ${viewportName}`, async ({ page }) => {
+    // PR-WEB-03 replaced this route's ComingSoonState placeholder with the real
+    // Connections list -- see pr-web-03-visual-baseline.spec.ts for its full coverage.
     await page.setViewportSize(size);
     await mockAuthenticatedApi(page);
+    await page.route("**/v1/connections", (route) => fulfillJson(route, 200, []));
+    await page.route("**/v1/connections/invitations", (route) => fulfillJson(route, 200, []));
+    await page.route("**/v1/workspaces", (route) => fulfillJson(route, 200, []));
     await page.goto("/connections");
-    await expect(page.getByText("Verbindungen kommen bald")).toBeVisible();
-    await shoot(page, `connections-placeholder-${viewportName}`);
+    await expect(page.getByRole("heading", { name: "Verbindungen", level: 1 })).toBeVisible();
+    await shoot(page, `connections-${viewportName}`);
   });
 
   test(`(d) /workspaces placeholder -- ${viewportName}`, async ({ page }) => {

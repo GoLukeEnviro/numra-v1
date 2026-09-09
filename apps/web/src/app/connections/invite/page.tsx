@@ -169,6 +169,7 @@ function ResultStep({ result, onDone }: { result: ConnectionInvitationCreatedOut
   const { t } = useLocale();
   return (
     <div className="flex flex-col gap-4">
+      <h2 className="font-serif text-lg text-ivory">{t("app.connectionsInvite.createdTitle")}</h2>
       <div role="alert" className="rounded-lg border border-gold/30 bg-gold/10 p-3 text-sm text-ivory">
         {t("app.connectionsInvite.createdWarning")}
       </div>
