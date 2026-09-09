@@ -42,4 +42,8 @@ export const deCore = {
 
   "workspace.switcherAriaLabel": "Workspace wechseln",
   "workspace.personalPrefix": "Persönlicher Bereich",
+  // Personal Workspace (PR-WEB-02): private-content marker + Switcher-Profiltyp.
+  "workspace.privateLabel": "Privat",
+  "workspace.selfProfileLabel": "Eigenes Profil",
+  "workspace.managedProfileLabel": "Verwaltetes Profil",
 } as const;
