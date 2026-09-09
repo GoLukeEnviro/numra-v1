@@ -552,6 +552,17 @@ export const api = {
         method: "POST",
         body,
       }),
+    listInvitations: (params: { limit?: number; offset?: number } = {}) =>
+      request<ConnectionInvitationOut[]>("/v1/connections/invitations", {
+        query: {
+          limit: params.limit === undefined ? undefined : String(params.limit),
+          offset: params.offset === undefined ? undefined : String(params.offset),
+        },
+      }),
+    previewByToken: (token: string) =>
+      request<ConnectionInvitationPreviewOut>(
+        `/v1/connections/invitations/redeem/${encodeURIComponent(token)}`,
+      ),
     declineInvitation: (invitationId: string) =>
       request<ConnectionInvitationOut>(
         `/v1/connections/invitations/${invitationId}/decline`,
