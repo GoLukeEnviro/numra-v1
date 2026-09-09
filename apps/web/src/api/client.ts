@@ -36,6 +36,9 @@ export type ExportOut = components["schemas"]["ExportOut"];
 export type ExportStatus = components["schemas"]["ExportStatus"];
 export type DeleteAccountRequest = components["schemas"]["DeleteAccountRequest"];
 export type ChangePasswordRequest = components["schemas"]["ChangePasswordRequest"];
+export type VerifyEmailRequest = components["schemas"]["VerifyEmailRequest"];
+export type ForgotPasswordRequest = components["schemas"]["ForgotPasswordRequest"];
+export type ResetPasswordRequest = components["schemas"]["ResetPasswordRequest"];
 export type SessionOut = components["schemas"]["SessionOut"];
 export type SystemInfoOut = components["schemas"]["SystemInfoOut"];
 export type UserRole = components["schemas"]["UserRole"];
@@ -286,6 +289,18 @@ export const api = {
     /** V1.5 Epic N. "Log out other devices" -- revokes every session but this one. */
     revokeOtherSessions: () =>
       request<void>("/v1/auth/sessions/revoke-others", { method: "POST" }),
+    /** V2: (re-)sends a verification link to the signed-in user's own email address. */
+    requestEmailVerification: () =>
+      request<void>("/v1/auth/request-email-verification", { method: "POST" }),
+    /** V2: unauthenticated -- the token itself is the proof of ownership. */
+    verifyEmail: (body: VerifyEmailRequest) =>
+      request<void>("/v1/auth/verify-email", { method: "POST", body }),
+    /** V2: always resolves (202/204) regardless of whether the address exists --
+     *  anti-enumeration, see backend docstring on the matching route. */
+    forgotPassword: (body: ForgotPasswordRequest) =>
+      request<void>("/v1/auth/forgot-password", { method: "POST", body }),
+    resetPassword: (body: ResetPasswordRequest) =>
+      request<void>("/v1/auth/reset-password", { method: "POST", body }),
   },
   /** V1.6 B: anonymous bootstrap config for the pre-login pages. */
   publicConfig: {
