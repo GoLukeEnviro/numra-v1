@@ -44,7 +44,7 @@ export const enPublic: Record<keyof typeof dePublic, string> = {
     "What you enter is what is stored: profiles, calculations, comparisons, reports and your account. Every profile and the entire account can be deleted completely at any time.",
   "public.landing.disclaimerTitle": "Notice",
   "public.landing.disclaimerBody":
-    "NUMRA is a symbolic numerological interpretation tool. It provides no medical, legal, financial or scientific advice.",
+    "AVENYTH is a symbolic numerological interpretation tool. It provides no medical, legal, financial or scientific advice.",
   "public.landing.finalCtaTitle": "Evidence instead of claims.",
   "public.landing.finalCtaBody": "Create an account and verify every number yourself.",
   "public.landing.footerPrivacy": "Privacy",
@@ -87,7 +87,7 @@ export const enPublic: Record<keyof typeof dePublic, string> = {
   // Onboarding
   "public.onboarding.stepLabel": "Step",
   "public.onboarding.of": "of",
-  "public.onboarding.welcomeTitle": "Welcome to Numra",
+  "public.onboarding.welcomeTitle": "Welcome to AVENYTH",
   "public.onboarding.welcomeBody":
     "Three short steps create your first profile and run your first deterministic calculation. Everything produced along the way is traceable and can be deleted at any time.",
   "public.onboarding.start": "Create first profile",

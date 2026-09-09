@@ -23,7 +23,7 @@ export const enCore: Record<keyof typeof deCore, string> = {
   "common.tryAgain": "Try again",
   "common.somethingWrong": "Something went wrong",
   "common.networkError": "Could not reach the server.",
-  "common.appLoading": "Loading Numra…",
+  "common.appLoading": "Loading AVENYTH…",
 
   "shell.skipToContent": "Skip to content",
   "shell.dismiss": "Dismiss",
@@ -38,7 +38,7 @@ export const enCore: Record<keyof typeof deCore, string> = {
   "settings.languageGerman": "Deutsch",
   "settings.languageEnglish": "English",
   "settings.privacyData": "Privacy & data",
-  "settings.privacyDataDescription": "What Numra stores about you, and how to remove it.",
+  "settings.privacyDataDescription": "What AVENYTH stores about you, and how to remove it.",
   "settings.viewPrivacySettings": "View privacy settings",
 
   "workspace.switcherAriaLabel": "Switch workspace",

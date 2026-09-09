@@ -29,7 +29,7 @@ function renderCoverPage({ person, profile, report }) {
   const core = profile?.core_numbers || {};
   return `
     <section class="cover page-break-after">
-      <div class="cover-eyebrow">NUMRA — numra-canonical v${escapeHtml(report.calculation_version || "1.0.0")}</div>
+      <div class="cover-eyebrow">AVENYTH — numra-canonical v${escapeHtml(report.calculation_version || "1.0.0")}</div>
       <h1 class="cover-title">${name || "Numerological Profile"}</h1>
       <div class="cover-sub">${birthDate}</div>
       <table class="core-table">
@@ -83,7 +83,7 @@ function renderAppendix({ profile }) {
     <section class="report-section appendix">
       <h2>Calculation Appendix</h2>
       <p class="methodology-note">
-        Every numeric value in this report was produced by NUMRA's deterministic
+        Every numeric value in this report was produced by AVENYTH's deterministic
         calculation engine (${escapeHtml(profile?.calculation_system || "numra-canonical")}
         v${escapeHtml(profile?.calculation_version || "1.0.0")}) — never estimated or
         invented by language-model text generation. See the web application's
@@ -134,7 +134,7 @@ export function renderReportHtml({ report, profile, person }) {
 <html lang="${escapeHtml(report.language || "de")}">
 <head>
 <meta charset="utf-8" />
-<title>${escapeHtml(person?.birth_first_names || "NUMRA")} — NUMRA Report</title>
+<title>${escapeHtml(person?.birth_first_names || "AVENYTH")} — AVENYTH Report</title>
 <style>${STYLES}</style>
 </head>
 <body>

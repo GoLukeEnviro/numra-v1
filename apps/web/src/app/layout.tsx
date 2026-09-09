@@ -1,18 +1,19 @@
 import { RegisterServiceWorker } from "@/components/pwa/register-service-worker";
 import { LocaleProvider } from "@/i18n/context";
 import { AuthProvider } from "@/lib/auth-context";
+import { BRAND_NAME } from "@/lib/brand";
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Numra",
+  title: BRAND_NAME,
   description:
     "Numerologie ohne Raten — deterministische Engine, jede Zahl mit Herleitung.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Numra",
+    title: BRAND_NAME,
   },
 };
 
@@ -21,7 +22,7 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  // German is Numra's default UI language (V1.5 Epic G); LocaleProvider updates
+  // German is AVENYTH's default UI language (V1.5 Epic G); LocaleProvider updates
   // this to "en" client-side if the visitor previously chose English.
   return (
     <html lang="de" data-theme="dark">

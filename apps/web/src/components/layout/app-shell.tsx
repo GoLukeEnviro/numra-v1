@@ -1,6 +1,6 @@
 "use client";
 
-import { BrandMark } from "@/components/brand/logo";
+import { Logo } from "@/components/brand/logo";
 import { RequireAuth } from "@/components/layout/require-auth";
 import { Button } from "@/components/ui/button";
 import type { MessageKey } from "@/i18n/catalog";
@@ -279,15 +279,9 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
       </a>
       <div className="flex min-h-screen flex-col md:flex-row">
         <aside className="border-b border-white/10 bg-surface md:w-64 md:shrink-0 md:border-b-0 md:border-r">
-          <div className="flex items-center gap-3 p-5">
-            <BrandMark className="h-9 w-9 shrink-0" />
-            <div>
-              <p className="flex items-center gap-1.5 font-serif text-lg leading-none text-ivory">
-                Numra
-                <span aria-hidden="true" className="h-1 w-1 rounded-full bg-gold" />
-              </p>
-              <p className="text-xs text-muted">{t("shell.tagline")}</p>
-            </div>
+          <div className="p-5">
+            <Logo markClassName="h-9 w-9" textClassName="text-lg" />
+            <p className="mt-1 pl-[2.625rem] text-xs text-muted">{t("shell.tagline")}</p>
           </div>
           {/* Desktop-only: mobile uses the fixed bottom nav instead (below). */}
           <nav className="hidden gap-1 px-3 pb-3 md:flex md:flex-col md:pb-0">

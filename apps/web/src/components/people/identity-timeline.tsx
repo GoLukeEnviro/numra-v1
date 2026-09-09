@@ -28,9 +28,9 @@ const ENTRY_NOTE_KEY: Record<IdentityEntryId, MessageKey> = {
 };
 
 /**
- * The real, server-recorded name history (V1.5 Epic C) — every entry Numra has ever
+ * The real, server-recorded name history (V1.5 Epic C) — every entry AVENYTH has ever
  * written down for this person, append-only. `recorded_at` is always shown (when
- * Numra actually saved the row); `valid_from` is only ever shown when the backend
+ * AVENYTH actually saved the row); `valid_from` is only ever shown when the backend
  * sent one, since it is only ever set from a genuinely known fact (the birth date
  * for the birth identity) — never invented for current/preferred names.
  */

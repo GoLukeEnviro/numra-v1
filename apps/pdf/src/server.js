@@ -54,9 +54,9 @@ function requireInternalAuth(req, res, next) {
 }
 
 /**
- * Renders a NUMRA report to PDF. This endpoint NEVER accepts or navigates to a
+ * Renders an AVENYTH report to PDF. This endpoint NEVER accepts or navigates to a
  * caller-supplied URL (no SSRF surface) — it only ever renders HTML built in-process
- * from a validated JSON payload the caller already fetched from the NUMRA API.
+ * from a validated JSON payload the caller already fetched from the AVENYTH API.
  */
 app.post("/render/report", requireInternalAuth, async (req, res) => {
   const { report, profile, person } = req.body || {};
@@ -106,7 +106,7 @@ app.post("/render/report", requireInternalAuth, async (req, res) => {
 
 app.listen(PORT, () => {
   // eslint-disable-next-line no-console
-  console.log(`NUMRA PDF service listening on :${PORT}`);
+  console.log(`AVENYTH PDF service listening on :${PORT}`);
 });
 
 export { app };

@@ -6,7 +6,7 @@ export const enApp: Record<keyof typeof deApp, string> = {
   "app.dashboard.eyebrow": "Overview",
   "app.dashboard.heroTitle": "Numerology you can check",
   "app.dashboard.heroBody":
-    "Every number in Numra is produced by a deterministic engine and carries the trace that produced it. Nothing on any screen is estimated, rounded towards a nicer answer, or written by a language model without being checked against the calculation first.",
+    "Every number in AVENYTH is produced by a deterministic engine and carries the trace that produced it. Nothing on any screen is estimated, rounded towards a nicer answer, or written by a language model without being checked against the calculation first.",
   "app.dashboard.profileSingular": "profile in your account",
   "app.dashboard.profilePlural": "profiles in your account",
   "app.dashboard.qaTodayTitle": "Today",
@@ -123,13 +123,13 @@ export const enApp: Record<keyof typeof deApp, string> = {
   "app.identity.currentLabel": "Current name",
   "app.identity.currentNote": "Recorded as metadata — it does not change any core number in this version.",
   "app.identity.preferredLabel": "Preferred name",
-  "app.identity.preferredNote": "How this person is addressed in Numra. Never used in a calculation.",
+  "app.identity.preferredNote": "How this person is addressed in AVENYTH. Never used in a calculation.",
   "app.identity.usedForCore": "Used for core numbers",
   "app.identity.partial": "Partially recorded",
   "app.identity.partialNote":
     "Only the name parts stored for this profile are shown — the missing parts are not filled in from the birth name.",
   "app.identity.noExtraNames":
-    "No current or preferred name is recorded for this profile. Numra shows only the names it actually holds.",
+    "No current or preferred name is recorded for this profile. AVENYTH shows only the names it actually holds.",
   "app.identity.recordedHistory": "Recorded history",
   "app.identity.kindBirth": "Birth",
   "app.identity.kindCurrent": "Current",
@@ -157,7 +157,7 @@ export const enApp: Record<keyof typeof deApp, string> = {
   "app.today.composing": "Composing reflection…",
   "app.today.reflectionErrorTitle": "Could not load the reflection",
   "app.today.reflectionFootnotePrefix":
-    "Reflective and symbolic, sourced from Numra's knowledge package — not a prediction and not written by a language model. Recomputed for",
+    "Reflective and symbolic, sourced from AVENYTH's knowledge package — not a prediction and not written by a language model. Recomputed for",
   "app.today.reflectionFootnoteSuffix": "not stored.",
 
   // Reports (list)
@@ -214,7 +214,7 @@ export const enApp: Record<keyof typeof deApp, string> = {
   "app.compare.chooseBody":
     "Open a person's profile, select two calculations from their history, and choose \"Compare selected\".",
   "app.compare.factualNote":
-    "This is a factual diff, nothing more: it shows which values differ between the two snapshots and stops there. Numra does not compute a growth score, an improvement percentage, or any judgment of which snapshot is \"better\".",
+    "This is a factual diff, nothing more: it shows which values differ between the two snapshots and stops there. AVENYTH does not compute a growth score, an improvement percentage, or any judgment of which snapshot is \"better\".",
   "app.compare.stableTitle": "Stable core numbers",
   "app.compare.stableChanged":
     "These differ between the two snapshots — likely because the person's name or birth data was edited in between.",
@@ -229,7 +229,7 @@ export const enApp: Record<keyof typeof deApp, string> = {
   "app.relationships.subtitle": "Compare two calculated profiles, metric by metric.",
   "app.relationships.formTitle": "Compare two profiles",
   "app.relationships.formBody":
-    "Numra compares each person's latest calculation. If someone has no calculation yet, run one first.",
+    "AVENYTH compares each person's latest calculation. If someone has no calculation yet, run one first.",
   "app.relationships.personA": "Person A",
   "app.relationships.personB": "Person B",
   "app.relationships.compare": "Compare",
@@ -242,7 +242,7 @@ export const enApp: Record<keyof typeof deApp, string> = {
   "app.relationships.comparisonsErrorTitle": "Could not load your comparisons",
   "app.relationships.emptyTitle": "Add a second profile to compare",
   "app.relationships.emptyBody":
-    "Numra needs at least two people, each with a calculation, before it can compare them.",
+    "AVENYTH needs at least two people, each with a calculation, before it can compare them.",
   "app.relationships.open": "Open",
 
   // Relationship detail
@@ -252,7 +252,7 @@ export const enApp: Record<keyof typeof deApp, string> = {
   "app.relationshipDetail.loading": "Loading comparison…",
   "app.relationshipDetail.errorTitle": "Could not load this comparison",
   "app.relationshipDetail.noScoreNote":
-    "Numra compares two profiles metric by metric and stops there. It does not compute a compatibility percentage, a match count, or any other combined score — there is no defensible deterministic method for one, so inventing a number would undermine everything else on this page.",
+    "AVENYTH compares two profiles metric by metric and stops there. It does not compute a compatibility percentage, a match count, or any other combined score — there is no defensible deterministic method for one, so inventing a number would undermine everything else on this page.",
   "app.relationshipDetail.coreTitle": "Core numbers",
   "app.relationshipDetail.coreBody":
     "Derived from each person's birth name and birth date. These do not change.",
@@ -264,14 +264,14 @@ export const enApp: Record<keyof typeof deApp, string> = {
   "app.relationshipDetail.noMetrics": "This comparison did not include any of the expected metrics.",
   "app.relationshipDetail.notesTitle": "Relationship notes",
   "app.relationshipDetail.notesBody":
-    "How each person's number tends to show up in relationships, side by side — sourced from Numra's knowledge package, not generated per comparison.",
+    "How each person's number tends to show up in relationships, side by side — sourced from AVENYTH's knowledge package, not generated per comparison.",
   "app.relationshipDetail.sameNumber": "Same number",
   "app.relationshipDetail.calcA": "Calculation A",
   "app.relationshipDetail.calcB": "Calculation B",
 
   // Settings: privacy
   "app.privacy.title": "Privacy & data",
-  "app.privacy.subtitle": "What Numra stores, what it never computes, and how to remove all of it.",
+  "app.privacy.subtitle": "What AVENYTH stores, what it never computes, and how to remove all of it.",
   "app.privacy.storedTitle": "What is stored on the server",
   "app.privacy.storedProfiles": "Person profiles",
   "app.privacy.storedProfilesBody":
@@ -318,7 +318,7 @@ export const enApp: Record<keyof typeof deApp, string> = {
 
   // Settings: system info
   "app.systemInfo.title": "System info",
-  "app.systemInfo.body": "What this Numra instance is running.",
+  "app.systemInfo.body": "What this AVENYTH instance is running.",
   "app.systemInfo.environment": "Environment",
   "app.systemInfo.timezone": "App timezone",
   "app.systemInfo.sessionLifetime": "Session lifetime",
@@ -332,7 +332,7 @@ export const enApp: Record<keyof typeof deApp, string> = {
   // Delete account
   "app.deleteAccount.title": "Delete my account",
   "app.deleteAccount.body":
-    "Permanently erases everything Numra stores for you. There is no undo, no export step afterwards and no grace period.",
+    "Permanently erases everything AVENYTH stores for you. There is no undo, no export step afterwards and no grace period.",
   "app.deleteAccount.listIntro": "This deletes, permanently:",
   "app.deleteAccount.itemProfiles": "every person profile you have created",
   "app.deleteAccount.itemCalculations": "every calculation and its stored trace",

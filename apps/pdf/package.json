@@ -2,7 +2,7 @@
   "name": "@numra/pdf",
   "private": true,
   "version": "1.0.0",
-  "description": "Internal NUMRA PDF rendering service — renders a StructuredReport JSON payload to PDF via Playwright/Chromium. Not a public/general URL renderer (no SSRF surface).",
+  "description": "Internal AVENYTH PDF rendering service — renders a StructuredReport JSON payload to PDF via Playwright/Chromium. Not a public/general URL renderer (no SSRF surface).",
   "type": "module",
   "main": "src/server.js",
   "scripts": {

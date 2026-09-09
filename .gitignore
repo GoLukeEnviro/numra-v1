@@ -40,3 +40,6 @@ test-results/
 # Build artifacts
 apps/web/dist/
 apps/web/.vite/
+
+# Lokaler, transienter Execution-State (nie committen)
+.claude/avenyth-execution-state.local.md

@@ -77,7 +77,7 @@ describe("Onboarding page", () => {
     authenticated();
     renderPage();
 
-    expect(await screen.findByText("Willkommen bei Numra")).toBeInTheDocument();
+    expect(await screen.findByText("Willkommen bei AVENYTH")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Erstes Profil anlegen" })).toBeInTheDocument();
   });
 });

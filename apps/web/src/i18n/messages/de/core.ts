@@ -1,5 +1,5 @@
 /**
- * German is Numra's default UI language (V1.5 Epic G) -- this is the catalog
+ * German is AVENYTH's default UI language (V1.5 Epic G) -- this is the catalog
  * loaded when no locale preference has been chosen yet. Keys mirror en.ts 1:1;
  * `apps/web/src/i18n/catalog.ts` enforces that at the type level.
  */
@@ -22,7 +22,7 @@ export const deCore = {
   "common.tryAgain": "Erneut versuchen",
   "common.somethingWrong": "Etwas ist schiefgelaufen",
   "common.networkError": "Der Server ist nicht erreichbar.",
-  "common.appLoading": "Numra wird geladen…",
+  "common.appLoading": "AVENYTH wird geladen…",
 
   "shell.skipToContent": "Zum Inhalt springen",
   "shell.dismiss": "Schließen",
@@ -37,7 +37,7 @@ export const deCore = {
   "settings.languageGerman": "Deutsch",
   "settings.languageEnglish": "English",
   "settings.privacyData": "Datenschutz & Daten",
-  "settings.privacyDataDescription": "Was Numra über dich speichert und wie du es entfernst.",
+  "settings.privacyDataDescription": "Was AVENYTH über dich speichert und wie du es entfernst.",
   "settings.viewPrivacySettings": "Datenschutzeinstellungen ansehen",
 
   "workspace.switcherAriaLabel": "Workspace wechseln",

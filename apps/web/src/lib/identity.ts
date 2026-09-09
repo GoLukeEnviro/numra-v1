@@ -1,4 +1,5 @@
 import type { PersonOut } from "@/api/client";
+import { BRAND_NAME } from "@/lib/brand";
 
 /**
  * Builds the "Identity" snapshot shown on a person's profile — birth/current/
@@ -91,7 +92,7 @@ export function buildIdentityTimeline(person: PersonOut): IdentityEntry[] {
       id: "preferred",
       label: "Preferred name",
       name: preferredName,
-      note: "How this person is addressed in Numra. Never used in a calculation.",
+      note: `How this person is addressed in ${BRAND_NAME}. Never used in a calculation.`,
       drivesCoreNumbers: false,
       partial: false,
     });
