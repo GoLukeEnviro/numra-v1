@@ -36,6 +36,14 @@ export default defineConfig({
   // The spec's own test.setTimeout(300_000) takes precedence for that test; this
   // config-level default is kept in step so it's never the tighter of the two.
   timeout: 300_000,
+  // Playwright's built-in default expect() timeout (5_000ms) is too tight for
+  // individual assertions in this long, single-worker journey against a real,
+  // freshly-booted stack under CI load -- observed causing sporadic failures at
+  // arbitrary, different steps of the same test across unrelated commits (see
+  // recurring "element not found" failures on main's post-merge docker-compose-e2e
+  // run). The overall 300_000ms budget above was already generous; this raises the
+  // per-assertion budget to match, without touching test logic or retries.
+  expect: { timeout: 15_000 },
   reporter: [["list"]],
   use: {
     baseURL: `http://localhost:${port}`,
