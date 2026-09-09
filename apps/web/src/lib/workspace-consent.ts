@@ -1,4 +1,4 @@
-import type { WorkspaceConsentOut } from "@/api/client";
+import type { ConsentGrantOut, WorkspaceConsentOut } from "@/api/client";
 
 /** Fixed per canon-spec/consent-spec: 8 `ConsentScope` values total (3 default + 5
  *  extended, see `app/workspaces/[id]/consent/page.tsx`'s DEFAULT_SCOPES/
@@ -17,11 +17,11 @@ export interface ConsentSummary {
  *  could in principle appear more than once across grant history, so the count is
  *  deduplicated by scope, not by grant record. */
 export function summarizeConsent(consent: WorkspaceConsentOut): ConsentSummary {
-  const activeByMe = consent.granted_by_me.filter((g) => g.revoked_at === null);
-  const activeToMe = consent.granted_to_me.filter((g) => g.revoked_at === null);
+  const activeByMe = consent.granted_by_me.filter((g: ConsentGrantOut) => g.revoked_at === null);
+  const activeToMe = consent.granted_to_me.filter((g: ConsentGrantOut) => g.revoked_at === null);
   return {
-    grantedByMeCount: new Set(activeByMe.map((g) => g.scope)).size,
-    grantedToMeCount: new Set(activeToMe.map((g) => g.scope)).size,
+    grantedByMeCount: new Set(activeByMe.map((g: ConsentGrantOut) => g.scope)).size,
+    grantedToMeCount: new Set(activeToMe.map((g: ConsentGrantOut) => g.scope)).size,
     totalScopes: TOTAL_CONSENT_SCOPES,
   };
 }
