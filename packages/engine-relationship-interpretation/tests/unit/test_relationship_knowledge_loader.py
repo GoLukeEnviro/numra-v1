@@ -49,10 +49,40 @@ def test_load_friendship_frame() -> None:
     assert frame.relationship_type == "FRIENDSHIP"
 
 
+ALL_RELATIONSHIP_TYPES = (
+    "PARTNER",
+    "DATING",
+    "FRIENDSHIP",
+    "FAMILY",
+    "SIBLINGS",
+    "PARENT_CHILD",
+    "WORK",
+    "OTHER",
+)
+
+
+@pytest.mark.parametrize("relationship_type", ALL_RELATIONSHIP_TYPES)
+def test_load_relationship_frame_covers_all_relationship_types(relationship_type: str) -> None:
+    """specs/v2/relationship-type-spec.md defines 8 RelationshipType values -- every
+    one of them must resolve to a valid, non-None frame (closes the 409
+    KnowledgeFrameNotAvailable gap for DATING/FAMILY/SIBLINGS/PARENT_CHILD/WORK/OTHER)."""
+    frame = load_relationship_frame(KNOWLEDGE_ROOT, relationship_type)
+    assert frame is not None
+    assert frame.relationship_type == relationship_type
+    assert frame.dimensions
+    for dimension in frame.dimensions.values():
+        assert dimension.semantic_context_de.strip()
+        for life_path in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "11", "22", "33"):
+            assert life_path in dimension.number_modifiers
+            assert dimension.number_modifiers[life_path].strip()
+
+
 def test_load_unknown_relationship_type_returns_none() -> None:
-    """WORK/FAMILY/etc. have no frame file in this PR -- expected, not an error."""
-    assert load_relationship_frame(KNOWLEDGE_ROOT, "WORK") is None
-    assert load_relationship_frame(KNOWLEDGE_ROOT, "OTHER") is None
+    """A relationship type with no matching frame file returns None -- expected, not
+    an error. All 8 spec'd RelationshipType values now have frames (see
+    test_load_relationship_frame_covers_all_relationship_types), so this exercises a
+    type outside the enum instead."""
+    assert load_relationship_frame(KNOWLEDGE_ROOT, "NOT_A_REAL_TYPE") is None
 
 
 def test_load_shadow_interaction_manifest() -> None:

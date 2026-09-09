@@ -1,0 +1,110 @@
+relationship_type: DATING
+dimensions:
+  communication:
+    semantic_context_de: >-
+      Wie beide Personen in der Kennenlernphase typischerweise Interesse, Gedanken und
+      Beduerfnisse ausdruecken und aufnehmen -- Tonfall, Direktheit, Zuhoerverhalten in
+      einer sich erst formenden Verbindung. Eine deskriptive Linse, keine Bewertung.
+    number_modifiers:
+      "1": "direkt, sagt Interesse offen an, kann bei Zoegern ungeduldig wirken"
+      "2": "einfuehlsam, tastet sich vorsichtig heran, vermeidet klare Ansagen"
+      "3": "verspielt, humorvoll, haelt den Austausch bewusst leicht"
+      "4": "sachlich, klaert Erwartungen gern fruehzeitig und konkret"
+      "5": "spontan, wechselt Themen schnell, mag keine festen Gespraechsmuster"
+      "6": "fuersorglich, fragt frueh nach dem Wohlbefinden des Gegenuebers"
+      "7": "zurueckhaltend, beobachtet zunaechst, oeffnet sich erst nach und nach"
+      "8": "zielgerichtet, klaert Absichten oft frueh und direkt"
+      "9": "offen, idealistisch, interessiert an groesseren Gemeinsamkeiten"
+      "11": "intuitiv, spuert Stimmungen des Gegenuebers schnell auf"
+      "22": "strukturiert, denkt frueh an eine moegliche gemeinsame Richtung"
+      "33": "warmherzig, stellt eigene Erwartungen zunaechst zurueck"
+  attraction_dynamics:
+    semantic_context_de: >-
+      Ein symbolisches Deutungsangebot dazu, welche Qualitaeten in der Anziehung
+      zwischen beiden Zahlenprofilen typischerweise eine Rolle spielen koennten --
+      keine Aussage darueber, ob eine Verbindung gelingen oder scheitern wird.
+    number_modifiers:
+      "1": "wirkt anziehend ueber Klarheit, Initiative und Eigenstaendigkeit"
+      "2": "wirkt anziehend ueber Aufmerksamkeit und einfuehlsame Praesenz"
+      "3": "wirkt anziehend ueber Leichtigkeit, Witz und Ausdrucksfreude"
+      "4": "wirkt anziehend ueber Verlaesslichkeit und ruhige Bodenstaendigkeit"
+      "5": "wirkt anziehend ueber Spontaneitaet und Abwechslungsreichtum"
+      "6": "wirkt anziehend ueber Fuersorglichkeit und Warmherzigkeit"
+      "7": "wirkt anziehend ueber Tiefgang und eine gewisse Unergruendlichkeit"
+      "8": "wirkt anziehend ueber Zielstrebigkeit und Praesenz"
+      "9": "wirkt anziehend ueber Grosszuegigkeit und weiten Blick"
+      "11": "wirkt anziehend ueber Intensitaet und intuitives Gespuer"
+      "22": "wirkt anziehend ueber visionaeres, bodenstaendiges Auftreten"
+      "33": "wirkt anziehend ueber warmherzige, ausgleichende Praesenz"
+  pace:
+    semantic_context_de: >-
+      Welches Tempo beim Naeherkommen -- Haeufigkeit der Treffen, Geschwindigkeit der
+      Vertiefung, Bereitschaft zu Festlegung -- typischerweise als stimmig empfunden
+      wird. Ein Reflexionsangebot, keine Regel.
+    number_modifiers:
+      "1": "bevorzugt zuegiges Vorangehen, sobald Interesse klar ist"
+      "2": "bevorzugt ein gemaechliches, gemeinsam abgestimmtes Tempo"
+      "3": "bevorzugt ein leichtes, unverbindlich wirkendes Tempo zu Beginn"
+      "4": "bevorzugt ein langsames, schrittweises Herantasten"
+      "5": "bevorzugt Offenheit im Tempo, meidet frueh feste Erwartungen"
+      "6": "bevorzugt zuegige Naehe, sobald Fuersorge erwidert wird"
+      "7": "bevorzugt ein sehr langsames Tempo mit viel Beobachtungszeit"
+      "8": "bevorzugt zielstrebiges Vorangehen, sobald Richtung klar ist"
+      "9": "bevorzugt ein offenes Tempo, orientiert an gemeinsamen Werten"
+      "11": "bevorzugt ein intuitiv gesteuertes, oft wechselndes Tempo"
+      "22": "bevorzugt ein bedaechtiges Tempo mit Blick auf Tragfaehigkeit"
+      "33": "passt das eigene Tempo oft an das Gegenueber an"
+  autonomy:
+    semantic_context_de: >-
+      Wie viel eigenstaendiger Raum -- Zeit, Entscheidungen, andere Kontakte --
+      waehrend der Kennenlernphase typischerweise gebraucht wird, unabhaengig vom
+      wachsenden Interesse am Gegenueber.
+    number_modifiers:
+      "1": "hoher Bedarf an eigenstaendigen Entscheidungen, auch beim Daten"
+      "2": "geringerer Autonomiebedarf, orientiert sich frueh am Miteinander"
+      "3": "braucht Raum fuer andere soziale Kontakte parallel zum Kennenlernen"
+      "4": "definiert Freiraum ueber feste eigene Routinen und Termine"
+      "5": "hoher Freiheitsbedarf, reagiert empfindlich auf fruehe Vereinnahmung"
+      "6": "stellt eigenen Freiraum zugunsten des Gegenuebers schnell zurueck"
+      "7": "hoher Bedarf an Rueckzug, auch bei wachsendem Interesse"
+      "8": "braucht Autonomie vor allem bei eigenen Zielen und Terminen"
+      "9": "definiert Freiraum oft ueber eigene Wertefragen und Engagements"
+      "11": "braucht Freiraum zur Verarbeitung intensiver neuer Eindruecke"
+      "22": "verbindet Autonomie mit Blick auf laengerfristige Plaene"
+      "33": "sollte aktiv eigenen Freiraum einfordern, statt ihn frueh aufzugeben"
+  needs:
+    semantic_context_de: >-
+      Beschreibende Reflexion typischer emotionaler Grundbeduerfnisse in der
+      Kennenlernphase -- Bestaetigung, Sicherheit, Anregung. Ein symbolisches
+      Deutungsangebot, keine klinische Einordnung.
+    number_modifiers:
+      "1": "Bestaetigung der eigenen Initiative beim Naeherkommen"
+      "2": "das Gefuehl, aktiv und verlaesslich umworben zu werden"
+      "3": "Wertschaetzung fuer Leichtigkeit und Ausdrucksfreude"
+      "4": "Sicherheit durch klare Signale statt Unverbindlichkeit"
+      "5": "Freiraum, ohne dafuer als unverbindlich abgestempelt zu werden"
+      "6": "das Gefuehl, dass Fuersorge auch erwidert wird"
+      "7": "Respekt vor dem eigenen, langsameren Tempo der Oeffnung"
+      "8": "Anerkennung von Zielstrebigkeit beim Naeherkommen"
+      "9": "das Gefuehl geteilter Werte und Zukunftsvorstellungen"
+      "11": "Verstaendnis fuer die eigene emotionale Intensitaet"
+      "22": "das Gefuehl, dass eine gemeinsame Richtung denkbar ist"
+      "33": "Ausgleich -- das eigene Entgegenkommen sollte erwidert werden"
+  conflict_dynamics:
+    semantic_context_de: >-
+      Wie erste Missverstaendnisse oder Spannungen in der Kennenlernphase
+      typischerweise entstehen und gehandhabt werden -- symbolisch aus dem
+      Zahlenprofil gelesen, nie als Vorhersage, sondern als Reflexionsangebot.
+    number_modifiers:
+      "1": "neigt bei Irritation zu schnellem Rueckzug aus dem Kontakt"
+      "2": "neigt zu Konfliktvermeidung, auch bei deutlichem Unbehagen"
+      "3": "neigt zu Ablenkung oder Themenwechsel statt Klaerung"
+      "4": "neigt zu starrem Festhalten an einmal gefassten Eindruecken"
+      "5": "neigt zu Distanzierung oder Kontaktabbruch bei Irritation"
+      "6": "neigt dazu, eigene Bedenken zugunsten der Harmonie zu verschweigen"
+      "7": "neigt zu stillem Rueckzug statt offener Ansprache"
+      "8": "neigt zu direkter Konfrontation statt abwartender Klaerung"
+      "9": "neigt dazu, Irritationen zu ueberspielen, um Harmonie zu wahren"
+      "11": "neigt zu Ueberempfindlichkeit bei wahrgenommener Zurueckweisung"
+      "22": "neigt dazu, langfristige Erwartungen ueber akute Spannungen zu stellen"
+      "33": "neigt dazu, eigene Grenzen erst spaet deutlich zu machen"

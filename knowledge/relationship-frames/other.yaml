@@ -1,0 +1,109 @@
+relationship_type: OTHER
+dimensions:
+  communication:
+    semantic_context_de: >-
+      Wie beide Beteiligten in dieser Beziehung typischerweise miteinander sprechen --
+      Tonfall, Direktheit, Zuhoerverhalten. Eine deskriptive, bewusst allgemein
+      gehaltene Linse auf Ausdrucksstil, keine Bewertung von richtig oder falsch.
+    number_modifiers:
+      "1": "direkt, meinungsstark, ergreift oft die Initiative im Gespraech"
+      "2": "einfuehlsam, sucht Konsens, vermeidet moeglicherweise klare Aussagen"
+      "3": "ausdrucksstark, locker, bringt Leichtigkeit in den Austausch"
+      "4": "sachlich, strukturiert, bevorzugt klare Absprachen"
+      "5": "spontan, abwechslungsreich, meldet sich unregelmaessig"
+      "6": "fuersorglich, fragt oft aktiv nach dem Wohlergehen"
+      "7": "reflektiert, waegt Worte ab, braucht Zeit vor einer Antwort"
+      "8": "zielgerichtet, bringt Themen pragmatisch auf den Punkt"
+      "9": "offen, interessiert an groesseren Zusammenhaengen"
+      "11": "intuitiv, nimmt Stimmungen des Gegenuebers schnell wahr"
+      "22": "strukturiert und weitblickend zugleich"
+      "33": "warmherzig, stellt eigene Anliegen im Gespraech oft zurueck"
+  closeness:
+    semantic_context_de: >-
+      Wie Naehe und Verbundenheit in dieser Beziehung typischerweise erlebt werden --
+      Haeufigkeit des Kontakts, emotionale Tiefe, bevorzugte Formen des Austauschs.
+      Bewusst neutral gehalten, nicht auf eine bestimmte Beziehungsform festgelegt.
+    number_modifiers:
+      "1": "schaetzt Naehe, die die eigene Unabhaengigkeit nicht einschraenkt"
+      "2": "sucht regelmaessigen, verlaesslichen Kontakt"
+      "3": "erlebt Naehe ueber gemeinsame Erlebnisse und Leichtigkeit"
+      "4": "baut Naehe langsam ueber wiederkehrende, verlaessliche Kontakte auf"
+      "5": "erlebt Naehe episodisch, oft intensiv bei gemeinsamen Unternehmungen"
+      "6": "zeigt Naehe durch praktische Unterstuetzung und Fuersorge"
+      "7": "braucht auch bei Naehe klare Rueckzugsraeume"
+      "8": "verbindet Naehe oft mit gemeinsamen Vorhaben oder Zielen"
+      "9": "erlebt Naehe als Teil eines groesseren, mitfuehlenden Miteinanders"
+      "11": "erlebt Naehe intensiv und intuitiv"
+      "22": "verbindet Naehe mit langfristig gemeinsam verfolgten Vorhaben"
+      "33": "gibt viel in dieser Beziehung, sollte auf Gegenseitigkeit achten"
+  autonomy:
+    semantic_context_de: >-
+      Wie viel eigenstaendiger Raum -- Zeit, Entscheidungen, eigene Interessen --
+      innerhalb dieser Beziehung typischerweise gebraucht wird, unabhaengig von der
+      Naehe zum Gegenueber.
+    number_modifiers:
+      "1": "hoher Bedarf an eigenstaendigen Entscheidungen und Freiraum"
+      "2": "geringerer eigener Autonomiebedarf, orientiert sich oft am Miteinander"
+      "3": "braucht Raum fuer eigene Ausdrucksformen und soziale Kontakte"
+      "4": "definiert Autonomie oft ueber eigene Strukturen und Zustaendigkeiten"
+      "5": "hoher Freiheitsbedarf, reagiert empfindlich auf Einengung"
+      "6": "stellt eigenen Freiraum haeufig hinter die Beduerfnisse anderer zurueck"
+      "7": "hoher Bedarf an ungestoertem Rueckzug und eigenem Gedankenraum"
+      "8": "braucht Autonomie vor allem in zielbezogenen Bereichen"
+      "9": "definiert Freiraum oft ueber Sinn- und Wertefragen"
+      "11": "braucht Freiraum fuer innere Verarbeitung sensibler Eindruecke"
+      "22": "verbindet Autonomie mit Verantwortung fuer groessere Vorhaben"
+      "33": "sollte aktiv eigenen Freiraum einfordern, statt ihn stillschweigend aufzugeben"
+  needs:
+    semantic_context_de: >-
+      Beschreibende Reflexion typischer emotionaler Grundbeduerfnisse innerhalb dieser
+      Beziehung -- Anerkennung, Sicherheit, Anregung, Verlaesslichkeit. Ein
+      symbolisches Deutungsangebot, keine klinische Einordnung.
+    number_modifiers:
+      "1": "Anerkennung der eigenen Initiative und Eigenstaendigkeit"
+      "2": "Verlaesslichkeit und das Gefuehl, gebraucht zu werden"
+      "3": "Wertschaetzung fuer Lebendigkeit und Ausdrucksfreude"
+      "4": "Sicherheit durch klare Absprachen und Verlaesslichkeit"
+      "5": "Abwechslung und das Gefuehl, nicht eingeengt zu sein"
+      "6": "Wertschaetzung der eigenen Fuersorge, ohne sie als selbstverstaendlich zu nehmen"
+      "7": "Respekt vor dem eigenen Rueckzugsbeduerfnis"
+      "8": "Anerkennung von Einsatz und gemeinsamer Zielverfolgung"
+      "9": "das Gefuehl, dass die eigenen Ideale geteilt oder respektiert werden"
+      "11": "Verstaendnis fuer die eigene emotionale Sensibilitaet"
+      "22": "Unterstuetzung fuer langfristige, groessere Vorhaben"
+      "33": "Ausgleich -- das eigene Geben sollte auch erwidert werden"
+  conflict_dynamics:
+    semantic_context_de: >-
+      Wie Spannungen in dieser Beziehung typischerweise entstehen und ausgetragen
+      werden -- symbolisch aus dem Zahlenprofil gelesen, nie als Vorhersage, sondern
+      als Reflexionsangebot.
+    number_modifiers:
+      "1": "neigt bei Widerstand zu Ungeduld oder Alleingaengen"
+      "2": "neigt bei Spannung zu Konfliktvermeidung statt offener Aussprache"
+      "3": "neigt zu Ablenkung oder Themenwechsel statt Klaerung"
+      "4": "neigt zu Rigiditaet und Festhalten am eigenen Standpunkt"
+      "5": "neigt zu Rueckzug in Ablenkung statt Auseinandersetzung"
+      "6": "neigt zu Ueberverantwortung -- uebernimmt Schuld, um Frieden zu wahren"
+      "7": "neigt zu emotionalem Rueckzug und Distanz statt Aussprache"
+      "8": "neigt zu Kontrolle und Machtkonflikten statt Kompromiss"
+      "9": "neigt zu Selbstaufgabe, um Harmonie zu erzwingen"
+      "11": "neigt zu Ueberempfindlichkeit bei wahrgenommener Kritik"
+      "22": "neigt dazu, grosse Plaene ueber akute Spannungen zu stellen"
+      "33": "neigt dazu, eigene Grenzen zu spaet zu setzen"
+  strengths:
+    semantic_context_de: >-
+      Woraus diese Beziehung typischerweise Kraft zieht -- komplementaere oder
+      gemeinsame Staerken beider Zahlen, symbolisch gelesen, nicht als Garantie.
+    number_modifiers:
+      "1": "bringt Initiative und klare Richtung ein"
+      "2": "bringt Ausgleich, Kooperationsbereitschaft und Feingefuehl ein"
+      "3": "bringt Leichtigkeit, Ausdrucksfreude und Verbindungskraft ein"
+      "4": "bringt Verlaesslichkeit und praktische Struktur ein"
+      "5": "bringt Beweglichkeit und Offenheit fuer Neues ein"
+      "6": "bringt Fuersorge und Verantwortungsbewusstsein ein"
+      "7": "bringt Tiefe, Reflexion und Klarheit ein"
+      "8": "bringt Zielstrebigkeit und Umsetzungskraft ein"
+      "9": "bringt Grosszuegigkeit und weiten Blick ein"
+      "11": "bringt Intuition und Sensibilitaet fuer Zwischentoene ein"
+      "22": "bringt visionaeres, strukturiertes Denken ein"
+      "33": "bringt warmherzige, ausgleichende Praesenz ein"

@@ -1,0 +1,110 @@
+relationship_type: WORK
+dimensions:
+  collaboration:
+    semantic_context_de: >-
+      Wie beide Beteiligten typischerweise an gemeinsamen Aufgaben und Projekten
+      zusammenarbeiten -- Arbeitsteilung, Abstimmungsbedarf, bevorzugter
+      Zusammenarbeitsstil. Eine deskriptive Linse, keine Bewertung der Eignung.
+    number_modifiers:
+      "1": "arbeitet am liebsten eigenstaendig mit klarer eigener Verantwortung"
+      "2": "arbeitet gern im Team, sucht enge Abstimmung mit anderen"
+      "3": "bringt Ideen und Leichtigkeit in die Zusammenarbeit ein"
+      "4": "bevorzugt klar strukturierte, planvolle Zusammenarbeit"
+      "5": "arbeitet gern abwechslungsreich, meidet starre Ablaeufe"
+      "6": "uebernimmt gern unterstuetzende, fuersorgliche Aufgaben im Team"
+      "7": "arbeitet am liebsten konzentriert und mit wenig Unterbrechung"
+      "8": "arbeitet zielorientiert, uebernimmt gern die Steuerung von Projekten"
+      "9": "bringt einen weiten Blick auf gemeinsame Ziele ein"
+      "11": "bringt intuitive Ideen und Gespuer fuer Teamstimmungen ein"
+      "22": "denkt bei der Zusammenarbeit an langfristig tragfaehige Loesungen"
+      "33": "unterstuetzt das Team oft ueber die eigene Rolle hinaus"
+  communication:
+    semantic_context_de: >-
+      Wie beide Beteiligten im beruflichen Kontext typischerweise kommunizieren --
+      Tonfall, Direktheit, bevorzugte Kanaele. Eine deskriptive Linse, keine
+      Bewertung von guter oder schlechter Kommunikation.
+    number_modifiers:
+      "1": "kommuniziert direkt und entscheidungsfreudig"
+      "2": "kommuniziert einfuehlsam, sucht Konsens vor klaren Ansagen"
+      "3": "kommuniziert lebendig, bringt Themen anschaulich rueber"
+      "4": "kommuniziert sachlich, bevorzugt schriftliche Klarheit"
+      "5": "kommuniziert spontan, wechselt Kanaele und Themen flexibel"
+      "6": "kommuniziert ruecksichtsvoll, achtet auf das Wohl des Teams"
+      "7": "kommuniziert zurueckhaltend, bevorzugt fokussierte Einzelgespraeche"
+      "8": "kommuniziert zielgerichtet, bringt Themen schnell auf den Punkt"
+      "9": "kommuniziert mit Blick auf uebergeordnete Zusammenhaenge"
+      "11": "nimmt Stimmungen im Team schnell und intuitiv wahr"
+      "22": "kommuniziert mit Blick auf langfristige Projektentwicklung"
+      "33": "kommuniziert warmherzig, vermittelt oft zwischen Positionen"
+  structure:
+    semantic_context_de: >-
+      Wie viel Struktur -- Prozesse, feste Ablaeufe, Planung -- im gemeinsamen
+      Arbeitskontext typischerweise als hilfreich empfunden wird. Ein
+      Reflexionsangebot, keine Vorschrift.
+    number_modifiers:
+      "1": "bevorzugt schlanke Strukturen mit viel eigenem Handlungsspielraum"
+      "2": "haelt sich gern an bestehende, gemeinsam abgestimmte Ablaeufe"
+      "3": "braucht wenig starre Struktur, mehr Raum fuer spontane Ideen"
+      "4": "bevorzugt klare, verlaessliche Prozesse und Planung"
+      "5": "empfindet zu viel Struktur schnell als einengend"
+      "6": "haelt sich an Strukturen, solange sie dem Team dienen"
+      "7": "bevorzugt Struktur, die konzentriertes Arbeiten ermoeglicht"
+      "8": "baut gern eigene, effiziente Strukturen fuer Ziele auf"
+      "9": "bevorzugt Struktur, die Raum fuer groessere Zusammenhaenge laesst"
+      "11": "arbeitet am besten mit flexibler Struktur, die Intuition zulaesst"
+      "22": "denkt Struktur konsequent langfristig und ausbaufaehig"
+      "33": "passt sich vorhandenen Strukturen meist unaufgeregt an"
+  autonomy:
+    semantic_context_de: >-
+      Wie viel eigenstaendiger Entscheidungs- und Handlungsspielraum im gemeinsamen
+      Arbeitskontext typischerweise gebraucht wird, unabhaengig von der
+      Zusammenarbeit mit dem anderen.
+    number_modifiers:
+      "1": "hoher Bedarf an eigenstaendigen Entscheidungen im Arbeitsalltag"
+      "2": "geringerer Autonomiebedarf, orientiert sich am Team"
+      "3": "braucht Raum fuer eigene, kreative Herangehensweisen"
+      "4": "definiert Autonomie ueber klar abgegrenzte Zustaendigkeiten"
+      "5": "hoher Freiheitsbedarf, reagiert empfindlich auf enge Kontrolle"
+      "6": "stellt eigenen Handlungsspielraum oft hinter Teaminteressen zurueck"
+      "7": "hoher Bedarf an ungestoertem, eigenstaendigem Arbeiten"
+      "8": "braucht Autonomie vor allem bei Zielsetzung und Umsetzung"
+      "9": "definiert Freiraum oft ueber eigene Werte und Sinnfragen"
+      "11": "braucht Freiraum zur Verarbeitung intensiver Eindruecke im Team"
+      "22": "verbindet Autonomie mit Verantwortung fuer groessere Vorhaben"
+      "33": "sollte aktiv eigenen Handlungsspielraum einfordern"
+  responsibility:
+    semantic_context_de: >-
+      Wie Verantwortung fuer Aufgaben und Ergebnisse typischerweise uebernommen und
+      verteilt wird. Ein symbolisches Deutungsangebot, keine Aussage ueber
+      tatsaechliche Kompetenz oder Leistung.
+    number_modifiers:
+      "1": "uebernimmt Verantwortung gern eigenstaendig und unmittelbar"
+      "2": "uebernimmt Verantwortung eher im Hintergrund und unterstuetzend"
+      "3": "uebernimmt Verantwortung locker, bevorzugt geteilte Aufgaben"
+      "4": "uebernimmt Verantwortung verlaesslich und nach klarem Plan"
+      "5": "uebernimmt Verantwortung flexibel, je nach aktuellem Interesse"
+      "6": "uebernimmt oft mehr Verantwortung, als formal erwartet wird"
+      "7": "uebernimmt Verantwortung fuer klar abgegrenzte, eigene Bereiche"
+      "8": "uebernimmt Verantwortung entschlossen, auch fuer groessere Vorhaben"
+      "9": "uebernimmt Verantwortung mit Blick auf das groessere Ganze"
+      "11": "uebernimmt Verantwortung mit hohem Feingefuehl fuer Details"
+      "22": "uebernimmt Verantwortung fuer langfristig angelegte Vorhaben"
+      "33": "uebernimmt haeufig ausgleichende Verantwortung fuer das Team"
+  power_dynamics:
+    semantic_context_de: >-
+      Eine deskriptive Betrachtung, wie Einfluss, Entscheidungsgewicht und Initiative
+      zwischen beiden typischerweise verteilt sein koennten -- ausdruecklich nicht als
+      Bewertung, wer "besser" oder "wichtiger" ist, sondern als Reflexionsangebot.
+    number_modifiers:
+      "1": "neigt dazu, Einfluss ueber eigene Initiative zu beanspruchen"
+      "2": "neigt dazu, Einfluss eher zurueckhaltend und im Hintergrund auszuueben"
+      "3": "neigt dazu, Einfluss ueber Charme und Ideenreichtum zu gewinnen"
+      "4": "neigt dazu, Einfluss ueber Verlaesslichkeit und Fachwissen zu gewinnen"
+      "5": "neigt dazu, feste Machtstrukturen eher zu meiden"
+      "6": "neigt dazu, Einfluss ueber Fuersorge und Vermittlung auszuueben"
+      "7": "neigt dazu, Einfluss ueber fachliche Tiefe statt Praesenz zu gewinnen"
+      "8": "neigt dazu, Einfluss aktiv und sichtbar zu beanspruchen"
+      "9": "neigt dazu, Einfluss ueber Weitblick und Ueberzeugungskraft zu gewinnen"
+      "11": "neigt dazu, Einfluss ueber intuitives Gespuer fuer Stimmungen zu gewinnen"
+      "22": "neigt dazu, Einfluss ueber langfristige, strukturierte Vorhaben zu gewinnen"
+      "33": "neigt dazu, eigenen Einfluss zugunsten des Teams zurueckzustellen"

@@ -1,0 +1,110 @@
+relationship_type: SIBLINGS
+dimensions:
+  rivalry_and_cooperation:
+    semantic_context_de: >-
+      Zwei Pole, die in Geschwisterbeziehungen typischerweise nebeneinander bestehen
+      -- Wetteifer um Anerkennung und gemeinsames Zusammenwirken. Ein symbolisches
+      Deutungsangebot, nie nur negativ und nie eine feste Zuschreibung.
+    number_modifiers:
+      "1": "neigt zu Wetteifer um die Vorreiterrolle, kooperiert bei klarer Aufgabenteilung"
+      "2": "sucht eher Kooperation, meidet offenen Wettstreit"
+      "3": "wechselt zwischen spielerischem Wetteifer und leichtem Miteinander"
+      "4": "kooperiert ueber klare, verlaessliche Rollenverteilung"
+      "5": "meidet feste Rollen, wechselt zwischen Eigenstaendigkeit und Miteinander"
+      "6": "kooperiert ueber Fuersorge, vermeidet offenen Wettstreit"
+      "7": "haelt sich aus Wetteifer eher heraus, kooperiert selektiv"
+      "8": "neigt zu Wetteifer um Status oder Anerkennung innerhalb der Geschwisterreihe"
+      "9": "sucht eher Ausgleich und gemeinsames Handeln als Wettstreit"
+      "11": "erlebt Wetteifer und Verbundenheit oft besonders intensiv zugleich"
+      "22": "kooperiert mit Blick auf gemeinsame langfristige Vorhaben"
+      "33": "stellt eigenen Wetteifer meist zugunsten der Harmonie zurueck"
+  communication:
+    semantic_context_de: >-
+      Wie Geschwister typischerweise miteinander sprechen -- Direktheit, Vertrautheit,
+      Umgang mit alten Mustern aus der gemeinsamen Kindheit. Eine deskriptive Linse,
+      keine Bewertung.
+    number_modifiers:
+      "1": "spricht direkt, uebernimmt oft die Gespraechsfuehrung"
+      "2": "sucht einfuehlsamen Austausch, vermeidet offene Konfrontation"
+      "3": "haelt den Ton meist locker und humorvoll"
+      "4": "bevorzugt sachliche, klare Absprachen unter Geschwistern"
+      "5": "meldet sich unregelmaessig, aber oft lebhaft und spontan"
+      "6": "fragt haeufig fuersorglich nach dem Wohlergehen"
+      "7": "braucht auch unter Geschwistern klare Rueckzugsraeume"
+      "8": "bringt Themen pragmatisch und zielgerichtet auf den Punkt"
+      "9": "spricht mit Blick auf das groessere Familienganze"
+      "11": "nimmt Untertoene im Gespraech besonders sensibel wahr"
+      "22": "spricht mit Blick auf langfristig gemeinsame Vorhaben"
+      "33": "spricht warmherzig, stellt eigene Anliegen oft zurueck"
+  loyalty:
+    semantic_context_de: >-
+      Wie Verbundenheit und Zusammenhalt unter Geschwistern typischerweise erlebt und
+      gezeigt werden -- ein symbolisches Deutungsangebot, keine Garantie fuer
+      bedingungslosen Beistand.
+    number_modifiers:
+      "1": "zeigt Loyalitaet durch entschlossenes Eintreten fuer Geschwister"
+      "2": "zeigt Loyalitaet durch verlaessliche, stille Unterstuetzung"
+      "3": "zeigt Loyalitaet durch aufmunternde Praesenz in schwierigen Zeiten"
+      "4": "zeigt Loyalitaet durch beharrliche, langfristige Verlaesslichkeit"
+      "5": "zeigt Loyalitaet unregelmaessig, aber intensiv wenn gebraucht"
+      "6": "zeigt Loyalitaet durch fuersorgliches, oft aufopferndes Einstehen"
+      "7": "zeigt Loyalitaet zurueckhaltend, eher durch Taten als Worte"
+      "8": "zeigt Loyalitaet durch tatkraeftiges Eintreten in Krisen"
+      "9": "zeigt Loyalitaet durch grosszuegiges, vorbehaltloses Zuwenden"
+      "11": "zeigt Loyalitaet durch feinfuehliges Miterleben der Situation"
+      "22": "zeigt Loyalitaet durch langfristig tragende Unterstuetzung"
+      "33": "zeigt Loyalitaet oft ueber die eigenen Grenzen hinaus"
+  boundaries:
+    semantic_context_de: >-
+      Wie Grenzen -- Einmischung, Vergleich, Privatsphaere -- zwischen Geschwistern
+      typischerweise gezogen werden. Eine deskriptive Linse, keine Bewertung von
+      richtig oder falsch.
+    number_modifiers:
+      "1": "zieht Grenzen klar, laesst sich ungern hineinreden"
+      "2": "faellt es schwerer, Grenzen gegenueber Geschwistern zu ziehen"
+      "3": "haelt Grenzen eher locker und situativ"
+      "4": "zieht Grenzen ueber feste, klare Absprachen"
+      "5": "braucht deutliche Grenzen zum Schutz der eigenen Unabhaengigkeit"
+      "6": "faellt es schwer, Grenzen zu ziehen, wenn Fuersorge erwartet wird"
+      "7": "zieht Grenzen konsequent, um Rueckzugsraeume zu sichern"
+      "8": "zieht Grenzen bestimmt, besonders bei Vergleich oder Bewertung"
+      "9": "haelt Grenzen bewusst weit, um Verbindung nicht zu gefaehrden"
+      "11": "braucht klare Grenzen zum Schutz vor emotionaler Ueberflutung"
+      "22": "zieht Grenzen im Sinne langfristig tragfaehiger Strukturen"
+      "33": "sollte aktiv Grenzen setzen, statt sie stillschweigend zu verschieben"
+  shared_history:
+    semantic_context_de: >-
+      Wie die gemeinsame Vergangenheit -- Kindheitserinnerungen, alte Rollen, frueh
+      gepraegte Muster -- die heutige Geschwisterbeziehung typischerweise mitpraegt.
+      Ein Reflexionsangebot, kein festgeschriebenes Schicksal.
+    number_modifiers:
+      "1": "loest sich vergleichsweise leicht von alten Kindheitsrollen"
+      "2": "traegt frueh uebernommene vermittelnde Rollen oft lange mit"
+      "3": "erinnert sich vor allem an leichte, verbindende Momente"
+      "4": "haelt an vertrauten, wiederkehrenden Familienritualen fest"
+      "5": "distanziert sich zeitweise von alten gemeinsamen Mustern"
+      "6": "traegt frueh uebernommene Fuersorgerollen oft lange mit"
+      "7": "verarbeitet gemeinsame Vergangenheit eher innerlich und leise"
+      "8": "traegt frueh uebernommene Verantwortungsrollen oft lange mit"
+      "9": "sieht die gemeinsame Vergangenheit oft versoehnlich und weit"
+      "11": "traegt fruehe emotionale Eindruecke besonders intensiv weiter"
+      "22": "sieht die gemeinsame Vergangenheit als Grundlage fuer Kuenftiges"
+      "33": "traegt frueh uebernommene ausgleichende Rollen oft lange mit"
+  conflict_dynamics:
+    semantic_context_de: >-
+      Wie Konflikte unter Geschwistern typischerweise entstehen und ausgetragen
+      werden -- symbolisch aus dem Zahlenprofil gelesen, nie als Vorhersage, sondern
+      als Reflexionsangebot.
+    number_modifiers:
+      "1": "neigt bei Reibung zu schnellem, direktem Widerspruch"
+      "2": "neigt zu Konfliktvermeidung statt offener Aussprache"
+      "3": "neigt zu Ablenkung oder Themenwechsel statt Klaerung"
+      "4": "neigt zu Rigiditaet und Festhalten am eigenen Standpunkt"
+      "5": "neigt zu Rueckzug oder Kontaktabbruch statt Auseinandersetzung"
+      "6": "neigt zu Ueberverantwortung -- uebernimmt Schuld, um Frieden zu wahren"
+      "7": "neigt zu stillem Rueckzug statt offener Aussprache"
+      "8": "neigt zu Machtkonflikten statt Kompromiss"
+      "9": "neigt zu Selbstaufgabe, um Familienfrieden zu wahren"
+      "11": "neigt zu Ueberempfindlichkeit bei wahrgenommener Zurueckweisung"
+      "22": "neigt dazu, gemeinsame Vorhaben ueber akute Spannungen zu stellen"
+      "33": "neigt dazu, eigene Grenzen zu spaet zu setzen"
