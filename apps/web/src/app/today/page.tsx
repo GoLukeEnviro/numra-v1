@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { LoadingState, ErrorState, EmptyState } from "@/components/ui/states";
 import { Select } from "@/components/ui/select";
@@ -58,7 +59,7 @@ function TodayForPerson({
   );
 }
 
-function TodayContent() {
+function TodayContent({ urlPersonId }: { urlPersonId: string | null }) {
   const { t } = useLocale();
   const peopleState = useAsync(() => api.people.list(), []);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -66,19 +67,24 @@ function TodayContent() {
 
   const people: PersonOut[] = peopleState.status === "success" ? peopleState.data : [];
 
-  // Open straight into the person last viewed here, when they still exist; otherwise
-  // the first profile. A remembered id is never trusted blindly — it is checked
-  // against what the API actually returned.
+  // Open straight into the person named in the URL when it's a valid, own person
+  // (never trust the URL blindly -- it's checked against api.people.list()'s
+  // result); otherwise the person last viewed here, when they still exist;
+  // otherwise the first profile.
   useEffect(() => {
     if (peopleState.status !== "success" || peopleState.data.length === 0) return;
     setSelectedId((current) => {
       if (current && peopleState.data.some((p) => p.id === current)) return current;
+      if (urlPersonId && peopleState.data.some((p) => p.id === urlPersonId)) {
+        setTodayPersonId(urlPersonId);
+        return urlPersonId;
+      }
       const remembered = getTodayPersonId();
       if (remembered && peopleState.data.some((p) => p.id === remembered)) return remembered;
       return peopleState.data[0]?.id ?? null;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [peopleState.status]);
+  }, [peopleState.status, urlPersonId]);
 
   function handleSelect(personId: string) {
     setSelectedId(personId);
@@ -141,10 +147,18 @@ function TodayContent() {
   );
 }
 
+function TodayGate() {
+  const searchParams = useSearchParams();
+  return <TodayContent urlPersonId={searchParams.get("person_id")} />;
+}
+
 export default function TodayPage() {
+  const { t } = useLocale();
   return (
     <AppShell>
-      <TodayContent />
+      <Suspense fallback={<LoadingState label={t("app.today.loadingPeople")} />}>
+        <TodayGate />
+      </Suspense>
     </AppShell>
   );
 }

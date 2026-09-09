@@ -43,4 +43,8 @@ export const enCore: Record<keyof typeof deCore, string> = {
 
   "workspace.switcherAriaLabel": "Switch workspace",
   "workspace.personalPrefix": "Personal space",
+  // Personal Workspace (PR-WEB-02): private-content marker + switcher profile type.
+  "workspace.privateLabel": "Private",
+  "workspace.selfProfileLabel": "Own profile",
+  "workspace.managedProfileLabel": "Managed profile",
 };
