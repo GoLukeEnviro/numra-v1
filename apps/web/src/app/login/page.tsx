@@ -2,6 +2,7 @@
 
 import { ApiError } from "@/api/client";
 import { Logo } from "@/components/brand/logo";
+import { BRAND_NAME } from "@/lib/brand";
 import { NumericWheel } from "@/components/layout/numeric-wheel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -81,7 +82,7 @@ export default function LoginPage() {
                 markClassName="h-10 w-10"
                 textClassName="text-2xl"
               />
-              <span className="hidden lg:inline">Numra</span>
+              <span className="hidden lg:inline">{BRAND_NAME}</span>
             </CardTitle>
             <CardDescription>{t("public.login.subtitle")}</CardDescription>
           </CardHeader>
