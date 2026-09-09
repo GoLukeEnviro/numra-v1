@@ -18,8 +18,13 @@ from numra_api.services.consent_service import (
     list_consent_for_workspace_member,
     revoke_consent,
 )
+from numra_api.services.feature_flags import require_v2_phase
 
-router = APIRouter(prefix="/v1/workspaces/{workspace_id}/consent", tags=["consent"])
+router = APIRouter(
+    prefix="/v1/workspaces/{workspace_id}/consent",
+    tags=["consent"],
+    dependencies=[Depends(require_v2_phase("connections"))],
+)
 
 
 def _grant_to_out(grant: ConsentGrant) -> ConsentGrantOut:

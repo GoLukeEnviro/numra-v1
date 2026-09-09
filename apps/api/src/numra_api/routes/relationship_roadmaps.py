@@ -22,6 +22,7 @@ from numra_api.schemas.roadmap import (
     RoadmapMilestoneOut,
     RoadmapMilestonePatchRequest,
 )
+from numra_api.services.feature_flags import require_v2_phase
 from numra_api.services.relationship_roadmap_service import (
     create_milestone,
     create_roadmap,
@@ -35,7 +36,11 @@ from numra_api.services.relationship_roadmap_service import (
     patch_roadmap,
 )
 
-router = APIRouter(prefix="/v1/workspaces/{workspace_id}", tags=["relationship-roadmaps"])
+router = APIRouter(
+    prefix="/v1/workspaces/{workspace_id}",
+    tags=["relationship-roadmaps"],
+    dependencies=[Depends(require_v2_phase("tasks"))],
+)
 
 
 def _roadmap_out(roadmap: RelationshipRoadmap) -> RelationshipRoadmapOut:

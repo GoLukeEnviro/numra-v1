@@ -33,8 +33,13 @@ from numra_api.services.connection_service import (
     preview_invitation,
     revoke_own_invitation,
 )
+from numra_api.services.feature_flags import require_v2_phase
 
-router = APIRouter(prefix="/v1/connections", tags=["connections"])
+router = APIRouter(
+    prefix="/v1/connections",
+    tags=["connections"],
+    dependencies=[Depends(require_v2_phase("connections"))],
+)
 
 
 def _invitation_to_out(invitation: ConnectionInvitation) -> ConnectionInvitationOut:

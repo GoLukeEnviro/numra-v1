@@ -22,9 +22,12 @@ from numra_api.schemas.private_reflection import (
 )
 from numra_api.schemas.shared_reflection import SharedReflectionOut, SharePrivateReflectionRequest
 from numra_api.services.errors import NotFoundError
+from numra_api.services.feature_flags import require_v2_master
 from numra_api.services.shared_reflection_service import share_private_reflection
 
-router = APIRouter(prefix="/v1", tags=["private-reflections"])
+router = APIRouter(
+    prefix="/v1", tags=["private-reflections"], dependencies=[Depends(require_v2_master())]
+)
 
 
 def _to_out(reflection: PrivateReflection) -> PrivateReflectionOut:

@@ -20,6 +20,7 @@ from numra_api.schemas.workspace_task import (
     WorkspaceTaskOut,
     WorkspaceTaskPatchRequest,
 )
+from numra_api.services.feature_flags import require_v2_phase
 from numra_api.services.workspace_task_service import (
     accept_task,
     create_task,
@@ -30,7 +31,11 @@ from numra_api.services.workspace_task_service import (
     patch_task,
 )
 
-router = APIRouter(prefix="/v1/workspaces/{workspace_id}", tags=["workspace-tasks"])
+router = APIRouter(
+    prefix="/v1/workspaces/{workspace_id}",
+    tags=["workspace-tasks"],
+    dependencies=[Depends(require_v2_phase("tasks"))],
+)
 
 
 def _to_out(task: WorkspaceTask) -> WorkspaceTaskOut:

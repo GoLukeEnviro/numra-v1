@@ -33,8 +33,13 @@ from numra_api.services.evidence_service import (
     compute_evidence_result_for_person,
     save_pattern_analysis,
 )
+from numra_api.services.feature_flags import require_v2_phase
 
-router = APIRouter(prefix="/v1", tags=["evidence"])
+router = APIRouter(
+    prefix="/v1",
+    tags=["evidence"],
+    dependencies=[Depends(require_v2_phase("evidence_layer"))],
+)
 
 
 def _to_analysis_out(analysis: PatternAnalysis) -> PatternAnalysisOut:

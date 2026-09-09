@@ -39,9 +39,14 @@ from numra_api.services.copilot_service import (
     post_message,
 )
 from numra_api.services.errors import ApplicationError
+from numra_api.services.feature_flags import require_v2_phase
 from numra_interpretation.llm.types import LLMProvider
 
-router = APIRouter(prefix="/v1/workspaces/{workspace_id}/copilot", tags=["copilot"])
+router = APIRouter(
+    prefix="/v1/workspaces/{workspace_id}/copilot",
+    tags=["copilot"],
+    dependencies=[Depends(require_v2_phase("copilot"))],
+)
 
 
 class _UnsupportedThreadScope(ApplicationError):

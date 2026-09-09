@@ -15,13 +15,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from numra_api.deps import get_current_user, get_db, require_csrf
 from numra_api.models import SharedReflection, User
 from numra_api.schemas.shared_reflection import SharedReflectionOut
+from numra_api.services.feature_flags import require_v2_phase
 from numra_api.services.shared_reflection_service import (
     delete_shared_reflection,
     get_shared_reflection,
     list_shared_reflections,
 )
 
-router = APIRouter(prefix="/v1/workspaces/{workspace_id}", tags=["shared-reflections"])
+router = APIRouter(
+    prefix="/v1/workspaces/{workspace_id}",
+    tags=["shared-reflections"],
+    dependencies=[Depends(require_v2_phase("relationship_workspaces"))],
+)
 
 
 def _to_out(reflection: SharedReflection) -> SharedReflectionOut:

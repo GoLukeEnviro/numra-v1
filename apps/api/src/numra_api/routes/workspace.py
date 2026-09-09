@@ -22,8 +22,9 @@ from numra_api.schemas.workspace import (
     WorkspaceReportsOut,
 )
 from numra_api.services.errors import NotFoundError
+from numra_api.services.feature_flags import require_v2_master
 
-router = APIRouter(prefix="/v1/me", tags=["workspace"])
+router = APIRouter(prefix="/v1/me", tags=["workspace"], dependencies=[Depends(require_v2_master())])
 
 
 @router.get("/workspace", response_model=WorkspaceOverviewOut)
