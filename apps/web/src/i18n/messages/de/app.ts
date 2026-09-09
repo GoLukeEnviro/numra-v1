@@ -4,7 +4,7 @@ export const deApp = {
   "app.dashboard.eyebrow": "Übersicht",
   "app.dashboard.heroTitle": "Numerologie, die du nachprüfen kannst",
   "app.dashboard.heroBody":
-    "Jede Zahl in Numra stammt aus einer deterministischen Engine und trägt die Herleitung, die sie erzeugt hat. Nichts auf irgendeinem Bildschirm wird geschätzt, geschönt gerundet oder von einem Sprachmodell geschrieben, ohne gegen die Berechnung geprüft zu sein.",
+    "Jede Zahl in AVENYTH stammt aus einer deterministischen Engine und trägt die Herleitung, die sie erzeugt hat. Nichts auf irgendeinem Bildschirm wird geschätzt, geschönt gerundet oder von einem Sprachmodell geschrieben, ohne gegen die Berechnung geprüft zu sein.",
   "app.dashboard.profileSingular": "Profil in deinem Konto",
   "app.dashboard.profilePlural": "Profile in deinem Konto",
   "app.dashboard.qaTodayTitle": "Heute",
@@ -121,13 +121,13 @@ export const deApp = {
   "app.identity.currentLabel": "Aktueller Name",
   "app.identity.currentNote": "Als Metadatum erfasst — verändert in dieser Version keine Kernzahl.",
   "app.identity.preferredLabel": "Rufname",
-  "app.identity.preferredNote": "So wird diese Person in Numra angesprochen. Geht nie in eine Berechnung ein.",
+  "app.identity.preferredNote": "So wird diese Person in AVENYTH angesprochen. Geht nie in eine Berechnung ein.",
   "app.identity.usedForCore": "Für Kernzahlen verwendet",
   "app.identity.partial": "Teilweise erfasst",
   "app.identity.partialNote":
     "Angezeigt werden nur die für dieses Profil gespeicherten Namensbestandteile — fehlende Teile werden nicht aus dem Geburtsnamen ergänzt.",
   "app.identity.noExtraNames":
-    "Für dieses Profil ist kein aktueller Name und kein Rufname erfasst. Numra zeigt nur Namen, die es tatsächlich gespeichert hat.",
+    "Für dieses Profil ist kein aktueller Name und kein Rufname erfasst. AVENYTH zeigt nur Namen, die es tatsächlich gespeichert hat.",
   "app.identity.recordedHistory": "Erfasste Historie",
   "app.identity.kindBirth": "Geburt",
   "app.identity.kindCurrent": "Aktuell",
@@ -212,7 +212,7 @@ export const deApp = {
   "app.compare.chooseBody":
     "Öffne das Profil einer Person, wähle zwei Berechnungen aus der Historie und dann „Auswahl vergleichen“.",
   "app.compare.factualNote":
-    "Dies ist ein sachlicher Diff, nicht mehr: Er zeigt, welche Werte sich zwischen den beiden Snapshots unterscheiden — und hört dort auf. Numra berechnet keinen Wachstums-Score, keinen Verbesserungs-Prozentsatz und kein Urteil, welcher Snapshot „besser“ wäre.",
+    "Dies ist ein sachlicher Diff, nicht mehr: Er zeigt, welche Werte sich zwischen den beiden Snapshots unterscheiden — und hört dort auf. AVENYTH berechnet keinen Wachstums-Score, keinen Verbesserungs-Prozentsatz und kein Urteil, welcher Snapshot „besser“ wäre.",
   "app.compare.stableTitle": "Stabile Kernzahlen",
   "app.compare.stableChanged":
     "Diese Werte unterscheiden sich zwischen den Snapshots — vermutlich, weil Name oder Geburtsdaten der Person zwischenzeitlich bearbeitet wurden.",
@@ -227,7 +227,7 @@ export const deApp = {
   "app.relationships.subtitle": "Vergleiche zwei berechnete Profile, Metrik für Metrik.",
   "app.relationships.formTitle": "Zwei Profile vergleichen",
   "app.relationships.formBody":
-    "Numra vergleicht die jeweils neueste Berechnung beider Personen. Wer noch keine hat, braucht zuerst eine.",
+    "AVENYTH vergleicht die jeweils neueste Berechnung beider Personen. Wer noch keine hat, braucht zuerst eine.",
   "app.relationships.personA": "Erste Person",
   "app.relationships.personB": "Zweite Person",
   "app.relationships.compare": "Vergleichen",
@@ -240,7 +240,7 @@ export const deApp = {
   "app.relationships.comparisonsErrorTitle": "Deine Vergleiche konnten nicht geladen werden",
   "app.relationships.emptyTitle": "Lege ein zweites Profil zum Vergleichen an",
   "app.relationships.emptyBody":
-    "Numra braucht mindestens zwei Personen mit je einer Berechnung, bevor es sie vergleichen kann.",
+    "AVENYTH braucht mindestens zwei Personen mit je einer Berechnung, bevor es sie vergleichen kann.",
   "app.relationships.open": "Öffnen",
 
   // Beziehungsdetail
@@ -250,7 +250,7 @@ export const deApp = {
   "app.relationshipDetail.loading": "Vergleich wird geladen…",
   "app.relationshipDetail.errorTitle": "Dieser Vergleich konnte nicht geladen werden",
   "app.relationshipDetail.noScoreNote":
-    "Numra vergleicht zwei Profile Metrik für Metrik und hört dort auf. Es berechnet keinen Kompatibilitäts-Prozentsatz, keine Trefferzahl und keinen kombinierten Score — dafür gibt es keine vertretbare deterministische Methode, und eine erfundene Zahl würde alles andere auf dieser Seite untergraben.",
+    "AVENYTH vergleicht zwei Profile Metrik für Metrik und hört dort auf. Es berechnet keinen Kompatibilitäts-Prozentsatz, keine Trefferzahl und keinen kombinierten Score — dafür gibt es keine vertretbare deterministische Methode, und eine erfundene Zahl würde alles andere auf dieser Seite untergraben.",
   "app.relationshipDetail.coreTitle": "Kernzahlen",
   "app.relationshipDetail.coreBody":
     "Abgeleitet aus Geburtsname und Geburtsdatum jeder Person. Diese Werte ändern sich nicht.",
@@ -269,7 +269,7 @@ export const deApp = {
 
   // Einstellungen: Datenschutz
   "app.privacy.title": "Datenschutz & Daten",
-  "app.privacy.subtitle": "Was Numra speichert, was es nie berechnet und wie du alles entfernst.",
+  "app.privacy.subtitle": "Was AVENYTH speichert, was es nie berechnet und wie du alles entfernst.",
   "app.privacy.storedTitle": "Was auf dem Server gespeichert wird",
   "app.privacy.storedProfiles": "Personenprofile",
   "app.privacy.storedProfilesBody":
@@ -316,7 +316,7 @@ export const deApp = {
 
   // Einstellungen: Systeminfo
   "app.systemInfo.title": "Systeminfo",
-  "app.systemInfo.body": "Womit diese Numra-Instanz läuft.",
+  "app.systemInfo.body": "Womit diese AVENYTH-Instanz läuft.",
   "app.systemInfo.environment": "Umgebung",
   "app.systemInfo.timezone": "App-Zeitzone",
   "app.systemInfo.sessionLifetime": "Sitzungsdauer",
@@ -330,7 +330,7 @@ export const deApp = {
   // Konto löschen
   "app.deleteAccount.title": "Mein Konto löschen",
   "app.deleteAccount.body":
-    "Löscht dauerhaft alles, was Numra über dich speichert. Es gibt kein Zurück, keinen nachträglichen Export und keine Schonfrist.",
+    "Löscht dauerhaft alles, was AVENYTH über dich speichert. Es gibt kein Zurück, keinen nachträglichen Export und keine Schonfrist.",
   "app.deleteAccount.listIntro": "Endgültig gelöscht werden:",
   "app.deleteAccount.itemProfiles": "jedes Personenprofil, das du angelegt hast",
   "app.deleteAccount.itemCalculations": "jede Berechnung samt gespeicherter Herleitung",

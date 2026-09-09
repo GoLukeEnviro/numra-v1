@@ -16,7 +16,7 @@ export const deAdmin = {
 
   // Login
   "admin.login.title": "Admin-Zugang",
-  "admin.login.subtitle": "Mit deinem Numra-Konto anmelden.",
+  "admin.login.subtitle": "Mit deinem AVENYTH-Konto anmelden.",
   "admin.login.hint": "Dieser Bereich ist ausschließlich für Administratoren.",
   "admin.login.email": "E-Mail",
   "admin.login.password": "Passwort",

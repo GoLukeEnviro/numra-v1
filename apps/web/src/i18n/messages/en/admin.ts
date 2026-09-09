@@ -18,7 +18,7 @@ export const enAdmin: Record<keyof typeof deAdmin, string> = {
 
   // Login
   "admin.login.title": "Admin access",
-  "admin.login.subtitle": "Sign in with your Numra account.",
+  "admin.login.subtitle": "Sign in with your AVENYTH account.",
   "admin.login.hint": "This area is reserved for administrators.",
   "admin.login.email": "Email",
   "admin.login.password": "Password",

@@ -42,7 +42,7 @@ export const dePublic = {
     "Gespeichert wird, was du eingibst: Profile, Berechnungen, Vergleiche, Berichte und dein Konto. Jedes Profil und das gesamte Konto sind jederzeit vollständig löschbar.",
   "public.landing.disclaimerTitle": "Hinweis",
   "public.landing.disclaimerBody":
-    "NUMRA ist ein symbolisches numerologisches Interpretationswerkzeug. Es bietet keine medizinische, rechtliche, finanzielle oder wissenschaftliche Beratung.",
+    "AVENYTH ist ein symbolisches numerologisches Interpretationswerkzeug. Es bietet keine medizinische, rechtliche, finanzielle oder wissenschaftliche Beratung.",
   "public.landing.finalCtaTitle": "Belege statt Behauptungen.",
   "public.landing.finalCtaBody": "Erstelle ein Konto und prüfe jede Zahl selbst nach.",
   "public.landing.footerPrivacy": "Datenschutz",
@@ -85,7 +85,7 @@ export const dePublic = {
   // Onboarding
   "public.onboarding.stepLabel": "Schritt",
   "public.onboarding.of": "von",
-  "public.onboarding.welcomeTitle": "Willkommen bei Numra",
+  "public.onboarding.welcomeTitle": "Willkommen bei AVENYTH",
   "public.onboarding.welcomeBody":
     "In drei kurzen Schritten legst du dein erstes Profil an und startest die erste deterministische Berechnung. Alles, was dabei entsteht, ist nachvollziehbar und jederzeit löschbar.",
   "public.onboarding.start": "Erstes Profil anlegen",
