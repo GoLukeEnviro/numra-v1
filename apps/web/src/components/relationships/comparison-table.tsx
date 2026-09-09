@@ -6,6 +6,7 @@ import {
   type RelationshipMetricKey,
 } from "@/api/canonical-profile";
 import { useLocale } from "@/i18n/context";
+import { BRAND_NAME } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 import { Check, Minus } from "lucide-react";
 
@@ -115,7 +116,7 @@ function GroupTable({
           <caption className="sr-only">
             {t(group.titleKey)}: each row shows both people&apos;s values for one metric and whether
             they are the same. No compatibility percentage or overall score is computed
-            anywhere in Numra.
+            anywhere in {BRAND_NAME}.
           </caption>
           <thead>
             <tr className="border-b border-white/10 text-xs uppercase tracking-wider text-muted">

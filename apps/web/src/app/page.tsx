@@ -41,7 +41,7 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
 
 /**
  * V1.6 B: the public landing page. Anonymous visitors are no longer redirected to
- * /login — this page is Numra's front door. A signed-in visitor keeps the page and
+ * /login — this page is AVENYTH's front door. A signed-in visitor keeps the page and
  * additionally gets a prominent way back into the product (never an auto-redirect).
  */
 export default function LandingPage() {
