@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { useParams } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardDescription, CardContent } from "@/components/ui/card";
 import { LinkButton } from "@/components/ui/link-button";
 import { LoadingState, ErrorState } from "@/components/ui/states";
 import { WorkspaceHeader } from "@/components/workspace/workspace-header";
@@ -16,24 +16,23 @@ import { formatDateTime } from "@/lib/utils";
 import { useLocale } from "@/i18n/context";
 import { ArrowRight } from "lucide-react";
 
+// The cluster's own label ("PROFIL", "MUSTER", ...) is the section heading -- no
+// second, near-duplicate CardTitle underneath it.
 function ClusterCard({
   eyebrow,
-  title,
   description,
   children,
 }: {
   eyebrow: string;
-  title: string;
   description: string;
   children?: ReactNode;
 }) {
   return (
     <section>
-      <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-bronze">{eyebrow}</p>
+      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-bronze">{eyebrow}</h2>
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">{title}</CardTitle>
-          <CardDescription>{description}</CardDescription>
+          <CardDescription className="mt-0">{description}</CardDescription>
         </CardHeader>
         {children && <CardContent>{children}</CardContent>}
       </Card>
@@ -54,7 +53,6 @@ function WorkspaceOverview({ personId, overview }: { personId: string; overview:
     <div className="flex flex-col gap-8">
       <ClusterCard
         eyebrow={t("app.workspace.clusterProfileTitle")}
-        title={t("app.workspace.clusterProfileTitle")}
         description={t("app.workspace.clusterProfileBody")}
       >
         <LinkButton href={`/people/${personId}`} variant="secondary" size="sm">
@@ -64,7 +62,6 @@ function WorkspaceOverview({ personId, overview }: { personId: string; overview:
 
       <ClusterCard
         eyebrow={t("app.workspace.clusterPatternTitle")}
-        title={t("app.workspace.clusterPatternTitle")}
         description={t("app.workspace.clusterPatternBody")}
       >
         {overview.latest_calculation ? (
@@ -78,7 +75,6 @@ function WorkspaceOverview({ personId, overview }: { personId: string; overview:
 
       <ClusterCard
         eyebrow={t("app.workspace.clusterTimingTitle")}
-        title={t("app.workspace.clusterTimingTitle")}
         description={t("app.workspace.clusterTimingBody")}
       >
         <LinkButton href={`/today?person_id=${personId}`} variant="secondary" size="sm">
@@ -87,9 +83,9 @@ function WorkspaceOverview({ personId, overview }: { personId: string; overview:
       </ClusterCard>
 
       <section>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-bronze">
+        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-bronze">
           {t("app.workspace.clusterWorkingTitle")}
-        </p>
+        </h2>
         <p className="mb-4 max-w-reading text-sm text-muted">{t("app.workspace.clusterWorkingBody")}</p>
         <div className="flex flex-col gap-4">
           <PersonalTasksPanel
@@ -112,7 +108,6 @@ function WorkspaceOverview({ personId, overview }: { personId: string; overview:
 
       <ClusterCard
         eyebrow={t("app.workspace.clusterArchiveTitle")}
-        title={t("app.workspace.clusterArchiveTitle")}
         description={t("app.workspace.clusterArchiveBody")}
       >
         <p className="mb-3 text-sm text-text">

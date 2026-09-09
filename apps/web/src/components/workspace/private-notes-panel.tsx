@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +40,13 @@ export function PrivateNotesPanel({ personId, managedProfile, initialTotal }: Pr
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
+  // Always holds the *current* active person, unlike a plain closure over the
+  // `personId` prop captured when `load()` was defined -- needed so a stale
+  // response from an earlier person is recognized as stale even after several
+  // re-renders (UI-consistency guard only, see the check inside `load()` below).
+  const activePersonIdRef = useRef(personId);
+  activePersonIdRef.current = personId;
+
   function resetLocalUiState() {
     setCreating(false);
     setNewTitle("");
@@ -54,14 +61,14 @@ export function PrivateNotesPanel({ personId, managedProfile, initialTotal }: Pr
     setNotes([]);
     try {
       const data = await api.people.privateNotes.list(forPersonId);
-      if (forPersonId !== personId) return; // stale response, UI-consistency guard only
+      if (forPersonId !== activePersonIdRef.current) return; // stale response, UI-consistency guard only
       const sorted = data
         .filter((note) => note.person_id === forPersonId)
         .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
       setNotes(sorted);
       setStatus("success");
     } catch (err) {
-      if (forPersonId !== personId) return;
+      if (forPersonId !== activePersonIdRef.current) return;
       setError(err);
       setStatus("error");
     }

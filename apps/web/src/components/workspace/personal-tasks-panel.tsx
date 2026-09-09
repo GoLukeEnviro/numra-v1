@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,6 +52,13 @@ export function PersonalTasksPanel({
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
+  // Always holds the *current* active person/filter, unlike a plain closure
+  // over the props captured when `load()` was defined -- needed so a stale
+  // response is recognized as stale even after several re-renders
+  // (UI-consistency guard only, see the check inside `load()` below).
+  const activeRef = useRef({ personId, filter });
+  activeRef.current = { personId, filter };
+
   function resetLocalUiState() {
     setCreating(false);
     setNewTitle("");
@@ -71,11 +78,11 @@ export function PersonalTasksPanel({
       // Defensive UI-consistency guard against a stale response resolving after a
       // newer request started (personId or filter changed in the meantime) --
       // NOT a security boundary. The real ownership check is the backend route.
-      if (forPersonId !== personId || forFilter !== filter) return;
+      if (forPersonId !== activeRef.current.personId || forFilter !== activeRef.current.filter) return;
       setTasks(data.filter((task) => task.person_id === forPersonId));
       setStatus("success");
     } catch (err) {
-      if (forPersonId !== personId || forFilter !== filter) return;
+      if (forPersonId !== activeRef.current.personId || forFilter !== activeRef.current.filter) return;
       setError(err);
       setStatus("error");
     }
