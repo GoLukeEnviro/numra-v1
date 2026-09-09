@@ -61,6 +61,10 @@ export type ConnectionInvitationPreviewOut =
   components["schemas"]["ConnectionInvitationPreviewOut"];
 export type RedeemInvitationRequest = components["schemas"]["RedeemInvitationRequest"];
 export type RedeemInvitationResponseOut = components["schemas"]["RedeemInvitationResponseOut"];
+export type InvitationMethod = components["schemas"]["InvitationMethod"];
+export type InvitationState = components["schemas"]["InvitationState"];
+export type ConnectionStatus = components["schemas"]["ConnectionStatus"];
+export type ConsentScope = components["schemas"]["ConsentScope"];
 
 export type WorkspaceSummaryOut = components["schemas"]["WorkspaceSummaryOut"];
 export type WorkspaceOut = components["schemas"]["WorkspaceOut"];
