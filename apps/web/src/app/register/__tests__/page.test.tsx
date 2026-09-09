@@ -4,6 +4,7 @@ import RegisterPage from "@/app/register/page";
 import { api, ApiError, type PublicConfigOut } from "@/api/client";
 import { LocaleProvider } from "@/i18n/context";
 import { useAuth } from "@/lib/auth-context";
+import { BRAND_NAME } from "@/lib/brand";
 
 const replace = vi.fn();
 
@@ -19,7 +20,7 @@ vi.mock("@/api/client", async () => {
 });
 
 const openConfig: PublicConfigOut = {
-  app_name: "Numra",
+  app_name: BRAND_NAME,
   self_signup_enabled: true,
   supported_ui_locales: ["de", "en"],
 };
