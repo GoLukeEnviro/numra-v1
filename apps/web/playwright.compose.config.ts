@@ -29,6 +29,12 @@ const port = Number(process.env.COMPOSE_WEB_PORT || 3000);
 
 export default defineConfig({
   testDir: "./e2e-system",
+  // Scoped explicitly to system-journey.spec.ts: without this, any new spec added
+  // under e2e-system/ (e.g. pr-web-00-visual-baseline.spec.ts) is silently picked
+  // up too, front-loading extra tests onto this job's single worker before the one
+  // real system-journey run -- discovered when that caused the real test to fail on
+  // a tight expect timeout it otherwise passes (see PR-WEB-00).
+  testMatch: "system-journey.spec.ts",
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: 0,
