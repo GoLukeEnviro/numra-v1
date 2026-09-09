@@ -15,7 +15,7 @@ import { recordCalculation, getLatestForPerson } from "@/lib/local-calculations"
 import { personDisplayName } from "@/lib/identity";
 import { formatDateTime, formatIsoDate, todayIsoDate } from "@/lib/utils";
 import { useLocale } from "@/i18n/context";
-import { Sparkles, Trash2, Sunrise, ArrowRight, Pencil, History } from "lucide-react";
+import { Sparkles, Trash2, Sunrise, ArrowRight, Pencil, History, LayoutGrid } from "lucide-react";
 
 function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -283,6 +283,10 @@ function PersonDetailContent({ personId }: { personId: string }) {
             <LinkButton variant="ghost" href="/today">
               <Sunrise className="h-4 w-4" aria-hidden="true" />
               {t("app.personDetail.today")}
+            </LinkButton>
+            <LinkButton variant="ghost" href={`/people/${personId}/workspace`}>
+              <LayoutGrid className="h-4 w-4" aria-hidden="true" />
+              {t("app.personDetail.workspaceButton")}
             </LinkButton>
             <LinkButton variant="ghost" href={`/people/${personId}/edit`}>
               <Pencil className="h-4 w-4" aria-hidden="true" />
