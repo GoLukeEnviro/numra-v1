@@ -80,7 +80,8 @@ function EmailVerificationStatus() {
 
   return (
     <div className="mt-2">
-      <p className="text-xs text-muted">{t("app.account.emailUnverifiedBody")}</p>
+      <p className="text-xs font-medium text-muted">{t("app.account.emailUnverified")}</p>
+      <p className="mt-1 text-xs text-muted">{t("app.account.emailUnverifiedBody")}</p>
       {resent ? (
         <p className="mt-1.5 text-xs text-gold">{t("app.account.resendVerificationSent")}</p>
       ) : (
