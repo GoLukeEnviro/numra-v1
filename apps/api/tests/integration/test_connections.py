@@ -11,6 +11,7 @@ from numra_api.models import (
     ConnectionInvitation,
     ConsentGrant,
     RelationshipWorkspace,
+    User,
     WorkspaceMember,
 )
 from numra_api.repositories.users import create_user
@@ -323,3 +324,80 @@ async def test_unaddressed_user_cannot_decline_foreign_invitation(client, sessio
         headers=headers_stranger,
     )
     assert email_decline.status_code == 404
+
+
+async def test_counterpart_identity_symmetric_for_both_sides(client, sessionmaker) -> None:
+    email_a = "conn-counterpart-a@example.com"
+    email_b = "conn-counterpart-b@example.com"
+
+    headers_a = await _signup(client, sessionmaker, email_a)
+    invitation = await _create_link_invitation(client, headers_a)
+    headers_b = await _signup(client, sessionmaker, email_b)
+    redeem = await client.post(
+        "/v1/connections/invitations/redeem",
+        json={"token": invitation["token"]},
+        headers=headers_b,
+    )
+    assert redeem.status_code == 201
+
+    async with sessionmaker() as db:
+        user_a = (await db.execute(select(User).where(User.email == email_a))).scalar_one()
+        user_b = (await db.execute(select(User).where(User.email == email_b))).scalar_one()
+
+    headers_a = await _switch_user(client, email_a)
+    list_a = await client.get("/v1/connections", headers=headers_a)
+    assert list_a.status_code == 200
+    connection_from_a = list_a.json()[0]
+    assert connection_from_a["counterpart_user_id"] == str(user_b.id)
+    assert connection_from_a["counterpart_display_name"] == user_b.email
+
+    headers_b = await _switch_user(client, email_b)
+    list_b = await client.get("/v1/connections", headers=headers_b)
+    assert list_b.status_code == 200
+    connection_from_b = list_b.json()[0]
+    assert connection_from_b["counterpart_user_id"] == str(user_a.id)
+    assert connection_from_b["counterpart_display_name"] == user_a.email
+
+
+async def test_counterpart_display_name_prefers_override_over_email(client, sessionmaker) -> None:
+    email_a = "conn-override-a@example.com"
+    email_b = "conn-override-b@example.com"
+
+    headers_a = await _signup(client, sessionmaker, email_a)
+    invitation = await _create_link_invitation(client, headers_a)
+    headers_b = await _signup(client, sessionmaker, email_b)
+    await client.post(
+        "/v1/connections/invitations/redeem",
+        json={"token": invitation["token"]},
+        headers=headers_b,
+    )
+
+    async with sessionmaker() as db:
+        user_b = (await db.execute(select(User).where(User.email == email_b))).scalar_one()
+        user_b.display_name_override = "B Display Name"
+        await db.commit()
+
+    headers_a = await _switch_user(client, email_a)
+    list_a = await client.get("/v1/connections", headers=headers_a)
+    assert list_a.json()[0]["counterpart_display_name"] == "B Display Name"
+
+
+async def test_preview_id_matches_invitation_and_enables_decline(client, sessionmaker) -> None:
+    headers_a = await _signup(client, sessionmaker, "conn-preview-id-a@example.com")
+    invite = await client.post(
+        "/v1/connections/invitations",
+        json={"method": "EMAIL", "invitee_email": "conn-preview-id-b@example.com"},
+        headers=headers_a,
+    )
+    invitation = invite.json()
+
+    preview = await client.get(f"/v1/connections/invitations/redeem/{invitation['token']}")
+    assert preview.status_code == 200
+    assert preview.json()["id"] == invitation["id"]
+
+    headers_b = await _signup(client, sessionmaker, "conn-preview-id-b@example.com")
+    decline = await client.post(
+        f"/v1/connections/invitations/{preview.json()['id']}/decline", headers=headers_b
+    )
+    assert decline.status_code == 200
+    assert decline.json()["state"] == "DECLINED"
