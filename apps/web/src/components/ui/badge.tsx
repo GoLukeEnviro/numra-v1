@@ -15,6 +15,10 @@ const badgeVariants = cva(
         // page background, so it is only ever used as a filled surface here,
         // paired with ivory text (contrast ~6.5:1).
         karmic: "bg-plum text-ivory font-semibold",
+        // Private content marker (PR-WEB-02) -- same filled-plum/ivory AA pairing as
+        // karmic (~6.5:1), plus a border so it stays visually distinct from it at a
+        // glance even though both use the same base color.
+        private: "border border-white/15 bg-plum text-ivory font-semibold",
         // Diagnostic / non-canonical — dashed outline, deliberately muted so it
         // never reads as equal weight to a canonical value.
         diagnostic: "border border-dashed border-muted/60 text-muted",
