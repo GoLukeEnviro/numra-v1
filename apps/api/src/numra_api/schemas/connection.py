@@ -38,6 +38,7 @@ class ConnectionInvitationPreviewOut(BaseModel):
     """Redeem-preview -- deliberately carries no PII about the inviter beyond the
     method, shown before the invitee commits to accepting."""
 
+    id: uuid.UUID
     method: InvitationMethod
     expires_at: dt.datetime
 
@@ -53,6 +54,8 @@ class UserConnectionOut(BaseModel):
     status: ConnectionStatus
     created_at: dt.datetime
     dissolved_at: dt.datetime | None
+    counterpart_user_id: uuid.UUID
+    counterpart_display_name: str
 
     model_config = {"from_attributes": True}
 
