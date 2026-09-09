@@ -102,11 +102,15 @@ for (const [viewportName, size] of Object.entries(VIEWPORTS)) {
     await shoot(page, `connections-${viewportName}`);
   });
 
-  test(`(workspaces) placeholder -- ${viewportName}`, async ({ page }) => {
+  test(`(workspaces) empty -- ${viewportName}`, async ({ page }) => {
+    // PR-WEB-04 replaced this route's ComingSoonState placeholder with the real
+    // Workspaces list -- see pr-web-04-visual-baseline.spec.ts for its full coverage.
     await page.setViewportSize(size);
     await mockAuthenticatedApi(page);
+    await page.route("**/v1/connections", (route) => fulfillJson(route, 200, []));
+    await page.route("**/v1/workspaces", (route) => fulfillJson(route, 200, []));
     await page.goto("/workspaces");
-    await expect(page.getByText("Workspaces kommen bald")).toBeVisible();
+    await expect(page.getByText("Noch keine Workspaces")).toBeVisible();
     expect(await page.title()).toContain("AVENYTH");
     await shoot(page, `workspaces-placeholder-${viewportName}`);
   });

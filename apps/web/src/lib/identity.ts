@@ -1,4 +1,4 @@
-import type { PersonOut } from "@/api/client";
+import type { PersonOut, UserConnectionOut, WorkspaceSummaryOut } from "@/api/client";
 import { BRAND_NAME } from "@/lib/brand";
 
 /**
@@ -106,4 +106,25 @@ export function personDisplayName(person: PersonOut): string {
   const preferred = person.preferred_name?.trim();
   if (preferred) return preferred;
   return joinName([person.birth_first_names, person.birth_last_name]);
+}
+
+/**
+ * Joins Relationship Workspaces to the counterpart's display name via their shared
+ * `connection_id`/`UserConnectionOut.id` (the Connection contract carries the name,
+ * the Workspace contract only carries the id -- see `connections/page.tsx`'s
+ * `workspaceIdByConnectionId` for the same join in the other direction). Used by
+ * both the workspace list (Schritt 4) and the switcher adapter (Schritt 5), kept
+ * here as one function so the join logic is never duplicated.
+ */
+export function buildCounterpartNameMap(
+  connections: UserConnectionOut[],
+  workspaces: WorkspaceSummaryOut[],
+): Map<string, string> {
+  const nameByConnectionId = new Map(connections.map((c) => [c.id, c.counterpart_display_name]));
+  const nameByWorkspaceId = new Map<string, string>();
+  for (const workspace of workspaces) {
+    const name = nameByConnectionId.get(workspace.connection_id);
+    if (name) nameByWorkspaceId.set(workspace.id, name);
+  }
+  return nameByWorkspaceId;
 }

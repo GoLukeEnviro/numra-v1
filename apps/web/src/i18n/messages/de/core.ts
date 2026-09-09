@@ -46,4 +46,6 @@ export const deCore = {
   "workspace.privateLabel": "Privat",
   "workspace.selfProfileLabel": "Eigenes Profil",
   "workspace.managedProfileLabel": "Verwaltetes Profil",
+  // Relationship Workspace (PR-WEB-04): shared-content marker, Gegenstueck zu privateLabel.
+  "workspace.sharedLabel": "Geteilt",
 } as const;

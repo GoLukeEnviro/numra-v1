@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { PersonOut } from "@/api/client";
-import { buildIdentityTimeline, personDisplayName } from "@/lib/identity";
+import type { PersonOut, UserConnectionOut, WorkspaceSummaryOut } from "@/api/client";
+import { buildCounterpartNameMap, buildIdentityTimeline, personDisplayName } from "@/lib/identity";
 
 function person(overrides: Partial<PersonOut> = {}): PersonOut {
   return {
@@ -97,5 +97,50 @@ describe("personDisplayName", () => {
 
   it("falls back to first and last birth name", () => {
     expect(personDisplayName(person())).toBe("Lukas Springer");
+  });
+});
+
+function connection(overrides: Partial<UserConnectionOut> = {}): UserConnectionOut {
+  return {
+    id: "conn-1",
+    counterpart_user_id: "user-2",
+    counterpart_display_name: "Ada Lovelace",
+    status: "ACTIVE",
+    created_at: "2026-01-01T00:00:00Z",
+    dissolved_at: null,
+    ...overrides,
+  } as UserConnectionOut;
+}
+
+function workspace(overrides: Partial<WorkspaceSummaryOut> = {}): WorkspaceSummaryOut {
+  return {
+    id: "ws-1",
+    connection_id: "conn-1",
+    status: "ACTIVE",
+    relationship_type: null,
+    created_at: "2026-01-01T00:00:00Z",
+    dissolved_at: null,
+    ...overrides,
+  } as WorkspaceSummaryOut;
+}
+
+describe("buildCounterpartNameMap", () => {
+  it("joins a workspace to its counterpart's name via connection_id", () => {
+    const map = buildCounterpartNameMap([connection()], [workspace()]);
+    expect(map.get("ws-1")).toBe("Ada Lovelace");
+  });
+
+  it("omits a workspace whose connection has no matching entry", () => {
+    const map = buildCounterpartNameMap([], [workspace({ id: "ws-2", connection_id: "conn-missing" })]);
+    expect(map.has("ws-2")).toBe(false);
+  });
+
+  it("joins multiple workspaces independently", () => {
+    const map = buildCounterpartNameMap(
+      [connection(), connection({ id: "conn-2", counterpart_display_name: "Grace Hopper" })],
+      [workspace(), workspace({ id: "ws-2", connection_id: "conn-2" })],
+    );
+    expect(map.get("ws-1")).toBe("Ada Lovelace");
+    expect(map.get("ws-2")).toBe("Grace Hopper");
   });
 });

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ErrorState, LoadingState } from "@/components/ui/states";
 import { useLocale } from "@/i18n/context";
+import { WorkspaceNavTabs } from "@/components/workspaces/workspace-nav-tabs";
 import { useAsync } from "@/lib/use-async";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
@@ -161,6 +162,7 @@ function ConsentContent({ workspaceId }: { workspaceId: string }) {
 
   return (
     <div className="animate-rise-in flex flex-col gap-6">
+      <WorkspaceNavTabs workspaceId={workspaceId} />
       <Card>
         <CardHeader>
           <CardTitle className="text-base">{t("app.consent.sharedByMeTitle")}</CardTitle>

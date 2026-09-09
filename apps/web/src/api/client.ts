@@ -93,6 +93,12 @@ export type ConsentGrantRequest = components["schemas"]["ConsentGrantRequest"];
 export type ConsentGrantOut = components["schemas"]["ConsentGrantOut"];
 export type ConsentRevokeRequest = components["schemas"]["ConsentRevokeRequest"];
 
+// PR-WEB-04 (Relationship Workspace Core) -- GET /v1/workspaces/{id} dual-profile
+// member shape and the two enums driving the workspace list/hub UI.
+export type DualProfileMemberOut = components["schemas"]["DualProfileMemberOut"];
+export type RelationshipType = components["schemas"]["RelationshipType"];
+export type WorkspaceStatus = components["schemas"]["WorkspaceStatus"];
+
 export type ChatThreadOut = components["schemas"]["ChatThreadOut"];
 export type ThreadCreateRequest = components["schemas"]["ThreadCreateRequest"];
 export type ChatMessageOut = components["schemas"]["ChatMessageOut"];

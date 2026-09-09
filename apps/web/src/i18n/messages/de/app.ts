@@ -418,9 +418,10 @@ export const deApp = {
   // eigenes Datenmodell -- kein 404, echte Umsetzung folgt in einem späteren PR.
   "app.connections.title": "Verbindungen",
   "app.connections.body": "Verbinde dich mit anderen Menschen und teile ausgewählte Einblicke.",
-  "app.workspaces.title": "Workspaces kommen bald",
-  "app.workspaces.body":
-    "Hier entstehen geteilte Workspaces für Check-ins, Aufgaben und Roadmaps zwischen verbundenen Personen. Diese Ansicht ist noch nicht angebunden.",
+  // PR-WEB-04: aus dem "kommt bald"-Stub wurde der echte Listentitel -- Key-Namen
+  // bleiben unveraendert, nur die Copy wurde ausgetauscht.
+  "app.workspaces.title": "Workspaces",
+  "app.workspaces.body": "Geteilte Workspaces mit deinen Verbindungen -- Check-ins, Aufgaben und Roadmaps an einem Ort.",
   "app.copilot.title": "Copilot kommt bald",
   "app.copilot.body":
     "Hier wird der Workspace-Copilot Gespräche zu deinen geteilten Daten führen. Diese Ansicht ist noch nicht angebunden.",
@@ -596,4 +597,67 @@ export const deApp = {
   "app.consent.scopePrivateCopilot": "Privater Copilot",
   "app.consent.scopeOtherRelationships": "Andere Beziehungen",
   "app.consent.scopeLifeTracking": "Lebens-Tracking",
+
+  // Relationship Workspace Core (PR-WEB-04) -- Liste, Hub-Header, Type-Selector,
+  // Dual-Profile, Consent-Summary und die sechs Feature-Platzhalter-Cards.
+  "app.relationshipWorkspace.listActiveTitle": "Aktive Workspaces",
+  "app.relationshipWorkspace.listDissolvedTitle": "Aufgelöste Workspaces",
+  "app.relationshipWorkspace.listEmptyTitle": "Noch keine Workspaces",
+  "app.relationshipWorkspace.listEmptyBody":
+    "Workspaces entstehen automatisch, sobald eine Verbindung angenommen wird -- es gibt keinen eigenen Erstellen-Schritt.",
+  "app.relationshipWorkspace.listEmptyCta": "Verbindungen ansehen",
+  "app.relationshipWorkspace.listTypeUnset": "Typ nicht gesetzt",
+  "app.relationshipWorkspace.listFallbackName": "Unbekannte Verbindung",
+  "app.relationshipWorkspace.listLoading": "Workspaces werden geladen…",
+  "app.relationshipWorkspace.listLoadError": "Workspaces konnten nicht geladen werden",
+
+  "app.relationshipWorkspace.headerEyebrow": "Gemeinsamer Workspace",
+  "app.relationshipWorkspace.headerLoading": "Workspace wird geladen…",
+  "app.relationshipWorkspace.tabOverview": "Übersicht",
+  "app.relationshipWorkspace.tabConsent": "Freigaben",
+  "app.relationshipWorkspace.statusActive": "Aktiv",
+  "app.relationshipWorkspace.statusDissolvedPrefix": "Aufgelöst am",
+
+  "app.relationshipWorkspace.typeSelectorLabel": "Beziehungstyp",
+  "app.relationshipWorkspace.typeSelectorPlaceholder": "Nicht gesetzt",
+  "app.relationshipWorkspace.typeSelectorSave": "Speichern",
+  "app.relationshipWorkspace.typeSelectorSuccess": "Gespeichert",
+  "app.relationshipWorkspace.typeSelectorError": "Speichern fehlgeschlagen — bitte erneut versuchen",
+  "app.relationshipWorkspace.typeSelectorDissolvedTitle": "Workspace aufgelöst",
+  "app.relationshipWorkspace.typeSelectorDissolvedBody":
+    "Dieser Workspace ist aufgelöst -- der Beziehungstyp kann nicht mehr geändert werden.",
+  "app.relationshipWorkspace.typeSelectorLastTypePrefix": "Zuletzt gesetzt:",
+  "app.relationshipWorkspace.typePartner": "Partner",
+  "app.relationshipWorkspace.typeDating": "Dating",
+  "app.relationshipWorkspace.typeFriendship": "Freundschaft",
+  "app.relationshipWorkspace.typeFamily": "Familie",
+  "app.relationshipWorkspace.typeSiblings": "Geschwister",
+  "app.relationshipWorkspace.typeParentChild": "Eltern-Kind",
+  "app.relationshipWorkspace.typeWork": "Arbeit",
+  "app.relationshipWorkspace.typeOther": "Sonstiges",
+
+  "app.relationshipWorkspace.dualProfileEyebrow": "Zwei Seiten",
+  "app.relationshipWorkspace.dualProfileSelfTitle": "Deine Seite",
+  "app.relationshipWorkspace.dualProfileMissingConsentSuffix": "hat die Kernzahlen noch nicht freigegeben.",
+  "app.relationshipWorkspace.dualProfileMissingConsentLink": "Freigaben ansehen",
+
+  "app.relationshipWorkspace.consentSummaryTitle": "Freigaben im Überblick",
+  "app.relationshipWorkspace.consentSummaryByMePrefix": "Du teilst",
+  "app.relationshipWorkspace.consentSummaryByMeSuffix": "von 8 Bereichen",
+  "app.relationshipWorkspace.consentSummaryToMeMiddle": "teilt",
+  "app.relationshipWorkspace.consentSummaryToMeSuffix": "von 8 Bereichen mit dir",
+  "app.relationshipWorkspace.consentSummaryCta": "Freigaben verwalten",
+
+  "app.relationshipWorkspace.stubDynamicsTitle": "Dynamics",
+  "app.relationshipWorkspace.stubDynamicsBody": "Muster und Dynamiken zwischen euch beiden -- kommt in einem späteren PR.",
+  "app.relationshipWorkspace.stubCheckinsTitle": "Check-ins",
+  "app.relationshipWorkspace.stubCheckinsBody": "Regelmäßige gemeinsame Check-ins -- kommt in einem späteren PR.",
+  "app.relationshipWorkspace.stubTasksTitle": "Aufgaben",
+  "app.relationshipWorkspace.stubTasksBody": "Geteilte Aufgaben zwischen euch beiden -- kommt in einem späteren PR.",
+  "app.relationshipWorkspace.stubRoadmapTitle": "Roadmap",
+  "app.relationshipWorkspace.stubRoadmapBody": "Meilensteine für diesen Workspace -- kommt in einem späteren PR.",
+  "app.relationshipWorkspace.stubReflectionTitle": "Geteilte Reflexion",
+  "app.relationshipWorkspace.stubReflectionBody": "Gemeinsame Reflexionen zu diesem Workspace -- kommt in einem späteren PR.",
+  "app.relationshipWorkspace.stubCopilotTitle": "Copilot",
+  "app.relationshipWorkspace.stubCopilotBody": "Ein Copilot für diesen Workspace -- kommt in einem späteren PR.",
 } as const;
