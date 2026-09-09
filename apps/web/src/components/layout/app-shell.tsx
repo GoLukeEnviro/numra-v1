@@ -16,7 +16,9 @@ import {
     Plus,
     Settings,
     ShieldCheck,
+    Sparkles,
     Sunrise,
+    UserPlus,
     Users,
     X,
 } from "lucide-react";
@@ -24,31 +26,40 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 
-// Today leads: it is the lightest, most-returned-to view, and the only one that
-// answers a question about *now* rather than about a stored record.
+// V2 shell (PR-WEB-00, specs/v2/api-contract.md): 8 primary points in this exact
+// order -- Home, Profile, Connections, Workspaces, Today, Copilot, Settings, Admin
+// (Admin appended separately below, ADMIN-only). Relationships and Reports are V1.6
+// functionality that stays reachable but slides behind the 8 primary points, at the
+// end of the desktop sidebar / under mobile "More".
 const NAV = [
-  { href: "/today", labelKey: "nav.today", icon: Sunrise },
   { href: "/dashboard", labelKey: "nav.dashboard", icon: LayoutGrid },
   { href: "/people", labelKey: "nav.people", icon: Users },
-  { href: "/reports", labelKey: "nav.reports", icon: BookOpen },
-  { href: "/relationships", labelKey: "nav.relationships", icon: GitCompareArrows },
+  { href: "/connections", labelKey: "nav.connections", icon: UserPlus },
+  { href: "/workspaces", labelKey: "nav.workspaces", icon: GitCompareArrows },
+  { href: "/today", labelKey: "nav.today", icon: Sunrise },
+  { href: "/copilot", labelKey: "nav.copilot", icon: Sparkles },
   { href: "/settings", labelKey: "nav.settings", icon: Settings },
+  { href: "/relationships", labelKey: "nav.relationships", icon: GitCompareArrows },
+  { href: "/reports", labelKey: "nav.reports", icon: BookOpen },
 ] as const satisfies readonly { href: string; labelKey: MessageKey; icon: typeof Sunrise }[];
 
-// Mobile-first V1.5 Epic H: the desktop sidebar's full item set doesn't fit a fixed
-// bottom bar. These four are the ones a phone visit is most likely to be *for* — the
-// rest (Dashboard, Reports, Settings) plus Logout live behind "More", which mobile
-// still needs a real way to reach Logout from (previously desktop-only).
+// Mobile-first V1.5 Epic H, updated for V2 (PR-WEB-00): the desktop sidebar's full
+// item set doesn't fit a fixed bottom bar. These four are the ones a phone visit is
+// most likely to be *for* -- everything else (Dashboard, Copilot, Settings,
+// Relationships, Reports) plus Logout lives behind "More".
 const MOBILE_PRIMARY = [
   { href: "/today", labelKey: "nav.today", icon: Sunrise },
+  { href: "/connections", labelKey: "nav.connections", icon: UserPlus },
+  { href: "/workspaces", labelKey: "nav.workspaces", icon: GitCompareArrows },
   { href: "/people", labelKey: "nav.people", icon: Users },
-  { href: "/relationships", labelKey: "nav.relationships", icon: GitCompareArrows },
 ] as const satisfies readonly { href: string; labelKey: MessageKey; icon: typeof Sunrise }[];
 
 const MOBILE_MORE = [
   { href: "/dashboard", labelKey: "nav.dashboard", icon: LayoutGrid },
-  { href: "/reports", labelKey: "nav.reports", icon: BookOpen },
+  { href: "/copilot", labelKey: "nav.copilot", icon: Sparkles },
   { href: "/settings", labelKey: "nav.settings", icon: Settings },
+  { href: "/relationships", labelKey: "nav.relationships", icon: GitCompareArrows },
+  { href: "/reports", labelKey: "nav.reports", icon: BookOpen },
 ] as const satisfies readonly { href: string; labelKey: MessageKey; icon: typeof Sunrise }[];
 
 // V1.6 B: appended only for an ADMIN session. A USER's markup never contains this
@@ -168,7 +179,7 @@ function MobileBottomNav({
         className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-surface md:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
-        <div className="grid grid-cols-5">
+        <div className="grid grid-cols-6">
           {MOBILE_PRIMARY.slice(0, 2).map(({ href, labelKey, icon: Icon }) => {
             const active = isActive(pathname, href);
             return (

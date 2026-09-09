@@ -8,6 +8,9 @@ export const enCore: Record<keyof typeof deCore, string> = {
   "nav.today": "Today",
   "nav.dashboard": "Dashboard",
   "nav.people": "People",
+  "nav.connections": "Connections",
+  "nav.workspaces": "Workspaces",
+  "nav.copilot": "Copilot",
   "nav.reports": "Reports",
   "nav.relationships": "Relationships",
   "nav.settings": "Settings",
@@ -37,4 +40,7 @@ export const enCore: Record<keyof typeof deCore, string> = {
   "settings.privacyData": "Privacy & data",
   "settings.privacyDataDescription": "What Numra stores about you, and how to remove it.",
   "settings.viewPrivacySettings": "View privacy settings",
+
+  "workspace.switcherAriaLabel": "Switch workspace",
+  "workspace.personalPrefix": "Personal space",
 };

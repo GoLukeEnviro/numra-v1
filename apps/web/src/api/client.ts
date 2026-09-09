@@ -46,6 +46,100 @@ export type AuditAction = components["schemas"]["AuditAction"];
 export type AuditEventOut = components["schemas"]["AuditEventOut"];
 export type AuditEventListOut = components["schemas"]["AuditEventListOut"];
 
+// V2 Web/PWA schema types (PR-WEB-00) -- see the api.connections/api.workspaces/etc.
+// block comment below for why these are typed now but unused until later PRs.
+export type UserConnectionOut = components["schemas"]["UserConnectionOut"];
+export type ConnectionInvitationCreateRequest =
+  components["schemas"]["ConnectionInvitationCreateRequest"];
+export type ConnectionInvitationCreatedOut =
+  components["schemas"]["ConnectionInvitationCreatedOut"];
+export type ConnectionInvitationOut = components["schemas"]["ConnectionInvitationOut"];
+export type ConnectionInvitationPreviewOut =
+  components["schemas"]["ConnectionInvitationPreviewOut"];
+export type RedeemInvitationRequest = components["schemas"]["RedeemInvitationRequest"];
+export type RedeemInvitationResponseOut = components["schemas"]["RedeemInvitationResponseOut"];
+
+export type WorkspaceSummaryOut = components["schemas"]["WorkspaceSummaryOut"];
+export type WorkspaceOut = components["schemas"]["WorkspaceOut"];
+export type WorkspaceUpdateRequest = components["schemas"]["WorkspaceUpdateRequest"];
+/** GET /v1/workspaces/{id} response -- module-qualified in the generated schema
+ *  because a second, differently-shaped `WorkspaceOverviewOut` exists for
+ *  GET /v1/me/workspace (see `MyWorkspaceOverviewOut` below). */
+export type WorkspaceOverviewOut =
+  components["schemas"]["numra_api__schemas__relationship_workspace__WorkspaceOverviewOut"];
+/** GET /v1/me/workspace response (the Personal Workspace index). */
+export type MyWorkspaceOverviewOut =
+  components["schemas"]["numra_api__schemas__workspace__WorkspaceOverviewOut"];
+
+export type CheckinDimensionCreateRequest =
+  components["schemas"]["CheckinDimensionCreateRequest"];
+export type CheckinDimensionOut = components["schemas"]["CheckinDimensionOut"];
+export type CheckinDimensionUpdateRequest =
+  components["schemas"]["CheckinDimensionUpdateRequest"];
+export type CheckinTemplateOut = components["schemas"]["CheckinTemplateOut"];
+export type CheckinSummaryOut = components["schemas"]["CheckinSummaryOut"];
+export type CheckinSubmitRequest = components["schemas"]["CheckinSubmitRequest"];
+export type CheckinOut = components["schemas"]["CheckinOut"];
+
+export type WorkspaceConsentOut = components["schemas"]["WorkspaceConsentOut"];
+export type ConsentGrantRequest = components["schemas"]["ConsentGrantRequest"];
+export type ConsentGrantOut = components["schemas"]["ConsentGrantOut"];
+export type ConsentRevokeRequest = components["schemas"]["ConsentRevokeRequest"];
+
+export type ChatThreadOut = components["schemas"]["ChatThreadOut"];
+export type ThreadCreateRequest = components["schemas"]["ThreadCreateRequest"];
+export type ChatMessageOut = components["schemas"]["ChatMessageOut"];
+export type MessageCreateRequest = components["schemas"]["MessageCreateRequest"];
+export type MessagePairOut = components["schemas"]["MessagePairOut"];
+
+export type RelationshipRoadmapOut = components["schemas"]["RelationshipRoadmapOut"];
+export type RelationshipRoadmapCreateRequest =
+  components["schemas"]["RelationshipRoadmapCreateRequest"];
+export type RelationshipRoadmapPatchRequest =
+  components["schemas"]["RelationshipRoadmapPatchRequest"];
+export type RoadmapMilestoneOut = components["schemas"]["RoadmapMilestoneOut"];
+export type RoadmapMilestoneCreateRequest = components["schemas"]["RoadmapMilestoneCreateRequest"];
+export type RoadmapMilestonePatchRequest = components["schemas"]["RoadmapMilestonePatchRequest"];
+export type MilestoneType = components["schemas"]["MilestoneType"];
+
+export type WorkspaceTaskOut = components["schemas"]["WorkspaceTaskOut"];
+export type WorkspaceTaskCreateRequest = components["schemas"]["WorkspaceTaskCreateRequest"];
+export type WorkspaceTaskPatchRequest = components["schemas"]["WorkspaceTaskPatchRequest"];
+export type WorkspaceTaskStatus = components["schemas"]["WorkspaceTaskStatus"];
+export type TaskType = components["schemas"]["TaskType"];
+
+export type PersonalTaskOut = components["schemas"]["PersonalTaskOut"];
+export type PersonalTaskCreateRequest = components["schemas"]["PersonalTaskCreateRequest"];
+export type PersonalTaskPatchRequest = components["schemas"]["PersonalTaskPatchRequest"];
+export type PersonalTaskStatus = components["schemas"]["PersonalTaskStatus"];
+
+export type PrivateNoteOut = components["schemas"]["PrivateNoteOut"];
+export type PrivateNoteCreateRequest = components["schemas"]["PrivateNoteCreateRequest"];
+export type PrivateNotePatchRequest = components["schemas"]["PrivateNotePatchRequest"];
+
+export type PrivateReflectionOut = components["schemas"]["PrivateReflectionOut"];
+export type PrivateReflectionCreateRequest =
+  components["schemas"]["PrivateReflectionCreateRequest"];
+export type PrivateReflectionPatchRequest =
+  components["schemas"]["PrivateReflectionPatchRequest"];
+export type SharePrivateReflectionRequest = components["schemas"]["SharePrivateReflectionRequest"];
+export type SharedReflectionOut = components["schemas"]["SharedReflectionOut"];
+
+/**
+ * `LifeTrackingEntry*` verified directly against packages/schema/src/generated/
+ * schema.d.ts's `paths` section (PR-WEB-00 blueprint's exact-path caveat): the list/
+ * create routes are person-scoped (`/v1/people/{person_id}/life-tracking-entries`),
+ * get/patch/delete are flat (`/v1/life-tracking-entries/{entry_id}`) -- mirroring the
+ * personal-tasks/private-notes/private-reflections split already in this file.
+ */
+export type LifeTrackingEntryOut = components["schemas"]["LifeTrackingEntryOut"];
+export type LifeTrackingEntryCreateRequest =
+  components["schemas"]["LifeTrackingEntryCreateRequest"];
+export type LifeTrackingEntryPatchRequest =
+  components["schemas"]["LifeTrackingEntryPatchRequest"];
+
+export type EntitlementSetOut = components["schemas"]["EntitlementSetOut"];
+
 /** V1.6: server-side filtering/pagination for `GET /v1/admin/users`. */
 export interface AdminUserListParams {
   search?: string;
@@ -231,6 +325,88 @@ export const api = {
     /** V1.5 Epic C: the real, server-recorded name history for this person. */
     identities: (personId: string) =>
       request<NameIdentityOut[]>(`/v1/people/${personId}/identities`),
+    // V2 (PR-WEB-00): person-scoped private data. Get/patch/delete are flat routes
+    // (`/v1/private-notes/{id}`, not nested under the person), matching personal-tasks.
+    privateNotes: {
+      list: (personId: string, params: { limit?: number; offset?: number } = {}) =>
+        request<PrivateNoteOut[]>(`/v1/people/${personId}/private-notes`, {
+          query: {
+            limit: params.limit === undefined ? undefined : String(params.limit),
+            offset: params.offset === undefined ? undefined : String(params.offset),
+          },
+        }),
+      create: (personId: string, body: PrivateNoteCreateRequest) =>
+        request<PrivateNoteOut>(`/v1/people/${personId}/private-notes`, {
+          method: "POST",
+          body,
+        }),
+      get: (noteId: string) => request<PrivateNoteOut>(`/v1/private-notes/${noteId}`),
+      patch: (noteId: string, body: PrivateNotePatchRequest) =>
+        request<PrivateNoteOut>(`/v1/private-notes/${noteId}`, { method: "PATCH", body }),
+      remove: (noteId: string) =>
+        request<void>(`/v1/private-notes/${noteId}`, { method: "DELETE" }),
+    },
+    privateReflections: {
+      list: (personId: string, params: { limit?: number; offset?: number } = {}) =>
+        request<PrivateReflectionOut[]>(`/v1/people/${personId}/private-reflections`, {
+          query: {
+            limit: params.limit === undefined ? undefined : String(params.limit),
+            offset: params.offset === undefined ? undefined : String(params.offset),
+          },
+        }),
+      create: (personId: string, body: PrivateReflectionCreateRequest) =>
+        request<PrivateReflectionOut>(`/v1/people/${personId}/private-reflections`, {
+          method: "POST",
+          body,
+        }),
+      get: (reflectionId: string) =>
+        request<PrivateReflectionOut>(`/v1/private-reflections/${reflectionId}`),
+      patch: (reflectionId: string, body: PrivateReflectionPatchRequest) =>
+        request<PrivateReflectionOut>(`/v1/private-reflections/${reflectionId}`, {
+          method: "PATCH",
+          body,
+        }),
+      remove: (reflectionId: string) =>
+        request<void>(`/v1/private-reflections/${reflectionId}`, { method: "DELETE" }),
+      share: (reflectionId: string, body: SharePrivateReflectionRequest) =>
+        request<SharedReflectionOut>(`/v1/private-reflections/${reflectionId}/share`, {
+          method: "POST",
+          body,
+        }),
+    },
+    // Path verified against packages/schema/src/generated/schema.d.ts's `paths`
+    // section (PR-WEB-00 blueprint's exact-path caveat): `-entries` suffix on both
+    // segments, i.e. `/v1/people/{person_id}/life-tracking-entries` (list/create) and
+    // the flat `/v1/life-tracking-entries/{entry_id}` (get/patch/delete) -- not
+    // `/life-tracking` as the plain feature name might suggest.
+    lifeTracking: {
+      list: (
+        personId: string,
+        params: { from?: string; to?: string; limit?: number; offset?: number } = {},
+      ) =>
+        request<LifeTrackingEntryOut[]>(`/v1/people/${personId}/life-tracking-entries`, {
+          query: {
+            from: params.from,
+            to: params.to,
+            limit: params.limit === undefined ? undefined : String(params.limit),
+            offset: params.offset === undefined ? undefined : String(params.offset),
+          },
+        }),
+      create: (personId: string, body: LifeTrackingEntryCreateRequest) =>
+        request<LifeTrackingEntryOut>(`/v1/people/${personId}/life-tracking-entries`, {
+          method: "POST",
+          body,
+        }),
+      get: (entryId: string) =>
+        request<LifeTrackingEntryOut>(`/v1/life-tracking-entries/${entryId}`),
+      patch: (entryId: string, body: LifeTrackingEntryPatchRequest) =>
+        request<LifeTrackingEntryOut>(`/v1/life-tracking-entries/${entryId}`, {
+          method: "PATCH",
+          body,
+        }),
+      remove: (entryId: string) =>
+        request<void>(`/v1/life-tracking-entries/${entryId}`, { method: "DELETE" }),
+    },
   },
   calculations: {
     create: (personId: string, body: CalculateRequest) =>
@@ -337,5 +513,264 @@ export const api = {
           },
         }),
     },
+  },
+  // V2 Web/PWA namespaces (PR-WEB-00): fully typed against @numra/schema now,
+  // consumed starting PR-WEB-02 (Personal Workspace) onward. Each PR that adds
+  // a feature page wires exactly the namespace it needs -- this stub layer only
+  // exists so the typed client and the OpenAPI contract stay in permanent sync
+  // from day one, instead of every later PR re-deriving ad hoc request calls.
+  connections: {
+    list: (params: { limit?: number; offset?: number } = {}) =>
+      request<UserConnectionOut[]>("/v1/connections", {
+        query: {
+          limit: params.limit === undefined ? undefined : String(params.limit),
+          offset: params.offset === undefined ? undefined : String(params.offset),
+        },
+      }),
+    invite: (body: ConnectionInvitationCreateRequest) =>
+      request<ConnectionInvitationCreatedOut>("/v1/connections/invitations", {
+        method: "POST",
+        body,
+      }),
+    redeemInvitation: (body: RedeemInvitationRequest) =>
+      request<RedeemInvitationResponseOut>("/v1/connections/invitations/redeem", {
+        method: "POST",
+        body,
+      }),
+    declineInvitation: (invitationId: string) =>
+      request<ConnectionInvitationOut>(
+        `/v1/connections/invitations/${invitationId}/decline`,
+        { method: "POST" },
+      ),
+    revokeInvitation: (invitationId: string) =>
+      request<ConnectionInvitationOut>(
+        `/v1/connections/invitations/${invitationId}/revoke`,
+        { method: "POST" },
+      ),
+    dissolve: (connectionId: string) =>
+      request<UserConnectionOut>(`/v1/connections/${connectionId}/dissolve`, {
+        method: "POST",
+      }),
+  },
+  workspaces: {
+    list: () => request<WorkspaceSummaryOut[]>("/v1/workspaces"),
+    get: (workspaceId: string) =>
+      request<WorkspaceOverviewOut>(`/v1/workspaces/${workspaceId}`),
+    patch: (workspaceId: string, body: WorkspaceUpdateRequest) =>
+      request<WorkspaceOut>(`/v1/workspaces/${workspaceId}`, { method: "PATCH", body }),
+    consent: {
+      list: (workspaceId: string) =>
+        request<WorkspaceConsentOut>(`/v1/workspaces/${workspaceId}/consent`),
+      grant: (workspaceId: string, body: ConsentGrantRequest) =>
+        request<ConsentGrantOut>(`/v1/workspaces/${workspaceId}/consent/grant`, {
+          method: "POST",
+          body,
+        }),
+      revoke: (workspaceId: string, body: ConsentRevokeRequest) =>
+        request<ConsentGrantOut>(`/v1/workspaces/${workspaceId}/consent/revoke`, {
+          method: "POST",
+          body,
+        }),
+    },
+    checkinDimensions: {
+      create: (workspaceId: string, body: CheckinDimensionCreateRequest) =>
+        request<CheckinDimensionOut>(`/v1/workspaces/${workspaceId}/checkin-dimensions`, {
+          method: "POST",
+          body,
+        }),
+      update: (workspaceId: string, dimensionId: string, body: CheckinDimensionUpdateRequest) =>
+        request<CheckinDimensionOut>(
+          `/v1/workspaces/${workspaceId}/checkin-dimensions/${dimensionId}`,
+          { method: "PATCH", body },
+        ),
+    },
+    checkinTemplate: {
+      get: (workspaceId: string) =>
+        request<CheckinTemplateOut>(`/v1/workspaces/${workspaceId}/checkin-template`),
+    },
+    checkins: {
+      list: (workspaceId: string, params: { limit?: number; offset?: number } = {}) =>
+        request<CheckinSummaryOut[]>(`/v1/workspaces/${workspaceId}/checkins`, {
+          query: {
+            limit: params.limit === undefined ? undefined : String(params.limit),
+            offset: params.offset === undefined ? undefined : String(params.offset),
+          },
+        }),
+      submit: (workspaceId: string, body: CheckinSubmitRequest) =>
+        request<CheckinOut>(`/v1/workspaces/${workspaceId}/checkins`, {
+          method: "POST",
+          body,
+        }),
+      get: (workspaceId: string, checkinId: string) =>
+        request<CheckinOut>(`/v1/workspaces/${workspaceId}/checkins/${checkinId}`),
+    },
+    tasks: {
+      list: (
+        workspaceId: string,
+        params: {
+          status?: WorkspaceTaskStatus;
+          taskType?: TaskType;
+          limit?: number;
+          offset?: number;
+        } = {},
+      ) =>
+        request<WorkspaceTaskOut[]>(`/v1/workspaces/${workspaceId}/tasks`, {
+          query: {
+            status: params.status,
+            task_type: params.taskType,
+            limit: params.limit === undefined ? undefined : String(params.limit),
+            offset: params.offset === undefined ? undefined : String(params.offset),
+          },
+        }),
+      create: (workspaceId: string, body: WorkspaceTaskCreateRequest) =>
+        request<WorkspaceTaskOut>(`/v1/workspaces/${workspaceId}/tasks`, {
+          method: "POST",
+          body,
+        }),
+      get: (workspaceId: string, taskId: string) =>
+        request<WorkspaceTaskOut>(`/v1/workspaces/${workspaceId}/tasks/${taskId}`),
+      patch: (workspaceId: string, taskId: string, body: WorkspaceTaskPatchRequest) =>
+        request<WorkspaceTaskOut>(`/v1/workspaces/${workspaceId}/tasks/${taskId}`, {
+          method: "PATCH",
+          body,
+        }),
+      remove: (workspaceId: string, taskId: string) =>
+        request<void>(`/v1/workspaces/${workspaceId}/tasks/${taskId}`, { method: "DELETE" }),
+      accept: (workspaceId: string, taskId: string) =>
+        request<WorkspaceTaskOut>(`/v1/workspaces/${workspaceId}/tasks/${taskId}/accept`, {
+          method: "POST",
+        }),
+      decline: (workspaceId: string, taskId: string) =>
+        request<WorkspaceTaskOut>(`/v1/workspaces/${workspaceId}/tasks/${taskId}/decline`, {
+          method: "POST",
+        }),
+    },
+    roadmaps: {
+      list: (workspaceId: string, params: { limit?: number; offset?: number } = {}) =>
+        request<RelationshipRoadmapOut[]>(`/v1/workspaces/${workspaceId}/roadmaps`, {
+          query: {
+            limit: params.limit === undefined ? undefined : String(params.limit),
+            offset: params.offset === undefined ? undefined : String(params.offset),
+          },
+        }),
+      create: (workspaceId: string, body: RelationshipRoadmapCreateRequest) =>
+        request<RelationshipRoadmapOut>(`/v1/workspaces/${workspaceId}/roadmaps`, {
+          method: "POST",
+          body,
+        }),
+      get: (workspaceId: string, roadmapId: string) =>
+        request<RelationshipRoadmapOut>(`/v1/workspaces/${workspaceId}/roadmaps/${roadmapId}`),
+      patch: (workspaceId: string, roadmapId: string, body: RelationshipRoadmapPatchRequest) =>
+        request<RelationshipRoadmapOut>(`/v1/workspaces/${workspaceId}/roadmaps/${roadmapId}`, {
+          method: "PATCH",
+          body,
+        }),
+      remove: (workspaceId: string, roadmapId: string) =>
+        request<void>(`/v1/workspaces/${workspaceId}/roadmaps/${roadmapId}`, {
+          method: "DELETE",
+        }),
+      milestones: {
+        list: (workspaceId: string, roadmapId: string, milestoneType?: MilestoneType) =>
+          request<RoadmapMilestoneOut[]>(
+            `/v1/workspaces/${workspaceId}/roadmaps/${roadmapId}/milestones`,
+            { query: { milestone_type: milestoneType } },
+          ),
+        create: (workspaceId: string, roadmapId: string, body: RoadmapMilestoneCreateRequest) =>
+          request<RoadmapMilestoneOut>(
+            `/v1/workspaces/${workspaceId}/roadmaps/${roadmapId}/milestones`,
+            { method: "POST", body },
+          ),
+        get: (workspaceId: string, roadmapId: string, milestoneId: string) =>
+          request<RoadmapMilestoneOut>(
+            `/v1/workspaces/${workspaceId}/roadmaps/${roadmapId}/milestones/${milestoneId}`,
+          ),
+        patch: (
+          workspaceId: string,
+          roadmapId: string,
+          milestoneId: string,
+          body: RoadmapMilestonePatchRequest,
+        ) =>
+          request<RoadmapMilestoneOut>(
+            `/v1/workspaces/${workspaceId}/roadmaps/${roadmapId}/milestones/${milestoneId}`,
+            { method: "PATCH", body },
+          ),
+        remove: (workspaceId: string, roadmapId: string, milestoneId: string) =>
+          request<void>(
+            `/v1/workspaces/${workspaceId}/roadmaps/${roadmapId}/milestones/${milestoneId}`,
+            { method: "DELETE" },
+          ),
+      },
+    },
+    copilot: {
+      threads: {
+        list: (workspaceId: string) =>
+          request<ChatThreadOut[]>(`/v1/workspaces/${workspaceId}/copilot/threads`),
+        create: (workspaceId: string, body: ThreadCreateRequest) =>
+          request<ChatThreadOut>(`/v1/workspaces/${workspaceId}/copilot/threads`, {
+            method: "POST",
+            body,
+          }),
+        get: (workspaceId: string, threadId: string) =>
+          request<ChatThreadOut>(`/v1/workspaces/${workspaceId}/copilot/threads/${threadId}`),
+        archive: (workspaceId: string, threadId: string) =>
+          request<ChatThreadOut>(
+            `/v1/workspaces/${workspaceId}/copilot/threads/${threadId}/archive`,
+            { method: "POST" },
+          ),
+        messages: {
+          list: (
+            workspaceId: string,
+            threadId: string,
+            params: { limit?: number; offset?: number } = {},
+          ) =>
+            request<ChatMessageOut[]>(
+              `/v1/workspaces/${workspaceId}/copilot/threads/${threadId}/messages`,
+              {
+                query: {
+                  limit: params.limit === undefined ? undefined : String(params.limit),
+                  offset: params.offset === undefined ? undefined : String(params.offset),
+                },
+              },
+            ),
+          post: (workspaceId: string, threadId: string, body: MessageCreateRequest) =>
+            request<MessagePairOut>(
+              `/v1/workspaces/${workspaceId}/copilot/threads/${threadId}/messages`,
+              { method: "POST", body },
+            ),
+        },
+      },
+    },
+  },
+  /** /v1/people/{person_id}/personal-tasks -- person-scoped, distinct from
+   *  api.workspaces.tasks (workspace-scoped). */
+  personalTasks: {
+    list: (
+      personId: string,
+      params: { status?: PersonalTaskStatus; limit?: number; offset?: number } = {},
+    ) =>
+      request<PersonalTaskOut[]>(`/v1/people/${personId}/personal-tasks`, {
+        query: {
+          status: params.status,
+          limit: params.limit === undefined ? undefined : String(params.limit),
+          offset: params.offset === undefined ? undefined : String(params.offset),
+        },
+      }),
+    create: (personId: string, body: PersonalTaskCreateRequest) =>
+      request<PersonalTaskOut>(`/v1/people/${personId}/personal-tasks`, {
+        method: "POST",
+        body,
+      }),
+    get: (taskId: string) => request<PersonalTaskOut>(`/v1/personal-tasks/${taskId}`),
+    patch: (taskId: string, body: PersonalTaskPatchRequest) =>
+      request<PersonalTaskOut>(`/v1/personal-tasks/${taskId}`, { method: "PATCH", body }),
+    remove: (taskId: string) =>
+      request<void>(`/v1/personal-tasks/${taskId}`, { method: "DELETE" }),
+  },
+  entitlements: {
+    get: () => request<EntitlementSetOut>("/v1/me/entitlements"),
+  },
+  myWorkspace: {
+    get: (personId: string) =>
+      request<MyWorkspaceOverviewOut>("/v1/me/workspace", { query: { person_id: personId } }),
   },
 };

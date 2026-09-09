@@ -384,4 +384,16 @@ export const enApp: Record<keyof typeof deApp, string> = {
   "app.reportFailed.untouched":
     "Your calculation is untouched — it is immutable and was never modified by this run. Starting again queues a completely new report from the same calculation.",
   "app.reportFailed.retry": "Generate a new report",
+
+  // V2 placeholders (PR-WEB-00): destination pages exist but have no data model
+  // wired up yet -- not a 404, real implementation follows in a later PR.
+  "app.connections.title": "Connections are coming soon",
+  "app.connections.body":
+    "This is where you'll invite, accept, and manage connections to other people. This view isn't wired up yet.",
+  "app.workspaces.title": "Workspaces are coming soon",
+  "app.workspaces.body":
+    "This is where shared workspaces for check-ins, tasks, and roadmaps between connected people will live. This view isn't wired up yet.",
+  "app.copilot.title": "Copilot is coming soon",
+  "app.copilot.body":
+    "This is where the workspace copilot will hold conversations about your shared data. This view isn't wired up yet.",
 };
