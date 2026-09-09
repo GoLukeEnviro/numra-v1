@@ -2230,6 +2230,11 @@ export interface components {
              * Format: date-time
              */
             expires_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
             method: components["schemas"]["InvitationMethod"];
         };
         /**
@@ -3637,6 +3642,13 @@ export interface components {
         ThreadScope: "PERSONAL_PRIVATE" | "RELATIONSHIP_PRIVATE" | "RELATIONSHIP_SHARED";
         /** UserConnectionOut */
         UserConnectionOut: {
+            /** Counterpart Display Name */
+            counterpart_display_name: string;
+            /**
+             * Counterpart User Id
+             * Format: uuid
+             */
+            counterpart_user_id: string;
             /**
              * Created At
              * Format: date-time

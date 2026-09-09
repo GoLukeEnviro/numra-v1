@@ -13,8 +13,8 @@ import { useLocale } from "@/i18n/context";
 import { useAuth } from "@/lib/auth-context";
 import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState, type FormEvent } from "react";
 
 const PROMISE_KEYS: MessageKey[] = [
   "public.login.promise1",
@@ -22,10 +22,20 @@ const PROMISE_KEYS: MessageKey[] = [
   "public.login.promise3",
 ];
 
-export default function LoginPage() {
+/** Only a same-origin relative path is a safe redirect target -- anything else
+ *  (a bare `//host/...` or absolute URL) falls back to /dashboard rather than
+ *  sending the user off-site after login. */
+function safeNextPath(raw: string | null): string {
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return "/dashboard";
+  return raw;
+}
+
+function LoginForm() {
   const { login } = useAuth();
   const { t } = useLocale();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const next = safeNextPath(searchParams.get("next"));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -37,7 +47,7 @@ export default function LoginPage() {
     setError(null);
     try {
       await login(email, password);
-      router.push("/dashboard");
+      router.push(next);
     } catch (err) {
       if (err instanceof ApiError) {
         setError({ code: err.code, message: err.message });
@@ -154,5 +164,13 @@ export default function LoginPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   );
 }

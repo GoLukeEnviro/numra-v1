@@ -14,6 +14,7 @@ from numra_api.deps import (
     require_csrf,
 )
 from numra_api.models import ConnectionInvitation, User, UserConnection
+from numra_api.repositories.users import get_user_by_id
 from numra_api.schemas.connection import (
     ConnectionInvitationCreatedOut,
     ConnectionInvitationCreateRequest,
@@ -34,6 +35,7 @@ from numra_api.services.connection_service import (
     revoke_own_invitation,
 )
 from numra_api.services.feature_flags import require_v2_phase
+from numra_api.services.relationship_workspace_service import _fallback_display_name
 
 router = APIRouter(
     prefix="/v1/connections",
@@ -46,8 +48,27 @@ def _invitation_to_out(invitation: ConnectionInvitation) -> ConnectionInvitation
     return ConnectionInvitationOut.model_validate(invitation, from_attributes=True)
 
 
-def _connection_to_out(connection: UserConnection) -> UserConnectionOut:
-    return UserConnectionOut.model_validate(connection, from_attributes=True)
+async def _connection_to_out(
+    db: AsyncSession, connection: UserConnection, *, viewer_id: uuid.UUID
+) -> UserConnectionOut:
+    """Lädt den Counterpart-User pro Connection (N+1 bewusst akzeptiert -- Connections
+    sind limit-gedeckelt, analog zum Dual-Profile-Pattern in
+    relationship_workspace_service.py)."""
+    counterpart_id = (
+        connection.user_b_id if connection.user_a_id == viewer_id else connection.user_a_id
+    )
+    counterpart = await get_user_by_id(db, user_id=counterpart_id)
+    counterpart_display_name = _fallback_display_name(counterpart, member_user_id=counterpart_id)
+    return UserConnectionOut(
+        id=connection.id,
+        user_a_id=connection.user_a_id,
+        user_b_id=connection.user_b_id,
+        status=connection.status,
+        created_at=connection.created_at,
+        dissolved_at=connection.dissolved_at,
+        counterpart_user_id=counterpart_id,
+        counterpart_display_name=counterpart_display_name,
+    )
 
 
 @router.post(
@@ -112,7 +133,7 @@ async def preview_invitation_route(
 ) -> ConnectionInvitationPreviewOut:
     invitation = await preview_invitation(db, token=token)
     return ConnectionInvitationPreviewOut(
-        method=invitation.method, expires_at=invitation.expires_at
+        id=invitation.id, method=invitation.method, expires_at=invitation.expires_at
     )
 
 
@@ -131,9 +152,8 @@ async def redeem_invitation_route(
     ),
 ) -> RedeemInvitationResponseOut:
     connection, workspace = await accept_invitation(db, token=body.token, redeeming_user=user)
-    return RedeemInvitationResponseOut(
-        connection=_connection_to_out(connection), workspace_id=workspace.id
-    )
+    connection_out = await _connection_to_out(db, connection, viewer_id=user.id)
+    return RedeemInvitationResponseOut(connection=connection_out, workspace_id=workspace.id)
 
 
 @router.post(
@@ -158,7 +178,7 @@ async def list_connections_route(
     offset: int = Query(default=0, ge=0),
 ) -> list[UserConnectionOut]:
     connections = await list_connections(db, user_id=user.id, limit=limit, offset=offset)
-    return [_connection_to_out(c) for c in connections]
+    return [await _connection_to_out(db, c, viewer_id=user.id) for c in connections]
 
 
 @router.post(
@@ -172,4 +192,4 @@ async def dissolve_connection_route(
     db: AsyncSession = Depends(get_db),
 ) -> UserConnectionOut:
     connection = await dissolve_own_connection(db, connection_id=connection_id, user_id=user.id)
-    return _connection_to_out(connection)
+    return await _connection_to_out(db, connection, viewer_id=user.id)

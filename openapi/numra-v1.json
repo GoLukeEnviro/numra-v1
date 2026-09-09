@@ -1303,11 +1303,17 @@
             "title": "Expires At",
             "type": "string"
           },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
           "method": {
             "$ref": "#/components/schemas/InvitationMethod"
           }
         },
         "required": [
+          "id",
           "method",
           "expires_at"
         ],
@@ -4683,6 +4689,15 @@
       },
       "UserConnectionOut": {
         "properties": {
+          "counterpart_display_name": {
+            "title": "Counterpart Display Name",
+            "type": "string"
+          },
+          "counterpart_user_id": {
+            "format": "uuid",
+            "title": "Counterpart User Id",
+            "type": "string"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -4725,7 +4740,9 @@
           "user_b_id",
           "status",
           "created_at",
-          "dissolved_at"
+          "dissolved_at",
+          "counterpart_user_id",
+          "counterpart_display_name"
         ],
         "title": "UserConnectionOut",
         "type": "object"

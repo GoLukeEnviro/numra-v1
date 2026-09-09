@@ -61,6 +61,10 @@ export type ConnectionInvitationPreviewOut =
   components["schemas"]["ConnectionInvitationPreviewOut"];
 export type RedeemInvitationRequest = components["schemas"]["RedeemInvitationRequest"];
 export type RedeemInvitationResponseOut = components["schemas"]["RedeemInvitationResponseOut"];
+export type InvitationMethod = components["schemas"]["InvitationMethod"];
+export type InvitationState = components["schemas"]["InvitationState"];
+export type ConnectionStatus = components["schemas"]["ConnectionStatus"];
+export type ConsentScope = components["schemas"]["ConsentScope"];
 
 export type WorkspaceSummaryOut = components["schemas"]["WorkspaceSummaryOut"];
 export type WorkspaceOut = components["schemas"]["WorkspaceOut"];
@@ -552,6 +556,17 @@ export const api = {
         method: "POST",
         body,
       }),
+    listInvitations: (params: { limit?: number; offset?: number } = {}) =>
+      request<ConnectionInvitationOut[]>("/v1/connections/invitations", {
+        query: {
+          limit: params.limit === undefined ? undefined : String(params.limit),
+          offset: params.offset === undefined ? undefined : String(params.offset),
+        },
+      }),
+    previewByToken: (token: string) =>
+      request<ConnectionInvitationPreviewOut>(
+        `/v1/connections/invitations/redeem/${encodeURIComponent(token)}`,
+      ),
     declineInvitation: (invitationId: string) =>
       request<ConnectionInvitationOut>(
         `/v1/connections/invitations/${invitationId}/decline`,
