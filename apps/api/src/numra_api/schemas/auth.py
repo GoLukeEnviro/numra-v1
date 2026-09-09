@@ -28,6 +28,7 @@ class UserOut(BaseModel):
     email: str
     role: str
     is_active: bool
+    email_verified_at: dt.datetime | None = None
 
 
 class ChangePasswordRequest(BaseModel):

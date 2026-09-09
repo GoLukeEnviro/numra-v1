@@ -6,8 +6,9 @@ const executablePath = fs.existsSync(localChromium) ? localChromium : undefined;
 
 /**
  * Config for the visual-baseline screenshot specs only (screenshot generators for
- * human reality-checks: PR-WEB-00's pr-web-00-visual-baseline.spec.ts and
- * PR-WEB-00B's pr-web-00b-brand-baseline.spec.ts). Deliberately separate from both
+ * human reality-checks: PR-WEB-00's pr-web-00-visual-baseline.spec.ts, PR-WEB-00B's
+ * pr-web-00b-brand-baseline.spec.ts, and PR-WEB-01's pr-web-01-visual-baseline.spec.ts).
+ * Deliberately separate from both
  * playwright.config.ts (golden-journey.spec.ts) and playwright.system.config.ts
  * (system-journey.spec.ts, which needs a real FastAPI/Postgres/worker stack): these
  * mock the backend with page.route() exactly like golden-journey.spec.ts.
@@ -20,7 +21,11 @@ const executablePath = fs.existsSync(localChromium) ? localChromium : undefined;
  */
 export default defineConfig({
   testDir: "./e2e-system",
-  testMatch: [/pr-web-00-visual-baseline\.spec\.ts$/, /pr-web-00b-brand-baseline\.spec\.ts$/],
+  testMatch: [
+    /pr-web-00-visual-baseline\.spec\.ts$/,
+    /pr-web-00b-brand-baseline\.spec\.ts$/,
+    /pr-web-01-visual-baseline\.spec\.ts$/,
+  ],
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: 0,

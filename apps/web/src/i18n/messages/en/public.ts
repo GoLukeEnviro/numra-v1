@@ -61,6 +61,58 @@ export const enPublic: Record<keyof typeof dePublic, string> = {
   "public.login.submit": "Sign in",
   "public.login.noAccount": "No account yet?",
   "public.login.createAccount": "Create account",
+  "public.login.forgotPassword": "Forgot your password?",
+
+  // Forgot password
+  "public.forgotPassword.title": "Forgot password",
+  "public.forgotPassword.subtitle": "We'll send you a link to reset it.",
+  "public.forgotPassword.email": "Email",
+  "public.forgotPassword.submit": "Request link",
+  "public.forgotPassword.successTitle": "Request sent",
+  "public.forgotPassword.successBody":
+    "If an account exists for this address, we've sent a link to reset your password.",
+  "public.forgotPassword.errorRateLimited": "Too many attempts. Please try again later.",
+  "public.forgotPassword.backToLogin": "Back to login",
+
+  // Reset password
+  "public.resetPassword.title": "Set a new password",
+  "public.resetPassword.subtitle": "Set a new password for your account.",
+  "public.resetPassword.newPassword": "New password",
+  "public.resetPassword.passwordHint": "At least 12 characters.",
+  "public.resetPassword.confirmPassword": "Confirm new password",
+  "public.resetPassword.submit": "Set password",
+  "public.resetPassword.errorMismatch": "The passwords do not match.",
+  "public.resetPassword.errorTooShort": "The password must be at least 12 characters long.",
+  "public.resetPassword.missingTokenTitle": "Incomplete link",
+  "public.resetPassword.missingTokenBody":
+    "This link is missing a valid token. Please request a new one.",
+  "public.resetPassword.successTitle": "Password changed",
+  "public.resetPassword.successBody":
+    "Your password has been changed. All sessions have been signed out — please sign in again.",
+  "public.resetPassword.successCta": "Go to login",
+  "public.resetPassword.invalidTitle": "Link no longer valid",
+  "public.resetPassword.invalidBody": "This link can no longer be used. Please request a new one.",
+  "public.resetPassword.invalidCta": "Request new link",
+  "public.resetPassword.errorRateLimited": "Too many attempts. Please try again later.",
+
+  // Verify email
+  "public.verifyEmail.title": "Verify your email",
+  "public.verifyEmail.verifying": "Verifying your email…",
+  "public.verifyEmail.successTitle": "Email verified",
+  "public.verifyEmail.successBody": "Your email address has been verified successfully.",
+  "public.verifyEmail.successCtaDashboard": "Go to dashboard",
+  "public.verifyEmail.successCtaLogin": "Go to login",
+  "public.verifyEmail.missingTokenTitle": "Incomplete link",
+  "public.verifyEmail.missingTokenBody": "This link is missing a valid token.",
+  "public.verifyEmail.invalidTitle": "Link no longer valid",
+  "public.verifyEmail.invalidBodySignedIn":
+    "This verification link can no longer be used. Please request a new one.",
+  "public.verifyEmail.invalidBodySignedOut":
+    "This verification link can no longer be used. Sign in to request a new one.",
+  "public.verifyEmail.resendButton": "Send a new verification link",
+  "public.verifyEmail.resendSent": "A new verification link has been sent.",
+  "public.verifyEmail.toLogin": "Go to login",
+  "public.verifyEmail.errorRateLimited": "Too many attempts. Please try again later.",
 
   // Registration
   "public.register.title": "Create account",

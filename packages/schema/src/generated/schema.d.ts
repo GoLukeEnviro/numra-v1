@@ -3665,6 +3665,8 @@ export interface components {
         UserOut: {
             /** Email */
             email: string;
+            /** Email Verified At */
+            email_verified_at?: string | null;
             /** Id */
             id: string;
             /** Is Active */

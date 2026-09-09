@@ -123,7 +123,13 @@ async def register(
         raise EmailAlreadyRegistered("an account with this email already exists") from exc
 
     await _issue_authenticated_session(response=response, db=db, settings=settings, user=user)
-    return UserOut(id=str(user.id), email=user.email, role=str(user.role), is_active=user.is_active)
+    return UserOut(
+        id=str(user.id),
+        email=user.email,
+        role=str(user.role),
+        is_active=user.is_active,
+        email_verified_at=user.email_verified_at,
+    )
 
 
 @router.post(
@@ -146,7 +152,13 @@ async def login(
         raise InvalidCredentials("invalid email or password")
 
     await _issue_authenticated_session(response=response, db=db, settings=settings, user=user)
-    return UserOut(id=str(user.id), email=user.email, role=str(user.role), is_active=user.is_active)
+    return UserOut(
+        id=str(user.id),
+        email=user.email,
+        role=str(user.role),
+        is_active=user.is_active,
+        email_verified_at=user.email_verified_at,
+    )
 
 
 @router.post("/logout", status_code=204, dependencies=[Depends(require_csrf)])
@@ -164,7 +176,13 @@ async def logout(
 
 @router.get("/me", response_model=UserOut)
 async def me(user: User = Depends(get_current_user)) -> UserOut:
-    return UserOut(id=str(user.id), email=user.email, role=str(user.role), is_active=user.is_active)
+    return UserOut(
+        id=str(user.id),
+        email=user.email,
+        role=str(user.role),
+        is_active=user.is_active,
+        email_verified_at=user.email_verified_at,
+    )
 
 
 @router.post(

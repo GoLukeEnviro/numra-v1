@@ -314,6 +314,37 @@ export const deApp = {
   "app.security.logoutOthers": "Andere Geräte abmelden",
   "app.security.othersLoggedOut": "Andere Geräte wurden abgemeldet.",
 
+  // Einstellungen: Konto — E-Mail-Verifizierung
+  "app.account.emailVerified": "E-Mail bestätigt",
+  "app.account.emailUnverified": "E-Mail nicht bestätigt",
+  "app.account.emailUnverifiedBody": "Bestätige deine E-Mail-Adresse, um dein Konto abzusichern.",
+  "app.account.resendVerification": "Link erneut senden",
+  "app.account.resendVerificationSent": "Ein neuer Bestätigungslink wurde gesendet.",
+
+  // E-Mail-Verifizierungs-Banner
+  "app.emailVerificationBanner.body":
+    "Bitte bestätige deine E-Mail-Adresse, um dein Konto abzusichern.",
+  "app.emailVerificationBanner.resend": "Link erneut senden",
+  "app.emailVerificationBanner.resendSent": "Ein neuer Bestätigungslink wurde gesendet.",
+  "app.emailVerificationBanner.dismiss": "Ausblenden",
+
+  // Einstellungen: Berechtigungen (Entitlements)
+  "app.entitlements.title": "Berechtigungen",
+  "app.entitlements.body": "Dein aktueller Funktionsumfang — rein informativ.",
+  "app.entitlements.loading": "Berechtigungen werden geladen…",
+  "app.entitlements.errorTitle": "Berechtigungen konnten nicht geladen werden",
+  "app.entitlements.unlimited": "Unbegrenzt",
+  "app.entitlements.personalWorkspace": "Persönlicher Workspace",
+  "app.entitlements.connections": "Verbindungen",
+  "app.entitlements.relationshipWorkspaces": "Beziehungs-Workspaces",
+  "app.entitlements.relationshipCheckins": "Beziehungs-Check-ins",
+  "app.entitlements.relationshipCopilot": "Beziehungs-Copilot",
+  "app.entitlements.advancedRelationshipAnalysis": "Erweiterte Beziehungsanalyse",
+  "app.entitlements.lifeTracking": "Life Tracking",
+  "app.entitlements.premiumReports": "Premium-Berichte",
+  "app.entitlements.maxConnections": "Max. Verbindungen",
+  "app.entitlements.maxWorkspaces": "Max. Workspaces",
+
   // Einstellungen: Systeminfo
   "app.systemInfo.title": "Systeminfo",
   "app.systemInfo.body": "Womit diese AVENYTH-Instanz läuft.",
