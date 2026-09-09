@@ -23,6 +23,10 @@ const badgeVariants = cva(
         // never reads as equal weight to a canonical value.
         diagnostic: "border border-dashed border-muted/60 text-muted",
         success: "border border-success/40 text-success",
+        // Shared-content marker (PR-WEB-04) -- gold-toned but deliberately more
+        // subdued than `master` (translucent surface, not a filled gold block) so
+        // the two are never confused at a glance.
+        shared: "border border-gold/40 bg-gold/15 font-semibold text-gold",
       },
     },
     defaultVariants: {

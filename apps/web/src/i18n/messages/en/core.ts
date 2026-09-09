@@ -47,4 +47,6 @@ export const enCore: Record<keyof typeof deCore, string> = {
   "workspace.privateLabel": "Private",
   "workspace.selfProfileLabel": "Own profile",
   "workspace.managedProfileLabel": "Managed profile",
+  // Relationship Workspace (PR-WEB-04): shared-content marker, counterpart to privateLabel.
+  "workspace.sharedLabel": "Shared",
 };
