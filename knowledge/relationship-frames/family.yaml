@@ -1,0 +1,110 @@
+relationship_type: FAMILY
+dimensions:
+  family_roles:
+    semantic_context_de: >-
+      Welche Rolle innerhalb des Familiensystems -- Ausgleicher, Initiator, Ruhepol,
+      Vermittler -- typischerweise eingenommen wird. Ein symbolisches Deutungsangebot
+      zur eigenen Rolle, keine feste Zuschreibung oder Verpflichtung.
+    number_modifiers:
+      "1": "uebernimmt haeufig eine initiierende, richtungsgebende Rolle"
+      "2": "uebernimmt haeufig eine vermittelnde, ausgleichende Rolle"
+      "3": "bringt Leichtigkeit und Verbindung in familiaere Zusammenkuenfte"
+      "4": "uebernimmt haeufig eine organisierende, verlaessliche Rolle"
+      "5": "bringt frischen Wind, wird manchmal als unberechenbar erlebt"
+      "6": "uebernimmt haeufig eine fuersorgende, kuemmernde Rolle"
+      "7": "haelt eher Distanz, gilt oft als der nachdenkliche Ruhepol"
+      "8": "uebernimmt haeufig eine fuehrende oder entscheidende Rolle"
+      "9": "uebernimmt haeufig eine versoehnende, weitblickende Rolle"
+      "11": "spuert familiaere Stimmungen intuitiv, auch unausgesprochene"
+      "22": "denkt oft an das langfristige Wohl des gesamten Familiensystems"
+      "33": "uebernimmt haeufig eine tragende, warmherzige Rolle"
+  long_term_patterns:
+    semantic_context_de: >-
+      Wiederkehrende Dynamiken, die sich ueber die Zeit im Familiensystem zeigen
+      koennen -- als Reflexionsangebot gelesen, nicht als festgeschriebenes Schicksal
+      oder unausweichliches Muster.
+    number_modifiers:
+      "1": "neigt dazu, wiederholt Verantwortung oder Initiative zu uebernehmen"
+      "2": "neigt dazu, wiederholt vermittelnd zwischen anderen zu stehen"
+      "3": "neigt dazu, in Spannungsphasen fuer Ablenkung zu sorgen"
+      "4": "neigt dazu, an gewohnten familiaeren Ablaeufen festzuhalten"
+      "5": "neigt dazu, sich zeitweise aus engen Familienstrukturen zu loesen"
+      "6": "neigt dazu, wiederholt mehr Fuersorge zu geben als zu nehmen"
+      "7": "neigt dazu, sich ueber laengere Phasen zurueckzuziehen"
+      "8": "neigt dazu, wiederholt Entscheidungen fuer andere zu treffen"
+      "9": "neigt dazu, eigene Beduerfnisse zugunsten des Familienfriedens zurueckzustellen"
+      "11": "neigt dazu, familiaere Spannungen besonders intensiv wahrzunehmen"
+      "22": "neigt dazu, langfristige Verantwortung fuer die Familie zu uebernehmen"
+      "33": "neigt dazu, wiederholt ausgleichend fuer alle einzustehen"
+  boundaries:
+    semantic_context_de: >-
+      Wie Grenzen -- Naehe, Einmischung, Privatsphaere -- innerhalb der Familie
+      typischerweise gezogen und gewahrt werden. Eine deskriptive Linse, keine
+      Bewertung von richtig oder falsch.
+    number_modifiers:
+      "1": "zieht eigene Grenzen klar und ohne grosse Umschweife"
+      "2": "faellt es schwerer, Grenzen gegenueber Familienmitgliedern zu ziehen"
+      "3": "haelt Grenzen eher locker, solange die Stimmung leicht bleibt"
+      "4": "zieht Grenzen ueber klare, feste Absprachen"
+      "5": "braucht deutliche Grenzen, um eigene Freiraeume zu schuetzen"
+      "6": "faellt es schwer, Grenzen zu ziehen, wenn Fuersorge erwartet wird"
+      "7": "zieht Grenzen konsequent, um Rueckzugsraeume zu sichern"
+      "8": "zieht Grenzen bestimmt, besonders bei Entscheidungsfragen"
+      "9": "haelt Grenzen bewusst weit, um Verbindung nicht zu gefaehrden"
+      "11": "braucht klare Grenzen zum Schutz vor emotionaler Ueberflutung"
+      "22": "zieht Grenzen im Sinne langfristig tragfaehiger Strukturen"
+      "33": "sollte aktiv Grenzen setzen, statt sie stillschweigend zu verschieben"
+  support:
+    semantic_context_de: >-
+      Wie Unterstuetzung innerhalb der Familie typischerweise gegeben und angenommen
+      wird -- praktisch, emotional, finanziell. Ein symbolisches Deutungsangebot zum
+      eigenen Unterstuetzungsstil.
+    number_modifiers:
+      "1": "unterstuetzt am liebsten durch konkrete Initiative und Anstoss"
+      "2": "unterstuetzt durch verlaessliche, einfuehlsame Praesenz"
+      "3": "unterstuetzt durch Aufmunterung und Ablenkung von Sorgen"
+      "4": "unterstuetzt durch praktische, strukturierte Hilfe"
+      "5": "unterstuetzt durch neue Perspektiven und frischen Antrieb"
+      "6": "unterstuetzt durch fuersorgliche, oft aufopfernde Hilfe"
+      "7": "unterstuetzt durch ruhige Praesenz und zurueckhaltenden Rat"
+      "8": "unterstuetzt durch entschlossenes Anpacken von Problemen"
+      "9": "unterstuetzt durch grosszuegiges, vorbehaltloses Zuwenden"
+      "11": "unterstuetzt durch feinfuehliges Erspueren von Bedarf"
+      "22": "unterstuetzt durch langfristig angelegte, tragende Hilfe"
+      "33": "unterstuetzt oft mehr, als selbst eingefordert wird"
+  expectations:
+    semantic_context_de: >-
+      Welche ausgesprochenen oder unausgesprochenen Erwartungen innerhalb der
+      Familie typischerweise eine Rolle spielen -- ein Reflexionsangebot, keine
+      Verpflichtung oder feststehende Vorgabe.
+    number_modifiers:
+      "1": "erwartet oft Eigenstaendigkeit auch von anderen Familienmitgliedern"
+      "2": "erwartet oft Ruecksichtnahme und emotionale Verlaesslichkeit"
+      "3": "erwartet oft Leichtigkeit und wenig Formalitaet im Miteinander"
+      "4": "erwartet oft Verlaesslichkeit und klare Absprachen"
+      "5": "erwartet oft Freiraum und wenig einengende Vorgaben"
+      "6": "erwartet oft Fuersorge, ohne dies offen einzufordern"
+      "7": "erwartet oft Respekt vor dem eigenen Rueckzugsbeduerfnis"
+      "8": "erwartet oft Anerkennung fuer Uebernommene Verantwortung"
+      "9": "erwartet oft Verstaendnis fuer eigene Ideale und Werte"
+      "11": "erwartet oft Feingefuehl fuer die eigene Sensibilitaet"
+      "22": "erwartet oft Mitwirkung an langfristigen Familienvorhaben"
+      "33": "erwartet oft Gegenseitigkeit fuer die eigene Fuersorge"
+  communication:
+    semantic_context_de: >-
+      Wie innerhalb der Familie typischerweise miteinander gesprochen wird -- Tonfall,
+      Offenheit, Umgang mit schwierigen Themen. Eine deskriptive Linse, keine
+      Bewertung von guter oder schlechter Kommunikation.
+    number_modifiers:
+      "1": "spricht Themen direkt an, auch wenn das unbequem ist"
+      "2": "sucht einfuehlsame Formulierungen, vermeidet moeglicherweise Klartext"
+      "3": "lockert schwierige Gespraeche gern mit Humor auf"
+      "4": "bevorzugt klare, sachliche Familiengespraeche"
+      "5": "bringt Themen oft spontan und unvorbereitet zur Sprache"
+      "6": "spricht ruecksichtsvoll, oft mit Fokus auf das Wohl anderer"
+      "7": "bevorzugt ruhige Gespraeche unter vier Augen statt Runden"
+      "8": "spricht zielgerichtet, bringt Themen schnell auf den Punkt"
+      "9": "spricht mit Blick auf das grosse Ganze der Familie"
+      "11": "nimmt zwischen den Zeilen Gesagtes besonders stark wahr"
+      "22": "spricht mit Blick auf langfristige familiaere Entwicklungen"
+      "33": "spricht warmherzig, stellt eigene Anliegen oft zurueck"

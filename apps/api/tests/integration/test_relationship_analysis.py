@@ -189,9 +189,12 @@ async def test_old_analysis_stays_readable_after_consent_revoke(
     assert new_job.status_code == 403
 
 
-async def test_relationship_type_work_returns_knowledge_frame_not_available(
+async def test_relationship_type_work_has_knowledge_frame(
     client, sessionmaker, lukas_payload
 ) -> None:
+    """WORK now has a `knowledge/relationship-frames/work.yaml` frame (all 8
+    RelationshipType values do, see specs/v2/relationship-type-spec.md), so job
+    creation succeeds instead of returning 409 KNOWLEDGE_FRAME_NOT_AVAILABLE."""
     workspace_id, headers_b = await _connect(
         client, sessionmaker, "ra-work-a@example.com", "ra-work-b@example.com"
     )
@@ -208,8 +211,7 @@ async def test_relationship_type_work_returns_knowledge_frame_not_available(
     response = await client.post(
         f"/v1/workspaces/{workspace_id}/relationship-analysis", json={}, headers=headers_a
     )
-    assert response.status_code == 409
-    assert response.json()["code"] == "KNOWLEDGE_FRAME_NOT_AVAILABLE"
+    assert response.status_code == 201
 
 
 async def test_relationship_type_not_set_returns_409(client, sessionmaker, lukas_payload) -> None:

@@ -1,0 +1,110 @@
+relationship_type: PARENT_CHILD
+dimensions:
+  guidance_and_independence:
+    semantic_context_de: >-
+      Wie zwischen erwachsenen Beteiligten Rat, Fuersorge und die Anerkennung
+      eigenstaendiger Entscheidungen typischerweise ausbalanciert werden. Ein
+      symbolisches Deutungsangebot, keine Bewertung, wer "richtig" handelt.
+    number_modifiers:
+      "1": "gibt Rat oft direkt, kann eigene Entscheidungen anderer schwer akzeptieren"
+      "2": "gibt Rat einfuehlsam, sucht viel Ruecksprache statt klarer Ansagen"
+      "3": "vermittelt Rat eher leicht und beilaeufig statt belehrend"
+      "4": "gibt Rat strukturiert, haelt oft an bewaehrten Vorgehensweisen fest"
+      "5": "gibt Freiraum grosszuegig, meidet einengende Vorgaben"
+      "6": "gibt Rat fuersorglich, neigt zu Ueberfuersorge in Entscheidungsfragen"
+      "7": "gibt Rat zurueckhaltend, nur wenn ausdruecklich gewuenscht"
+      "8": "gibt Rat entschieden, kann bei Widerspruch bestimmt wirken"
+      "9": "gibt Rat mit Blick auf groessere Zusammenhaenge und Werte"
+      "11": "spuert intuitiv, wann Rat gebraucht wird und wann nicht"
+      "22": "gibt Rat mit Blick auf langfristige Tragfaehigkeit von Entscheidungen"
+      "33": "gibt Rat warmherzig, stellt eigene Sichtweise oft zurueck"
+  communication:
+    semantic_context_de: >-
+      Wie zwischen erwachsenen Familienmitgliedern in dieser Konstellation
+      typischerweise gesprochen wird -- Tonfall, Offenheit, Umgang mit alten
+      Gespraechsmustern aus fruehen Jahren. Eine deskriptive Linse, keine Bewertung.
+    number_modifiers:
+      "1": "spricht direkt, uebernimmt oft die Gespraechsfuehrung"
+      "2": "sucht einfuehlsamen Austausch, vermeidet offene Konfrontation"
+      "3": "haelt den Ton meist locker, lenkt bei Ernst gern ab"
+      "4": "bevorzugt sachliche, klare Gespraeche ueber wichtige Themen"
+      "5": "spricht spontan, meidet feste Gespraechsrituale"
+      "6": "fragt haeufig fuersorglich nach dem Wohlergehen des anderen"
+      "7": "braucht auch hier klare Rueckzugsraeume im Gespraech"
+      "8": "bringt Themen pragmatisch und zielgerichtet auf den Punkt"
+      "9": "spricht mit Blick auf das groessere Familienganze"
+      "11": "nimmt Untertoene im Gespraech besonders sensibel wahr"
+      "22": "spricht mit Blick auf langfristig gemeinsame Vorhaben"
+      "33": "spricht warmherzig, stellt eigene Anliegen oft zurueck"
+  boundaries:
+    semantic_context_de: >-
+      Wie Grenzen -- Einmischung in Lebensentscheidungen, Privatsphaere,
+      Unabhaengigkeit -- zwischen erwachsenen Beteiligten typischerweise gezogen
+      werden. Eine deskriptive Linse, keine Bewertung von richtig oder falsch.
+    number_modifiers:
+      "1": "zieht eigene Grenzen klar, laesst sich ungern hineinreden"
+      "2": "faellt es schwerer, Grenzen in dieser Konstellation zu ziehen"
+      "3": "haelt Grenzen eher locker und situativ"
+      "4": "zieht Grenzen ueber feste, klare Absprachen"
+      "5": "braucht deutliche Grenzen zum Schutz der eigenen Unabhaengigkeit"
+      "6": "faellt es schwer, Grenzen zu ziehen, wenn Fuersorge erwartet wird"
+      "7": "zieht Grenzen konsequent, um Rueckzugsraeume zu sichern"
+      "8": "zieht Grenzen bestimmt, besonders bei Entscheidungsfragen"
+      "9": "haelt Grenzen bewusst weit, um Verbindung nicht zu gefaehrden"
+      "11": "braucht klare Grenzen zum Schutz vor emotionaler Ueberflutung"
+      "22": "zieht Grenzen im Sinne langfristig tragfaehiger Strukturen"
+      "33": "sollte aktiv Grenzen setzen, statt sie stillschweigend zu verschieben"
+  expectations:
+    semantic_context_de: >-
+      Welche ausgesprochenen oder unausgesprochenen Erwartungen zwischen erwachsenen
+      Beteiligten dieser Konstellation typischerweise eine Rolle spielen -- ein
+      Reflexionsangebot, keine Verpflichtung oder feststehende Vorgabe.
+    number_modifiers:
+      "1": "erwartet oft Eigenstaendigkeit auch vom anderen Beteiligten"
+      "2": "erwartet oft Ruecksichtnahme und emotionale Verlaesslichkeit"
+      "3": "erwartet oft Leichtigkeit und wenig Formalitaet im Miteinander"
+      "4": "erwartet oft Verlaesslichkeit und klare Absprachen"
+      "5": "erwartet oft Freiraum und wenig einengende Vorgaben"
+      "6": "erwartet oft Fuersorge, ohne dies offen einzufordern"
+      "7": "erwartet oft Respekt vor dem eigenen Rueckzugsbeduerfnis"
+      "8": "erwartet oft Anerkennung fuer uebernommene Verantwortung"
+      "9": "erwartet oft Verstaendnis fuer eigene Ideale und Werte"
+      "11": "erwartet oft Feingefuehl fuer die eigene Sensibilitaet"
+      "22": "erwartet oft Mitwirkung an langfristigen gemeinsamen Vorhaben"
+      "33": "erwartet oft Gegenseitigkeit fuer die eigene Fuersorge"
+  support:
+    semantic_context_de: >-
+      Wie Unterstuetzung zwischen erwachsenen Beteiligten dieser Konstellation
+      typischerweise gegeben und angenommen wird -- praktisch, emotional, finanziell.
+      Ein symbolisches Deutungsangebot zum eigenen Unterstuetzungsstil.
+    number_modifiers:
+      "1": "unterstuetzt am liebsten durch konkrete Initiative und Anstoss"
+      "2": "unterstuetzt durch verlaessliche, einfuehlsame Praesenz"
+      "3": "unterstuetzt durch Aufmunterung und Ablenkung von Sorgen"
+      "4": "unterstuetzt durch praktische, strukturierte Hilfe"
+      "5": "unterstuetzt durch neue Perspektiven und frischen Antrieb"
+      "6": "unterstuetzt durch fuersorgliche, oft aufopfernde Hilfe"
+      "7": "unterstuetzt durch ruhige Praesenz und zurueckhaltenden Rat"
+      "8": "unterstuetzt durch entschlossenes Anpacken von Problemen"
+      "9": "unterstuetzt durch grosszuegiges, vorbehaltloses Zuwenden"
+      "11": "unterstuetzt durch feinfuehliges Erspueren von Bedarf"
+      "22": "unterstuetzt durch langfristig angelegte, tragende Hilfe"
+      "33": "unterstuetzt oft mehr, als selbst eingefordert wird"
+  long_term_patterns:
+    semantic_context_de: >-
+      Wiederkehrende Dynamiken, die sich zwischen erwachsenen Beteiligten dieser
+      Konstellation ueber die Zeit zeigen koennen -- als Reflexionsangebot gelesen,
+      nicht als festgeschriebenes Schicksal oder unausweichliches Muster.
+    number_modifiers:
+      "1": "neigt dazu, wiederholt Entscheidungen fuer den anderen treffen zu wollen"
+      "2": "neigt dazu, wiederholt vermittelnd oder nachgebend zu agieren"
+      "3": "neigt dazu, in Spannungsphasen fuer Ablenkung zu sorgen"
+      "4": "neigt dazu, an gewohnten Ablaeufen und Rollen festzuhalten"
+      "5": "neigt dazu, sich zeitweise aus engem Kontakt zu loesen"
+      "6": "neigt dazu, wiederholt mehr Fuersorge zu geben als zu nehmen"
+      "7": "neigt dazu, sich ueber laengere Phasen zurueckzuziehen"
+      "8": "neigt dazu, wiederholt Kontrolle uebernehmen zu wollen"
+      "9": "neigt dazu, eigene Beduerfnisse zugunsten des Familienfriedens zurueckzustellen"
+      "11": "neigt dazu, Spannungen in dieser Konstellation besonders intensiv wahrzunehmen"
+      "22": "neigt dazu, langfristige Verantwortung fuer den anderen zu uebernehmen"
+      "33": "neigt dazu, wiederholt ausgleichend fuer beide Seiten einzustehen"
