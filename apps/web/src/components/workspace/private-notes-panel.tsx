@@ -53,7 +53,7 @@ export function PrivateNotesPanel({ personId, managedProfile, initialTotal }: Pr
     setError(null);
     setNotes([]);
     try {
-      const data = await api.privateNotes.list(forPersonId);
+      const data = await api.people.privateNotes.list(forPersonId);
       if (forPersonId !== personId) return; // stale response, UI-consistency guard only
       const sorted = data
         .filter((note) => note.person_id === forPersonId)
@@ -79,7 +79,7 @@ export function PrivateNotesPanel({ personId, managedProfile, initialTotal }: Pr
     if (!newContent.trim()) return;
     setSavingNew(true);
     try {
-      await api.privateNotes.create(personId, {
+      await api.people.privateNotes.create(personId, {
         title: newTitle.trim() ? newTitle.trim() : null,
         content: newContent.trim(),
       });
@@ -104,7 +104,7 @@ export function PrivateNotesPanel({ personId, managedProfile, initialTotal }: Pr
     if (!editContent.trim()) return;
     setSavingEdit(true);
     try {
-      await api.privateNotes.patch(noteId, {
+      await api.people.privateNotes.patch(noteId, {
         title: editTitle.trim() ? editTitle.trim() : null,
         content: editContent.trim(),
       });
@@ -121,7 +121,7 @@ export function PrivateNotesPanel({ personId, managedProfile, initialTotal }: Pr
   async function confirmDelete(noteId: string) {
     setBusyId(noteId);
     try {
-      await api.privateNotes.remove(noteId);
+      await api.people.privateNotes.remove(noteId);
       setConfirmDeleteId(null);
       await load(personId);
     } catch (err) {

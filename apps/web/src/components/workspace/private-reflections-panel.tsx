@@ -57,7 +57,7 @@ export function PrivateReflectionsPanel({
     setError(null);
     setReflections([]);
     try {
-      const data = await api.privateReflections.list(forPersonId);
+      const data = await api.people.privateReflections.list(forPersonId);
       if (forPersonId !== personId) return; // stale response, UI-consistency guard only
       const sorted = data
         .filter((entry) => entry.person_id === forPersonId)
@@ -83,7 +83,7 @@ export function PrivateReflectionsPanel({
     if (!newContent.trim() || !newDate) return;
     setSavingNew(true);
     try {
-      await api.privateReflections.create(personId, { content: newContent.trim(), entry_date: newDate });
+      await api.people.privateReflections.create(personId, { content: newContent.trim(), entry_date: newDate });
       resetLocalUiState();
       await load(personId);
     } catch (err) {
@@ -105,7 +105,7 @@ export function PrivateReflectionsPanel({
     if (!editContent.trim() || !editDate) return;
     setSavingEdit(true);
     try {
-      await api.privateReflections.patch(reflectionId, { content: editContent.trim(), entry_date: editDate });
+      await api.people.privateReflections.patch(reflectionId, { content: editContent.trim(), entry_date: editDate });
       setEditingId(null);
       await load(personId);
     } catch (err) {
@@ -119,7 +119,7 @@ export function PrivateReflectionsPanel({
   async function confirmDelete(reflectionId: string) {
     setBusyId(reflectionId);
     try {
-      await api.privateReflections.remove(reflectionId);
+      await api.people.privateReflections.remove(reflectionId);
       setConfirmDeleteId(null);
       await load(personId);
     } catch (err) {
