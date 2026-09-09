@@ -4736,6 +4736,18 @@
             "title": "Email",
             "type": "string"
           },
+          "email_verified_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email Verified At"
+          },
           "id": {
             "title": "Id",
             "type": "string"
