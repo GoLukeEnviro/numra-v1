@@ -22,6 +22,10 @@ const port = Number(process.env.SYSTEM_E2E_WEB_PORT || 4180);
 
 export default defineConfig({
   testDir: "./e2e-system",
+  // Scoped explicitly to system-journey.spec.ts -- see playwright.compose.config.ts
+  // for why: without this, any new spec added under e2e-system/ is silently picked
+  // up too, front-loading extra tests onto this job's single worker.
+  testMatch: "system-journey.spec.ts",
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: 0,

@@ -382,4 +382,16 @@ export const deApp = {
   "app.reportFailed.untouched":
     "Deine Berechnung ist unberührt — sie ist unveränderlich und wurde von diesem Lauf nie verändert. Ein Neustart stellt einen komplett neuen Bericht aus derselben Berechnung in die Warteschlange.",
   "app.reportFailed.retry": "Neuen Bericht erzeugen",
+
+  // V2-Platzhalter (PR-WEB-00): Zielseiten existieren, sind aber noch ohne
+  // eigenes Datenmodell -- kein 404, echte Umsetzung folgt in einem späteren PR.
+  "app.connections.title": "Verbindungen kommen bald",
+  "app.connections.body":
+    "Hier wirst du Verbindungen zu anderen Personen einladen, annehmen und verwalten. Diese Ansicht ist noch nicht angebunden.",
+  "app.workspaces.title": "Workspaces kommen bald",
+  "app.workspaces.body":
+    "Hier entstehen geteilte Workspaces für Check-ins, Aufgaben und Roadmaps zwischen verbundenen Personen. Diese Ansicht ist noch nicht angebunden.",
+  "app.copilot.title": "Copilot kommt bald",
+  "app.copilot.body":
+    "Hier wird der Workspace-Copilot Gespräche zu deinen geteilten Daten führen. Diese Ansicht ist noch nicht angebunden.",
 } as const;

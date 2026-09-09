@@ -7,6 +7,9 @@ export const deCore = {
   "nav.today": "Heute",
   "nav.dashboard": "Übersicht",
   "nav.people": "Personen",
+  "nav.connections": "Verbindungen",
+  "nav.workspaces": "Workspaces",
+  "nav.copilot": "Copilot",
   "nav.reports": "Berichte",
   "nav.relationships": "Beziehungen",
   "nav.settings": "Einstellungen",
@@ -36,4 +39,7 @@ export const deCore = {
   "settings.privacyData": "Datenschutz & Daten",
   "settings.privacyDataDescription": "Was Numra über dich speichert und wie du es entfernst.",
   "settings.viewPrivacySettings": "Datenschutzeinstellungen ansehen",
+
+  "workspace.switcherAriaLabel": "Workspace wechseln",
+  "workspace.personalPrefix": "Persönlicher Bereich",
 } as const;
