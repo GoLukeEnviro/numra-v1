@@ -1,6 +1,6 @@
 # PR-WEB-06a — Backend-/Migrationsnachweise
 
-Stand: Implementierung und finale gezielte lokale Prüfungen abgeschlossen; PR #53 in CI.
+Stand: WEB-06a abgeschlossen; PR #53 gemergt und getrennte Post-Merge-CI erfolgreich.
 Basis: `8808c033a36c43fb394f8ed3d867f6fa3a7685ce` (PR #52).
 Branch: `codex/pr-web-06a`. Kein Produktionsdeployment, keine Flag-Aktivierung.
 
@@ -153,8 +153,7 @@ Current gegen zweiten Submit und Mitgliedschaftsentzug während Lock-Wartezeit.
 - OpenAPI und generierter TypeScript-Client aktualisiert; finale Driftprüfung vor Push.
 - Keine weitere offene konkrete Review-Feststellung; Laufzeitbefunde behoben.
 
-Noch ausstehend: PR-Commit/Required Checks, Merge-SHA und getrennte Post-Merge-main-CI.
-Diese werden nach Abschluss ergänzt; kein Produktionsdeployment.
+Finaler PR-Commit, Merge-SHA und getrennte Post-Merge-main-CI sind im Abschlussnachweis unten dokumentiert. Kein Produktionsdeployment.
 
 
 ### PR-CI Versuch 1 — Encoding-Diagnose
@@ -198,3 +197,27 @@ PID-1-Annahme gilt für die vorhandene Compose-Konfiguration ohne init/Wrapper;
 bei späterer Änderung dieser Topologie muss der Healthcheck angepasst werden.
 Unabhängiger Nachreview des Startup-Mechanismus erfolgt. Die Härtung erhält einen
 neuen Commit und einen vollständigen neuen CI-Lauf vor Merge.
+
+
+## Abschlussnachweis
+
+- PR [#53](https://github.com/GoLukeEnviro/numra-v1/pull/53), finaler Head
+  `00c445b21cc0773f744555c78fd9ddc9437e3683`.
+- PR-CI [34528686988](https://github.com/GoLukeEnviro/numra-v1/actions/runs/34528686988):
+  **12/12 Required Checks erfolgreich**, Versuch 1 auf diesem Head.
+- Tatsächlicher Squash-Merge-Commit auf main: `16d7e1a9cc33764af7180365fc80d86a4377f32b`.
+- Getrennte Post-Merge-Push-CI [34529690546](https://github.com/GoLukeEnviro/numra-v1/actions/runs/34529690546):
+  **12/12 Required Checks erfolgreich**, Versuch 1 auf diesem Merge-Commit.
+- Finaler PR-Lauf: **747 Python-Tests**, **244 Web-Tests**, **100 % Engine-Coverage**.
+- Abschließender unabhängiger Abgleich des WEB-06b-Umfangs: drei UI-Zustände
+  präzisiert (fehlendes historical_delta, DISSOLVED ohne Template, Current-Refetch);
+  keine weitere offene konkrete Feststellung.
+- Erforderliche Checks unmittelbar vor Merge erneut gegen Branch Protection geprüft;
+  kein Admin-Bypass und kein direkter Push auf main.
+- Eigene Testcontainer inklusive ausschließlich eigener anonymer Volumes entfernt;
+  eigene PDF-Testinstanz beendet. Originalcheckout und fremde Ressourcen erhalten.
+- Finaler [WEB-06b-Umfang](pr-web-06b-scope.md) dokumentiert; keine UI-Implementierung,
+  keine Produktionsmigration, kein Deployment und keine Flag-Aktivierung.
+
+Diese Nachträge werden über einen separaten Dokumentations-PR eingecheckt. Die
+oben belegte Post-Merge-CI gehört ausdrücklich zum Implementierungs-Merge #53.
