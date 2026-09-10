@@ -27,3 +27,12 @@ class AnalysisGenerationError(Exception):
     """Raised when the pipeline cannot produce a valid relationship/shadow-dynamics
     analysis even after the one permitted repair attempt (same pattern as
     `numra_interpretation.report.pipeline.ReportGenerationError`)."""
+
+
+class ShadowInteractionRuleMissing(AnalysisGenerationError):
+    """Raised by `context.assemble_shadow_context` when no `knowledge/shadow-interaction/
+    rules.yaml` row covers the resolved shadow-theme pair. A permanent knowledge-content
+    gap, not a transient failure -- the service layer classifies it as a terminal
+    `ANALYSIS_GENERATION_ERROR` with ``retryable=False`` (a retry would hit the same
+    missing row). Subclasses `AnalysisGenerationError` so it is never caught as a bare,
+    unexpected exception."""

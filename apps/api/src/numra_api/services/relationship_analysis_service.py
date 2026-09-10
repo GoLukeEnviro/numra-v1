@@ -58,7 +58,10 @@ from numra_interpretation.knowledge_loader import load_knowledge_base
 from numra_interpretation.llm.errors import LLMProviderError
 from numra_interpretation.llm.types import LLMProvider
 from numra_numerology.models.profile import CanonicalProfile
-from numra_relationship_interpretation.errors import AnalysisGenerationError
+from numra_relationship_interpretation.errors import (
+    AnalysisGenerationError,
+    ShadowInteractionRuleMissing,
+)
 from numra_relationship_interpretation.knowledge_loader import (
     load_relationship_frame,
     load_relationship_frames_manifest,
@@ -430,6 +433,16 @@ async def run_shadow_dynamics_job(
         )
         await mark_job_status(db, job=job, status=AnalysisJobStatus.COMPLETE, progress=100)
 
+    except ShadowInteractionRuleMissing as exc:
+        # Permanent knowledge-content gap (no rules.yaml row for this shadow-theme
+        # pair) -- a retry would resolve the same missing row. Terminal, not retryable.
+        await _handle_job_failure(
+            db,
+            job=job,
+            fail_analysis=lambda: fail_shadow_dynamics_analysis(db, analysis=analysis),
+            error_code=f"ANALYSIS_GENERATION_ERROR: {exc}",
+            retryable=False,
+        )
     except AnalysisGenerationError as exc:
         await _handle_job_failure(
             db,
