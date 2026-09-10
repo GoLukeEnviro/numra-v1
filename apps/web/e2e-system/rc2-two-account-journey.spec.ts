@@ -34,7 +34,7 @@ const EXTENDED_SCOPE_LABELS = [
   "Lebens-Tracking",
 ];
 
-test.setTimeout(300_000);
+test.setTimeout(360_000);
 
 type Vp = { width: number; height: number };
 
@@ -299,6 +299,81 @@ test("RC2 two-account journey: connections/consent/dual-profile/type/dissolve ov
     await A.goto("/workspaces");
     await expect(A.getByText("Partner", { exact: true }).first()).toBeVisible();
     await shoot(A, "07-relationship-type-partner");
+
+    // --- WEB-05: Dynamics tab -- real (non-mocked) relationship + shadow analysis.
+    // Preconditions all met here: workspace ACTIVE, type PARTNER, both members have
+    // a SELF person + calculation, RELATIONSHIP_INSIGHTS granted both ways (never
+    // revoked above). Jobs run in the real analysis-worker (NUMRA_LLM_PROVIDER=mock
+    // -> deterministic). Desktop only: the async job flow (POST -> poll -> terminal
+    // render) is viewport-independent, and running two real jobs under mobile
+    // emulation roughly quadruples this journey's wall-clock for no extra signal --
+    // the /dynamics responsive layout at 390x844 is covered by the mocked
+    // pr-web-05-visual-baseline suite.
+    if (test.info().project.name === "desktop-1440x900") {
+      await A.goto(`/workspaces/${workspaceId}`);
+      // The hub links to /dynamics from both a nav tab (accessible name exactly
+      // "Dynamiken") and a hub card (longer name) -- exact-match the tab.
+      await A.getByRole("link", { name: "Dynamiken", exact: true }).click();
+      await expect(A).toHaveURL(new RegExp(`/workspaces/${workspaceId}/dynamics`));
+      await expect(A.getByRole("heading", { name: "Dynamiken", exact: true })).toBeVisible();
+
+      const relSection = A.locator("section", {
+        has: A.getByText("Beziehungsanalyse", { exact: true }),
+      });
+      await relSection.getByRole("button", { name: "Beziehungsanalyse starten" }).click();
+      // Job -> analysis-worker -> COMPLETE -> UI re-fetches the full body and renders.
+      const relProvenance = relSection.getByRole("button", { name: "Herkunft", exact: true });
+      await expect(relProvenance.first()).toBeVisible({ timeout: 120_000 });
+      await expect(relSection.getByText("Berechnungs-Version")).toBeVisible();
+      // Provenance disclosure reveals the source groups (empty ones included).
+      await relProvenance.first().click();
+      await expect(relSection.getByText(/Kanonische Werte|Wissenseinträge/).first()).toBeVisible();
+
+      // Shadow: start the real job, assert the UI settles into a correct TERMINAL
+      // render regardless of outcome. With the RC2 fixture profiles (one is the
+      // canonical master-22 Life Path) the shadow pipeline currently raises "No
+      // shadow interaction rule found for theme" -- a backend knowledge-data gap
+      // (rules.yaml covers Life Path 1-9 only), out of scope for this frontend PR
+      // -> the section must show the FAILED view with the error_code verbatim +
+      // a retry. A non-master profile pair reaches the COMPLETE view instead.
+      const shadowSection = A.locator("section", {
+        has: A.getByText("Schattendynamik", { exact: true }),
+      });
+      await shadowSection.getByRole("button", { name: "Schattendynamik starten" }).click();
+      const shadowComplete = shadowSection.getByRole("heading", { name: "Person A", exact: true });
+      const shadowFailed = shadowSection.getByRole("heading", { name: "Analyse fehlgeschlagen" });
+      await expect(shadowComplete.or(shadowFailed).first()).toBeVisible({ timeout: 120_000 });
+      if (await shadowFailed.isVisible()) {
+        await expect(shadowSection.getByText(/gemeldet vom Erzeugungs-Job/)).toBeVisible();
+        await expect(
+          shadowSection.getByRole("button", { name: "Neue Analyse starten" }),
+        ).toBeVisible();
+      } else {
+        await expect(
+          shadowSection.getByRole("heading", { name: "Person B", exact: true }),
+        ).toBeVisible();
+        await expect(shadowSection.getByRole("heading", { name: "Musterintensität" })).toBeVisible();
+      }
+      // pattern_intensity is a text label, never a progress bar / score (the job
+      // progress bar lives in the pending view, not here).
+      await expect(shadowSection.locator('[role="progressbar"]')).toHaveCount(0);
+      // No screenshot here on purpose: the mock LLM provider echoes the raw
+      // grounding facts as "prose", so a fullPage shot of a real-stack analysis is
+      // an unreadable debug wall, not evidence. The rendered look is proven by the
+      // curated-fixture pr-web-05-visual-baseline suite; here only the structure
+      // (sections, provenance disclosure, meta footer, terminal handling) matters.
+
+      // Second context reaches /dynamics without error and reads the same rows
+      // (per-workspace, IDOR-gated GET).
+      await B.goto(`/workspaces/${workspaceId}/dynamics`);
+      await expect(B.getByRole("heading", { name: "Dynamiken", exact: true })).toBeVisible();
+      await expect(B.getByText(/Something went wrong|Etwas ist schief/i)).toHaveCount(0);
+      await expect(
+        B.locator("section", { has: B.getByText("Beziehungsanalyse", { exact: true }) }).getByText(
+          "Berechnungs-Version",
+        ),
+      ).toBeVisible({ timeout: 30_000 });
+    }
 
     // --- Dissolve via the UI ---
     await A.goto("/connections");
