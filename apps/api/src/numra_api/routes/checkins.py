@@ -86,7 +86,7 @@ def _checkin_to_summary(checkin: RelationshipCheckin) -> CheckinSummaryOut:
 async def get_checkin_template_route(
     workspace_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> CheckinTemplateOut:
     template, dimensions = await get_checkin_template(
         db, workspace_id=workspace_id, user_id=user.id
@@ -109,7 +109,7 @@ async def create_checkin_dimension_route(
     workspace_id: uuid.UUID,
     body: CheckinDimensionCreateRequest,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> CheckinDimensionOut:
     dimension = await create_custom_dimension(
         db,
@@ -135,7 +135,7 @@ async def update_checkin_dimension_route(
     dimension_id: uuid.UUID,
     body: CheckinDimensionUpdateRequest,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> CheckinDimensionOut:
     dimension = await update_dimension(
         db,
@@ -156,7 +156,7 @@ async def submit_checkin_route(
     workspace_id: uuid.UUID,
     body: CheckinSubmitRequest,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> CheckinOut:
     result = await submit_checkin(
         db,
@@ -172,7 +172,7 @@ async def get_checkin_route(
     workspace_id: uuid.UUID,
     checkin_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> CheckinOut:
     checkin, my_responses, analysis = await get_checkin(
         db, workspace_id=workspace_id, user_id=user.id, checkin_id=checkin_id
@@ -184,7 +184,7 @@ async def get_checkin_route(
 async def list_checkins_route(
     workspace_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> list[CheckinSummaryOut]:

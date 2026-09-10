@@ -67,7 +67,7 @@ async def create_calculation_route(
     person_id: uuid.UUID,
     body: CalculateRequest,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> CalculationOut:
     person = await get_person(db, person_id=person_id, user_id=user.id)
     if person is None:
@@ -80,7 +80,7 @@ async def create_calculation_route(
 async def list_calculations_route(
     person_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> list[CalculationSummaryOut]:
@@ -97,7 +97,7 @@ async def list_calculations_route(
 async def get_calculation_route(
     calculation_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> CalculationOut:
     calculation = await get_calculation_for_user(db, calculation_id=calculation_id, user_id=user.id)
     if calculation is None:
@@ -110,7 +110,7 @@ async def get_timing_route(
     person_id: uuid.UUID,
     as_of_date: dt.date,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> dict[str, Any]:
     """Ad-hoc, non-persisted timing lookup — recomputes the engine for the given
     as_of_date without creating a new immutable Calculation snapshot."""
@@ -128,7 +128,7 @@ async def get_daily_brief_route(
     person_id: uuid.UUID,
     as_of_date: dt.date,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> DailyBriefOut:
     """V1.5 Epic K: a deterministic, reproducible Daily Brief -- Personal Day/Month/
     Year composed with knowledge-sourced reflection text. Ad-hoc and non-persisted,

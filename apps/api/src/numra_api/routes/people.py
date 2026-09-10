@@ -47,7 +47,7 @@ def _identity_to_out(identity: NameIdentity) -> NameIdentityOut:
 
 @router.get("", response_model=list[PersonOut])
 async def list_people_route(
-    user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+    user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db, scope="function")
 ) -> list[PersonOut]:
     people = await list_people(db, user_id=user.id)
     return [_to_out(p) for p in people]
@@ -57,7 +57,7 @@ async def list_people_route(
 async def create_person_route(
     body: PersonCreateRequest,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     settings: Settings = Depends(get_settings_dep),
 ) -> PersonOut:
     assert_birth_date_not_in_future(body.birth_date, app_timezone=settings.app_timezone)
@@ -92,7 +92,7 @@ async def create_person_route(
 async def list_identities_route(
     person_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> list[NameIdentityOut]:
     person = await get_person(db, person_id=person_id, user_id=user.id)
     if person is None:
@@ -105,7 +105,7 @@ async def list_identities_route(
 async def get_person_route(
     person_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> PersonOut:
     person = await get_person(db, person_id=person_id, user_id=user.id)
     if person is None:
@@ -118,7 +118,7 @@ async def patch_person_route(
     person_id: uuid.UUID,
     body: PersonPatchRequest,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     settings: Settings = Depends(get_settings_dep),
 ) -> PersonOut:
     person = await get_person(db, person_id=person_id, user_id=user.id)
@@ -178,7 +178,7 @@ async def patch_person_route(
 async def delete_person_route(
     person_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> None:
     person = await get_person(db, person_id=person_id, user_id=user.id)
     if person is None:

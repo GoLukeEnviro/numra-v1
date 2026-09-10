@@ -76,7 +76,7 @@ async def create_thread_route(
     workspace_id: uuid.UUID,
     body: ThreadCreateRequest,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> ChatThreadOut:
     if body.scope == ThreadScope.RELATIONSHIP_SHARED:
         thread = await get_or_create_shared_thread(
@@ -97,7 +97,7 @@ async def create_thread_route(
 async def list_threads_route(
     workspace_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> list[ChatThreadOut]:
     threads = await list_threads_for_caller(
         db, workspace_id=workspace_id, requester_user_id=user.id
@@ -110,7 +110,7 @@ async def get_thread_route(
     workspace_id: uuid.UUID,
     thread_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> ChatThreadOut:
     thread = await get_thread_for_caller(
         db, workspace_id=workspace_id, thread_id=thread_id, requester_user_id=user.id
@@ -123,7 +123,7 @@ async def list_messages_route(
     workspace_id: uuid.UUID,
     thread_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
 ) -> list[ChatMessageOut]:
@@ -152,7 +152,7 @@ async def post_message_route(
     thread_id: uuid.UUID,
     body: MessageCreateRequest,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     llm: LLMProvider = Depends(get_llm_provider),
 ) -> MessagePairOut:
     user_message, assistant_message = await post_message(
@@ -177,7 +177,7 @@ async def archive_thread_route_handler(
     workspace_id: uuid.UUID,
     thread_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> ChatThreadOut:
     thread = await archive_thread_route(
         db, workspace_id=workspace_id, thread_id=thread_id, requester_user_id=user.id

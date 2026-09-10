@@ -35,7 +35,7 @@ def _grant_to_out(grant: ConsentGrant) -> ConsentGrantOut:
 async def list_workspace_consent_route(
     workspace_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> WorkspaceConsentOut:
     grants = await list_consent_for_workspace_member(db, workspace_id=workspace_id, user_id=user.id)
     return WorkspaceConsentOut(
@@ -51,7 +51,7 @@ async def grant_consent_route(
     workspace_id: uuid.UUID,
     body: ConsentGrantRequest,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> ConsentGrantOut:
     grant = await grant_consent(
         db, workspace_id=workspace_id, grantor_user_id=user.id, scope=body.scope
@@ -64,7 +64,7 @@ async def revoke_consent_route(
     workspace_id: uuid.UUID,
     body: ConsentRevokeRequest,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> ConsentGrantOut:
     grant = await revoke_consent(
         db, workspace_id=workspace_id, grantor_user_id=user.id, scope=body.scope

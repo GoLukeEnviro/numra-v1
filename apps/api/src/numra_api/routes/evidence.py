@@ -62,7 +62,7 @@ async def get_evidence_result_route(
     correlation_target: CorrelationTarget = Query(),
     correlation_target_value: int = Query(ge=0),
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> EvidenceResultOut:
     """Antwortet immer mit 200, sobald Person und Metrik existieren --
     `confidence_category=NO_RELIABLE_PATTERN` ist ein Ergebnis, kein Fehler."""
@@ -90,7 +90,7 @@ async def create_pattern_analysis_route(
     person_id: uuid.UUID,
     body: PatternAnalysisCreateRequest,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> PatternAnalysisOut:
     person = await get_person(db, person_id=person_id, user_id=user.id)
     if person is None:
@@ -111,7 +111,7 @@ async def create_pattern_analysis_route(
 async def list_pattern_analyses_route(
     person_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> list[PatternAnalysisOut]:
@@ -129,7 +129,7 @@ async def list_pattern_analyses_route(
 async def get_pattern_analysis_route(
     analysis_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> PatternAnalysisOut:
     analysis = await get_pattern_analysis_for_user(db, analysis_id=analysis_id, user_id=user.id)
     if analysis is None:
@@ -143,7 +143,7 @@ async def get_pattern_analysis_route(
 async def delete_pattern_analysis_route(
     analysis_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> None:
     analysis = await get_pattern_analysis_for_user(db, analysis_id=analysis_id, user_id=user.id)
     if analysis is None:

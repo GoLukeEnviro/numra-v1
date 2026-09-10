@@ -86,7 +86,7 @@ def _job_to_out(job: ReportJob) -> ReportJobOut:
 async def create_report_route(
     body: ReportCreateRequest,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
 ) -> ReportOut:
     report, job = await create_report_job(
@@ -102,7 +102,7 @@ async def create_report_route(
 @router.get("/reports", response_model=list[ReportSummaryOut])
 async def list_reports_route(
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     person_id: uuid.UUID | None = Query(default=None),
     calculation_id: uuid.UUID | None = Query(default=None),
     status: str | None = Query(default=None),
@@ -125,7 +125,7 @@ async def list_reports_route(
 async def get_report_route(
     report_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> ReportOut:
     report = await get_report_for_user(db, report_id=report_id, user_id=user.id)
     if report is None:
@@ -138,7 +138,7 @@ async def get_report_route(
 async def get_report_job_route(
     job_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> ReportJobOut:
     job = await get_report_job_for_user(db, job_id=job_id, user_id=user.id)
     if job is None:

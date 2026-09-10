@@ -44,7 +44,7 @@ async def create_personal_task_route(
     person_id: uuid.UUID,
     body: PersonalTaskCreateRequest,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> PersonalTaskOut:
     person = await get_person(db, person_id=person_id, user_id=user.id)
     if person is None:
@@ -64,7 +64,7 @@ async def create_personal_task_route(
 async def list_personal_tasks_route(
     person_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     status: PersonalTaskStatus | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
@@ -82,7 +82,7 @@ async def list_personal_tasks_route(
 async def get_personal_task_route(
     task_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> PersonalTaskOut:
     task = await get_personal_task_for_user(db, task_id=task_id, user_id=user.id)
     if task is None:
@@ -99,7 +99,7 @@ async def patch_personal_task_route(
     task_id: uuid.UUID,
     body: PersonalTaskPatchRequest,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> PersonalTaskOut:
     task = await get_personal_task_for_user(db, task_id=task_id, user_id=user.id)
     if task is None:
@@ -131,7 +131,7 @@ async def patch_personal_task_route(
 async def delete_personal_task_route(
     task_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> None:
     task = await get_personal_task_for_user(db, task_id=task_id, user_id=user.id)
     if task is None:
