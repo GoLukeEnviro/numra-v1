@@ -84,7 +84,12 @@ export type PhaseErrorCode =
   | "V2_PHASE_DISABLED"
   | "WORKSPACE_DISSOLVED"
   | "KNOWLEDGE_FRAME_NOT_AVAILABLE"
-  | "CONSENT_NOT_GRANTED";
+  | "CONSENT_NOT_GRANTED"
+  // PR-WEB-05: relationship/shadow analysis pre-conditions. Both are expected,
+  // resolvable setup states (pick a relationship type; complete a self profile) --
+  // not failures, so they render calm like the others, not through ErrorState.
+  | "RELATIONSHIP_TYPE_NOT_SET"
+  | "SELF_PROFILE_REQUIRED";
 
 const PHASE_DISABLED_ICONS: Record<PhaseErrorCode, typeof Clock> = {
   V2_DISABLED: Clock,
@@ -92,6 +97,8 @@ const PHASE_DISABLED_ICONS: Record<PhaseErrorCode, typeof Clock> = {
   WORKSPACE_DISSOLVED: Clock,
   KNOWLEDGE_FRAME_NOT_AVAILABLE: Clock,
   CONSENT_NOT_GRANTED: Lock,
+  RELATIONSHIP_TYPE_NOT_SET: Clock,
+  SELF_PROFILE_REQUIRED: Clock,
 };
 
 export interface PhaseDisabledStateProps {
@@ -135,6 +142,8 @@ export function isPhaseDisabledError(
         "WORKSPACE_DISSOLVED",
         "KNOWLEDGE_FRAME_NOT_AVAILABLE",
         "CONSENT_NOT_GRANTED",
+        "RELATIONSHIP_TYPE_NOT_SET",
+        "SELF_PROFILE_REQUIRED",
       ] as const
     ).includes(error.code as PhaseErrorCode)
   );

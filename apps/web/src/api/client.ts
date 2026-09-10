@@ -99,6 +99,15 @@ export type DualProfileMemberOut = components["schemas"]["DualProfileMemberOut"]
 export type RelationshipType = components["schemas"]["RelationshipType"];
 export type WorkspaceStatus = components["schemas"]["WorkspaceStatus"];
 
+// PR-WEB-05 (Relationship / Shadow Analysis) -- both analysis result rows, the
+// shared job row and its two enums. `result` on both Out types is an open JSON
+// column (`{[k]:unknown}|null`); api/analysis-content.ts narrows it structurally.
+export type RelationshipAnalysisOut = components["schemas"]["RelationshipAnalysisOut"];
+export type ShadowDynamicsAnalysisOut = components["schemas"]["ShadowDynamicsAnalysisOut"];
+export type AnalysisJobOut = components["schemas"]["AnalysisJobOut"];
+export type AnalysisJobStatus = components["schemas"]["AnalysisJobStatus"];
+export type AnalysisType = components["schemas"]["AnalysisType"];
+
 export type ChatThreadOut = components["schemas"]["ChatThreadOut"];
 export type ThreadCreateRequest = components["schemas"]["ThreadCreateRequest"];
 export type ChatMessageOut = components["schemas"]["ChatMessageOut"];
@@ -608,6 +617,36 @@ export const api = {
           body,
         }),
     },
+    // PR-WEB-05. `getLatest` 200s only while the newest analysis is COMPLETE, else
+    // 404 (-> "no analysis yet"); `get` returns the full body in any status. `create`
+    // takes no request body -- the optional `Idempotency-Key` header (same pattern as
+    // reports.create) is the only knob, so a double-submit re-joins the first job.
+    relationshipAnalysis: {
+      getLatest: (workspaceId: string) =>
+        request<RelationshipAnalysisOut>(`/v1/workspaces/${workspaceId}/relationship-analysis`),
+      get: (workspaceId: string, analysisId: string) =>
+        request<RelationshipAnalysisOut>(
+          `/v1/workspaces/${workspaceId}/relationship-analysis/${analysisId}`,
+        ),
+      create: (workspaceId: string, idempotencyKey?: string) =>
+        request<RelationshipAnalysisOut>(`/v1/workspaces/${workspaceId}/relationship-analysis`, {
+          method: "POST",
+          headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
+        }),
+    },
+    shadowDynamics: {
+      getLatest: (workspaceId: string) =>
+        request<ShadowDynamicsAnalysisOut>(`/v1/workspaces/${workspaceId}/shadow-dynamics`),
+      get: (workspaceId: string, analysisId: string) =>
+        request<ShadowDynamicsAnalysisOut>(
+          `/v1/workspaces/${workspaceId}/shadow-dynamics/${analysisId}`,
+        ),
+      create: (workspaceId: string, idempotencyKey?: string) =>
+        request<ShadowDynamicsAnalysisOut>(`/v1/workspaces/${workspaceId}/shadow-dynamics`, {
+          method: "POST",
+          headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
+        }),
+    },
     checkinDimensions: {
       create: (workspaceId: string, body: CheckinDimensionCreateRequest) =>
         request<CheckinDimensionOut>(`/v1/workspaces/${workspaceId}/checkin-dimensions`, {
@@ -804,6 +843,11 @@ export const api = {
   },
   entitlements: {
     get: () => request<EntitlementSetOut>("/v1/me/entitlements"),
+  },
+  /** PR-WEB-05: the shared relationship/shadow analysis job row. Flat route (not
+   *  workspace-scoped in the path), same split as report-jobs vs reports. */
+  analysisJobs: {
+    get: (jobId: string) => request<AnalysisJobOut>(`/v1/analysis-jobs/${jobId}`),
   },
   myWorkspace: {
     get: (personId: string) =>

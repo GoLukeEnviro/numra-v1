@@ -18,6 +18,7 @@ export function WorkspaceNavTabs({ workspaceId }: WorkspaceNavTabsProps) {
 
   const tabs = [
     { href: `/workspaces/${workspaceId}`, label: t("app.relationshipWorkspace.tabOverview") },
+    { href: `/workspaces/${workspaceId}/dynamics`, label: t("app.relationshipWorkspace.tabDynamics") },
     { href: `/workspaces/${workspaceId}/consent`, label: t("app.relationshipWorkspace.tabConsent") },
   ];
 

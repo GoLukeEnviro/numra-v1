@@ -615,6 +615,7 @@ export const enApp: Record<keyof typeof deApp, string> = {
   "app.relationshipWorkspace.headerEyebrow": "Shared workspace",
   "app.relationshipWorkspace.headerLoading": "Loading workspace…",
   "app.relationshipWorkspace.tabOverview": "Overview",
+  "app.relationshipWorkspace.tabDynamics": "Dynamics",
   "app.relationshipWorkspace.tabConsent": "Consent",
   "app.relationshipWorkspace.statusActive": "Active",
   "app.relationshipWorkspace.statusDissolvedPrefix": "Dissolved on",
@@ -661,4 +662,115 @@ export const enApp: Record<keyof typeof deApp, string> = {
   "app.relationshipWorkspace.stubReflectionBody": "Shared reflections for this workspace -- coming in a later PR.",
   "app.relationshipWorkspace.stubCopilotTitle": "Copilot",
   "app.relationshipWorkspace.stubCopilotBody": "A copilot for this workspace -- coming in a later PR.",
+
+  // Relationship / Shadow Analysis (PR-WEB-05).
+  "app.dynamics.pageTitle": "Dynamics",
+  "app.dynamics.pageIntro":
+    "Two separate analyses of your relationship: the relationship dimensions and the shadow dynamics. Each is started on its own.",
+  "app.dynamics.hubLinkTitle": "Dynamics",
+  "app.dynamics.hubLinkBody": "See the relationship dimensions and shadow dynamics between you two.",
+  "app.dynamics.errorTitle": "This section could not be loaded",
+  "app.dynamics.unreadableTitle": "Analysis complete but unreadable",
+  "app.dynamics.unreadableBody":
+    "The analysis is marked complete, but its stored content did not match the expected structure.",
+
+  "app.dynamics.relationship.title": "Relationship analysis",
+  "app.dynamics.relationship.intro":
+    "One statement per relationship-frame dimension, each with full provenance. No compatibility score.",
+  "app.dynamics.relationship.emptyTitle": "No relationship analysis yet",
+  "app.dynamics.relationship.emptyBody":
+    "Start the analysis to work through the dimensions of your relationship frame.",
+  "app.dynamics.relationship.launch": "Start relationship analysis",
+  "app.dynamics.relationship.launching": "Starting analysis…",
+  "app.dynamics.relationship.dimensionsLabel": "dimensions",
+
+  "app.dynamics.shadow.title": "Shadow dynamics",
+  "app.dynamics.shadow.intro":
+    "Shadow themes on both sides, the interaction pattern, and concrete openings for de-escalation.",
+  "app.dynamics.shadow.emptyTitle": "No shadow dynamics yet",
+  "app.dynamics.shadow.emptyBody":
+    "Start the analysis to work through shadow themes and interaction patterns.",
+  "app.dynamics.shadow.launch": "Start shadow dynamics",
+  "app.dynamics.shadow.launching": "Starting analysis…",
+  "app.dynamics.shadow.personA": "Person A",
+  "app.dynamics.shadow.personB": "Person B",
+  "app.dynamics.shadow.interactionPattern": "Interaction pattern",
+  "app.dynamics.shadow.escalationLoop": "Escalation loop",
+  "app.dynamics.shadow.deescalation": "Openings for de-escalation",
+  "app.dynamics.shadow.intensityTitle": "Pattern intensity",
+  "app.dynamics.shadow.intensityLabel": "Estimated intensity of the pattern:",
+  "app.dynamics.shadow.microTasksTitle": "Recommended micro-steps",
+  "app.dynamics.shadow.microTasksHint": "Derived deterministically from the pattern.",
+
+  "app.dynamics.intensity.low": "low",
+  "app.dynamics.intensity.moderate": "moderate",
+  "app.dynamics.intensity.high": "high",
+
+  "app.dynamics.progress.generating": "The analysis is being generated",
+  "app.dynamics.progress.aria": "Analysis generation progress",
+  "app.dynamics.progress.contacting": "Contacting the generation queue…",
+  "app.dynamics.progress.retriedPrefix": "Attempt",
+  "app.dynamics.progress.retriedSuffix": "— the queue retried after a recoverable error.",
+  "app.dynamics.progress.checkNote":
+    "You can leave this page and come back later -- generation continues on the server.",
+
+  "app.dynamics.failed.title": "Analysis failed",
+  "app.dynamics.failed.body": "Generation stopped before a complete result could be produced.",
+  "app.dynamics.failed.reportedBy": "reported by the generation job",
+  "app.dynamics.failed.after": "after",
+  "app.dynamics.failed.afterAttempts": "attempts",
+  "app.dynamics.failed.untouched":
+    "Nothing was changed on your profiles or consent. A retry starts a fresh analysis.",
+  "app.dynamics.failed.retry": "Start a new analysis",
+
+  "app.dynamics.gate.workspaceDissolvedTitle": "Workspace dissolved",
+  "app.dynamics.gate.workspaceDissolvedBody":
+    "This workspace is dissolved -- new analyses can no longer be started.",
+  "app.dynamics.gate.knowledgeFrameTitle": "Relationship frame not available yet",
+  "app.dynamics.gate.knowledgeFrameBody":
+    "There is no frame on file for this relationship type yet -- the relationship analysis cannot run.",
+  "app.dynamics.gate.consentTitle": "Consent needed on both sides",
+  "app.dynamics.gate.consentBody":
+    "Both sides must share “Relationship insights” before a joint analysis can start.",
+  "app.dynamics.gate.consentLink": "Go to consent",
+  "app.dynamics.gate.relationshipTypeTitle": "Relationship type missing",
+  "app.dynamics.gate.relationshipTypeBody":
+    "Set the relationship type on the overview first -- it decides which frame is used.",
+  "app.dynamics.gate.selfProfileTitle": "Your own profile is incomplete",
+  "app.dynamics.gate.selfProfileBody":
+    "The analysis needs your complete own profile, including birth data.",
+
+  "app.dynamics.provenance.show": "Provenance",
+  "app.dynamics.provenance.hide": "Hide provenance",
+  "app.dynamics.provenance.canonicalLabel": "Canonical values",
+  "app.dynamics.provenance.knowledgeLabel": "Knowledge entries",
+  "app.dynamics.provenance.workspaceEvidenceLabel": "Workspace evidence",
+  "app.dynamics.provenance.emptyGroup": "none",
+
+  "app.dynamics.meta.calculationVersion": "Calculation version",
+  "app.dynamics.meta.knowledgeVersion": "Knowledge version",
+  "app.dynamics.meta.promptVersion": "Prompt version",
+  "app.dynamics.meta.model": "Language model",
+
+  "app.dynamics.dimension.communication": "Communication",
+  "app.dynamics.dimension.closeness": "Closeness",
+  "app.dynamics.dimension.autonomy": "Autonomy",
+  "app.dynamics.dimension.needs": "Needs",
+  "app.dynamics.dimension.strengths": "Strengths",
+  "app.dynamics.dimension.conflict_dynamics": "Conflict dynamics",
+  "app.dynamics.dimension.boundaries": "Boundaries",
+  "app.dynamics.dimension.support": "Support",
+  "app.dynamics.dimension.pace": "Pace",
+  "app.dynamics.dimension.collaboration": "Collaboration",
+  "app.dynamics.dimension.structure": "Structure",
+  "app.dynamics.dimension.responsibility": "Responsibility",
+  "app.dynamics.dimension.power_dynamics": "Power dynamics",
+  "app.dynamics.dimension.family_roles": "Family roles",
+  "app.dynamics.dimension.long_term_patterns": "Long-term patterns",
+  "app.dynamics.dimension.expectations": "Expectations",
+  "app.dynamics.dimension.loyalty": "Loyalty",
+  "app.dynamics.dimension.shared_history": "Shared history",
+  "app.dynamics.dimension.rivalry_and_cooperation": "Rivalry and cooperation",
+  "app.dynamics.dimension.attraction_dynamics": "Attraction dynamics",
+  "app.dynamics.dimension.guidance_and_independence": "Guidance and independence",
 };
