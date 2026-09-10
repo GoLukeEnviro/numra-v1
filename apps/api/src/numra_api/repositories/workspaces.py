@@ -78,7 +78,11 @@ async def get_workspace_member(
 async def list_workspace_members(
     db: AsyncSession, *, workspace_id: uuid.UUID
 ) -> list[WorkspaceMember]:
-    stmt = select(WorkspaceMember).where(WorkspaceMember.workspace_id == workspace_id)
+    stmt = (
+        select(WorkspaceMember)
+        .where(WorkspaceMember.workspace_id == workspace_id)
+        .order_by(WorkspaceMember.joined_at, WorkspaceMember.id)
+    )
     result = await db.execute(stmt)
     return list(result.scalars().all())
 
