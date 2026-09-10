@@ -56,6 +56,40 @@ async def get_active_grant(
     return result.scalar_one_or_none()
 
 
+async def get_grant_for_key(
+    db: AsyncSession,
+    *,
+    workspace_id: uuid.UUID,
+    grantor_user_id: uuid.UUID,
+    grantee_user_id: uuid.UUID,
+    scope: str,
+) -> ConsentGrant | None:
+    """Like `get_active_grant` but WITHOUT the `revoked_at IS NULL` filter -- returns
+    the row that owns the `uq_consent_grants_workspace_grantor_grantee_scope_version`
+    slot regardless of its revoked state, so `grant_consent` can reactivate a
+    previously revoked grant instead of colliding on INSERT."""
+    stmt = (
+        select(ConsentGrant)
+        .where(
+            ConsentGrant.workspace_id == workspace_id,
+            ConsentGrant.grantor_user_id == grantor_user_id,
+            ConsentGrant.grantee_user_id == grantee_user_id,
+            ConsentGrant.scope == scope,
+        )
+        .order_by(ConsentGrant.version.desc())
+        .limit(1)
+    )
+    result = await db.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def reactivate_grant(db: AsyncSession, *, grant: ConsentGrant) -> ConsentGrant:
+    grant.revoked_at = None
+    await db.flush()
+    await db.refresh(grant)
+    return grant
+
+
 async def get_grant_for_workspace(
     db: AsyncSession, *, grant_id: uuid.UUID, workspace_id: uuid.UUID
 ) -> ConsentGrant | None:

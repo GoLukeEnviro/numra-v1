@@ -690,9 +690,13 @@ class WorkspaceMember(Base):
 
 class ConsentGrant(Base):
     """One directional consent: `grantor_user_id` allows `grantee_user_id` to see
-    `scope` within `workspace_id`. `version` is always 1 in this PR (no re-grant flow
-    yet) -- see services/consent_service.py::assert_consent for the enforcement read
-    path (always fresh from DB, no caching)."""
+    `scope` within `workspace_id`. `version` is the scope-taxonomy version at
+    creation time (specs/v2/consent-spec.md) -- currently always 1, and never a
+    re-grant counter. A revoke sets `revoked_at`; a later re-grant of the same key
+    reactivates that same row (`revoked_at` back to NULL) and appends a fresh
+    `ConsentEvent(GRANTED)`, so the audit trail reads GRANTED -> REVOKED -> GRANTED
+    on one grant_id (see services/consent_service.py::grant_consent). The
+    enforcement read path (assert_consent) is always fresh from DB, no caching."""
 
     __tablename__ = "consent_grants"
     __table_args__ = (

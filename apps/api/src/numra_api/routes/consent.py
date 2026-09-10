@@ -3,6 +3,7 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from numra_api.deps import get_current_user, get_db, require_csrf
@@ -18,6 +19,7 @@ from numra_api.services.consent_service import (
     list_consent_for_workspace_member,
     revoke_consent,
 )
+from numra_api.services.errors import ConsentGrantConflict
 from numra_api.services.feature_flags import require_v2_phase
 
 router = APIRouter(
@@ -53,9 +55,17 @@ async def grant_consent_route(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db, scope="function"),
 ) -> ConsentGrantOut:
-    grant = await grant_consent(
-        db, workspace_id=workspace_id, grantor_user_id=user.id, scope=body.scope
-    )
+    try:
+        grant = await grant_consent(
+            db, workspace_id=workspace_id, grantor_user_id=user.id, scope=body.scope
+        )
+    except IntegrityError as exc:
+        # The reactivate/create branch in grant_consent lost a race to a concurrent
+        # grant for the same slot; the unique index is the only real arbiter, and
+        # losing that race must surface as 409, never a raw driver 500 (same pattern
+        # as routes/auth.py::register).
+        await db.rollback()
+        raise ConsentGrantConflict("consent for this scope was just granted") from exc
     return _grant_to_out(grant)
 
 
