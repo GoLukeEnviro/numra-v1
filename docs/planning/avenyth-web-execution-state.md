@@ -3,11 +3,11 @@
 - **PLAN_VERSION:** 2
 - **VERIFIED_IMPLEMENTATION_MAIN_SHA:** 16d7e1a9cc33764af7180365fc80d86a4377f32b
 - **CURRENT_SEGMENT:** SEGMENT_C
-- **CURRENT_PR:** WEB-06b lokal implementiert und geprüft; PR-Erstellung ausstehend.
+- **CURRENT_PR:** #55 (WEB-06b), PR-CI ausstehend.
 - **LAST_MERGED_IMPLEMENTATION_PR:** #53 (WEB-06a)
 - **LAST_GREEN_IMPLEMENTATION_MAIN_SHA:** 16d7e1a9cc33764af7180365fc80d86a4377f32b
 - **CURRENT_TASK:** WEB-06b Check-in-Frontend, Review und lokale Verifikation abgeschlossen.
-- **NEXT_ACTION:** WEB-06b-PR erstellen und alle zwölf Required Checks auf exaktem Head prüfen.
+- **NEXT_ACTION:** Alle zwölf Required Checks auf dem exakten finalen PR-Head prüfen.
 - **HUMAN_GATE_REQUIRED:** false
 - **OPEN_BLOCKERS:** none
 - **LAST_UPDATED_AT:** 2026-09-11

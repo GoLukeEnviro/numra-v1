@@ -1,6 +1,7 @@
 # WEB-06b — Evidence
 
-Stand: 2026-09-11, Implementierung lokal vollständig geprüft; PR-CI ausstehend.
+Stand: 2026-09-11, Implementierung lokal vollständig geprüft; PR #55 geöffnet,
+PR-CI ausstehend.
 
 ## Gelieferter Umfang
 
