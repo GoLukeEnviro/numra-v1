@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import itertools
 from pathlib import Path
 
 import pytest
 
+from numra_interpretation.knowledge_loader import load_knowledge_base
 from numra_relationship_interpretation.errors import RelationshipKnowledgeLoadError
 from numra_relationship_interpretation.knowledge_loader import (
     load_relationship_frame,
@@ -92,14 +94,43 @@ def test_load_shadow_interaction_manifest() -> None:
 
 def test_load_shadow_interaction_rules_covers_all_life_path_pairs() -> None:
     rules = load_shadow_interaction_rules(KNOWLEDGE_ROOT)
-    # 9 choose 2 + 9 diagonal (same-theme) cases = 45.
-    assert len(rules) == 45
+    # C(12,2) + 12 diagonal (same-theme) cases over Life Path {1-9, 11, 22, 33} = 78.
+    assert len(rules) == 78
     pairs = {frozenset((rule.shadow_theme_a, rule.shadow_theme_b)) for rule in rules}
-    assert len(pairs) == 45
+    assert len(pairs) == 78
     for rule in rules:
         assert rule.interaction_pattern_template_id
         assert rule.escalation_loop_template.strip()
         assert rule.deescalation_template.strip()
+
+
+SUPPORTED_LIFE_PATHS = (1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 22, 33)
+
+
+def test_shadow_interaction_rules_cover_all_supported_life_path_pairs() -> None:
+    """The central regression guard: every unordered pair (same number included) of
+    the primary shadow themes (`shadows[0]`) for Life Path {1-9, 11, 22, 33} -- read
+    from the real `knowledge/numbers` + `knowledge/master-numbers` files -- must
+    resolve to exactly one rule. Catches both the ASCII/umlaut theme-key mismatch
+    (Life Path 4/6/7) and the missing master-number coverage (11/22/33)."""
+    knowledge = load_knowledge_base(KNOWLEDGE_ROOT)
+    themes = {lp: knowledge.number(lp).shadows[0] for lp in SUPPORTED_LIFE_PATHS}
+    rules = load_shadow_interaction_rules(KNOWLEDGE_ROOT)
+
+    expected_pairs = {
+        frozenset((themes[x], themes[y]))
+        for x, y in itertools.combinations_with_replacement(SUPPORTED_LIFE_PATHS, 2)
+    }
+    assert len(expected_pairs) == 78
+
+    for pair in expected_pairs:
+        matches = [
+            rule for rule in rules if {rule.shadow_theme_a, rule.shadow_theme_b} == set(pair)
+        ]
+        assert len(matches) == 1, (
+            f"expected exactly one shadow-interaction rule for theme pair "
+            f"{tuple(pair)!r}, found {len(matches)}"
+        )
 
 
 def test_missing_manifest_raises_load_error(tmp_path: Path) -> None:
