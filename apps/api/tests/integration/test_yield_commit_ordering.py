@@ -21,6 +21,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import socket
+from collections.abc import AsyncIterator
 
 import httpx
 import pytest
@@ -46,7 +47,7 @@ def _free_port() -> int:
 
 
 @pytest_asyncio.fixture
-async def live_server(app) -> str:
+async def live_server(app) -> AsyncIterator[str]:
     port = _free_port()
     config = uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning", lifespan="on")
     server = uvicorn.Server(config)
@@ -65,7 +66,7 @@ async def live_server(app) -> str:
 
 
 @pytest_asyncio.fixture
-async def slow_commit(monkeypatch) -> None:
+async def slow_commit(monkeypatch) -> dict[str, bool]:
     original = AsyncSession.commit
     armed = {"on": False}
 

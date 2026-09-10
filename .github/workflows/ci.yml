@@ -296,9 +296,19 @@ jobs:
           cp /tmp/pdf-service.log /tmp/api.log /tmp/worker.log /tmp/system-e2e-artifacts/ 2>/dev/null || true
           cp -r apps/web/playwright-report /tmp/system-e2e-artifacts/ 2>/dev/null || true
           cp -r apps/web/test-results /tmp/system-e2e-artifacts/ 2>/dev/null || true
+          # Playwright trace/attachment bundles are zip (deflate) streams -- the
+          # plain-text scrub below cannot see into them, so a failing journey's
+          # trace would carry the live session cookie / CSRF token / test-account
+          # password verbatim into a 14-day artifact. Drop the binary bundles;
+          # keep the plain-text logs and the HTML report shell, which the scrub
+          # does cover.
+          find /tmp/system-e2e-artifacts -name '*.zip' -delete 2>/dev/null || true
+          rm -rf /tmp/system-e2e-artifacts/playwright-report/data 2>/dev/null || true
           # Same scrub contract as the "Log and secret audit" step in
           # docker-compose-e2e: no known secret VALUE may reach an uploaded artifact.
-          for secret in "$SESSION_SECRET" "$PDF_INTERNAL_TOKEN"; do
+          # numra_ci_password is the DB password embedded in this job's DATABASE_URL
+          # (can surface in a connection error in api.log / worker.log).
+          for secret in "$SESSION_SECRET" "$PDF_INTERNAL_TOKEN" "numra_ci_password"; do
             [ -n "$secret" ] && grep -rl -F "$secret" /tmp/system-e2e-artifacts 2>/dev/null \
               | xargs -r sed -i "s|${secret}|***REDACTED***|g"
           done
@@ -406,6 +416,13 @@ jobs:
           docker compose ps --all > /tmp/compose-e2e-artifacts/compose-ps.txt 2>&1 || true
           cp -r apps/web/playwright-report /tmp/compose-e2e-artifacts/ 2>/dev/null || true
           cp -r apps/web/test-results /tmp/compose-e2e-artifacts/ 2>/dev/null || true
+          # Playwright trace/attachment bundles are zip (deflate) streams the
+          # plain-text scrub below cannot see into -- a failing journey's trace
+          # would carry the live session cookie / CSRF token / test-account
+          # password verbatim into a 14-day artifact. Drop the binary bundles;
+          # keep the plain-text compose logs and the HTML report shell.
+          find /tmp/compose-e2e-artifacts -name '*.zip' -delete 2>/dev/null || true
+          rm -rf /tmp/compose-e2e-artifacts/playwright-report/data 2>/dev/null || true
           # Same scrub contract as the "Log and secret audit" step above: no known
           # secret VALUE may reach an uploaded artifact.
           for secret in "$SESSION_SECRET" "$PDF_INTERNAL_TOKEN" "$POSTGRES_PASSWORD"; do
