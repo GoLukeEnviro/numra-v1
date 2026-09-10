@@ -44,22 +44,43 @@ RC2-Real-Stack-Lauf ist daher ein **struktureller Smoke** (Sektionen,
 Provenance-Disclosure, Footer, terminale Zustandsbehandlung), **kein**
 Prosa-/Layout-Nachweis — dafür dient die kuratierte Visual-Baseline.
 
-## Offene Einschränkung (Backend, nicht WEB-05 — Follow-up)
+## Offene Einschränkung — BEHOBEN (PR #50, `main` @ `1c7075d`)
 
-Die **Shadow-Dynamics-Generierung** schlägt mit
+Die **Shadow-Dynamics-Generierung** schlug mit
 `UNEXPECTED_ERROR: No shadow interaction rule found for theme` fehl, wenn
-ein Profil eine **Meisterzahl-Lebenszahl (11 / 22 / 33)** hat.
-`knowledge/shadow-interaction/rules.yaml` deckt laut eigenem
-Datei-Kommentar nur Life Path 1–9 ab; `context.py::_primary_shadow_theme`
-liefert für eine Meisterzahl ein Thema, das nicht in der Tabelle steht.
+ein Profil eine **Meisterzahl-Lebenszahl (11 / 22 / 33)** hatte — und
+zusätzlich (gleicher Mechanismus, ASCII/Umlaut-Mismatch in `rules.yaml`)
+für **jedes Life-Path-4/6/7-Profil**.
 
-- **WEB-05-Frontend ist korrekt:** zeigt die `AnalysisFailedView` mit dem
-  `error_code` verbatim + „Neue Analyse starten".
-- **Fix gehört in einen eigenen PR:** Shadow-Interaction-Rules für
-  Meisterzahlen ergänzen oder die Pipeline auf ein `INSUFFICIENT_EVIDENCE`-
-  bzw. Fallback-Framing degradieren lassen statt `UNEXPECTED_ERROR` zu
-  werfen. Betrifft `packages/engine-relationship-interpretation`
-  (`pipeline.py`, `context.py`) + `knowledge/shadow-interaction/`.
+Behoben in **PR #50** (`fix: Shadow Dynamics bricht bei Meisterzahl-
+Lebenszahlen`), Merge `1c7075d`, Post-Merge-`main`-CI Run `34485925733`
+alle 12 grün:
+
+- `knowledge/shadow-interaction/rules.yaml`: Umlaut-Angleich der 3
+  Theme-Keys + **33 neue Meisterzahl-Zeilen** (78 Regeln = C(12,2)+12 über
+  Life Path {1–9, 11, 22, 33}), abgeleitet aus den kuratierten
+  `knowledge/master-numbers/*.yaml`-Themen (keine Reduktion auf 2/4/6,
+  keine Sammelregel), grammatisch eingebettete Templates für die
+  22er-Nominalphrase, ganze Datei auf echte Umlaute normalisiert.
+  `manifest.yaml` `0.1.0` → `0.2.0`.
+- `context.py`: neue `ShadowInteractionRuleMissing(AnalysisGenerationError)`
+  statt nacktem `ValueError` → Service klassifiziert als terminales
+  `ANALYSIS_GENERATION_ERROR` (`retryable=False`) + `logger.warning`.
+- `repositories/workspaces.py`: `list_workspace_members` deterministisch
+  geordnet (`joined_at, id`) — stabilisiert die A/B-Zuordnung.
+- Regressionstest (RED→GREEN, gegengeprüft): Completeness-Check über alle
+  78 Paare gegen die echten Knowledge-Dateien; `primary_shadow_theme`
+  LP 11/22/33; Master-Paar + LP-6-Umlaut-Paar lösen auf; A/B-Swap;
+  Backend-E2E `COMPLETE` für LP **11** (`1960-01-03`) / **22**
+  (`1986-07-18`) / **33** (`1960-04-22`); FAILED-Pfad via monkeypatch.
+- RC2-Zweikonten-Journey: Shadow-Dynamik erreicht jetzt **COMPLETE auf
+  Desktop UND Mobile** gegen den echten Worker (Master-22-Fixture); die
+  frühere „COMPLETE oder FAILED"-Toleranz ist entfernt. 2 passed
+  (desktop 50s / mobile 48s).
+
+Unabhängiger Review: GO-MIT-AUFLAGEN → H1 (22er-Grammatik) + M1
+(Encoding-Konsistenz) + L1/L2 vor Merge behoben und re-verifiziert
+(66 Tests grün, ruff clean).
 
 ## Nächster Schritt (Segment C)
 
