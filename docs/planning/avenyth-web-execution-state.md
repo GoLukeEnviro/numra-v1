@@ -1,23 +1,27 @@
 # AVENYTH Web — Execution State
 
 - **PLAN_VERSION:** 2
-- **VERIFIED_IMPLEMENTATION_MAIN_SHA:** 16d7e1a9cc33764af7180365fc80d86a4377f32b
+- **VERIFIED_IMPLEMENTATION_MAIN_SHA:** 7e8a19247457deacb5ac62f6edbc9c65925f452e
 - **CURRENT_SEGMENT:** SEGMENT_C
-- **CURRENT_PR:** #55 (WEB-06b), PR-CI ausstehend.
+- **CURRENT_PR:** WEB-06b abgeschlossen in PR #55; dieser Nachtrag enthält die Abschlussdokumentation.
 - **LAST_MERGED_IMPLEMENTATION_PR:** #53 (WEB-06a)
-- **LAST_GREEN_IMPLEMENTATION_MAIN_SHA:** 16d7e1a9cc33764af7180365fc80d86a4377f32b
-- **CURRENT_TASK:** WEB-06b Check-in-Frontend, Review und lokale Verifikation abgeschlossen.
-- **NEXT_ACTION:** Alle zwölf Required Checks auf dem exakten finalen PR-Head prüfen.
+- **LAST_GREEN_IMPLEMENTATION_MAIN_SHA:** 7e8a19247457deacb5ac62f6edbc9c65925f452e
+- **CURRENT_TASK:** WEB-06b Implementierung, Review, PR-CI und Post-Merge-CI abgeschlossen.
+- **NEXT_ACTION:** Nächsten priorisierten Web-Abschnitt festlegen.
 - **HUMAN_GATE_REQUIRED:** false
 - **OPEN_BLOCKERS:** none
 - **LAST_UPDATED_AT:** 2026-09-11
 
-## Laufend WEB-06b
+## Abschluss WEB-06b
 
-Check-in-Journey, Konfiguration, Historie, Datenschutz- und Retry-Grenzen sind
-implementiert. Lokale Nachweise und unabhängige Review:
-[WEB-06b-Evidence](pr-web-06b-evidence.md). Kein Produktionsdeployment und keine
-Aktivierung eines Produktionsflags.
+PR [#55](https://github.com/GoLukeEnviro/numra-v1/pull/55) ist gemergt.
+Finaler PR-Head: `98986b782fd93195dd443b0b8433232975314938`.
+PR-CI [34540062199](https://github.com/GoLukeEnviro/numra-v1/actions/runs/34540062199)
+und getrennte Post-Merge-CI
+[34540846280](https://github.com/GoLukeEnviro/numra-v1/actions/runs/34540846280)
+auf `7e8a19247457deacb5ac62f6edbc9c65925f452e`: jeweils alle zwölf Required
+Checks erfolgreich. Details: [WEB-06b-Evidence](pr-web-06b-evidence.md).
+Kein Produktionsdeployment und keine Aktivierung eines Produktionsflags.
 
 ## Abschluss WEB-06a
 
