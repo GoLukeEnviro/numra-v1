@@ -59,7 +59,9 @@ async def list_users(
 
 
 @router.get("/users/{user_id}", response_model=AdminUserOut)
-async def get_user(user_id: uuid.UUID, db: AsyncSession = Depends(get_db, scope="function")) -> AdminUserOut:
+async def get_user(
+    user_id: uuid.UUID, db: AsyncSession = Depends(get_db, scope="function")
+) -> AdminUserOut:
     view = await get_user_admin_view(db, user_id=user_id, now=dt.datetime.now(dt.UTC))
     if view is None:
         raise NotFoundError(f"user {user_id} not found")
