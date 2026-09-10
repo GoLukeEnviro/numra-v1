@@ -15,6 +15,23 @@ function renderTabs() {
 }
 
 describe("WorkspaceNavTabs", () => {
+  it("renders exactly three tabs", () => {
+    usePathname.mockReturnValue("/workspaces/ws-1");
+    renderTabs();
+    expect(screen.getAllByRole("link")).toHaveLength(3);
+    expect(screen.getByRole("link", { name: "Dynamiken" })).toHaveAttribute(
+      "href",
+      "/workspaces/ws-1/dynamics",
+    );
+  });
+
+  it("marks the Dynamics tab active on the dynamics route", () => {
+    usePathname.mockReturnValue("/workspaces/ws-1/dynamics");
+    renderTabs();
+    expect(screen.getByRole("link", { name: "Dynamiken" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Übersicht" })).not.toHaveAttribute("aria-current");
+  });
+
   it("marks the Overview tab active on the hub route", () => {
     usePathname.mockReturnValue("/workspaces/ws-1");
     renderTabs();

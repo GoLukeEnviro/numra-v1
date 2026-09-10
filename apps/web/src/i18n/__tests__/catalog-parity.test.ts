@@ -33,6 +33,10 @@ describe("i18n catalog parity", () => {
     const ALLOWED_IDENTICAL = new Set([
       "settings.languageGerman",
       "settings.languageEnglish",
+      // Neutral placeholder labels for the shadow-dynamics snapshot -- deliberately
+      // identity-free and identical across locales (PR-WEB-05 design decision #3).
+      "app.dynamics.shadow.personA",
+      "app.dynamics.shadow.personB",
     ]);
     const suspicious = deKeys.filter(
       (key) =>

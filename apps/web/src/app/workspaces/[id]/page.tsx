@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { useParams } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { LoadingState, ErrorState } from "@/components/ui/states";
@@ -33,11 +35,25 @@ function HubContent({ overview, workspaceId }: { overview: WorkspaceOverviewOut;
         <DualProfileGrid workspaceId={workspaceId} members={overview.dual_profile} />
         <ConsentSummaryCard workspaceId={workspaceId} counterpartName={counterpartName} />
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          <FeatureStubCard
-            eyebrow={t("app.relationshipWorkspace.stubDynamicsTitle")}
-            title={t("app.relationshipWorkspace.stubDynamicsTitle")}
-            description={t("app.relationshipWorkspace.stubDynamicsBody")}
-          />
+          <section>
+            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-bronze">
+              {t("app.dynamics.hubLinkTitle")}
+            </h2>
+            <Link
+              href={`/workspaces/${workspaceId}/dynamics`}
+              className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-surface p-6 transition-colors hover:border-gold/50"
+            >
+              <span>
+                <span className="block font-serif text-lg text-ivory">
+                  {t("app.dynamics.hubLinkTitle")}
+                </span>
+                <span className="mt-1 block max-w-md text-sm text-muted">
+                  {t("app.dynamics.hubLinkBody")}
+                </span>
+              </span>
+              <ArrowRight className="h-5 w-5 shrink-0 text-gold" aria-hidden="true" />
+            </Link>
+          </section>
           <FeatureStubCard
             eyebrow={t("app.relationshipWorkspace.stubCheckinsTitle")}
             title={t("app.relationshipWorkspace.stubCheckinsTitle")}

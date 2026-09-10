@@ -614,6 +614,7 @@ export const deApp = {
   "app.relationshipWorkspace.headerEyebrow": "Gemeinsamer Workspace",
   "app.relationshipWorkspace.headerLoading": "Workspace wird geladen…",
   "app.relationshipWorkspace.tabOverview": "Übersicht",
+  "app.relationshipWorkspace.tabDynamics": "Dynamiken",
   "app.relationshipWorkspace.tabConsent": "Freigaben",
   "app.relationshipWorkspace.statusActive": "Aktiv",
   "app.relationshipWorkspace.statusDissolvedPrefix": "Aufgelöst am",
@@ -660,4 +661,116 @@ export const deApp = {
   "app.relationshipWorkspace.stubReflectionBody": "Gemeinsame Reflexionen zu diesem Workspace -- kommt in einem späteren PR.",
   "app.relationshipWorkspace.stubCopilotTitle": "Copilot",
   "app.relationshipWorkspace.stubCopilotBody": "Ein Copilot für diesen Workspace -- kommt in einem späteren PR.",
+
+  // Relationship / Shadow Analysis (PR-WEB-05) -- die /dynamics-Unterseite mit zwei
+  // unabhängigen Abschnitten, Job-Fortschritt, Provenance und Sperrzuständen.
+  "app.dynamics.pageTitle": "Dynamiken",
+  "app.dynamics.pageIntro":
+    "Zwei getrennte Analysen zu eurer Beziehung: die Beziehungsdimensionen und die Schattendynamik. Jede wird einzeln gestartet.",
+  "app.dynamics.hubLinkTitle": "Dynamiken",
+  "app.dynamics.hubLinkBody": "Beziehungsdimensionen und Schattendynamik zwischen euch beiden ansehen.",
+  "app.dynamics.errorTitle": "Abschnitt konnte nicht geladen werden",
+  "app.dynamics.unreadableTitle": "Analyse fertig, aber nicht lesbar",
+  "app.dynamics.unreadableBody":
+    "Die Analyse ist als abgeschlossen markiert, doch ihr gespeicherter Inhalt entspricht nicht der erwarteten Struktur.",
+
+  "app.dynamics.relationship.title": "Beziehungsanalyse",
+  "app.dynamics.relationship.intro":
+    "Pro Dimension des Beziehungsrahmens eine Aussage mit vollständiger Herkunft. Keine Kompatibilitätswertung.",
+  "app.dynamics.relationship.emptyTitle": "Noch keine Beziehungsanalyse",
+  "app.dynamics.relationship.emptyBody":
+    "Starte die Analyse, um die Dimensionen eures Beziehungsrahmens auszuwerten.",
+  "app.dynamics.relationship.launch": "Beziehungsanalyse starten",
+  "app.dynamics.relationship.launching": "Analyse wird gestartet…",
+  "app.dynamics.relationship.dimensionsLabel": "Dimensionen",
+
+  "app.dynamics.shadow.title": "Schattendynamik",
+  "app.dynamics.shadow.intro":
+    "Schattenthemen beider Seiten, das Interaktionsmuster und konkrete Ansatzpunkte zur Deeskalation.",
+  "app.dynamics.shadow.emptyTitle": "Noch keine Schattendynamik",
+  "app.dynamics.shadow.emptyBody":
+    "Starte die Analyse, um Schattenthemen und Interaktionsmuster auszuwerten.",
+  "app.dynamics.shadow.launch": "Schattendynamik starten",
+  "app.dynamics.shadow.launching": "Analyse wird gestartet…",
+  "app.dynamics.shadow.personA": "Person A",
+  "app.dynamics.shadow.personB": "Person B",
+  "app.dynamics.shadow.interactionPattern": "Interaktionsmuster",
+  "app.dynamics.shadow.escalationLoop": "Eskalationsschleife",
+  "app.dynamics.shadow.deescalation": "Ansatzpunkte zur Deeskalation",
+  "app.dynamics.shadow.intensityTitle": "Musterintensität",
+  "app.dynamics.shadow.intensityLabel": "Eingeschätzte Intensität des Musters:",
+  "app.dynamics.shadow.microTasksTitle": "Empfohlene Mikro-Schritte",
+  "app.dynamics.shadow.microTasksHint": "Deterministisch aus dem Muster abgeleitet.",
+
+  "app.dynamics.intensity.low": "gering",
+  "app.dynamics.intensity.moderate": "mittel",
+  "app.dynamics.intensity.high": "hoch",
+
+  "app.dynamics.progress.generating": "Die Analyse wird erstellt",
+  "app.dynamics.progress.aria": "Fortschritt der Analyse-Erstellung",
+  "app.dynamics.progress.contacting": "Verbindung zur Erzeugungs-Warteschlange…",
+  "app.dynamics.progress.retriedPrefix": "Versuch",
+  "app.dynamics.progress.retriedSuffix": "— die Warteschlange hat nach einem behebbaren Fehler neu gestartet.",
+  "app.dynamics.progress.checkNote":
+    "Du kannst diese Seite verlassen und später zurückkommen -- die Erstellung läuft serverseitig weiter.",
+
+  "app.dynamics.failed.title": "Analyse fehlgeschlagen",
+  "app.dynamics.failed.body": "Die Erstellung wurde beendet, bevor ein vollständiges Ergebnis entstehen konnte.",
+  "app.dynamics.failed.reportedBy": "gemeldet vom Erzeugungs-Job",
+  "app.dynamics.failed.after": "nach",
+  "app.dynamics.failed.afterAttempts": "Versuchen",
+  "app.dynamics.failed.untouched":
+    "An euren Profilen und Freigaben wurde nichts verändert. Ein neuer Versuch startet eine frische Analyse.",
+  "app.dynamics.failed.retry": "Neue Analyse starten",
+
+  "app.dynamics.gate.workspaceDissolvedTitle": "Workspace aufgelöst",
+  "app.dynamics.gate.workspaceDissolvedBody":
+    "Dieser Workspace ist aufgelöst -- neue Analysen können nicht mehr gestartet werden.",
+  "app.dynamics.gate.knowledgeFrameTitle": "Beziehungsrahmen noch nicht verfügbar",
+  "app.dynamics.gate.knowledgeFrameBody":
+    "Für diesen Beziehungstyp gibt es noch keinen hinterlegten Frame -- die Beziehungsanalyse kann noch nicht laufen.",
+  "app.dynamics.gate.consentTitle": "Beidseitige Freigabe nötig",
+  "app.dynamics.gate.consentBody":
+    "Beide Seiten müssen „Beziehungs-Einblicke“ freigeben, bevor eine gemeinsame Analyse starten kann.",
+  "app.dynamics.gate.consentLink": "Zu den Freigaben",
+  "app.dynamics.gate.relationshipTypeTitle": "Beziehungstyp fehlt",
+  "app.dynamics.gate.relationshipTypeBody":
+    "Setze zuerst in der Übersicht den Beziehungstyp -- er bestimmt, welcher Rahmen ausgewertet wird.",
+  "app.dynamics.gate.selfProfileTitle": "Eigenes Profil unvollständig",
+  "app.dynamics.gate.selfProfileBody":
+    "Für die Analyse braucht es dein vollständiges eigenes Profil mit Geburtsdaten.",
+
+  "app.dynamics.provenance.show": "Herkunft",
+  "app.dynamics.provenance.hide": "Herkunft ausblenden",
+  "app.dynamics.provenance.canonicalLabel": "Kanonische Werte",
+  "app.dynamics.provenance.knowledgeLabel": "Wissenseinträge",
+  "app.dynamics.provenance.workspaceEvidenceLabel": "Workspace-Belege",
+  "app.dynamics.provenance.emptyGroup": "keine",
+
+  "app.dynamics.meta.calculationVersion": "Berechnungs-Version",
+  "app.dynamics.meta.knowledgeVersion": "Wissens-Version",
+  "app.dynamics.meta.promptVersion": "Prompt-Version",
+  "app.dynamics.meta.model": "Sprachmodell",
+
+  "app.dynamics.dimension.communication": "Kommunikation",
+  "app.dynamics.dimension.closeness": "Nähe",
+  "app.dynamics.dimension.autonomy": "Autonomie",
+  "app.dynamics.dimension.needs": "Bedürfnisse",
+  "app.dynamics.dimension.strengths": "Stärken",
+  "app.dynamics.dimension.conflict_dynamics": "Konfliktdynamik",
+  "app.dynamics.dimension.boundaries": "Grenzen",
+  "app.dynamics.dimension.support": "Unterstützung",
+  "app.dynamics.dimension.pace": "Tempo",
+  "app.dynamics.dimension.collaboration": "Zusammenarbeit",
+  "app.dynamics.dimension.structure": "Struktur",
+  "app.dynamics.dimension.responsibility": "Verantwortung",
+  "app.dynamics.dimension.power_dynamics": "Machtdynamik",
+  "app.dynamics.dimension.family_roles": "Familienrollen",
+  "app.dynamics.dimension.long_term_patterns": "Langfristige Muster",
+  "app.dynamics.dimension.expectations": "Erwartungen",
+  "app.dynamics.dimension.loyalty": "Loyalität",
+  "app.dynamics.dimension.shared_history": "Gemeinsame Geschichte",
+  "app.dynamics.dimension.rivalry_and_cooperation": "Rivalität und Kooperation",
+  "app.dynamics.dimension.attraction_dynamics": "Anziehungsdynamik",
+  "app.dynamics.dimension.guidance_and_independence": "Führung und Eigenständigkeit",
 } as const;

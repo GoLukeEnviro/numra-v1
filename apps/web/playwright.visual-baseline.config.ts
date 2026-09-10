@@ -30,6 +30,7 @@ export default defineConfig({
     /pr-web-02-visual-baseline\.spec\.ts$/,
     /pr-web-03-visual-baseline\.spec\.ts$/,
     /pr-web-04-visual-baseline\.spec\.ts$/,
+    /pr-web-05-visual-baseline\.spec\.ts$/,
   ],
   fullyParallel: false,
   forbidOnly: !!process.env.CI,

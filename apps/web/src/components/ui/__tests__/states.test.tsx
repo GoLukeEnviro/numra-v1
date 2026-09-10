@@ -1,8 +1,10 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { ApiError } from "@/api/client";
 import {
   ComingSoonState,
   PhaseDisabledState,
+  isPhaseDisabledError,
   type PhaseErrorCode,
 } from "@/components/ui/states";
 
@@ -12,6 +14,8 @@ const CODES: PhaseErrorCode[] = [
   "WORKSPACE_DISSOLVED",
   "KNOWLEDGE_FRAME_NOT_AVAILABLE",
   "CONSENT_NOT_GRANTED",
+  "RELATIONSHIP_TYPE_NOT_SET",
+  "SELF_PROFILE_REQUIRED",
 ];
 
 describe("PhaseDisabledState", () => {
@@ -41,6 +45,17 @@ describe("PhaseDisabledState", () => {
       expect(screen.getByText(`Titel für ${code}`)).toBeInTheDocument();
       expect(screen.getByText(`Beschreibung ${code}`)).toBeInTheDocument();
     }
+  });
+});
+
+describe("isPhaseDisabledError", () => {
+  it.each(CODES)("recognizes %s as a phase gate, not an error", (code) => {
+    expect(isPhaseDisabledError(new ApiError("msg", code, 409))).toBe(true);
+  });
+
+  it("does not treat an ordinary ApiError as a phase gate", () => {
+    expect(isPhaseDisabledError(new ApiError("boom", "UNKNOWN_ERROR", 500))).toBe(false);
+    expect(isPhaseDisabledError(new Error("boom"))).toBe(false);
   });
 });
 
