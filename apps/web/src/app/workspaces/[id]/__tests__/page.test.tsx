@@ -81,14 +81,22 @@ describe("RelationshipWorkspaceHubPage", () => {
     expect(await screen.findByRole("heading", { name: "Ada Lovelace", level: 1 })).toBeInTheDocument();
   });
 
-  it("renders all six feature stub cards", async () => {
+  it("renders the five remaining feature stub cards and a real Dynamics link", async () => {
     vi.mocked(api.workspaces.get).mockResolvedValue(overview());
     renderPage();
 
     await screen.findByRole("heading", { name: "Ada Lovelace", level: 1 });
-    for (const title of ["Dynamics", "Check-ins", "Aufgaben", "Roadmap", "Geteilte Reflexion", "Copilot"]) {
+    for (const title of ["Check-ins", "Aufgaben", "Roadmap", "Geteilte Reflexion", "Copilot"]) {
       expect(screen.getAllByText(title).length).toBeGreaterThan(0);
     }
+    const dynamicsLinks = screen
+      .getAllByRole("link", { name: /Dynamiken/ })
+      .filter((el) => el.getAttribute("href") === "/workspaces/ws-1/dynamics");
+    expect(dynamicsLinks.length).toBeGreaterThanOrEqual(1);
+    // the hub card link carries the descriptive body copy, the nav tab does not
+    expect(
+      dynamicsLinks.some((el) => /Beziehungsdimensionen/.test(el.textContent ?? "")),
+    ).toBe(true);
   });
 
   it("keeps showing Loading instead of stale data while the workspace id in the response does not yet match the route (state isolation)", async () => {
