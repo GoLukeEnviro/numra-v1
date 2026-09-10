@@ -5,6 +5,8 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
+from fastapi.exception_handlers import request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -96,7 +98,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_origins=resolved_settings.cors_allowed_origins,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PATCH", "DELETE"],
-        allow_headers=["content-type", "x-csrf-token"],
+        allow_headers=["content-type", "x-csrf-token", "idempotency-key"],
     )
     app.add_middleware(AccessLogMiddleware)
     app.add_middleware(
@@ -105,6 +107,22 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.add_middleware(
         OriginValidationMiddleware, allowed_origins=resolved_settings.cors_allowed_origins
     )
+
+    @app.exception_handler(RequestValidationError)
+    async def handle_request_validation(
+        request: Request, exc: RequestValidationError
+    ) -> JSONResponse:
+        if request.url.path.startswith("/v1/workspaces/") and "/checkin" in request.url.path:
+            # Pydantic's input/context can contain the entire private submission.
+            return JSONResponse(
+                status_code=422,
+                content={
+                    "code": "CHECKIN_REQUEST_INVALID",
+                    "message": "invalid check-in request",
+                    "detail": [{"loc": e["loc"], "type": e["type"]} for e in exc.errors()],
+                },
+            )
+        return await request_validation_exception_handler(request, exc)
 
     @app.exception_handler(ApplicationError)
     async def handle_application_error(request: Request, exc: ApplicationError) -> JSONResponse:

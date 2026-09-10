@@ -548,8 +548,8 @@ async def test_no_new_shared_writes_in_workspace_after_deletion(client, sessionm
 
     checkin = await client.post(
         f"/v1/workspaces/{workspace_id}/checkins",
-        json={"responses": checkin_responses},
-        headers=headers_b,
+        json={"round_id": workspace_id, "responses": checkin_responses},
+        headers={**headers_b, "Idempotency-Key": "after-delete"},
     )
     assert checkin.status_code == 409
     assert checkin.json()["code"] == "WORKSPACE_DISSOLVED"

@@ -25,10 +25,13 @@ from numra_api.repositories.workspaces import (
 )
 from numra_api.schemas.person_ref import PersonRefOut, person_display_name
 from numra_api.schemas.relationship_workspace import DualProfileMemberOut
-from numra_api.services.checkin_service import auto_retire_restricted_dimensions
+from numra_api.services.checkin_service import (
+    assert_no_open_round,
+    auto_retire_restricted_dimensions,
+    require_locked_workspace,
+)
 from numra_api.services.consent_service import assert_consent
 from numra_api.services.errors import ConsentNotGranted, NotFoundError
-from numra_api.services.workspace_guard import assert_workspace_active_by_id
 
 #: specs/v2/relationship-workspace-spec.md DUAL PROFILE -- pure canon numbers, no
 #: interpretation. Mirrors services/relationship_service.py's metric set.
@@ -169,7 +172,10 @@ async def patch_relationship_type(
     if member is None:
         raise NotFoundError(f"workspace {workspace_id} not found")
 
-    workspace = await assert_workspace_active_by_id(db, workspace_id=workspace_id)
+    workspace = await require_locked_workspace(db, workspace_id=workspace_id, user_id=user_id)
+    if workspace.relationship_type == relationship_type:
+        return workspace
+    await assert_no_open_round(db, workspace_id=workspace_id)
 
     updated = await update_relationship_type(
         db, workspace=workspace, relationship_type=relationship_type
