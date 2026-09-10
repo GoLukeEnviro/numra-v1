@@ -157,7 +157,9 @@ async def test_verify_email_link_uses_configured_web_app_base_url(
     sent: list[dict] = []
 
     class _CapturingEmailSender:
-        async def send(self, *, to: str, subject: str, body: str, html_body: str | None = None) -> None:
+        async def send(
+            self, *, to: str, subject: str, body: str, html_body: str | None = None
+        ) -> None:
             sent.append({"to": to, "subject": subject, "body": body, "html_body": html_body})
 
     app.state.email_sender = _CapturingEmailSender()

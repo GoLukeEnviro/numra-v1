@@ -417,7 +417,9 @@ async def test_create_invitation_redeem_url_uses_configured_web_app_base_url(
     invitation = await _create_link_invitation(client, headers)
 
     token = invitation["token"]
-    assert invitation["redeem_url"] == f"{settings.web_app_base_url}/connections/redeem?token={token}"
+    assert (
+        invitation["redeem_url"] == f"{settings.web_app_base_url}/connections/redeem?token={token}"
+    )
 
 
 async def test_create_invitation_redeem_url_honors_overridden_origin_and_trailing_slash(
