@@ -436,6 +436,7 @@ async def run_shadow_dynamics_job(
     except ShadowInteractionRuleMissing as exc:
         # Permanent knowledge-content gap (no rules.yaml row for this shadow-theme
         # pair) -- a retry would resolve the same missing row. Terminal, not retryable.
+        logger.warning("shadow interaction rule missing for job %s: %s", job.id, exc)
         await _handle_job_failure(
             db,
             job=job,

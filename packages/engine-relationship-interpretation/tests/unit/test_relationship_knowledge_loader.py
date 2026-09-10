@@ -98,6 +98,7 @@ def test_load_shadow_interaction_rules_covers_all_life_path_pairs() -> None:
     assert len(rules) == 78
     pairs = {frozenset((rule.shadow_theme_a, rule.shadow_theme_b)) for rule in rules}
     assert len(pairs) == 78
+    assert len({rule.interaction_pattern_template_id for rule in rules}) == 78
     for rule in rules:
         assert rule.interaction_pattern_template_id
         assert rule.escalation_loop_template.strip()
