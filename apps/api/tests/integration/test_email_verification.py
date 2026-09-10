@@ -139,6 +139,56 @@ async def test_request_email_verification_is_rate_limited(client, sessionmaker) 
     assert blocked.json()["code"] == "RATE_LIMIT_EXCEEDED"
 
 
+async def test_verify_email_link_uses_configured_web_app_base_url(
+    settings: Settings, db_engine
+) -> None:
+    """Regression: the verify-email link (auth_recovery_service.py's
+    `build_web_app_url()` call) must be built from `settings.web_app_base_url` --
+    with a distinct configured origin here, the real /verify-email path, and the
+    token carried through unchanged -- never a hardcoded/guessed origin."""
+    custom_settings = Settings(
+        database_url=settings.database_url,
+        environment="test",
+        web_app_base_url="https://app.example.org",
+    )
+    app = create_app(settings=custom_settings)
+    app.state.engine = db_engine
+    app.state.sessionmaker = build_sessionmaker(db_engine)
+    sent: list[dict] = []
+
+    class _CapturingEmailSender:
+        async def send(
+            self, *, to: str, subject: str, body: str, html_body: str | None = None
+        ) -> None:
+            sent.append({"to": to, "subject": subject, "body": body, "html_body": html_body})
+
+    app.state.email_sender = _CapturingEmailSender()
+
+    async with app.state.sessionmaker() as db:
+        await create_user(
+            db, email="verify-origin@example.com", password_hash=hash_password("x" * 12)
+        )
+        await db.commit()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as c:
+        login_response = await c.post(
+            "/v1/auth/login",
+            json={"email": "verify-origin@example.com", "password": "x" * 12},
+        )
+        assert login_response.status_code == 200
+        response = await c.post(
+            "/v1/auth/request-email-verification",
+            headers={"x-csrf-token": c.cookies["numra_csrf"]},
+        )
+
+    assert response.status_code == 204
+    assert len(sent) == 1
+    token = _extract_token(sent[0]["body"])
+    expected_link = f"https://app.example.org/verify-email?token={token}"
+    assert expected_link in sent[0]["body"]
+    assert expected_link in sent[0]["html_body"]
+
+
 async def test_request_email_verification_with_disabled_backend_is_503_not_500(
     settings: Settings, db_engine
 ) -> None:

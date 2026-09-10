@@ -222,6 +222,50 @@ async def test_reset_password_is_rate_limited(client) -> None:
     assert blocked.json()["code"] == "RATE_LIMIT_EXCEEDED"
 
 
+async def test_reset_password_link_uses_configured_web_app_base_url(
+    settings: Settings, db_engine
+) -> None:
+    """Regression: the reset-password link (auth_recovery_service.py's
+    `build_web_app_url()` call) must be built from `settings.web_app_base_url` --
+    with a distinct configured origin here, the real /reset-password path, and the
+    token carried through unchanged -- never a hardcoded/guessed origin."""
+    custom_settings = Settings(
+        database_url=settings.database_url,
+        environment="test",
+        web_app_base_url="https://app.example.org",
+    )
+    app = create_app(settings=custom_settings)
+    app.state.engine = db_engine
+    app.state.sessionmaker = build_sessionmaker(db_engine)
+    sent: list[dict] = []
+
+    class _CapturingEmailSender:
+        async def send(
+            self, *, to: str, subject: str, body: str, html_body: str | None = None
+        ) -> None:
+            sent.append({"to": to, "subject": subject, "body": body, "html_body": html_body})
+
+    app.state.email_sender = _CapturingEmailSender()
+
+    async with app.state.sessionmaker() as db:
+        await create_user(
+            db, email="reset-origin@example.com", password_hash=hash_password("x" * 12)
+        )
+        await db.commit()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as c:
+        response = await c.post(
+            "/v1/auth/forgot-password", json={"email": "reset-origin@example.com"}
+        )
+
+    assert response.status_code == 202
+    assert len(sent) == 1
+    token = _extract_token(sent[0]["body"])
+    expected_link = f"https://app.example.org/reset-password?token={token}"
+    assert expected_link in sent[0]["body"]
+    assert expected_link in sent[0]["html_body"]
+
+
 async def test_forgot_password_stays_anti_enumeration_safe_with_real_disabled_sender(
     settings: Settings, db_engine
 ) -> None:

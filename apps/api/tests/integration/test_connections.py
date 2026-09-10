@@ -3,10 +3,14 @@ from __future__ import annotations
 import datetime as dt
 
 import pytest
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 
+from numra_api.app import create_app
 from numra_api.auth.passwords import hash_password
 from numra_api.auth.tokens import hash_token
+from numra_api.config import Settings
+from numra_api.db import build_sessionmaker
 from numra_api.models import (
     ConnectionInvitation,
     ConsentGrant,
@@ -401,3 +405,46 @@ async def test_preview_id_matches_invitation_and_enables_decline(client, session
     )
     assert decline.status_code == 200
     assert decline.json()["state"] == "DECLINED"
+
+
+async def test_create_invitation_redeem_url_uses_configured_web_app_base_url(
+    client, sessionmaker, settings: Settings
+) -> None:
+    """Regression: redeem_url must be built from `settings.web_app_base_url`
+    (config.py's `build_web_app_url()`) -- never a hardcoded/guessed origin -- with
+    the right path and the token carried through unchanged."""
+    headers = await _signup(client, sessionmaker, "conn-redeem-url@example.com")
+    invitation = await _create_link_invitation(client, headers)
+
+    token = invitation["token"]
+    assert (
+        invitation["redeem_url"] == f"{settings.web_app_base_url}/connections/redeem?token={token}"
+    )
+
+
+async def test_create_invitation_redeem_url_honors_overridden_origin_and_trailing_slash(
+    settings: Settings, db_engine
+) -> None:
+    """Regression: a differently configured WEB_APP_BASE_URL (here with a trailing
+    slash, the form a deployer is likely to set) must be reflected verbatim in
+    redeem_url, proving the origin is genuinely read from settings rather than
+    derived from the request or a hardcoded default."""
+    custom_settings = Settings(
+        database_url=settings.database_url,
+        environment="test",
+        numra_llm_provider="mock",
+        avenyth_v2_enabled=True,
+        avenyth_connections_enabled=True,
+        avenyth_relationship_workspaces_enabled=True,
+        web_app_base_url="https://app.example.org/",
+    )
+    app = create_app(settings=custom_settings)
+    app.state.engine = db_engine
+    app.state.sessionmaker = build_sessionmaker(db_engine)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as c:
+        headers = await _signup(c, app.state.sessionmaker, "conn-redeem-origin@example.com")
+        invitation = await _create_link_invitation(c, headers)
+
+    token = invitation["token"]
+    assert invitation["redeem_url"] == f"https://app.example.org/connections/redeem?token={token}"
