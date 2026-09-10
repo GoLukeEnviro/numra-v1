@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime as dt
 import uuid
 from decimal import Decimal
-from typing import Any
+from typing import Any, Literal
 
 from sqlalchemy import (
     Boolean,
@@ -876,16 +876,19 @@ class ShadowDynamicsAnalysis(Base):
 
 
 class CheckinTemplate(Base):
-    """specs/v2/checkin-spec.md -- one versioned dimension set for a
-    `RelationshipWorkspace`. Lazily created on first check-in access (see
-    services/checkin_service.py::get_or_create_active_template), never in
-    services/connection_service.py::accept_invitation. `version` is a plain
-    monotonically increasing integer per workspace (no re-versioning flow yet in this
-    PR -- exactly one `active=True` row per workspace at a time)."""
+    """Workspace template. First round freezes the version; later configuration
+    edits copy dimensions into a new version under the workspace transaction lock.
+    """
 
     __tablename__ = "checkin_templates"
     __table_args__ = (
         UniqueConstraint("workspace_id", "version", name="uq_checkin_templates_workspace_version"),
+        Index(
+            "uq_checkin_templates_active",
+            "workspace_id",
+            unique=True,
+            postgresql_where=text("active"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = _uuid_pk()
@@ -900,25 +903,28 @@ class CheckinTemplate(Base):
 
 
 class CheckinDimension(Base):
-    """specs/v2/checkin-spec.md -- one configurable dimension (`closeness`,
-    `communication`, ... or a custom key) within a workspace's template.
-    `semantic_key` is provably immutable once referenced by any `CheckinResponse` --
-    enforced by `uq_checkin_dimensions_workspace_semantic_key` (one semantic_key ever
-    exists per workspace, never duplicated even across template versions) plus the
-    app-level check in services/checkin_service.py (a reused key raises
-    `SemanticKeyImmutable`). `retired_at` is a deliberate soft-delete exception (see
-    coding-style "kein Dead Code" -- this is not dead code, historical
-    `CheckinResponse`/`CheckinAnalysis` rows keep referencing the row via
-    `semantic_key`/`dimension_id`, so it must never be hard-deleted). A label/
-    description edit mutates this row in place; a semantic redefinition is not
-    allowed -- that requires retiring this row and creating a new `semantic_key`."""
+    """A versioned copy of a semantic identity. Old versions remain unchanged.
+
+    New keys cannot reuse a workspace identity. A semantic redefinition requires
+    retiring the old key and adding a new one. The migration adds DB guards against
+    identity changes and updates to dimensions in versions already used by rounds.
+    """
 
     __tablename__ = "checkin_dimensions"
     __table_args__ = (
         UniqueConstraint(
-            "workspace_id", "semantic_key", name="uq_checkin_dimensions_workspace_semantic_key"
+            "workspace_id",
+            "template_version",
+            "semantic_key",
+            name="uq_checkin_dimensions_workspace_version_key",
         ),
         CheckConstraint("scale_min < scale_max", name="ck_checkin_dimensions_scale_min_lt_max"),
+        CheckConstraint(
+            "(dimension_class IS NULL OR dimension_class='INTIMATE') AND "
+            "(semantic_key <> 'sexual_connection' OR "
+            "dimension_class IS NOT DISTINCT FROM 'INTIMATE')",
+            name="ck_checkin_dimension_class",
+        ),
     )
 
     id: Mapped[uuid.UUID] = _uuid_pk()
@@ -927,6 +933,7 @@ class CheckinDimension(Base):
     )
     template_version: Mapped[int] = mapped_column(Integer)
     semantic_key: Mapped[str] = mapped_column(String(60))
+    dimension_class: Mapped[str | None] = mapped_column(String(20), nullable=True)
     label: Mapped[str] = mapped_column(String(120))
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     scale_min: Mapped[int] = mapped_column(Integer, default=1)
@@ -950,14 +957,7 @@ class RelationshipCheckin(Base):
     __tablename__ = "relationship_checkins"
 
     __table_args__ = (
-        #: Race-safety net for two members submitting their first response for a new
-        #: round at (near-)the same time: without this, both concurrent transactions
-        #: read `get_awaiting_checkin` -> None under READ COMMITTED (neither commit is
-        #: visible yet) and each creates its own round, so the two submissions never
-        #: land on the same `RelationshipCheckin` and the analysis never triggers. A
-        #: partial unique index makes the loser's INSERT fail with an IntegrityError
-        #: instead, which `submit_checkin` catches and retries against the winner's
-        #: round (see services/checkin_service.py).
+        # Defense in depth beyond the workspace lock: at most one open round.
         Index(
             "uq_relationship_checkins_one_awaiting_per_workspace",
             "workspace_id",
@@ -969,6 +969,9 @@ class RelationshipCheckin(Base):
     id: Mapped[uuid.UUID] = _uuid_pk()
     workspace_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("relationship_workspaces.id", ondelete="CASCADE"), index=True
+    )
+    snapshot_origin: Mapped[Literal["ROUND_START", "MIGRATION_CURRENT", "LEGACY_MISSING"]] = (
+        mapped_column(String(20), server_default="LEGACY_MISSING")
     )
     checkin_template_version: Mapped[int] = mapped_column(Integer)
     cycle_started_at: Mapped[dt.datetime] = mapped_column(
@@ -1013,7 +1016,9 @@ class CheckinResponse(Base):
         ForeignKey("users.id", ondelete="CASCADE"), index=True
     )
     dimension_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("checkin_dimensions.id", ondelete="CASCADE")
+        ForeignKey(
+            "checkin_dimensions.id", ondelete="NO ACTION", deferrable=True, initially="DEFERRED"
+        )
     )
     semantic_key: Mapped[str] = mapped_column(String(60))
     value: Mapped[int] = mapped_column(Integer)
@@ -1656,3 +1661,42 @@ __all__ = [
     "WorkspaceMember",
     "WorkspaceTask",
 ]
+
+
+class CheckinRoundDimension(Base):
+    """Immutable question snapshot. Referenced configuration cannot be hard-deleted."""
+
+    __tablename__ = "checkin_round_dimensions"
+    checkin_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("relationship_checkins.id", ondelete="CASCADE"), primary_key=True
+    )
+    dimension_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey(
+            "checkin_dimensions.id", ondelete="NO ACTION", deferrable=True, initially="DEFERRED"
+        ),
+        primary_key=True,
+    )
+    semantic_key: Mapped[str] = mapped_column(String(60))
+    label: Mapped[str] = mapped_column(String(120))
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    scale_min: Mapped[int] = mapped_column(Integer)
+    scale_max: Mapped[int] = mapped_column(Integer)
+    sort_order: Mapped[int] = mapped_column(Integer)
+
+
+class CheckinIdempotency(Base):
+    """Request identity is separate from payload hash; no private response cache."""
+
+    __tablename__ = "checkin_idempotency"
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("relationship_workspaces.id", ondelete="CASCADE"), primary_key=True
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    operation: Mapped[str] = mapped_column(String(20), primary_key=True)
+    key: Mapped[str] = mapped_column(String(200), primary_key=True)
+    payload_hash: Mapped[str] = mapped_column(String(64))
+    checkin_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("relationship_checkins.id", ondelete="CASCADE")
+    )

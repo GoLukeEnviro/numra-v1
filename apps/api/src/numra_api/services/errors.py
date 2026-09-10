@@ -421,3 +421,38 @@ class ThreadArchiveForbidden(ApplicationError):
 
     code = "THREAD_ARCHIVE_FORBIDDEN"
     status_code = 403
+
+
+class CheckinRoundOpen(ApplicationError):
+    code = "CHECKIN_ROUND_OPEN"
+    status_code = 409
+
+
+class CheckinRoundMismatch(ApplicationError):
+    code = "CHECKIN_ROUND_MISMATCH"
+    status_code = 409
+
+
+class CheckinIdempotencyConflict(ApplicationError):
+    code = "CHECKIN_IDEMPOTENCY_CONFLICT"
+    status_code = 409
+
+
+class CheckinValueOutOfRange(ApplicationError):
+    code = "CHECKIN_VALUE_OUT_OF_RANGE"
+    status_code = 422
+
+
+class CheckinResponsesIncomplete(ApplicationError):
+    code = "CHECKIN_RESPONSES_INCOMPLETE"
+    status_code = 422
+
+
+class CheckinNoDimensions(ApplicationError):
+    code = "CHECKIN_NO_ACTIVE_DIMENSIONS"
+    status_code = 422
+
+
+class CheckinScaleInvalid(ApplicationError):
+    code = "CHECKIN_SCALE_INVALID"
+    status_code = 422

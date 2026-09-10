@@ -3,7 +3,7 @@
 Basis `main` @ `b2c0c9e`. Web-Anteil von `PR-V2-06` (`specs/v2/api-contract.md`
 §53) — **nicht** deckungsgleich mit der gemergten Backend-Phase (`9b42ce9`, #26).
 
-**Status: PLAN — keine Feature-Implementierung, kein Merge vor Freigabe.**
+**Status: WEB-06a implementiert, PR #53 in CI; Umsetzung und Merge freigegeben.**
 Aufteilung: **PR-WEB-06a** (Backend-Fix-Paket, zuerst) → **PR-WEB-06b**
 (Frontend, danach). Diese Fassung integriert die Freigabe-Vorgaben; die
 früheren offenen Entscheidungen D1–D5 sind entschieden (§6).
@@ -11,6 +11,39 @@ früheren offenen Entscheidungen D1–D5 sind entschieden (§6).
 Maßgebliche Contracts: `specs/v2/checkin-spec.md` (Frozen Decision #8),
 `specs/v2/privacy-spec.md` §49, `specs/v2/dissolution-policy.md` (#11),
 `specs/v2/minor-profile-policy.md`, `specs/v2/evidence-policy.md`.
+
+---
+
+## Verbindliche Präzisierungen aus der WEB-06a-Übergabe
+
+Die folgenden Festlegungen ersetzen abweichende Empfehlungen/IST-Angaben weiter unten:
+
+1. Eigene Idempotenz-Tabelle mit Schlüssel `(Akteur, Workspace, Operation, Key)`;
+   kanonischer Payload-Hash wird separat verglichen. Start **und** Submit benötigen
+   den Header. Replay liefert den aktuellen autorisierten Zustand derselben Runde,
+   auch nach Abschluss. Nach Dissolve werden sämtliche POST-Replays abgewiesen.
+2. Workspace-Row-Lock, frisch geladener Zustand und erneute Mitgliedschaftsprüfung
+   nach Lock-Wartezeit. Er deckt Start, Submit, Config/Versionierung und Typwechsel
+   ab; Dissolve serialisiert durch sein bestehendes Workspace-UPDATE. Kein breiter
+   IntegrityError-Catch und kein Rollback mit blindem Retry.
+3. Tatsächlicher Typwechsel bei offener Runde: `CHECKIN_ROUND_OPEN`; gleicher Typ:
+   No-op. Automatisches Retiren nach Abschluss verwendet ebenfalls Versionskopien.
+4. Template-Version ist ab erster Runden-Nutzung eingefroren. Config-Sperre deckt
+   schon den Zeitraum ohne erste Antwort ab. Unique-Key umfasst Workspace, Version
+   und semantic_key; Versionskopien erhalten neue IDs. PATCH alter IDs adressiert
+   dieselbe fachliche Identität in der aktuellen Version.
+5. Altrunden: `ANALYZED` behält Analyse/Antworten unverändert, ohne erfundene
+   Snapshots. `AWAITING` wird vorab auf vollständige, passende Abgaben geprüft.
+   Kompatible Backfills tragen ausdrücklich `MIGRATION_CURRENT`, niemals
+   `ROUND_START`. `snapshot_recorded=true` allein beweist keinen Original-Snapshot.
+   Inkompatible Altrunden führen zum atomaren Abbruch; kein stilles Reparieren.
+6. `/current` ohne Runde: 200/JSON null. Historisches Template `?version=N` und
+   bestehende Runden bleiben lesbar. DISSOLVED ohne Template: 404, ohne Lazy-Write.
+7. Fehlerantworten spiegeln keine eingereichten Rohwerte; Schemafehler werden für
+   Check-in-Routen reduziert. Die Analyse-Privacy bleibt beim akzeptierten Trade-off.
+
+Vollständiger finaler API-Contract: `specs/v2/checkin-spec.md`, Abschnitt WEB-06a.
+Migration und Prüfprotokoll: `docs/planning/pr-web-06a-evidence.md`.
 
 ---
 

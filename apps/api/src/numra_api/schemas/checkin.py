@@ -11,10 +11,22 @@ from __future__ import annotations
 
 import datetime as dt
 import uuid
+from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StrictInt
 
 from numra_api.models.enums import CheckinStatus
+
+
+class CheckinValidationIssueOut(BaseModel):
+    loc: list[str | int]
+    type: str
+
+
+class CheckinErrorOut(BaseModel):
+    code: str
+    message: str
+    detail: list[CheckinValidationIssueOut] | None = None
 
 
 class CheckinDimensionOut(BaseModel):
@@ -25,6 +37,7 @@ class CheckinDimensionOut(BaseModel):
     scale_min: int
     scale_max: int
     sort_order: int
+    dimension_class: Literal["INTIMATE"] | None
     active: bool
     retired_at: dt.datetime | None
 
@@ -45,6 +58,7 @@ class CheckinDimensionCreateRequest(BaseModel):
     scale_min: int = Field(default=1, ge=0)
     scale_max: int = Field(default=10, le=100)
     sort_order: int = Field(default=0)
+    dimension_class: Literal["INTIMATE"] | None = None
 
 
 class CheckinDimensionUpdateRequest(BaseModel):
@@ -53,12 +67,23 @@ class CheckinDimensionUpdateRequest(BaseModel):
     active: bool | None = None
 
 
+class CheckinRoundStartRequest(BaseModel):
+    """Optional empty object only; no ignored round-start parameters."""
+
+    model_config = {"extra": "forbid"}
+
+
 class CheckinResponseIn(BaseModel):
+    model_config = {"extra": "forbid"}
+
     dimension_id: uuid.UUID
-    value: int
+    value: StrictInt
 
 
 class CheckinSubmitRequest(BaseModel):
+    model_config = {"extra": "forbid"}
+
+    round_id: uuid.UUID
     responses: list[CheckinResponseIn] = Field(min_length=1)
 
 
@@ -87,13 +112,32 @@ class CheckinAnalysisOut(BaseModel):
     result: dict[str, DimensionAnalysisOut]
 
 
-class CheckinOut(BaseModel):
+class CheckinRoundDimensionOut(BaseModel):
+    dimension_id: uuid.UUID
+    semantic_key: str
+    label: str
+    description: str | None
+    scale_min: int
+    scale_max: int
+    sort_order: int
+
+    model_config = {"from_attributes": True}
+
+
+class CheckinRoundOut(BaseModel):
     id: uuid.UUID
     workspace_id: uuid.UUID
     checkin_template_version: int
     status: CheckinStatus
     cycle_started_at: dt.datetime
+    snapshot_origin: Literal["ROUND_START", "MIGRATION_CURRENT", "LEGACY_MISSING"]
+    snapshot_recorded: bool
+    dimensions: list[CheckinRoundDimensionOut]
+
+
+class CheckinOut(CheckinRoundOut):
     my_responses: list[CheckinResponseOut]
+    partner_submitted: bool
     analysis: CheckinAnalysisOut | None
 
 

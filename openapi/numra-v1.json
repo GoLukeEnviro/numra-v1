@@ -818,6 +818,18 @@
             ],
             "title": "Description"
           },
+          "dimension_class": {
+            "anyOf": [
+              {
+                "const": "INTIMATE",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dimension Class"
+          },
           "label": {
             "maxLength": 120,
             "minLength": 1,
@@ -873,6 +885,18 @@
             ],
             "title": "Description"
           },
+          "dimension_class": {
+            "anyOf": [
+              {
+                "const": "INTIMATE",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dimension Class"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -919,6 +943,7 @@
           "scale_min",
           "scale_max",
           "sort_order",
+          "dimension_class",
           "active",
           "retired_at"
         ],
@@ -967,6 +992,38 @@
         "title": "CheckinDimensionUpdateRequest",
         "type": "object"
       },
+      "CheckinErrorOut": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/CheckinValidationIssueOut"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "CheckinErrorOut",
+        "type": "object"
+      },
       "CheckinOut": {
         "properties": {
           "analysis": {
@@ -988,6 +1045,13 @@
             "title": "Cycle Started At",
             "type": "string"
           },
+          "dimensions": {
+            "items": {
+              "$ref": "#/components/schemas/CheckinRoundDimensionOut"
+            },
+            "title": "Dimensions",
+            "type": "array"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -999,6 +1063,23 @@
             },
             "title": "My Responses",
             "type": "array"
+          },
+          "partner_submitted": {
+            "title": "Partner Submitted",
+            "type": "boolean"
+          },
+          "snapshot_origin": {
+            "enum": [
+              "ROUND_START",
+              "MIGRATION_CURRENT",
+              "LEGACY_MISSING"
+            ],
+            "title": "Snapshot Origin",
+            "type": "string"
+          },
+          "snapshot_recorded": {
+            "title": "Snapshot Recorded",
+            "type": "boolean"
           },
           "status": {
             "$ref": "#/components/schemas/CheckinStatus"
@@ -1015,13 +1096,18 @@
           "checkin_template_version",
           "status",
           "cycle_started_at",
+          "snapshot_origin",
+          "snapshot_recorded",
+          "dimensions",
           "my_responses",
+          "partner_submitted",
           "analysis"
         ],
         "title": "CheckinOut",
         "type": "object"
       },
       "CheckinResponseIn": {
+        "additionalProperties": false,
         "properties": {
           "dimension_id": {
             "format": "uuid",
@@ -1071,6 +1157,122 @@
         "title": "CheckinResponseOut",
         "type": "object"
       },
+      "CheckinRoundDimensionOut": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "dimension_id": {
+            "format": "uuid",
+            "title": "Dimension Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "scale_max": {
+            "title": "Scale Max",
+            "type": "integer"
+          },
+          "scale_min": {
+            "title": "Scale Min",
+            "type": "integer"
+          },
+          "semantic_key": {
+            "title": "Semantic Key",
+            "type": "string"
+          },
+          "sort_order": {
+            "title": "Sort Order",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "dimension_id",
+          "semantic_key",
+          "label",
+          "description",
+          "scale_min",
+          "scale_max",
+          "sort_order"
+        ],
+        "title": "CheckinRoundDimensionOut",
+        "type": "object"
+      },
+      "CheckinRoundOut": {
+        "properties": {
+          "checkin_template_version": {
+            "title": "Checkin Template Version",
+            "type": "integer"
+          },
+          "cycle_started_at": {
+            "format": "date-time",
+            "title": "Cycle Started At",
+            "type": "string"
+          },
+          "dimensions": {
+            "items": {
+              "$ref": "#/components/schemas/CheckinRoundDimensionOut"
+            },
+            "title": "Dimensions",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "snapshot_origin": {
+            "enum": [
+              "ROUND_START",
+              "MIGRATION_CURRENT",
+              "LEGACY_MISSING"
+            ],
+            "title": "Snapshot Origin",
+            "type": "string"
+          },
+          "snapshot_recorded": {
+            "title": "Snapshot Recorded",
+            "type": "boolean"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CheckinStatus"
+          },
+          "workspace_id": {
+            "format": "uuid",
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "workspace_id",
+          "checkin_template_version",
+          "status",
+          "cycle_started_at",
+          "snapshot_origin",
+          "snapshot_recorded",
+          "dimensions"
+        ],
+        "title": "CheckinRoundOut",
+        "type": "object"
+      },
+      "CheckinRoundStartRequest": {
+        "additionalProperties": false,
+        "description": "Optional empty object only; no ignored round-start parameters.",
+        "properties": {},
+        "title": "CheckinRoundStartRequest",
+        "type": "object"
+      },
       "CheckinStatus": {
         "description": "PR-V2-06 -- lifecycle of one `RelationshipCheckin` cycle. `ANALYZED` is set\nsynchronously, in the same transaction as the second member's submission, once\n`CheckinAnalysisService` has computed the shared derived result (see\nservices/checkin_service.py::submit_checkin) -- there is no separate job/worker\nfor this, unlike `ReportJobStatus`/`AnalysisJobStatus`.",
         "enum": [
@@ -1081,6 +1283,7 @@
         "type": "string"
       },
       "CheckinSubmitRequest": {
+        "additionalProperties": false,
         "properties": {
           "responses": {
             "items": {
@@ -1089,9 +1292,15 @@
             "minItems": 1,
             "title": "Responses",
             "type": "array"
+          },
+          "round_id": {
+            "format": "uuid",
+            "title": "Round Id",
+            "type": "string"
           }
         },
         "required": [
+          "round_id",
           "responses"
         ],
         "title": "CheckinSubmitRequest",
@@ -1156,6 +1365,34 @@
           "dimensions"
         ],
         "title": "CheckinTemplateOut",
+        "type": "object"
+      },
+      "CheckinValidationIssueOut": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Loc",
+            "type": "array"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "type"
+        ],
+        "title": "CheckinValidationIssueOut",
         "type": "object"
       },
       "ConfidenceCategory": {
@@ -12081,15 +12318,35 @@
             },
             "description": "Successful Response"
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinErrorOut"
+                }
+              }
+            },
+            "description": "Workspace/resource not available to caller"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinErrorOut"
+                }
+              }
+            },
+            "description": "WORKSPACE_DISSOLVED, CHECKIN_ROUND_OPEN, CHECKIN_ROUND_MISMATCH, CHECKIN_ALREADY_SUBMITTED, CHECKIN_IDEMPOTENCY_CONFLICT or SEMANTIC_KEY_IMMUTABLE"
+          },
           "422": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/CheckinErrorOut"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "CHECKIN_REQUEST_INVALID, CHECKIN_RESPONSES_INCOMPLETE, CHECKIN_VALUE_OUT_OF_RANGE, CHECKIN_SCALE_INVALID, CHECKIN_NO_ACTIVE_DIMENSIONS or DIMENSION_NOT_ALLOWED_FOR_RELATIONSHIP_TYPE; no submitted values are echoed"
           }
         },
         "summary": "Create Checkin Dimension Route",
@@ -12192,15 +12449,35 @@
             },
             "description": "Successful Response"
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinErrorOut"
+                }
+              }
+            },
+            "description": "Workspace/resource not available to caller"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinErrorOut"
+                }
+              }
+            },
+            "description": "WORKSPACE_DISSOLVED, CHECKIN_ROUND_OPEN, CHECKIN_ROUND_MISMATCH, CHECKIN_ALREADY_SUBMITTED, CHECKIN_IDEMPOTENCY_CONFLICT or SEMANTIC_KEY_IMMUTABLE"
+          },
           "422": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/CheckinErrorOut"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "CHECKIN_REQUEST_INVALID, CHECKIN_RESPONSES_INCOMPLETE, CHECKIN_VALUE_OUT_OF_RANGE, CHECKIN_SCALE_INVALID, CHECKIN_NO_ACTIVE_DIMENSIONS or DIMENSION_NOT_ALLOWED_FOR_RELATIONSHIP_TYPE; no submitted values are echoed"
           }
         },
         "summary": "Update Checkin Dimension Route",
@@ -12221,6 +12498,23 @@
               "format": "uuid",
               "title": "Workspace Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "version",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Version"
             }
           },
           {
@@ -12251,15 +12545,35 @@
             },
             "description": "Successful Response"
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinErrorOut"
+                }
+              }
+            },
+            "description": "Workspace/resource not available to caller"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinErrorOut"
+                }
+              }
+            },
+            "description": "WORKSPACE_DISSOLVED, CHECKIN_ROUND_OPEN, CHECKIN_ROUND_MISMATCH, CHECKIN_ALREADY_SUBMITTED, CHECKIN_IDEMPOTENCY_CONFLICT or SEMANTIC_KEY_IMMUTABLE"
+          },
           "422": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/CheckinErrorOut"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "CHECKIN_REQUEST_INVALID, CHECKIN_RESPONSES_INCOMPLETE, CHECKIN_VALUE_OUT_OF_RANGE, CHECKIN_SCALE_INVALID, CHECKIN_NO_ACTIVE_DIMENSIONS or DIMENSION_NOT_ALLOWED_FOR_RELATIONSHIP_TYPE; no submitted values are echoed"
           }
         },
         "summary": "Get Checkin Template Route",
@@ -12337,15 +12651,35 @@
             },
             "description": "Successful Response"
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinErrorOut"
+                }
+              }
+            },
+            "description": "Workspace/resource not available to caller"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinErrorOut"
+                }
+              }
+            },
+            "description": "WORKSPACE_DISSOLVED, CHECKIN_ROUND_OPEN, CHECKIN_ROUND_MISMATCH, CHECKIN_ALREADY_SUBMITTED, CHECKIN_IDEMPOTENCY_CONFLICT or SEMANTIC_KEY_IMMUTABLE"
+          },
           "422": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/CheckinErrorOut"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "CHECKIN_REQUEST_INVALID, CHECKIN_RESPONSES_INCOMPLETE, CHECKIN_VALUE_OUT_OF_RANGE, CHECKIN_SCALE_INVALID, CHECKIN_NO_ACTIVE_DIMENSIONS or DIMENSION_NOT_ALLOWED_FOR_RELATIONSHIP_TYPE; no submitted values are echoed"
           }
         },
         "summary": "List Checkins Route",
@@ -12363,6 +12697,17 @@
             "schema": {
               "format": "uuid",
               "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "minLength": 1,
+              "title": "Idempotency-Key",
               "type": "string"
             }
           },
@@ -12436,18 +12781,266 @@
             },
             "description": "Successful Response"
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinErrorOut"
+                }
+              }
+            },
+            "description": "Workspace/resource not available to caller"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinErrorOut"
+                }
+              }
+            },
+            "description": "WORKSPACE_DISSOLVED, CHECKIN_ROUND_OPEN, CHECKIN_ROUND_MISMATCH, CHECKIN_ALREADY_SUBMITTED, CHECKIN_IDEMPOTENCY_CONFLICT or SEMANTIC_KEY_IMMUTABLE"
+          },
           "422": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/CheckinErrorOut"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "CHECKIN_REQUEST_INVALID, CHECKIN_RESPONSES_INCOMPLETE, CHECKIN_VALUE_OUT_OF_RANGE, CHECKIN_SCALE_INVALID, CHECKIN_NO_ACTIVE_DIMENSIONS or DIMENSION_NOT_ALLOWED_FOR_RELATIONSHIP_TYPE; no submitted values are echoed"
           }
         },
         "summary": "Submit Checkin Route",
+        "tags": [
+          "checkins"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspace_id}/checkins/current": {
+      "get": {
+        "description": "Open round, else latest completed round; JSON null when none exists.",
+        "operationId": "get_current_checkin_route_v1_workspaces__workspace_id__checkins_current_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/CheckinOut"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Get Current Checkin Route V1 Workspaces  Workspace Id  Checkins Current Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinErrorOut"
+                }
+              }
+            },
+            "description": "Workspace/resource not available to caller"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinErrorOut"
+                }
+              }
+            },
+            "description": "WORKSPACE_DISSOLVED, CHECKIN_ROUND_OPEN, CHECKIN_ROUND_MISMATCH, CHECKIN_ALREADY_SUBMITTED, CHECKIN_IDEMPOTENCY_CONFLICT or SEMANTIC_KEY_IMMUTABLE"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinErrorOut"
+                }
+              }
+            },
+            "description": "CHECKIN_REQUEST_INVALID, CHECKIN_RESPONSES_INCOMPLETE, CHECKIN_VALUE_OUT_OF_RANGE, CHECKIN_SCALE_INVALID, CHECKIN_NO_ACTIVE_DIMENSIONS or DIMENSION_NOT_ALLOWED_FOR_RELATIONSHIP_TYPE; no submitted values are echoed"
+          }
+        },
+        "summary": "Get Current Checkin Route",
+        "tags": [
+          "checkins"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspace_id}/checkins/rounds": {
+      "post": {
+        "description": "Start explicitly; replay returns this round's current authorized state.",
+        "operationId": "start_checkin_round_route_v1_workspaces__workspace_id__checkins_rounds_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "minLength": 1,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-csrf-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_csrf",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Csrf"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/CheckinRoundStartRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinRoundOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinErrorOut"
+                }
+              }
+            },
+            "description": "Workspace/resource not available to caller"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinErrorOut"
+                }
+              }
+            },
+            "description": "WORKSPACE_DISSOLVED, CHECKIN_ROUND_OPEN, CHECKIN_ROUND_MISMATCH, CHECKIN_ALREADY_SUBMITTED, CHECKIN_IDEMPOTENCY_CONFLICT or SEMANTIC_KEY_IMMUTABLE"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinErrorOut"
+                }
+              }
+            },
+            "description": "CHECKIN_REQUEST_INVALID, CHECKIN_RESPONSES_INCOMPLETE, CHECKIN_VALUE_OUT_OF_RANGE, CHECKIN_SCALE_INVALID, CHECKIN_NO_ACTIVE_DIMENSIONS or DIMENSION_NOT_ALLOWED_FOR_RELATIONSHIP_TYPE; no submitted values are echoed"
+          }
+        },
+        "summary": "Start Checkin Round Route",
         "tags": [
           "checkins"
         ]
@@ -12505,15 +13098,35 @@
             },
             "description": "Successful Response"
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinErrorOut"
+                }
+              }
+            },
+            "description": "Workspace/resource not available to caller"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinErrorOut"
+                }
+              }
+            },
+            "description": "WORKSPACE_DISSOLVED, CHECKIN_ROUND_OPEN, CHECKIN_ROUND_MISMATCH, CHECKIN_ALREADY_SUBMITTED, CHECKIN_IDEMPOTENCY_CONFLICT or SEMANTIC_KEY_IMMUTABLE"
+          },
           "422": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/CheckinErrorOut"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "CHECKIN_REQUEST_INVALID, CHECKIN_RESPONSES_INCOMPLETE, CHECKIN_VALUE_OUT_OF_RANGE, CHECKIN_SCALE_INVALID, CHECKIN_NO_ACTIVE_DIMENSIONS or DIMENSION_NOT_ALLOWED_FOR_RELATIONSHIP_TYPE; no submitted values are echoed"
           }
         },
         "summary": "Get Checkin Route",

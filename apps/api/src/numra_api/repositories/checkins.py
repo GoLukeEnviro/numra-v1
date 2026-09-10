@@ -24,6 +24,7 @@ from numra_api.models import (
     CheckinAnalysis,
     CheckinDimension,
     CheckinResponse,
+    CheckinRoundDimension,
     CheckinTemplate,
     RelationshipCheckin,
 )
@@ -60,6 +61,7 @@ async def create_dimension(
     scale_min: int = 1,
     scale_max: int = 10,
     sort_order: int = 0,
+    dimension_class: str | None = None,
 ) -> CheckinDimension:
     dimension = CheckinDimension(
         workspace_id=workspace_id,
@@ -70,6 +72,7 @@ async def create_dimension(
         scale_min=scale_min,
         scale_max=scale_max,
         sort_order=sort_order,
+        dimension_class=dimension_class,
     )
     db.add(dimension)
     await db.flush()
@@ -117,7 +120,7 @@ async def get_dimension_by_semantic_key(
         CheckinDimension.semantic_key == semantic_key,
     )
     result = await db.execute(stmt)
-    return result.scalar_one_or_none()
+    return result.scalars().first()
 
 
 async def get_active_dimension_by_semantic_key(
@@ -202,7 +205,7 @@ def build_response_rows(
     *,
     checkin_id: uuid.UUID,
     user_id: uuid.UUID,
-    dimensions_by_id: dict[uuid.UUID, CheckinDimension],
+    dimensions_by_id: dict[uuid.UUID, CheckinRoundDimension],
     responses: list[tuple[uuid.UUID, int]],
 ) -> list[CheckinResponse] | None:
     """Pure helper -- returns `None` if any `dimension_id` is not part of
@@ -217,7 +220,7 @@ def build_response_rows(
             CheckinResponse(
                 checkin_id=checkin_id,
                 user_id=user_id,
-                dimension_id=dimension.id,
+                dimension_id=dimension.dimension_id,
                 semantic_key=dimension.semantic_key,
                 value=value,
             )
@@ -340,3 +343,14 @@ __all__ = [
     "mark_checkin_analyzed",
     "retire_dimension",
 ]
+
+
+async def list_round_dimensions(
+    db: AsyncSession, *, checkin_id: uuid.UUID
+) -> list[CheckinRoundDimension]:
+    result = await db.execute(
+        select(CheckinRoundDimension)
+        .where(CheckinRoundDimension.checkin_id == checkin_id)
+        .order_by(CheckinRoundDimension.sort_order, CheckinRoundDimension.dimension_id)
+    )
+    return list(result.scalars())

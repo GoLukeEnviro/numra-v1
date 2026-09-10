@@ -7,29 +7,42 @@ submission (see `submit_checkin`). NO LLM import anywhere in this module.
 from __future__ import annotations
 
 import datetime as dt
+import hashlib
+import json
 import uuid
 from dataclasses import dataclass
 
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import numra_api.repositories.checkins as checkins_repo
 from numra_api.models import (
     CheckinAnalysis,
     CheckinDimension,
+    CheckinIdempotency,
     CheckinResponse,
+    CheckinRoundDimension,
     CheckinTemplate,
     RelationshipCheckin,
+    RelationshipWorkspace,
 )
-from numra_api.repositories.workspaces import get_workspace_by_id, get_workspace_member
+from numra_api.models.enums import CheckinStatus, WorkspaceStatus
+from numra_api.repositories.workspaces import get_workspace_member, lock_workspace
 from numra_api.services.checkin_analysis_service import compute_checkin_analysis
 from numra_api.services.errors import (
     CheckinAlreadySubmitted,
+    CheckinIdempotencyConflict,
+    CheckinNoDimensions,
+    CheckinResponsesIncomplete,
+    CheckinRoundMismatch,
+    CheckinRoundOpen,
+    CheckinScaleInvalid,
+    CheckinValueOutOfRange,
     DimensionNotAllowedForRelationshipType,
     NotFoundError,
     SemanticKeyImmutable,
 )
-from numra_api.services.workspace_guard import assert_workspace_active_by_id
+from numra_api.services.workspace_guard import assert_workspace_active
 
 #: specs/v2/checkin-spec.md -- dimensions of this "class" are gated per
 #: `_RESTRICTED_RELATIONSHIP_TYPES`, enforced at BOTH creation time
@@ -57,6 +70,8 @@ class CheckinSubmissionResult:
     checkin: RelationshipCheckin
     my_responses: list[CheckinResponse]
     analysis: CheckinAnalysis | None
+    dimensions: list[CheckinRoundDimension]
+    partner_submitted: bool
 
 
 def _require_member(member: object, *, workspace_id: uuid.UUID) -> None:
@@ -86,26 +101,112 @@ async def get_or_create_active_template(
     return template
 
 
-async def get_checkin_template(
-    db: AsyncSession, *, workspace_id: uuid.UUID, user_id: uuid.UUID
-) -> tuple[CheckinTemplate, list[CheckinDimension]]:
-    member = await get_workspace_member(db, workspace_id=workspace_id, user_id=user_id)
-    _require_member(member, workspace_id=workspace_id)
+async def require_locked_workspace(
+    db: AsyncSession,
+    *,
+    workspace_id: uuid.UUID,
+    user_id: uuid.UUID,
+    active: bool = True,
+) -> RelationshipWorkspace:
+    _require_member(
+        await get_workspace_member(db, workspace_id=workspace_id, user_id=user_id),
+        workspace_id=workspace_id,
+    )
+    workspace = await lock_workspace(db, workspace_id=workspace_id)
+    _require_member(workspace, workspace_id=workspace_id)
+    assert workspace is not None
+    # Authorization is fresh even if acquisition waited for account deletion.
+    _require_member(
+        await get_workspace_member(db, workspace_id=workspace_id, user_id=user_id),
+        workspace_id=workspace_id,
+    )
+    if active:
+        await assert_workspace_active(db, workspace=workspace)
+    return workspace
 
-    template = await get_or_create_active_template(db, workspace_id=workspace_id)
+
+async def assert_no_open_round(db: AsyncSession, *, workspace_id: uuid.UUID) -> None:
+    if await checkins_repo.get_awaiting_checkin(db, workspace_id=workspace_id) is not None:
+        raise CheckinRoundOpen("configuration is locked while a check-in round is open")
+
+
+async def get_checkin_template(
+    db: AsyncSession,
+    *,
+    workspace_id: uuid.UUID,
+    user_id: uuid.UUID,
+    version: int | None = None,
+) -> tuple[CheckinTemplate, list[CheckinDimension]]:
+    workspace = await require_locked_workspace(
+        db, workspace_id=workspace_id, user_id=user_id, active=False
+    )
+    if version is not None:
+        template = (
+            await db.execute(
+                select(CheckinTemplate).where(
+                    CheckinTemplate.workspace_id == workspace_id, CheckinTemplate.version == version
+                )
+            )
+        ).scalar_one_or_none()
+    else:
+        template = await checkins_repo.get_active_template(db, workspace_id=workspace_id)
+        if template is None and workspace.status != WorkspaceStatus.DISSOLVED:
+            template = await get_or_create_active_template(db, workspace_id=workspace_id)
+    if template is None:
+        raise NotFoundError("check-in template not found")
     dimensions = await checkins_repo.list_dimensions(
         db, workspace_id=workspace_id, template_version=template.version
     )
     return template, dimensions
 
 
-def _is_restricted(*, semantic_key: str, relationship_type: str | None) -> bool:
-    """`relationship_type is None` is NOT treated as restrictive (spec: gating only
-    fires for the three named types, an unset type is not one of them)."""
-    return (
-        semantic_key in _RESTRICTED_DIMENSION_KEYS
-        and relationship_type in _RESTRICTED_RELATIONSHIP_TYPES
+async def editable_template(db: AsyncSession, *, workspace_id: uuid.UUID) -> CheckinTemplate:
+    """Caller holds workspace lock. First round freezes a version; no response-dependent race."""
+    template = await get_or_create_active_template(db, workspace_id=workspace_id)
+    used = (
+        await db.execute(
+            select(RelationshipCheckin.id)
+            .where(
+                RelationshipCheckin.workspace_id == workspace_id,
+                RelationshipCheckin.checkin_template_version == template.version,
+            )
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if used is None:
+        return template
+    dimensions = await checkins_repo.list_dimensions(
+        db, workspace_id=workspace_id, template_version=template.version
     )
+    template.active = False
+    await db.flush()
+    new = await checkins_repo.create_template(
+        db, workspace_id=workspace_id, version=template.version + 1
+    )
+    for d in dimensions:
+        db.add(
+            CheckinDimension(
+                workspace_id=workspace_id,
+                template_version=new.version,
+                semantic_key=d.semantic_key,
+                label=d.label,
+                description=d.description,
+                scale_min=d.scale_min,
+                scale_max=d.scale_max,
+                sort_order=d.sort_order,
+                dimension_class=d.dimension_class,
+                active=d.active,
+                retired_at=d.retired_at,
+            )
+        )
+    await db.flush()
+    return new
+
+
+def _is_restricted(*, dimension_class: str | None, relationship_type: str | None) -> bool:
+    # Managed minors cannot be members of a two-account RelationshipWorkspace.
+    # Free text cannot be semantically classified here; no keyword heuristics.
+    return dimension_class == "INTIMATE" and relationship_type in _RESTRICTED_RELATIONSHIP_TYPES
 
 
 async def create_custom_dimension(
@@ -119,27 +220,27 @@ async def create_custom_dimension(
     scale_min: int,
     scale_max: int,
     sort_order: int,
+    dimension_class: str | None = None,
 ) -> CheckinDimension:
-    member = await get_workspace_member(db, workspace_id=workspace_id, user_id=user_id)
-    _require_member(member, workspace_id=workspace_id)
-
-    workspace = await get_workspace_by_id(db, workspace_id=workspace_id)
-    _require_member(workspace, workspace_id=workspace_id)
-    assert workspace is not None  # narrowed by _require_member above
-
-    if _is_restricted(semantic_key=semantic_key, relationship_type=workspace.relationship_type):
-        raise DimensionNotAllowedForRelationshipType(
-            f"dimension '{semantic_key}' is not allowed for relationship_type "
-            f"'{workspace.relationship_type}'"
+    workspace = await require_locked_workspace(db, workspace_id=workspace_id, user_id=user_id)
+    await assert_no_open_round(db, workspace_id=workspace_id)
+    if not 0 <= scale_min < scale_max <= 100:
+        raise CheckinScaleInvalid("scale must satisfy 0 <= min < max <= 100")
+    if semantic_key in _RESTRICTED_DIMENSION_KEYS:
+        dimension_class = "INTIMATE"
+    if _is_restricted(
+        dimension_class=dimension_class, relationship_type=workspace.relationship_type
+    ):
+        raise DimensionNotAllowedForRelationshipType("dimension class is not allowed for this type")
+    await get_or_create_active_template(db, workspace_id=workspace_id)
+    if (
+        await checkins_repo.get_dimension_by_semantic_key(
+            db, workspace_id=workspace_id, semantic_key=semantic_key
         )
-
-    existing = await checkins_repo.get_dimension_by_semantic_key(
-        db, workspace_id=workspace_id, semantic_key=semantic_key
-    )
-    if existing is not None:
-        raise SemanticKeyImmutable(f"semantic_key '{semantic_key}' already exists")
-
-    template = await get_or_create_active_template(db, workspace_id=workspace_id)
+        is not None
+    ):
+        raise SemanticKeyImmutable("semantic_key already exists; retire it and use a new key")
+    template = await editable_template(db, workspace_id=workspace_id)
     return await checkins_repo.create_dimension(
         db,
         workspace_id=workspace_id,
@@ -150,6 +251,7 @@ async def create_custom_dimension(
         scale_min=scale_min,
         scale_max=scale_max,
         sort_order=sort_order,
+        dimension_class=dimension_class,
     )
 
 
@@ -163,25 +265,28 @@ async def update_dimension(
     description: str | None,
     active: bool | None,
 ) -> CheckinDimension:
-    member = await get_workspace_member(db, workspace_id=workspace_id, user_id=user_id)
-    _require_member(member, workspace_id=workspace_id)
-
-    dimension = await checkins_repo.get_dimension_by_id(
+    workspace = await require_locked_workspace(db, workspace_id=workspace_id, user_id=user_id)
+    await assert_no_open_round(db, workspace_id=workspace_id)
+    original = await checkins_repo.get_dimension_by_id(
         db, workspace_id=workspace_id, dimension_id=dimension_id
     )
-    if dimension is None:
-        raise NotFoundError(f"dimension {dimension_id} not found")
-
-    if active is True and dimension.active is False:
-        workspace = await get_workspace_by_id(db, workspace_id=workspace_id)
-        if workspace is not None and _is_restricted(
-            semantic_key=dimension.semantic_key, relationship_type=workspace.relationship_type
-        ):
-            raise DimensionNotAllowedForRelationshipType(
-                f"dimension '{dimension.semantic_key}' is not allowed for relationship_type "
-                f"'{workspace.relationship_type}'"
+    if original is None:
+        raise NotFoundError("dimension not found")
+    template = await editable_template(db, workspace_id=workspace_id)
+    # A stale ID addresses the same semantic identity in the current version.
+    dimension = (
+        await db.execute(
+            select(CheckinDimension).where(
+                CheckinDimension.workspace_id == workspace_id,
+                CheckinDimension.template_version == template.version,
+                CheckinDimension.semantic_key == original.semantic_key,
             )
-
+        )
+    ).scalar_one()
+    if active is True and _is_restricted(
+        dimension_class=dimension.dimension_class, relationship_type=workspace.relationship_type
+    ):
+        raise DimensionNotAllowedForRelationshipType("dimension class is not allowed for this type")
     if label is not None:
         dimension.label = label
     if description is not None:
@@ -189,27 +294,121 @@ async def update_dimension(
     if active is not None:
         dimension.active = active
         dimension.retired_at = None if active else dt.datetime.now(dt.UTC)
-
     await db.flush()
     return dimension
 
 
 async def auto_retire_restricted_dimensions(
-    db: AsyncSession, *, workspace_id: uuid.UUID, relationship_type: str
+    db: AsyncSession,
+    *,
+    workspace_id: uuid.UUID,
+    relationship_type: str,
 ) -> None:
-    """Hooked from services/relationship_workspace_service.py::patch_relationship_type
-    right after a `relationship_type` update. No-op unless the new type is one of
-    `_RESTRICTED_RELATIONSHIP_TYPES`."""
+    """Called under workspace lock after the open-round guard; versioning also applies here."""
     if relationship_type not in _RESTRICTED_RELATIONSHIP_TYPES:
         return
-    for semantic_key in _RESTRICTED_DIMENSION_KEYS:
-        dimension = await checkins_repo.get_active_dimension_by_semantic_key(
-            db, workspace_id=workspace_id, semantic_key=semantic_key
-        )
-        if dimension is not None:
+    template = await checkins_repo.get_active_template(db, workspace_id=workspace_id)
+    if template is None:
+        return
+    dimensions = await checkins_repo.list_dimensions(
+        db, workspace_id=workspace_id, template_version=template.version
+    )
+    if not any(d.active and d.dimension_class == "INTIMATE" for d in dimensions):
+        return
+    template = await editable_template(db, workspace_id=workspace_id)
+    for d in await checkins_repo.list_dimensions(
+        db, workspace_id=workspace_id, template_version=template.version
+    ):
+        if d.active and d.dimension_class == "INTIMATE":
             await checkins_repo.retire_dimension(
-                db, dimension=dimension, retired_at=dt.datetime.now(dt.UTC)
+                db, dimension=d, retired_at=dt.datetime.now(dt.UTC)
             )
+
+
+def payload_hash(round_id: uuid.UUID | None, responses: list[tuple[uuid.UUID, int]]) -> str:
+    canonical = json.dumps(
+        {
+            "round_id": str(round_id) if round_id else None,
+            "responses": sorted((str(d), v) for d, v in responses),
+        },
+        separators=(",", ":"),
+        sort_keys=True,
+    )
+    return hashlib.sha256(canonical.encode()).hexdigest()
+
+
+async def lookup_attempt(
+    db: AsyncSession,
+    *,
+    workspace_id: uuid.UUID,
+    user_id: uuid.UUID,
+    operation: str,
+    key: str,
+    digest: str,
+) -> CheckinIdempotency | None:
+    attempt = await db.get(CheckinIdempotency, (workspace_id, user_id, operation, key))
+    if attempt is not None and attempt.payload_hash != digest:
+        raise CheckinIdempotencyConflict("Idempotency-Key was used with a different payload")
+    return attempt
+
+
+async def start_checkin_round(
+    db: AsyncSession,
+    *,
+    workspace_id: uuid.UUID,
+    user_id: uuid.UUID,
+    idempotency_key: str,
+) -> CheckinSubmissionResult:
+    await require_locked_workspace(db, workspace_id=workspace_id, user_id=user_id)
+    digest = payload_hash(None, [])
+    attempt = await lookup_attempt(
+        db,
+        workspace_id=workspace_id,
+        user_id=user_id,
+        operation="START",
+        key=idempotency_key,
+        digest=digest,
+    )
+    if attempt is not None:
+        return await get_checkin(
+            db, workspace_id=workspace_id, user_id=user_id, checkin_id=attempt.checkin_id
+        )
+    await assert_no_open_round(db, workspace_id=workspace_id)
+    template = await get_or_create_active_template(db, workspace_id=workspace_id)
+    dimensions = await checkins_repo.list_dimensions(
+        db, workspace_id=workspace_id, template_version=template.version, active_only=True
+    )
+    if not dimensions:
+        raise CheckinNoDimensions("activate at least one dimension before starting a round")
+    checkin = await checkins_repo.create_checkin(
+        db, workspace_id=workspace_id, checkin_template_version=template.version
+    )
+    checkin.snapshot_origin = "ROUND_START"
+    for d in dimensions:
+        db.add(
+            CheckinRoundDimension(
+                checkin_id=checkin.id,
+                dimension_id=d.id,
+                semantic_key=d.semantic_key,
+                label=d.label,
+                description=d.description,
+                scale_min=d.scale_min,
+                scale_max=d.scale_max,
+                sort_order=d.sort_order,
+            )
+        )
+    db.add(
+        CheckinIdempotency(
+            workspace_id=workspace_id,
+            user_id=user_id,
+            operation="START",
+            key=idempotency_key,
+            payload_hash=digest,
+            checkin_id=checkin.id,
+        )
+    )
+    await db.flush()
+    return await get_checkin(db, workspace_id=workspace_id, user_id=user_id, checkin_id=checkin.id)
 
 
 async def submit_checkin(
@@ -217,78 +416,63 @@ async def submit_checkin(
     *,
     workspace_id: uuid.UUID,
     user_id: uuid.UUID,
+    round_id: uuid.UUID,
+    idempotency_key: str,
     responses: list[tuple[uuid.UUID, int]],
 ) -> CheckinSubmissionResult:
-    member = await get_workspace_member(db, workspace_id=workspace_id, user_id=user_id)
-    _require_member(member, workspace_id=workspace_id)
-
-    await assert_workspace_active_by_id(db, workspace_id=workspace_id)
-
-    template = await get_or_create_active_template(db, workspace_id=workspace_id)
-
-    checkin = await checkins_repo.get_awaiting_checkin(db, workspace_id=workspace_id)
-    if checkin is None:
-        try:
-            checkin = await checkins_repo.create_checkin(
-                db, workspace_id=workspace_id, checkin_template_version=template.version
-            )
-            await db.flush()
-        except IntegrityError:
-            # uq_relationship_checkins_one_awaiting_per_workspace -- the other member's
-            # first-submission request created the round in a concurrent transaction
-            # between our read above and this insert (both saw None under READ
-            # COMMITTED). Roll back our losing insert and submit onto the winner's
-            # round instead of silently starting a second, orphaned cycle that would
-            # never reach two submitters.
-            await db.rollback()
-            checkin = await checkins_repo.get_awaiting_checkin(db, workspace_id=workspace_id)
-            if checkin is None:  # pragma: no cover -- should be unreachable
-                raise
-
-    already_submitted = await checkins_repo.count_user_responses(
-        db, checkin_id=checkin.id, user_id=user_id
-    )
-    if already_submitted > 0:
-        raise CheckinAlreadySubmitted(checkin.id)
-
-    active_dimensions = await checkins_repo.list_dimensions(
+    await require_locked_workspace(db, workspace_id=workspace_id, user_id=user_id)
+    digest = payload_hash(round_id, responses)
+    attempt = await lookup_attempt(
         db,
         workspace_id=workspace_id,
-        template_version=checkin.checkin_template_version,
-        active_only=True,
+        user_id=user_id,
+        operation="SUBMIT",
+        key=idempotency_key,
+        digest=digest,
     )
-    dimensions_by_id = {d.id: d for d in active_dimensions}
+    if attempt is not None:
+        return await get_checkin(
+            db, workspace_id=workspace_id, user_id=user_id, checkin_id=attempt.checkin_id
+        )
+    checkin = await checkins_repo.get_checkin_by_id(
+        db, workspace_id=workspace_id, checkin_id=round_id
+    )
+    if checkin is None:
+        raise CheckinRoundMismatch("round is not available for submission")
+    if await checkins_repo.count_user_responses(db, checkin_id=checkin.id, user_id=user_id):
+        raise CheckinAlreadySubmitted(checkin.id)
+    if checkin.status != CheckinStatus.AWAITING_SUBMISSIONS:
+        raise CheckinRoundMismatch("round is not available for submission")
+    dimensions = await checkins_repo.list_round_dimensions(db, checkin_id=checkin.id)
+    dimensions_by_id = {d.dimension_id: d for d in dimensions}
+    ids = [d for d, _ in responses]
+    if not dimensions or len(ids) != len(set(ids)) or set(ids) != set(dimensions_by_id):
+        raise CheckinResponsesIncomplete("provide exactly one answer for every snapshot dimension")
+    for dimension_id, value in responses:
+        d = dimensions_by_id[dimension_id]
+        if not d.scale_min <= value <= d.scale_max:
+            raise CheckinValueOutOfRange(
+                f"dimension {d.dimension_id}: allowed {d.scale_min}..{d.scale_max}"
+            )
     rows = checkins_repo.build_response_rows(
         checkin_id=checkin.id,
         user_id=user_id,
         dimensions_by_id=dimensions_by_id,
         responses=responses,
     )
-    if rows is None:
-        # An unknown/foreign/inactive dimension_id -- IDOR-safe 404, never a 422 that
-        # would confirm/deny the id's existence in another workspace.
-        raise NotFoundError("one or more submitted dimensions were not found")
-
+    assert rows is not None
     db.add_all(rows)
-    try:
-        await db.flush()
-    except IntegrityError as exc:
-        # uq_checkin_responses_checkin_user_dimension -- a concurrent duplicate
-        # submission for the same round. Same translate-IntegrityError pattern as
-        # routes/people.py::AmbiguousSelfProfile.
-        await db.rollback()
-        raise CheckinAlreadySubmitted(checkin.id) from exc
+    await db.flush()
 
     submitter_count = await checkins_repo.count_distinct_submitters(db, checkin_id=checkin.id)
-    analysis: CheckinAnalysis | None = None
     if submitter_count >= 2:
         values_by_key = await checkins_repo.get_dimension_values_for_checkin_internal(
             db, checkin_id=checkin.id
         )
         dimension_values: dict[str, tuple[int, int]] = {}
         for semantic_key, values_by_user in values_by_key.items():
-            if len(values_by_user) < 2:
-                continue
+            if len(values_by_user) != 2:
+                raise CheckinResponsesIncomplete("inconsistent stored submission")
             user_a_id, user_b_id = sorted(values_by_user, key=str)
             dimension_values[semantic_key] = (
                 values_by_user[user_a_id],
@@ -309,7 +493,7 @@ async def submit_checkin(
         result_json = compute_checkin_analysis(
             dimension_values=dimension_values, historical_gaps_by_key=historical_gaps_by_key
         )
-        analysis = await checkins_repo.create_analysis(
+        await checkins_repo.create_analysis(
             db,
             checkin_id=checkin.id,
             workspace_id=workspace_id,
@@ -318,29 +502,64 @@ async def submit_checkin(
         )
         await checkins_repo.mark_checkin_analyzed(db, checkin=checkin)
 
-    my_responses = await checkins_repo.get_responses_for_checkin_and_user(
-        db, checkin_id=checkin.id, user_id=user_id
+    db.add(
+        CheckinIdempotency(
+            workspace_id=workspace_id,
+            user_id=user_id,
+            operation="SUBMIT",
+            key=idempotency_key,
+            payload_hash=digest,
+            checkin_id=checkin.id,
+        )
     )
-    return CheckinSubmissionResult(checkin=checkin, my_responses=my_responses, analysis=analysis)
+    await db.flush()
+    return await get_checkin(db, workspace_id=workspace_id, user_id=user_id, checkin_id=checkin.id)
 
 
 async def get_checkin(
-    db: AsyncSession, *, workspace_id: uuid.UUID, user_id: uuid.UUID, checkin_id: uuid.UUID
-) -> tuple[RelationshipCheckin, list[CheckinResponse], CheckinAnalysis | None]:
-    member = await get_workspace_member(db, workspace_id=workspace_id, user_id=user_id)
-    _require_member(member, workspace_id=workspace_id)
-
+    db: AsyncSession,
+    *,
+    workspace_id: uuid.UUID,
+    user_id: uuid.UUID,
+    checkin_id: uuid.UUID,
+) -> CheckinSubmissionResult:
+    await require_locked_workspace(db, workspace_id=workspace_id, user_id=user_id, active=False)
     checkin = await checkins_repo.get_checkin_by_id(
         db, workspace_id=workspace_id, checkin_id=checkin_id
     )
     if checkin is None:
-        raise NotFoundError(f"checkin {checkin_id} not found")
-
-    my_responses = await checkins_repo.get_responses_for_checkin_and_user(
+        raise NotFoundError("checkin not found")
+    mine = await checkins_repo.get_responses_for_checkin_and_user(
         db, checkin_id=checkin.id, user_id=user_id
     )
     analysis = await checkins_repo.get_analysis_for_checkin(db, checkin_id=checkin.id)
-    return checkin, my_responses, analysis
+    dimensions = await checkins_repo.list_round_dimensions(db, checkin_id=checkin.id)
+    partner = (
+        await db.execute(
+            select(CheckinResponse.id)
+            .where(CheckinResponse.checkin_id == checkin.id, CheckinResponse.user_id != user_id)
+            .limit(1)
+        )
+    ).scalar_one_or_none() is not None
+    return CheckinSubmissionResult(checkin, mine, analysis, dimensions, partner)
+
+
+async def get_current_checkin(
+    db: AsyncSession,
+    *,
+    workspace_id: uuid.UUID,
+    user_id: uuid.UUID,
+) -> CheckinSubmissionResult | None:
+    await require_locked_workspace(db, workspace_id=workspace_id, user_id=user_id, active=False)
+    checkin = await checkins_repo.get_awaiting_checkin(db, workspace_id=workspace_id)
+    if checkin is None:
+        latest = await checkins_repo.list_checkins_for_workspace(
+            db, workspace_id=workspace_id, limit=1, offset=0
+        )
+        checkin = latest[0] if latest else None
+    if checkin is None:
+        return None
+    return await get_checkin(db, workspace_id=workspace_id, user_id=user_id, checkin_id=checkin.id)
 
 
 async def list_checkins(

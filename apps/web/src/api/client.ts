@@ -86,6 +86,11 @@ export type CheckinDimensionUpdateRequest =
 export type CheckinTemplateOut = components["schemas"]["CheckinTemplateOut"];
 export type CheckinSummaryOut = components["schemas"]["CheckinSummaryOut"];
 export type CheckinSubmitRequest = components["schemas"]["CheckinSubmitRequest"];
+export type CheckinAnalysisOut = components["schemas"]["CheckinAnalysisOut"];
+export type DimensionAnalysisOut = components["schemas"]["DimensionAnalysisOut"];
+export type CheckinResponseOut = components["schemas"]["CheckinResponseOut"];
+export type CheckinRoundOut = components["schemas"]["CheckinRoundOut"];
+export type CheckinRoundDimensionOut = components["schemas"]["CheckinRoundDimensionOut"];
 export type CheckinOut = components["schemas"]["CheckinOut"];
 
 export type WorkspaceConsentOut = components["schemas"]["WorkspaceConsentOut"];
@@ -660,10 +665,19 @@ export const api = {
         ),
     },
     checkinTemplate: {
-      get: (workspaceId: string) =>
-        request<CheckinTemplateOut>(`/v1/workspaces/${workspaceId}/checkin-template`),
+      get: (workspaceId: string, version?: number) =>
+        request<CheckinTemplateOut>(`/v1/workspaces/${workspaceId}/checkin-template`, {
+          query: { version: version === undefined ? undefined : String(version) },
+        }),
     },
     checkins: {
+      current: (workspaceId: string) =>
+        request<CheckinOut | null>(`/v1/workspaces/${workspaceId}/checkins/current`),
+      startRound: (workspaceId: string, idempotencyKey: string) =>
+        request<CheckinRoundOut>(`/v1/workspaces/${workspaceId}/checkins/rounds`, {
+          method: "POST",
+          headers: { "Idempotency-Key": idempotencyKey },
+        }),
       list: (workspaceId: string, params: { limit?: number; offset?: number } = {}) =>
         request<CheckinSummaryOut[]>(`/v1/workspaces/${workspaceId}/checkins`, {
           query: {
@@ -671,9 +685,10 @@ export const api = {
             offset: params.offset === undefined ? undefined : String(params.offset),
           },
         }),
-      submit: (workspaceId: string, body: CheckinSubmitRequest) =>
+      submit: (workspaceId: string, body: CheckinSubmitRequest, idempotencyKey: string) =>
         request<CheckinOut>(`/v1/workspaces/${workspaceId}/checkins`, {
           method: "POST",
+          headers: { "Idempotency-Key": idempotencyKey },
           body,
         }),
       get: (workspaceId: string, checkinId: string) =>

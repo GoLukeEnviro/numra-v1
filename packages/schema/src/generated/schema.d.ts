@@ -1263,6 +1263,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/workspaces/{workspace_id}/checkins/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Current Checkin Route
+         * @description Open round, else latest completed round; JSON null when none exists.
+         */
+        get: operations["get_current_checkin_route_v1_workspaces__workspace_id__checkins_current_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workspaces/{workspace_id}/checkins/rounds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Checkin Round Route
+         * @description Start explicitly; replay returns this round's current authorized state.
+         */
+        post: operations["start_checkin_round_route_v1_workspaces__workspace_id__checkins_rounds_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/workspaces/{workspace_id}/checkins/{checkin_id}": {
         parameters: {
             query?: never;
@@ -1999,6 +2039,8 @@ export interface components {
         CheckinDimensionCreateRequest: {
             /** Description */
             description?: string | null;
+            /** Dimension Class */
+            dimension_class?: "INTIMATE" | null;
             /** Label */
             label: string;
             /**
@@ -2025,6 +2067,8 @@ export interface components {
             active: boolean;
             /** Description */
             description: string | null;
+            /** Dimension Class */
+            dimension_class: "INTIMATE" | null;
             /**
              * Id
              * Format: uuid
@@ -2052,6 +2096,15 @@ export interface components {
             /** Label */
             label?: string | null;
         };
+        /** CheckinErrorOut */
+        CheckinErrorOut: {
+            /** Code */
+            code: string;
+            /** Detail */
+            detail?: components["schemas"]["CheckinValidationIssueOut"][] | null;
+            /** Message */
+            message: string;
+        };
         /** CheckinOut */
         CheckinOut: {
             analysis: components["schemas"]["CheckinAnalysisOut"] | null;
@@ -2062,6 +2115,8 @@ export interface components {
              * Format: date-time
              */
             cycle_started_at: string;
+            /** Dimensions */
+            dimensions: components["schemas"]["CheckinRoundDimensionOut"][];
             /**
              * Id
              * Format: uuid
@@ -2069,6 +2124,15 @@ export interface components {
             id: string;
             /** My Responses */
             my_responses: components["schemas"]["CheckinResponseOut"][];
+            /** Partner Submitted */
+            partner_submitted: boolean;
+            /**
+             * Snapshot Origin
+             * @enum {string}
+             */
+            snapshot_origin: "ROUND_START" | "MIGRATION_CURRENT" | "LEGACY_MISSING";
+            /** Snapshot Recorded */
+            snapshot_recorded: boolean;
             status: components["schemas"]["CheckinStatus"];
             /**
              * Workspace Id
@@ -2106,6 +2170,61 @@ export interface components {
             /** Value */
             value: number;
         };
+        /** CheckinRoundDimensionOut */
+        CheckinRoundDimensionOut: {
+            /** Description */
+            description: string | null;
+            /**
+             * Dimension Id
+             * Format: uuid
+             */
+            dimension_id: string;
+            /** Label */
+            label: string;
+            /** Scale Max */
+            scale_max: number;
+            /** Scale Min */
+            scale_min: number;
+            /** Semantic Key */
+            semantic_key: string;
+            /** Sort Order */
+            sort_order: number;
+        };
+        /** CheckinRoundOut */
+        CheckinRoundOut: {
+            /** Checkin Template Version */
+            checkin_template_version: number;
+            /**
+             * Cycle Started At
+             * Format: date-time
+             */
+            cycle_started_at: string;
+            /** Dimensions */
+            dimensions: components["schemas"]["CheckinRoundDimensionOut"][];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Snapshot Origin
+             * @enum {string}
+             */
+            snapshot_origin: "ROUND_START" | "MIGRATION_CURRENT" | "LEGACY_MISSING";
+            /** Snapshot Recorded */
+            snapshot_recorded: boolean;
+            status: components["schemas"]["CheckinStatus"];
+            /**
+             * Workspace Id
+             * Format: uuid
+             */
+            workspace_id: string;
+        };
+        /**
+         * CheckinRoundStartRequest
+         * @description Optional empty object only; no ignored round-start parameters.
+         */
+        CheckinRoundStartRequest: Record<string, never>;
         /**
          * CheckinStatus
          * @description PR-V2-06 -- lifecycle of one `RelationshipCheckin` cycle. `ANALYZED` is set
@@ -2120,6 +2239,11 @@ export interface components {
         CheckinSubmitRequest: {
             /** Responses */
             responses: components["schemas"]["CheckinResponseIn"][];
+            /**
+             * Round Id
+             * Format: uuid
+             */
+            round_id: string;
         };
         /** CheckinSummaryOut */
         CheckinSummaryOut: {
@@ -2150,6 +2274,13 @@ export interface components {
             id: string;
             /** Version */
             version: number;
+        };
+        /** CheckinValidationIssueOut */
+        CheckinValidationIssueOut: {
+            /** Loc */
+            loc: (string | number)[];
+            /** Type */
+            type: string;
         };
         /**
          * ConfidenceCategory
@@ -6964,13 +7095,31 @@ export interface operations {
                     "application/json": components["schemas"]["CheckinDimensionOut"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Workspace/resource not available to caller */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinErrorOut"];
+                };
+            };
+            /** @description WORKSPACE_DISSOLVED, CHECKIN_ROUND_OPEN, CHECKIN_ROUND_MISMATCH, CHECKIN_ALREADY_SUBMITTED, CHECKIN_IDEMPOTENCY_CONFLICT or SEMANTIC_KEY_IMMUTABLE */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinErrorOut"];
+                };
+            };
+            /** @description CHECKIN_REQUEST_INVALID, CHECKIN_RESPONSES_INCOMPLETE, CHECKIN_VALUE_OUT_OF_RANGE, CHECKIN_SCALE_INVALID, CHECKIN_NO_ACTIVE_DIMENSIONS or DIMENSION_NOT_ALLOWED_FOR_RELATIONSHIP_TYPE; no submitted values are echoed */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["CheckinErrorOut"];
                 };
             };
         };
@@ -7005,20 +7154,40 @@ export interface operations {
                     "application/json": components["schemas"]["CheckinDimensionOut"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Workspace/resource not available to caller */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinErrorOut"];
+                };
+            };
+            /** @description WORKSPACE_DISSOLVED, CHECKIN_ROUND_OPEN, CHECKIN_ROUND_MISMATCH, CHECKIN_ALREADY_SUBMITTED, CHECKIN_IDEMPOTENCY_CONFLICT or SEMANTIC_KEY_IMMUTABLE */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinErrorOut"];
+                };
+            };
+            /** @description CHECKIN_REQUEST_INVALID, CHECKIN_RESPONSES_INCOMPLETE, CHECKIN_VALUE_OUT_OF_RANGE, CHECKIN_SCALE_INVALID, CHECKIN_NO_ACTIVE_DIMENSIONS or DIMENSION_NOT_ALLOWED_FOR_RELATIONSHIP_TYPE; no submitted values are echoed */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["CheckinErrorOut"];
                 };
             };
         };
     };
     get_checkin_template_route_v1_workspaces__workspace_id__checkin_template_get: {
         parameters: {
-            query?: never;
+            query?: {
+                version?: number | null;
+            };
             header?: never;
             path: {
                 workspace_id: string;
@@ -7038,13 +7207,31 @@ export interface operations {
                     "application/json": components["schemas"]["CheckinTemplateOut"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Workspace/resource not available to caller */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinErrorOut"];
+                };
+            };
+            /** @description WORKSPACE_DISSOLVED, CHECKIN_ROUND_OPEN, CHECKIN_ROUND_MISMATCH, CHECKIN_ALREADY_SUBMITTED, CHECKIN_IDEMPOTENCY_CONFLICT or SEMANTIC_KEY_IMMUTABLE */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinErrorOut"];
+                };
+            };
+            /** @description CHECKIN_REQUEST_INVALID, CHECKIN_RESPONSES_INCOMPLETE, CHECKIN_VALUE_OUT_OF_RANGE, CHECKIN_SCALE_INVALID, CHECKIN_NO_ACTIVE_DIMENSIONS or DIMENSION_NOT_ALLOWED_FOR_RELATIONSHIP_TYPE; no submitted values are echoed */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["CheckinErrorOut"];
                 };
             };
         };
@@ -7074,13 +7261,31 @@ export interface operations {
                     "application/json": components["schemas"]["CheckinSummaryOut"][];
                 };
             };
-            /** @description Validation Error */
+            /** @description Workspace/resource not available to caller */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinErrorOut"];
+                };
+            };
+            /** @description WORKSPACE_DISSOLVED, CHECKIN_ROUND_OPEN, CHECKIN_ROUND_MISMATCH, CHECKIN_ALREADY_SUBMITTED, CHECKIN_IDEMPOTENCY_CONFLICT or SEMANTIC_KEY_IMMUTABLE */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinErrorOut"];
+                };
+            };
+            /** @description CHECKIN_REQUEST_INVALID, CHECKIN_RESPONSES_INCOMPLETE, CHECKIN_VALUE_OUT_OF_RANGE, CHECKIN_SCALE_INVALID, CHECKIN_NO_ACTIVE_DIMENSIONS or DIMENSION_NOT_ALLOWED_FOR_RELATIONSHIP_TYPE; no submitted values are echoed */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["CheckinErrorOut"];
                 };
             };
         };
@@ -7088,7 +7293,8 @@ export interface operations {
     submit_checkin_route_v1_workspaces__workspace_id__checkins_post: {
         parameters: {
             query?: never;
-            header?: {
+            header: {
+                "Idempotency-Key": string;
                 "x-csrf-token"?: string | null;
             };
             path: {
@@ -7114,13 +7320,141 @@ export interface operations {
                     "application/json": components["schemas"]["CheckinOut"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Workspace/resource not available to caller */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinErrorOut"];
+                };
+            };
+            /** @description WORKSPACE_DISSOLVED, CHECKIN_ROUND_OPEN, CHECKIN_ROUND_MISMATCH, CHECKIN_ALREADY_SUBMITTED, CHECKIN_IDEMPOTENCY_CONFLICT or SEMANTIC_KEY_IMMUTABLE */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinErrorOut"];
+                };
+            };
+            /** @description CHECKIN_REQUEST_INVALID, CHECKIN_RESPONSES_INCOMPLETE, CHECKIN_VALUE_OUT_OF_RANGE, CHECKIN_SCALE_INVALID, CHECKIN_NO_ACTIVE_DIMENSIONS or DIMENSION_NOT_ALLOWED_FOR_RELATIONSHIP_TYPE; no submitted values are echoed */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["CheckinErrorOut"];
+                };
+            };
+        };
+    };
+    get_current_checkin_route_v1_workspaces__workspace_id__checkins_current_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinOut"] | null;
+                };
+            };
+            /** @description Workspace/resource not available to caller */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinErrorOut"];
+                };
+            };
+            /** @description WORKSPACE_DISSOLVED, CHECKIN_ROUND_OPEN, CHECKIN_ROUND_MISMATCH, CHECKIN_ALREADY_SUBMITTED, CHECKIN_IDEMPOTENCY_CONFLICT or SEMANTIC_KEY_IMMUTABLE */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinErrorOut"];
+                };
+            };
+            /** @description CHECKIN_REQUEST_INVALID, CHECKIN_RESPONSES_INCOMPLETE, CHECKIN_VALUE_OUT_OF_RANGE, CHECKIN_SCALE_INVALID, CHECKIN_NO_ACTIVE_DIMENSIONS or DIMENSION_NOT_ALLOWED_FOR_RELATIONSHIP_TYPE; no submitted values are echoed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinErrorOut"];
+                };
+            };
+        };
+    };
+    start_checkin_round_route_v1_workspaces__workspace_id__checkins_rounds_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                workspace_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CheckinRoundStartRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinRoundOut"];
+                };
+            };
+            /** @description Workspace/resource not available to caller */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinErrorOut"];
+                };
+            };
+            /** @description WORKSPACE_DISSOLVED, CHECKIN_ROUND_OPEN, CHECKIN_ROUND_MISMATCH, CHECKIN_ALREADY_SUBMITTED, CHECKIN_IDEMPOTENCY_CONFLICT or SEMANTIC_KEY_IMMUTABLE */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinErrorOut"];
+                };
+            };
+            /** @description CHECKIN_REQUEST_INVALID, CHECKIN_RESPONSES_INCOMPLETE, CHECKIN_VALUE_OUT_OF_RANGE, CHECKIN_SCALE_INVALID, CHECKIN_NO_ACTIVE_DIMENSIONS or DIMENSION_NOT_ALLOWED_FOR_RELATIONSHIP_TYPE; no submitted values are echoed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinErrorOut"];
                 };
             };
         };
@@ -7148,13 +7482,31 @@ export interface operations {
                     "application/json": components["schemas"]["CheckinOut"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Workspace/resource not available to caller */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinErrorOut"];
+                };
+            };
+            /** @description WORKSPACE_DISSOLVED, CHECKIN_ROUND_OPEN, CHECKIN_ROUND_MISMATCH, CHECKIN_ALREADY_SUBMITTED, CHECKIN_IDEMPOTENCY_CONFLICT or SEMANTIC_KEY_IMMUTABLE */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinErrorOut"];
+                };
+            };
+            /** @description CHECKIN_REQUEST_INVALID, CHECKIN_RESPONSES_INCOMPLETE, CHECKIN_VALUE_OUT_OF_RANGE, CHECKIN_SCALE_INVALID, CHECKIN_NO_ACTIVE_DIMENSIONS or DIMENSION_NOT_ALLOWED_FOR_RELATIONSHIP_TYPE; no submitted values are echoed */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["CheckinErrorOut"];
                 };
             };
         };

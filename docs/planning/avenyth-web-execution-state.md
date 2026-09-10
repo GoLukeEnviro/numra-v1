@@ -1,26 +1,26 @@
 # AVENYTH Web — Execution State
 
-> Committed, zweischichtiger Zustand. Lokaler/transienter Zwischenstand lebt in
-> `.claude/avenyth-execution-state.local.md` (gitignored, nicht committet).
-> Nur bei Meilensteinen aktualisieren, nicht bei jedem Commit.
-
-- **PLAN_VERSION:** 1
-- **CURRENT_MAIN_SHA:** 1c7075d
+- **PLAN_VERSION:** 2
+- **CURRENT_MAIN_SHA:** 8808c033a36c43fb394f8ed3d867f6fa3a7685ce
 - **CURRENT_SEGMENT:** SEGMENT_C
-- **CURRENT_PR:** —
-- **CURRENT_BRANCH:** main
-- **LAST_MERGED_PR:** PR #50 (Shadow-Dynamics-Meisterzahl-Fix)
-- **LAST_GREEN_MAIN_SHA:** 1c7075d
-- **CURRENT_TASK:** WEB-05 (PR-V2-05 „Relationship/Shadow Analysis") gemergt
-  (#48, Post-Merge-CI grün). Danach der offene Backend-Gap geschlossen:
-  Shadow Dynamics unterstützt jetzt Meisterzahl-Lebenszahlen 11/22/33 und
-  die LP-4/6/7-Umlaut-Themen (PR #50, `1c7075d`, Post-Merge-`main`-CI grün).
-  Nachweise: `docs/planning/pr-web-05-evidence.md`,
-  `docs/planning/fix-shadow-dynamics-master-numbers-plan.md`.
-- **NEXT_ACTION:** PR-V2-06 (Configurable Check-ins) planen — der
-  verbindliche WEB-06-Frontend-Umfang ist gesondert vorzulegen (nicht mit
-  der Backend-Phase PR-V2-06 gleichsetzen).
-- **HUMAN_GATE_REQUIRED:** false
-- **HUMAN_GATE_NAME:** —
+- **CURRENT_PR:** PR #53 (Required CI läuft)
+- **CURRENT_BRANCH:** codex/pr-web-06a
+- **LAST_MERGED_PR:** #52 (WEB-06-Plan)
+- **LAST_GREEN_MAIN_SHA:** 8808c033a36c43fb394f8ed3d867f6fa3a7685ce
+- **CURRENT_TASK:** A1–A10 implementiert; finales lokales Review und relevante Prüfungen abgeschlossen.
+- **NEXT_ACTION:** Required Checks auf finalem Commit prüfen, mergen, Post-Merge-CI nachweisen.
+- **HUMAN_GATE_REQUIRED:** false (Umsetzung und Merge vom Nutzer freigegeben)
 - **OPEN_BLOCKERS:** none
-- **LAST_UPDATED_AT:** 2026-09-10T15:30:00Z
+- **LAST_UPDATED_AT:** 2026-09-10
+
+## Checkpoint WEB-06a
+
+Eigener Worktree `E:/VS-code-Projekte-5.2025/numra-v1-pr-web-06a`, Basis #52.
+Originalcheckout und untracked `.planning/` erhalten; keine fremden Arbeiten verändert.
+Separater Testcontainer `numra-web06a-postgres`, Port 5546, nur synthetische Daten.
+Snapshots, Versionierung, Idempotenz, Workspace-Lock, Routen und Client implementiert.
+Unabhängiger Vorab-, Zwischen-, Abschluss- und Nachreview erfolgt; Befunde behoben.
+Nachgewiesen: `/current`-Regression rot (422 statt 200) → grün nach Route-Fix.
+Final lokal: 86 relevante Backend-Tests, 10 Alembic-Migrationsfälle und 244 Web-Tests grün.
+Breite Vorab-Suite: 740 grün, ein korrigierter Test-Order-Befund (final gezielt grün).
+Noch offen: PR-CI, Merge und Post-Merge-CI. WEB-06b bleibt unimplementiert.

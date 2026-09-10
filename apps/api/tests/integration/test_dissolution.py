@@ -218,8 +218,8 @@ async def test_no_new_checkin_after_dissolve(client, sessionmaker) -> None:
     headers_b = await _switch_user(client, "dis-chk-b@example.com")
     submit = await client.post(
         f"/v1/workspaces/{workspace_id}/checkins",
-        json={"responses": responses},
-        headers=headers_b,
+        json={"round_id": workspace_id, "responses": responses},
+        headers={**headers_b, "Idempotency-Key": "after-dissolve"},
     )
     assert submit.status_code == 409
     assert submit.json()["code"] == "WORKSPACE_DISSOLVED"

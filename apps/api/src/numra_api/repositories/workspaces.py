@@ -133,3 +133,20 @@ async def get_self_person_for_member(db: AsyncSession, *, user_id: uuid.UUID) ->
     )
     result = await db.execute(stmt)
     return result.scalar_one_or_none()
+
+
+async def lock_workspace(
+    db: AsyncSession, *, workspace_id: uuid.UUID
+) -> RelationshipWorkspace | None:
+    """Transaction lock shared with dissolve UPDATE. Refresh after waiting.
+
+    Order: connection (dissolve only) -> workspace -> check-in data.
+    Check-in/config/type operations must never acquire a connection lock.
+    """
+    result = await db.execute(
+        select(RelationshipWorkspace)
+        .where(RelationshipWorkspace.id == workspace_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    return result.scalar_one_or_none()
