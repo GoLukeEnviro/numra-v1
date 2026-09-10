@@ -14,6 +14,7 @@ from numra_interpretation.llm.validator import (
     build_special_claim_index,
 )
 from numra_numerology.models.profile import CanonicalProfile
+from numra_relationship_interpretation.errors import ShadowInteractionRuleMissing
 from numra_relationship_interpretation.knowledge_models import (
     RelationshipFrameKnowledge,
     ShadowInteractionRule,
@@ -109,8 +110,9 @@ def primary_shadow_theme(profile: CanonicalProfile, knowledge: KnowledgeBase) ->
     Life Path number's ``shadows`` list (see `knowledge/numbers/*.yaml`). A
     deliberate simplification of the full shadows list down to one representative
     theme, documented in `knowledge/shadow-interaction/rules.yaml`'s header comment
-    -- keeps the interaction-rule lookup table at 45 rows (9 choose 2 + diagonal)
-    instead of combinatorially exploding across every shadows-list entry."""
+    -- keeps the interaction-rule lookup table at 78 rows (C(12,2) + 12 diagonal over
+    Life Path {1-9, 11, 22, 33}) instead of combinatorially exploding across every
+    shadows-list entry."""
     life_path = _life_path_value(profile)
     number_knowledge = knowledge.number(life_path)
     if not number_knowledge.shadows:
@@ -188,8 +190,8 @@ def assemble_shadow_context(
     """Deterministic assembly for `pipeline.generate_shadow_dynamics`. Resolves each
     profile's `primary_shadow_theme`, then the single matching rule from
     `shadow_rules` (order-independent -- ``(a, b)`` and ``(b, a)`` both match the
-    same stored row). Raises `ValueError` if no rule matches -- the rules table is
-    required to be exhaustive over every Life-Path-pair combination (see
+    same stored row). Raises `ShadowInteractionRuleMissing` if no rule matches -- the
+    rules table is required to be exhaustive over every Life-Path-pair combination (see
     `knowledge/shadow-interaction/rules.yaml`'s header comment), so a miss indicates
     a knowledge-content gap, not a normal runtime case to fall back from silently."""
     theme_a = primary_shadow_theme(profile_a, knowledge)
@@ -200,7 +202,7 @@ def assemble_shadow_context(
         None,
     )
     if rule is None:
-        raise ValueError(
+        raise ShadowInteractionRuleMissing(
             f"No shadow interaction rule found for theme pair ({theme_a!r}, {theme_b!r})"
         )
 

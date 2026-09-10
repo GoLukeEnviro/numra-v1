@@ -121,6 +121,60 @@ async def test_generate_shadow_dynamics_full_provenance(
 
 
 @pytest.mark.asyncio
+async def test_generate_shadow_dynamics_ab_direction_is_symmetric(
+    profile_a, profile_b, knowledge_base
+) -> None:
+    """Swapping the (a, b) argument order must swap `user_a`/`user_b` shadow themes and
+    their `metric:a:` / `metric:b:` canonical refs consistently -- no fact stays pinned
+    to the wrong person."""
+    rules = load_shadow_interaction_rules(KNOWLEDGE_ROOT)
+
+    async def _run(pa, pb):
+        return await generate_shadow_dynamics(
+            profile_a=pa,
+            profile_b=pb,
+            relationship_type="PARTNER",
+            knowledge=knowledge_base,
+            shadow_rules=rules,
+            llm=MockLLMProvider(),
+            knowledge_version="0.2.0",
+        )
+
+    forward = await _run(profile_a, profile_b)
+    swapped = await _run(profile_b, profile_a)
+
+    fwd_a = forward.user_a_shadow_themes[0].knowledge_refs
+    fwd_b = forward.user_b_shadow_themes[0].knowledge_refs
+    swp_a = swapped.user_a_shadow_themes[0].knowledge_refs
+    swp_b = swapped.user_b_shadow_themes[0].knowledge_refs
+
+    assert fwd_a == swp_b
+    assert fwd_b == swp_a
+    assert fwd_a != fwd_b
+    assert forward.user_a_shadow_themes[0].canonical_refs == ("metric:a:life_path",)
+    assert swapped.user_a_shadow_themes[0].canonical_refs == ("metric:a:life_path",)
+
+
+@pytest.mark.asyncio
+async def test_generate_shadow_dynamics_missing_rule_raises_generation_error(
+    profile_a, profile_b, knowledge_base
+) -> None:
+    """A shadow-theme pair with no rules.yaml row surfaces as `AnalysisGenerationError`
+    (via the `ShadowInteractionRuleMissing` subclass), never a bare exception -- checked
+    here with a deliberately empty rules table, not a real knowledge gap."""
+    with pytest.raises(AnalysisGenerationError):
+        await generate_shadow_dynamics(
+            profile_a=profile_a,
+            profile_b=profile_b,
+            relationship_type="PARTNER",
+            knowledge=knowledge_base,
+            shadow_rules=(),
+            llm=MockLLMProvider(),
+            knowledge_version="0.2.0",
+        )
+
+
+@pytest.mark.asyncio
 async def test_generate_relationship_analysis_mismatched_type_raises(profile_a, profile_b) -> None:
     frame = load_relationship_frame(KNOWLEDGE_ROOT, "PARTNER")
     assert frame is not None
