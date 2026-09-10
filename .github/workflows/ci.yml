@@ -289,6 +289,27 @@ jobs:
           echo "--- PDF service ---"; cat /tmp/pdf-service.log || true
           echo "--- API ---"; cat /tmp/api.log || true
           echo "--- worker ---"; cat /tmp/worker.log || true
+      - name: Collect diagnostics (scrubbed)
+        if: always()
+        run: |
+          mkdir -p /tmp/system-e2e-artifacts
+          cp /tmp/pdf-service.log /tmp/api.log /tmp/worker.log /tmp/system-e2e-artifacts/ 2>/dev/null || true
+          cp -r apps/web/playwright-report /tmp/system-e2e-artifacts/ 2>/dev/null || true
+          cp -r apps/web/test-results /tmp/system-e2e-artifacts/ 2>/dev/null || true
+          # Same scrub contract as the "Log and secret audit" step in
+          # docker-compose-e2e: no known secret VALUE may reach an uploaded artifact.
+          for secret in "$SESSION_SECRET" "$PDF_INTERNAL_TOKEN"; do
+            [ -n "$secret" ] && grep -rl -F "$secret" /tmp/system-e2e-artifacts 2>/dev/null \
+              | xargs -r sed -i "s|${secret}|***REDACTED***|g"
+          done
+      - name: Upload system-e2e diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: system-e2e-diagnostics
+          path: /tmp/system-e2e-artifacts
+          retention-days: 14
+          if-no-files-found: ignore
 
   docker-build:
     runs-on: ubuntu-latest
@@ -377,6 +398,28 @@ jobs:
       - name: Show compose logs on failure
         if: failure()
         run: docker compose logs --no-color
+      - name: Collect diagnostics (scrubbed)
+        if: always()
+        run: |
+          mkdir -p /tmp/compose-e2e-artifacts
+          docker compose logs --no-color --timestamps > /tmp/compose-e2e-artifacts/compose-logs.txt 2>&1 || true
+          docker compose ps --all > /tmp/compose-e2e-artifacts/compose-ps.txt 2>&1 || true
+          cp -r apps/web/playwright-report /tmp/compose-e2e-artifacts/ 2>/dev/null || true
+          cp -r apps/web/test-results /tmp/compose-e2e-artifacts/ 2>/dev/null || true
+          # Same scrub contract as the "Log and secret audit" step above: no known
+          # secret VALUE may reach an uploaded artifact.
+          for secret in "$SESSION_SECRET" "$PDF_INTERNAL_TOKEN" "$POSTGRES_PASSWORD"; do
+            [ -n "$secret" ] && grep -rl -F "$secret" /tmp/compose-e2e-artifacts 2>/dev/null \
+              | xargs -r sed -i "s|${secret}|***REDACTED***|g"
+          done
+      - name: Upload docker-compose-e2e diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-compose-e2e-diagnostics
+          path: /tmp/compose-e2e-artifacts
+          retention-days: 14
+          if-no-files-found: ignore
       - name: Clean shutdown
         if: always()
         run: docker compose down -v --remove-orphans
