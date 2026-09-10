@@ -1,7 +1,6 @@
 # WEB-06b — Evidence
 
-Stand: 2026-09-11, Implementierung lokal vollständig geprüft; PR #55 geöffnet,
-PR-CI ausstehend.
+Stand: 2026-09-11, Implementierung in PR #55 gemergt und vollständig geprüft.
 
 ## Gelieferter Umfang
 
@@ -40,7 +39,15 @@ Nach deren Behebung deckte der Re-Review noch Nutzer- und Rundengrenzen des
 flüchtigen Payload-Caches auf. Der abschließende Nachreview meldete keine
 verbleibenden Findings.
 
-## Noch ausstehend
+## CI und Merge
 
-Required Checks auf dem exakten finalen PR-Head, Merge und getrennte Post-Merge-CI.
-Kein Deployment und keine Aktivierung eines Produktionsflags gehören zu WEB-06b.
+- Finaler PR-Head: `98986b782fd93195dd443b0b8433232975314938`.
+- PR-CI
+  [34540062199](https://github.com/GoLukeEnviro/numra-v1/actions/runs/34540062199) auf diesem exakten Head:
+  alle zwölf Required Checks erfolgreich.
+- Squash-Merge-Commit: `7e8a19247457deacb5ac62f6edbc9c65925f452e`.
+- Getrennte Post-Merge-CI
+  [34540846280](https://github.com/GoLukeEnviro/numra-v1/actions/runs/34540846280) auf diesem exakten
+  Main-Commit: alle zwölf Required Checks erfolgreich.
+
+Kein Deployment und keine Aktivierung eines Produktionsflags erfolgten.
