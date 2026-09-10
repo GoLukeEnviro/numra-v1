@@ -15,14 +15,20 @@ function renderTabs() {
 }
 
 describe("WorkspaceNavTabs", () => {
-  it("renders exactly three tabs", () => {
+  it("renders the four workspace tabs", () => {
     usePathname.mockReturnValue("/workspaces/ws-1");
     renderTabs();
-    expect(screen.getAllByRole("link")).toHaveLength(3);
+    expect(screen.getAllByRole("link")).toHaveLength(4);
     expect(screen.getByRole("link", { name: "Dynamiken" })).toHaveAttribute(
       "href",
       "/workspaces/ws-1/dynamics",
     );
+  });
+
+  it("marks the Check-ins tab active on the check-ins route", () => {
+    usePathname.mockReturnValue("/workspaces/ws-1/checkins");
+    renderTabs();
+    expect(screen.getByRole("link", { name: "Check-ins" })).toHaveAttribute("aria-current", "page");
   });
 
   it("marks the Dynamics tab active on the dynamics route", () => {

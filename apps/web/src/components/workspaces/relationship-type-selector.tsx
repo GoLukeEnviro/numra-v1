@@ -33,6 +33,7 @@ const RELATIONSHIP_TYPE_KEYS: Record<RelationshipType, MessageKey> = {
 export interface RelationshipTypeSelectorProps {
   workspaceId: string;
   workspace: WorkspaceOut;
+  checkinRoundOpen?: boolean;
 }
 
 /**
@@ -42,7 +43,7 @@ export interface RelationshipTypeSelectorProps {
  * the race where the PATCH itself comes back 409/WORKSPACE_DISSOLVED) render as a
  * read-only `PhaseDisabledState` instead of an interactive control.
  */
-export function RelationshipTypeSelector({ workspaceId, workspace }: RelationshipTypeSelectorProps) {
+export function RelationshipTypeSelector({ workspaceId, workspace, checkinRoundOpen = false }: RelationshipTypeSelectorProps) {
   const { t } = useLocale();
   const [selected, setSelected] = useState<RelationshipType | "">(workspace.relationship_type ?? "");
   const [saved, setSaved] = useState<RelationshipType | null>(workspace.relationship_type);
@@ -98,6 +99,7 @@ export function RelationshipTypeSelector({ workspaceId, workspace }: Relationshi
           id="relationship-type-select"
           className="w-56"
           value={selected}
+          disabled={checkinRoundOpen}
           onChange={(e) => {
             setSelected(e.target.value as RelationshipType);
             setJustSaved(false);
@@ -118,11 +120,13 @@ export function RelationshipTypeSelector({ workspaceId, workspace }: Relationshi
           size="sm"
           onClick={handleSave}
           loading={saving}
-          disabled={!selected || selected === saved}
+          disabled={checkinRoundOpen || !selected || selected === saved}
+          aria-disabled={checkinRoundOpen || undefined}
         >
           {t("app.relationshipWorkspace.typeSelectorSave")}
         </Button>
       </div>
+      {checkinRoundOpen ? <p className="text-xs text-muted">{t("app.relationshipWorkspace.typeSelectorCheckinOpen")}</p> : null}
       {justSaved && !error && (
         <p className="text-xs text-success">{t("app.relationshipWorkspace.typeSelectorSuccess")}</p>
       )}

@@ -373,6 +373,32 @@ test("RC2 two-account journey: connections/consent/dual-profile/type/dissolve ov
       ),
     ).toBeVisible({ timeout: 30_000 });
 
+    // --- WEB-06b: explicit two-account check-in round, entirely through the UI. ---
+    await A.goto(`/workspaces/${workspaceId}/checkins`);
+    await A.getByRole("button", { name: "Runde starten" }).click();
+    await A.getByRole("button", { name: "Jetzt verbindlich starten" }).click();
+    await expect(A.getByRole("heading", { name: "Deine Sicht heute" })).toBeVisible();
+    for (const group of await A.getByRole("radiogroup").all()) {
+      await group.getByRole("radio", { name: "7", exact: true }).click();
+    }
+    await A.getByRole("button", { name: "Antworten verbindlich abgeben" }).click();
+    await expect(A.getByRole("heading", { name: "Deine Seite ist abgegeben" })).toBeVisible();
+
+    await B.goto(`/workspaces/${workspaceId}/checkins`);
+    await expect(B.getByRole("heading", { name: "Deine Sicht heute" })).toBeVisible();
+    for (const group of await B.getByRole("radiogroup").all()) {
+      await group.getByRole("radio", { name: "5", exact: true }).click();
+    }
+    await B.getByRole("button", { name: "Antworten verbindlich abgeben" }).click();
+    await expect(B.getByRole("heading", { name: "Auswertung dieser Runde" })).toBeVisible();
+    await expect(B.getByText("Abstand", { exact: true }).first()).toBeVisible();
+    await expect(B.getByText(/Partner-Rohwert/i)).toHaveCount(0);
+
+    await A.getByRole("button", { name: "Status aktualisieren" }).click();
+    await expect(A.getByRole("heading", { name: "Auswertung dieser Runde" })).toBeVisible();
+    await expect(A.getByRole("button", { name: "Neue Runde starten" })).toBeVisible();
+    await shoot(A, "08-checkin-analyzed");
+
     // --- Dissolve via the UI ---
     await A.goto("/connections");
     await A.getByRole("button", { name: "Verbindung auflösen" }).click();
@@ -385,6 +411,12 @@ test("RC2 two-account journey: connections/consent/dual-profile/type/dissolve ov
     await expect(A.getByText("Workspace aufgelöst", { exact: true })).toBeVisible();
     await expect(A.getByText(/Something went wrong|Etwas ist schief/i)).toHaveCount(0);
     await shoot(A, "08-workspace-dissolved-readonly");
+
+    await A.goto(`/workspaces/${workspaceId}/checkins`);
+    await expect(A.getByRole("heading", { name: "Historische Ansicht" })).toBeVisible();
+    await expect(A.getByRole("heading", { name: "Auswertung dieser Runde" })).toBeVisible();
+    await expect(A.getByRole("button", { name: /Runde starten/ })).toHaveCount(0);
+    await expect(A.getByRole("button", { name: "Frage hinzufügen" })).toHaveCount(0);
 
     // Mutation lock, same-origin: PATCH -> 409 WORKSPACE_DISSOLVED, GET -> 200.
     const csrf = (await ctxA.cookies()).find((c) => c.name === "numra_csrf")?.value ?? "";

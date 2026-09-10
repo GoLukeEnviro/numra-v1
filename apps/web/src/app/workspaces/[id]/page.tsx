@@ -14,9 +14,9 @@ import { FeatureStubCard } from "@/components/workspaces/feature-stub-card";
 import { useLocale } from "@/i18n/context";
 import { useAsync } from "@/lib/use-async";
 import { useAuth } from "@/lib/auth-context";
-import { api, type WorkspaceOverviewOut } from "@/api/client";
+import { api, ApiError, type WorkspaceOverviewOut } from "@/api/client";
 
-function HubContent({ overview, workspaceId }: { overview: WorkspaceOverviewOut; workspaceId: string }) {
+function HubContent({ overview, workspaceId, checkinRoundOpen }: { overview: WorkspaceOverviewOut; workspaceId: string; checkinRoundOpen: boolean }) {
   const { t } = useLocale();
   const { user } = useAuth();
   const counterpart = overview.dual_profile.find((m) => m.user_id !== user?.id);
@@ -31,7 +31,7 @@ function HubContent({ overview, workspaceId }: { overview: WorkspaceOverviewOut;
       />
       <WorkspaceNavTabs workspaceId={workspaceId} />
       <div className="flex flex-col gap-8">
-        <RelationshipTypeSelector workspaceId={workspaceId} workspace={overview.workspace} />
+        <RelationshipTypeSelector workspaceId={workspaceId} workspace={overview.workspace} checkinRoundOpen={checkinRoundOpen} />
         <DualProfileGrid workspaceId={workspaceId} members={overview.dual_profile} />
         <ConsentSummaryCard workspaceId={workspaceId} counterpartName={counterpartName} />
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -54,11 +54,21 @@ function HubContent({ overview, workspaceId }: { overview: WorkspaceOverviewOut;
               <ArrowRight className="h-5 w-5 shrink-0 text-gold" aria-hidden="true" />
             </Link>
           </section>
-          <FeatureStubCard
-            eyebrow={t("app.relationshipWorkspace.stubCheckinsTitle")}
-            title={t("app.relationshipWorkspace.stubCheckinsTitle")}
-            description={t("app.relationshipWorkspace.stubCheckinsBody")}
-          />
+          <section>
+            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-bronze">
+              {t("app.relationshipWorkspace.stubCheckinsTitle")}
+            </h2>
+            <Link
+              href={`/workspaces/${workspaceId}/checkins`}
+              className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-surface p-6 transition-colors hover:border-gold/50"
+            >
+              <span>
+                <span className="block font-serif text-lg text-ivory">{t("app.relationshipWorkspace.stubCheckinsTitle")}</span>
+                <span className="mt-1 block max-w-md text-sm text-muted">{t("app.checkins.hubBody")}</span>
+              </span>
+              <ArrowRight className="h-5 w-5 shrink-0 text-gold" aria-hidden="true" />
+            </Link>
+          </section>
           <FeatureStubCard
             eyebrow={t("app.relationshipWorkspace.stubTasksTitle")}
             title={t("app.relationshipWorkspace.stubTasksTitle")}
@@ -89,7 +99,16 @@ export default function RelationshipWorkspaceHubPage() {
   const params = useParams<{ id: string }>();
   const workspaceId = params.id;
   const { t } = useLocale();
-  const overviewState = useAsync(() => api.workspaces.get(workspaceId), [workspaceId]);
+  const overviewState = useAsync(async () => {
+    const overview = await api.workspaces.get(workspaceId);
+    const checkinRoundOpen = await api.workspaces.checkins.current(workspaceId)
+      .then((round) => round?.status === "AWAITING_SUBMISSIONS")
+      .catch((error: unknown) => {
+        if (error instanceof ApiError && ["V2_DISABLED", "V2_PHASE_DISABLED"].includes(error.code)) return false;
+        throw error;
+      });
+    return { overview, checkinRoundOpen };
+  }, [workspaceId]);
 
   return (
     <AppShell>
@@ -98,8 +117,8 @@ export default function RelationshipWorkspaceHubPage() {
         <ErrorState error={overviewState.error} onRetry={overviewState.reload} />
       )}
       {overviewState.status === "success" &&
-        (overviewState.data.workspace.id === workspaceId ? (
-          <HubContent overview={overviewState.data} workspaceId={workspaceId} />
+        (overviewState.data.overview.workspace.id === workspaceId ? (
+          <HubContent overview={overviewState.data.overview} workspaceId={workspaceId} checkinRoundOpen={overviewState.data.checkinRoundOpen} />
         ) : (
           <LoadingState label={t("app.relationshipWorkspace.headerLoading")} />
         ))}

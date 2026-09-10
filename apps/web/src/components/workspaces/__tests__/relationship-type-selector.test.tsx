@@ -29,6 +29,10 @@ function renderSelector(ws: WorkspaceOut) {
   );
 }
 
+function renderLockedSelector(ws: WorkspaceOut) {
+  return render(<LocaleProvider><RelationshipTypeSelector workspaceId="ws-1" workspace={ws} checkinRoundOpen /></LocaleProvider>);
+}
+
 beforeEach(() => {
   vi.mocked(api.workspaces.patch).mockReset();
 });
@@ -72,6 +76,13 @@ describe("RelationshipTypeSelector", () => {
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Speichern" })).not.toBeInTheDocument();
     expect(screen.getByText((_, node) => node?.textContent === "Zuletzt gesetzt: Partner")).toBeInTheDocument();
+  });
+
+  it("disables an actual type change while a check-in round is open", () => {
+    renderLockedSelector(workspace({ relationship_type: "PARTNER" }));
+    expect(screen.getByRole("combobox")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Speichern" })).toBeDisabled();
+    expect(screen.getByText(/während der offenen Check-in-Runde/)).toBeInTheDocument();
   });
 
   it("degrades to the read-only DISSOLVED state when the PATCH itself races into WORKSPACE_DISSOLVED", async () => {
