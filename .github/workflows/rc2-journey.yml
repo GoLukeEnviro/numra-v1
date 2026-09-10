@@ -1,0 +1,77 @@
+name: RC2 two-account journey
+
+# REALITY_CHECK_2 Phase 2 -- the real, un-mocked two-account
+# connections/consent/dual-profile/relationship-type/dissolve journey
+# (apps/web/e2e-system/rc2-two-account-journey.spec.ts) against the actual
+# docker-compose.yml topology, Desktop 1440x900 + Mobile 390x844.
+#
+# Deliberately NOT part of the push/pull_request CI: it is a heavy full-stack
+# dual-viewport Playwright run and is not a required check. Trigger it manually
+# (Actions -> "RC2 two-account journey" -> Run workflow) or let the weekly
+# schedule catch regressions. Locally: scripts/rc2-e2e.sh {up,test,down}.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 5 * * 1" # Mondays 05:00 UTC
+
+jobs:
+  rc2-journey:
+    runs-on: ubuntu-latest
+    env:
+      # Throwaway credentials for a local, isolated stack -- same shape as the
+      # docker-compose-e2e job in ci.yml. The V2 flags / EMAIL_BACKEND=logging
+      # live in docker-compose.rc2.yml only, never in a committed prod default.
+      POSTGRES_PASSWORD: rc2-ci-postgres-password
+      SESSION_SECRET: rc2-ci-session-secret-0123456789-abcdefghij
+      PDF_INTERNAL_TOKEN: rc2-ci-pdf-token
+      ENVIRONMENT: test
+      ALLOW_SELF_SIGNUP: "true"
+      NUMRA_LLM_PROVIDER: mock
+      RATE_LIMIT_BACKEND: redis
+      COMPOSE_WEB_PORT: "3100"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @numra/web exec playwright install --with-deps chromium
+
+      - name: Bring up the isolated numra-rc2 stack
+        run: bash scripts/rc2-e2e.sh up
+
+      - name: Run the RC2 two-account journey (desktop + mobile)
+        working-directory: apps/web
+        run: npx playwright test --config=playwright.rc2.config.ts
+
+      - name: Collect diagnostics (scrubbed)
+        if: always()
+        run: |
+          mkdir -p /tmp/rc2-artifacts
+          docker compose -p numra-rc2 -f docker-compose.yml -f docker-compose.rc2.yml \
+            logs --no-color --timestamps > /tmp/rc2-artifacts/compose-logs.txt 2>&1 || true
+          cp -r apps/web/playwright-report /tmp/rc2-artifacts/ 2>/dev/null || true
+          cp -r apps/web/test-results /tmp/rc2-artifacts/ 2>/dev/null || true
+          find /tmp/rc2-artifacts -name '*.zip' -delete 2>/dev/null || true
+          rm -rf /tmp/rc2-artifacts/playwright-report/data 2>/dev/null || true
+          for secret in "$SESSION_SECRET" "$PDF_INTERNAL_TOKEN" "$POSTGRES_PASSWORD"; do
+            [ -n "$secret" ] && grep -rl -F "$secret" /tmp/rc2-artifacts 2>/dev/null \
+              | xargs -r sed -i "s|${secret}|***REDACTED***|g"
+          done
+
+      - name: Upload RC2 diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc2-journey-diagnostics
+          path: /tmp/rc2-artifacts
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Tear down the isolated stack
+        if: always()
+        run: bash scripts/rc2-e2e.sh down
