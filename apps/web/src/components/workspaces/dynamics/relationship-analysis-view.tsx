@@ -11,7 +11,8 @@ import { AnalysisMetaFooter } from "@/components/workspaces/dynamics/analysis-me
 
 /**
  * Completed Relationship Analysis: one block per frame dimension, each statement
- * shown with its full, always-visible provenance. Renders exactly what the API
+ * paired with a provenance disclosure (collapsed by default, every source group
+ * shown once opened — empty groups included). Renders exactly what the API
  * returned — no text is generated, shortened or re-ordered, and there is no
  * compatibility score anywhere.
  */

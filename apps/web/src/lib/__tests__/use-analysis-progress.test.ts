@@ -134,7 +134,7 @@ describe("useAnalysisProgress", () => {
     },
   );
 
-  it("keeps one Idempotency-Key per attempt and mints a fresh one on retry", async () => {
+  it("keeps the Idempotency-Key after a network/5xx create failure so a retry re-hits the same job", async () => {
     relApi.getLatest.mockRejectedValue(notFound());
     relApi.create
       .mockRejectedValueOnce(new ApiError("transient", "UNKNOWN_ERROR", 500))
@@ -154,7 +154,50 @@ describe("useAnalysisProgress", () => {
     const secondKey = relApi.create.mock.calls[1]?.[1];
 
     expect(typeof firstKey).toBe("string");
+    expect(secondKey).toBe(firstKey);
+  });
+
+  it("resets the Idempotency-Key after a phase-gate create failure so a retry is a fresh attempt", async () => {
+    relApi.getLatest.mockRejectedValue(notFound());
+    relApi.create
+      .mockRejectedValueOnce(new ApiError("nope", "CONSENT_NOT_GRANTED", 403))
+      .mockResolvedValueOnce(relationshipAnalysisPending);
+    jobsApi.get.mockResolvedValue(analysisJob({ status: "GENERATING", progress: 80 }));
+
+    const { result } = render();
+    await flush();
+
+    act(() => result.current.launch());
+    await flush();
+    expect(result.current.phase).toBe("phaseDisabled");
+    const firstKey = relApi.create.mock.calls[0]?.[1];
+
+    act(() => result.current.launch());
+    await flush();
+    const secondKey = relApi.create.mock.calls[1]?.[1];
+
+    expect(typeof firstKey).toBe("string");
     expect(typeof secondKey).toBe("string");
     expect(secondKey).not.toBe(firstKey);
+  });
+
+  it("keeps polling after reload(): a stale run cannot clear the new run's timer", async () => {
+    relApi.getLatest.mockResolvedValue(relationshipAnalysisPending);
+    relApi.get.mockResolvedValue(relationshipAnalysisComplete);
+    jobsApi.get
+      .mockResolvedValueOnce(analysisJob({ status: "GENERATING", progress: 20 }))
+      .mockResolvedValueOnce(analysisJob({ status: "GENERATING", progress: 40 }))
+      .mockResolvedValue(analysisJob({ status: "COMPLETE", progress: 100 }));
+
+    const { result } = render();
+    await flush(); // initial latest -> pending -> first poll (GENERATING 20)
+    expect(result.current.phase).toBe("pending");
+
+    act(() => result.current.reload());
+    await flush(); // effect re-runs; old closures must not clobber the new timer
+
+    await tick(2500);
+    await tick(2500);
+    expect(result.current.phase).toBe("complete");
   });
 });

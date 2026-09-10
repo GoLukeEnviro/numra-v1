@@ -61,10 +61,15 @@ export interface UseAnalysisProgress {
  * launch POST with a per-attempt `Idempotency-Key`, and job polling until a terminal
  * job status, at which point the full body is re-read via GET `.../{analysis_id}`.
  *
- * Adapted 1:1 from lib/use-report-progress.ts. Same deliberate properties: the job's
- * `progress` is never smoothed or assumed monotonic, and the analysis row is
- * re-fetched once the job reports COMPLETE because the job row and the analysis row
- * are separate.
+ * Adapted 1:1 from lib/use-report-progress.ts, including its effect-local `cancelled`
+ * flag: all of `start`/`poll`/`runLaunch` live inside the effect so each effect run
+ * (mount, workspace/kind change, `reload()`) is fully isolated — a stale promise
+ * from a previous run can never clear the current run's timer. `launch()` is exposed
+ * through a ref the effect swaps each run and clears on cleanup.
+ *
+ * Same deliberate properties as the report hook: the job's `progress` is never
+ * smoothed or assumed monotonic, and the analysis row is re-fetched once the job
+ * reports COMPLETE because the job row and the analysis row are separate.
  */
 export function useAnalysisProgress(
   workspaceId: string,
@@ -75,59 +80,56 @@ export function useAnalysisProgress(
   const [reloadTick, setReloadTick] = useState(0);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const cancelledRef = useRef(false);
-  const failureCountRef = useRef(0);
-  const launchInFlightRef = useRef(false);
+  /** Survives effect re-runs on purpose: a POST whose response was lost may have
+   *  created the job server-side, so the next launch must re-send the SAME key to
+   *  re-hit that job instead of queueing a duplicate (see runLaunch's catch). */
   const idempotencyKeyRef = useRef<string | null>(null);
+  const launchRef = useRef<() => void>(() => {});
 
   const reload = useCallback(() => setReloadTick((t) => t + 1), []);
+  const launch = useCallback(() => launchRef.current(), []);
 
-  const getLatest = useCallback(
-    (): Promise<AnalysisOut> =>
+  useEffect(() => {
+    let cancelled = false;
+    let failureCount = 0;
+    let launchInFlight = false;
+
+    function clearTimer() {
+      if (timerRef.current !== null) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    }
+
+    const getLatest = (): Promise<AnalysisOut> =>
       kind === "relationship"
         ? api.workspaces.relationshipAnalysis.getLatest(workspaceId)
-        : api.workspaces.shadowDynamics.getLatest(workspaceId),
-    [kind, workspaceId],
-  );
+        : api.workspaces.shadowDynamics.getLatest(workspaceId);
 
-  const getById = useCallback(
-    (analysisId: string): Promise<AnalysisOut> =>
+    const getById = (analysisId: string): Promise<AnalysisOut> =>
       kind === "relationship"
         ? api.workspaces.relationshipAnalysis.get(workspaceId, analysisId)
-        : api.workspaces.shadowDynamics.get(workspaceId, analysisId),
-    [kind, workspaceId],
-  );
+        : api.workspaces.shadowDynamics.get(workspaceId, analysisId);
 
-  const create = useCallback(
-    (idempotencyKey: string): Promise<AnalysisOut> =>
+    const create = (idempotencyKey: string): Promise<AnalysisOut> =>
       kind === "relationship"
         ? api.workspaces.relationshipAnalysis.create(workspaceId, idempotencyKey)
-        : api.workspaces.shadowDynamics.create(workspaceId, idempotencyKey),
-    [kind, workspaceId],
-  );
+        : api.workspaces.shadowDynamics.create(workspaceId, idempotencyKey);
 
-  const clearTimer = useCallback(() => {
-    if (timerRef.current !== null) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-  }, []);
-
-  const poll = useCallback(
-    async (analysis: AnalysisOut) => {
+    async function poll(analysis: AnalysisOut) {
       let job: AnalysisJobOut;
       try {
         job = await api.analysisJobs.get(analysis.job_id);
-        failureCountRef.current = 0;
+        failureCount = 0;
       } catch (error) {
-        failureCountRef.current += 1;
-        if (failureCountRef.current >= MAX_CONSECUTIVE_POLL_FAILURES && !cancelledRef.current) {
+        failureCount += 1;
+        if (failureCount >= MAX_CONSECUTIVE_POLL_FAILURES && !cancelled) {
           clearTimer();
           setProgress({ phase: "error", error });
         }
         return;
       }
-      if (cancelledRef.current) return;
+      if (cancelled) return;
 
       if (!isAnalysisJobTerminal(job.status)) {
         setProgress({ phase: "pending", analysis, job });
@@ -137,101 +139,104 @@ export function useAnalysisProgress(
       clearTimer();
       try {
         const fresh = await getById(analysis.id);
-        if (cancelledRef.current) return;
+        if (cancelled) return;
         setProgress(
           job.status === "COMPLETE"
             ? { phase: "complete", analysis: fresh }
             : { phase: "failed", analysis: fresh, job },
         );
       } catch (error) {
-        if (!cancelledRef.current) setProgress({ phase: "error", error });
+        if (!cancelled) setProgress({ phase: "error", error });
       }
-    },
-    [clearTimer, getById],
-  );
+    }
 
-  const startPolling = useCallback(
-    (analysis: AnalysisOut) => {
+    function startPolling(analysis: AnalysisOut) {
       clearTimer();
-      failureCountRef.current = 0;
+      failureCount = 0;
       void poll(analysis);
       timerRef.current = setInterval(() => void poll(analysis), ANALYSIS_POLL_INTERVAL_MS);
-    },
-    [clearTimer, poll],
-  );
+    }
 
-  const start = useCallback(async () => {
-    setProgress({ phase: "loading" });
-    let latest: AnalysisOut | undefined;
-    let lastError: unknown;
-    for (let attempt = 1; attempt <= INITIAL_LOAD_MAX_ATTEMPTS && !cancelledRef.current; attempt += 1) {
-      try {
-        latest = await getLatest();
-        break;
-      } catch (error) {
-        if (error instanceof ApiError && error.status === 404) {
-          if (!cancelledRef.current) setProgress({ phase: "empty" });
-          return;
+    async function start() {
+      setProgress({ phase: "loading" });
+      let latest: AnalysisOut | undefined;
+      let lastError: unknown;
+      for (let attempt = 1; attempt <= INITIAL_LOAD_MAX_ATTEMPTS && !cancelled; attempt += 1) {
+        try {
+          latest = await getLatest();
+          break;
+        } catch (error) {
+          if (error instanceof ApiError && error.status === 404) {
+            if (!cancelled) setProgress({ phase: "empty" });
+            return;
+          }
+          if (isPhaseDisabledError(error)) {
+            if (!cancelled) setProgress({ phase: "phaseDisabled", error });
+            return;
+          }
+          lastError = error;
+          if (attempt < INITIAL_LOAD_MAX_ATTEMPTS) await delay(INITIAL_LOAD_RETRY_DELAY_MS);
         }
-        if (isPhaseDisabledError(error)) {
-          if (!cancelledRef.current) setProgress({ phase: "phaseDisabled", error });
-          return;
+      }
+      if (cancelled) return;
+      if (latest === undefined) {
+        setProgress({ phase: "error", error: lastError });
+        return;
+      }
+
+      if (latest.status === "COMPLETE" || latest.result !== null) {
+        setProgress({ phase: "complete", analysis: latest });
+        return;
+      }
+      // Defensive (design decision #6): a non-terminal `latest` — including a job
+      // whose creating POST lost its response — resumes polling instead of stalling.
+      setProgress({ phase: "pending", analysis: latest, job: null });
+      startPolling(latest);
+    }
+
+    function runLaunch() {
+      if (launchInFlight || timerRef.current !== null) return;
+      launchInFlight = true;
+      setLaunching(true);
+      const key = idempotencyKeyRef.current ?? newIdempotencyKey();
+      idempotencyKeyRef.current = key;
+
+      void (async () => {
+        try {
+          const analysis = await create(key);
+          idempotencyKeyRef.current = null; // attempt landed — next launch is a new attempt
+          if (cancelled) return;
+          setProgress({ phase: "pending", analysis, job: null });
+          startPolling(analysis);
+        } catch (error) {
+          // Only a phase gate (relationship type / consent) invalidates the key: it
+          // needs a genuinely new attempt once the precondition is fixed. A network
+          // or 5xx error may have created the job while losing the response, so the
+          // key is KEPT — the next click re-sends it and re-hits that same job
+          // (backend idempotency) rather than queueing a duplicate.
+          if (isPhaseDisabledError(error)) idempotencyKeyRef.current = null;
+          if (cancelled) return;
+          setProgress(
+            isPhaseDisabledError(error)
+              ? { phase: "phaseDisabled", error }
+              : { phase: "error", error },
+          );
+        } finally {
+          launchInFlight = false;
+          if (!cancelled) setLaunching(false);
         }
-        lastError = error;
-        if (attempt < INITIAL_LOAD_MAX_ATTEMPTS) await delay(INITIAL_LOAD_RETRY_DELAY_MS);
-      }
-    }
-    if (cancelledRef.current) return;
-    if (latest === undefined) {
-      setProgress({ phase: "error", error: lastError });
-      return;
+      })();
     }
 
-    if (latest.status === "COMPLETE" || latest.result !== null) {
-      setProgress({ phase: "complete", analysis: latest });
-      return;
-    }
-    setProgress({ phase: "pending", analysis: latest, job: null });
-    startPolling(latest);
-  }, [getLatest, startPolling]);
-
-  const launch = useCallback(() => {
-    if (launchInFlightRef.current || timerRef.current !== null) return;
-    launchInFlightRef.current = true;
-    setLaunching(true);
-    const key = idempotencyKeyRef.current ?? newIdempotencyKey();
-    idempotencyKeyRef.current = key;
-
-    void (async () => {
-      try {
-        const analysis = await create(key);
-        idempotencyKeyRef.current = null;
-        if (cancelledRef.current) return;
-        setProgress({ phase: "pending", analysis, job: null });
-        startPolling(analysis);
-      } catch (error) {
-        idempotencyKeyRef.current = null;
-        if (cancelledRef.current) return;
-        setProgress(
-          isPhaseDisabledError(error)
-            ? { phase: "phaseDisabled", error }
-            : { phase: "error", error },
-        );
-      } finally {
-        launchInFlightRef.current = false;
-        if (!cancelledRef.current) setLaunching(false);
-      }
-    })();
-  }, [create, startPolling]);
-
-  useEffect(() => {
-    cancelledRef.current = false;
+    launchRef.current = runLaunch;
     void start();
+
     return () => {
-      cancelledRef.current = true;
+      cancelled = true;
       clearTimer();
+      launchRef.current = () => {};
     };
-  }, [start, reloadTick, clearTimer]);
+  }, [workspaceId, kind, reloadTick]);
 
   return { ...progress, reload, launch, launching };
 }
