@@ -70,23 +70,19 @@ async def _set_up_partner_workspace(
     """Two users, connected, both with a SELF profile + calculation, workspace type
     PARTNER. Returns (workspace_id, headers_a, headers_b).
 
-    Deliberately overrides `birth_date` for both profiles to non-master-number Life
-    Paths (1-9): `lukas_payload`'s own birth date reduces to Life Path 22, which
-    `knowledge/shadow-interaction/rules.yaml` does not cover (that table is scoped to
-    Life Path 1-9 pairs only per the blueprint) -- reusing it verbatim for both
-    members would make the shadow-dynamics E2E test hit an out-of-scope master-number
-    pair instead of exercising the real, covered lookup path.
+    Both members keep `lukas_payload`'s real birth date (1986-07-18 = Life Path 22, a
+    master number). `knowledge/shadow-interaction/rules.yaml` now covers every Life
+    Path {1-9, 11, 22, 33} pair, so a master-number pair is a fully supported
+    shadow-dynamics lookup path -- no birth-date override needed to stay in scope.
     """
     workspace_id, headers_b = await _connect(client, sessionmaker, email_a, email_b)
 
-    payload_b = {**lukas_payload, "birth_date": "1990-03-14"}  # Life Path 9
-    await _create_self_person(client, headers_b, payload_b)
+    await _create_self_person(client, headers_b, lukas_payload)
     headers_a = await _switch_user(client, email_a)
     payload_a = {
         **lukas_payload,
         "birth_first_names": "Partner",
         "birth_last_name": "Eins",
-        "birth_date": "1988-07-22",  # Life Path 1
     }
     await _create_self_person(client, headers_a, payload_a)
 
@@ -358,3 +354,65 @@ async def test_shadow_dynamics_e2e_provenance(client, sessionmaker, lukas_payloa
         assert not _COMPATIBILITY_PATTERN.search(statement["text"])
     assert result["pattern_intensity"] in ("moderate", "high")
     assert len(result["recommended_micro_tasks"]) >= 1
+
+
+@pytest.mark.parametrize(
+    "birth_date",
+    ["1960-01-03", "1986-07-18", "1960-04-22"],  # Life Path 11 / 22 / 33
+)
+async def test_shadow_dynamics_e2e_completes_for_master_life_paths(
+    client, sessionmaker, lukas_payload, llm, birth_date
+) -> None:
+    """Shadow dynamics must reach COMPLETE (not terminal FAILED) for master-number
+    Life Paths 11/22/33 -- the pair the pre-fix rules.yaml could not resolve."""
+    master_payload = {**lukas_payload, "birth_date": birth_date}
+    workspace_id, headers_a, _headers_b = await _set_up_partner_workspace(
+        client,
+        sessionmaker,
+        master_payload,
+        f"sd-master-{birth_date}-a@example.com",
+        f"sd-master-{birth_date}-b@example.com",
+    )
+    create = await client.post(
+        f"/v1/workspaces/{workspace_id}/shadow-dynamics", json={}, headers=headers_a
+    )
+    assert create.status_code == 201
+
+    claimed = await run_one_cycle(sessionmaker, llm=llm)
+    assert claimed is True
+
+    get_response = await client.get(
+        f"/v1/workspaces/{workspace_id}/shadow-dynamics", headers=headers_a
+    )
+    assert get_response.status_code == 200
+    assert get_response.json()["status"] == "COMPLETE"
+
+
+async def test_shadow_dynamics_e2e_missing_rule_fails_terminally(
+    client, sessionmaker, lukas_payload, llm, monkeypatch
+) -> None:
+    """A genuine shadow-interaction-rule gap (simulated here by an empty rules table)
+    must fail the job terminally as ANALYSIS_GENERATION_ERROR with retryable=False --
+    not retry-loop, not a bare UNEXPECTED_ERROR. Keeps the FAILED path covered without
+    relying on a real knowledge hole."""
+    from numra_api.services import relationship_analysis_service as svc
+
+    monkeypatch.setattr(svc, "load_shadow_interaction_rules", lambda _root: ())
+
+    workspace_id, headers_a, _headers_b = await _set_up_partner_workspace(
+        client, sessionmaker, lukas_payload, "sd-fail-a@example.com", "sd-fail-b@example.com"
+    )
+    create = await client.post(
+        f"/v1/workspaces/{workspace_id}/shadow-dynamics", json={}, headers=headers_a
+    )
+    assert create.status_code == 201
+    job_id = create.json()["job_id"]
+
+    claimed = await run_one_cycle(sessionmaker, llm=llm)
+    assert claimed is True
+
+    job = await client.get(f"/v1/analysis-jobs/{job_id}", headers=headers_a)
+    assert job.status_code == 200
+    job_body = job.json()
+    assert job_body["status"] == "FAILED"  # terminal, retryable=False -> no retry loop
+    assert job_body["error_code"].startswith("ANALYSIS_GENERATION_ERROR")
