@@ -61,7 +61,7 @@ async def create_roadmap_route(
     workspace_id: uuid.UUID,
     body: RelationshipRoadmapCreateRequest,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> RelationshipRoadmapOut:
     roadmap = await create_roadmap(
         db,
@@ -77,7 +77,7 @@ async def create_roadmap_route(
 async def list_roadmaps_route(
     workspace_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> list[RelationshipRoadmapOut]:
@@ -92,7 +92,7 @@ async def get_roadmap_route(
     workspace_id: uuid.UUID,
     roadmap_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> RelationshipRoadmapOut:
     roadmap = await get_roadmap(
         db, workspace_id=workspace_id, user_id=user.id, roadmap_id=roadmap_id
@@ -110,7 +110,7 @@ async def patch_roadmap_route(
     roadmap_id: uuid.UUID,
     body: RelationshipRoadmapPatchRequest,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> RelationshipRoadmapOut:
     roadmap = await patch_roadmap(
         db,
@@ -129,7 +129,7 @@ async def delete_roadmap_route(
     workspace_id: uuid.UUID,
     roadmap_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> None:
     await delete_roadmap(db, workspace_id=workspace_id, user_id=user.id, roadmap_id=roadmap_id)
 
@@ -145,7 +145,7 @@ async def create_milestone_route(
     roadmap_id: uuid.UUID,
     body: RoadmapMilestoneCreateRequest,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> RoadmapMilestoneOut:
     milestone = await create_milestone(
         db,
@@ -166,7 +166,7 @@ async def list_milestones_route(
     workspace_id: uuid.UUID,
     roadmap_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     milestone_type: MilestoneType | None = Query(default=None),
 ) -> list[RoadmapMilestoneOut]:
     milestones = await list_milestones(
@@ -185,7 +185,7 @@ async def get_milestone_route(
     roadmap_id: uuid.UUID,
     milestone_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> RoadmapMilestoneOut:
     milestone = await get_milestone(
         db,
@@ -208,7 +208,7 @@ async def patch_milestone_route(
     milestone_id: uuid.UUID,
     body: RoadmapMilestonePatchRequest,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> RoadmapMilestoneOut:
     set_fields = body.model_fields_set
     milestone = await patch_milestone(
@@ -238,7 +238,7 @@ async def delete_milestone_route(
     roadmap_id: uuid.UUID,
     milestone_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> None:
     await delete_milestone(
         db,

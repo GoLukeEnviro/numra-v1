@@ -50,7 +50,10 @@ export default defineConfig({
   // run). The overall 300_000ms budget above was already generous; this raises the
   // per-assertion budget to match, without touching test logic or retries.
   expect: { timeout: 15_000 },
-  reporter: [["list"]],
+  // list for live CI console output; html (never auto-opened) as an uploadable
+  // failure artifact -- the docker-compose-e2e job archives playwright-report/ and
+  // test-results/ (traces) whenever this job fails.
+  reporter: [["list"], ["html", { open: "never" }]],
   use: {
     baseURL: `http://localhost:${port}`,
     trace: "retain-on-failure",

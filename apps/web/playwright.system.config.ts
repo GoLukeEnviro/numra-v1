@@ -41,7 +41,10 @@ export default defineConfig({
   // The overall 300_000ms budget above was already generous; this raises the
   // per-assertion budget to match, without touching test logic or retries.
   expect: { timeout: 15_000 },
-  reporter: [["list"]],
+  // list for live CI console output; html (never auto-opened) as an uploadable
+  // failure artifact -- the system-e2e job archives playwright-report/ and
+  // test-results/ (traces) whenever this job fails.
+  reporter: [["list"], ["html", { open: "never" }]],
   use: {
     baseURL: `http://127.0.0.1:${port}`,
     trace: "retain-on-failure",

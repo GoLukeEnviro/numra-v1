@@ -37,7 +37,7 @@ def _to_out(reflection: SharedReflection) -> SharedReflectionOut:
 async def list_shared_reflections_route(
     workspace_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> list[SharedReflectionOut]:
@@ -52,7 +52,7 @@ async def get_shared_reflection_route(
     workspace_id: uuid.UUID,
     reflection_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> SharedReflectionOut:
     reflection = await get_shared_reflection(
         db, workspace_id=workspace_id, user_id=user.id, reflection_id=reflection_id
@@ -67,7 +67,7 @@ async def delete_shared_reflection_route(
     workspace_id: uuid.UUID,
     reflection_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> None:
     await delete_shared_reflection(
         db, workspace_id=workspace_id, user_id=user.id, reflection_id=reflection_id

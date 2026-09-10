@@ -49,7 +49,7 @@ async def create_task_route(
     workspace_id: uuid.UUID,
     body: WorkspaceTaskCreateRequest,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> WorkspaceTaskOut:
     task = await create_task(
         db,
@@ -69,7 +69,7 @@ async def create_task_route(
 async def list_tasks_route(
     workspace_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     status: WorkspaceTaskStatus | None = Query(default=None),
     task_type: TaskType | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
@@ -92,7 +92,7 @@ async def get_task_route(
     workspace_id: uuid.UUID,
     task_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> WorkspaceTaskOut:
     task = await get_task(db, workspace_id=workspace_id, user_id=user.id, task_id=task_id)
     return _to_out(task)
@@ -107,7 +107,7 @@ async def accept_task_route(
     workspace_id: uuid.UUID,
     task_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> WorkspaceTaskOut:
     task = await accept_task(db, workspace_id=workspace_id, user_id=user.id, task_id=task_id)
     return _to_out(task)
@@ -122,7 +122,7 @@ async def decline_task_route(
     workspace_id: uuid.UUID,
     task_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> WorkspaceTaskOut:
     task = await decline_task(db, workspace_id=workspace_id, user_id=user.id, task_id=task_id)
     return _to_out(task)
@@ -136,7 +136,7 @@ async def patch_task_route(
     task_id: uuid.UUID,
     body: WorkspaceTaskPatchRequest,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> WorkspaceTaskOut:
     set_fields = body.model_fields_set
     task = await patch_task(
@@ -161,6 +161,6 @@ async def delete_task_route(
     workspace_id: uuid.UUID,
     task_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> None:
     await delete_task(db, workspace_id=workspace_id, user_id=user.id, task_id=task_id)

@@ -15,7 +15,7 @@ router = APIRouter(prefix="/v1/me", tags=["entitlements"])
 @router.get("/entitlements", response_model=EntitlementSetOut)
 async def get_my_entitlements(
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> EntitlementSetOut:
     """The signed-in user's effective feature/limit bundle: their explicit
     `EntitlementAssignment` if one exists, otherwise the seeded "beta_default"

@@ -33,13 +33,13 @@ _MAX_PAGE_SIZE = 100
 
 
 @router.get("/stats", response_model=AdminStatsOut)
-async def get_stats(db: AsyncSession = Depends(get_db)) -> AdminStatsOut:
+async def get_stats(db: AsyncSession = Depends(get_db, scope="function")) -> AdminStatsOut:
     return await compute_admin_stats(db, now=dt.datetime.now(dt.UTC))
 
 
 @router.get("/users", response_model=AdminUserListOut)
 async def list_users(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     search: str | None = Query(default=None),
     role: UserRole | None = Query(default=None),
     is_active: bool | None = Query(default=None),
@@ -59,7 +59,9 @@ async def list_users(
 
 
 @router.get("/users/{user_id}", response_model=AdminUserOut)
-async def get_user(user_id: uuid.UUID, db: AsyncSession = Depends(get_db)) -> AdminUserOut:
+async def get_user(
+    user_id: uuid.UUID, db: AsyncSession = Depends(get_db, scope="function")
+) -> AdminUserOut:
     view = await get_user_admin_view(db, user_id=user_id, now=dt.datetime.now(dt.UTC))
     if view is None:
         raise NotFoundError(f"user {user_id} not found")
@@ -77,7 +79,7 @@ async def get_user(user_id: uuid.UUID, db: AsyncSession = Depends(get_db)) -> Ad
 async def disable_user(
     user_id: uuid.UUID,
     admin: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> None:
     if user_id == admin.id:
         # This IS allowed to say why -- it's the admin's own action against their own
@@ -109,7 +111,7 @@ async def disable_user(
 async def enable_user(
     user_id: uuid.UUID,
     admin: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> None:
     target = await get_user_by_id(db, user_id=user_id)
     if target is None:
@@ -135,7 +137,7 @@ async def enable_user(
 async def revoke_user_sessions(
     user_id: uuid.UUID,
     admin: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> None:
     target = await get_user_by_id(db, user_id=user_id)
     if target is None:
@@ -152,7 +154,7 @@ async def revoke_user_sessions(
 
 @router.get("/audit", response_model=AuditEventListOut)
 async def list_audit(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     action: AuditAction | None = Query(default=None),
     target_user_id: uuid.UUID | None = Query(default=None),
     page: int = Query(default=1, ge=1),

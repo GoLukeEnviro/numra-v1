@@ -74,7 +74,7 @@ def _to_summary(
 async def create_relationship_route(
     body: RelationshipCreateRequest,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> RelationshipOut:
     if body.person_a_id is not None and body.person_b_id is not None:
         # V1.5 Epic E: the product-facing path -- resolve each person's latest
@@ -127,7 +127,7 @@ async def create_relationship_route(
 @router.get("", response_model=list[RelationshipSummaryOut])
 async def list_relationships_route(
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> list[RelationshipSummaryOut]:
@@ -139,7 +139,7 @@ async def list_relationships_route(
 async def get_relationship_route(
     relationship_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> RelationshipOut:
     row = await get_relationship_with_people_for_user(
         db, relationship_id=relationship_id, user_id=user.id

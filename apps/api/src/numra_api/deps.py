@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import datetime as dt
+import logging
+import time
 from collections.abc import AsyncIterator, Awaitable, Callable
 
 from fastapi import Cookie, Depends, Header, Request
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from numra_api.auth.csrf import CSRF_COOKIE_NAME, CSRF_HEADER_NAME, csrf_tokens_match
@@ -26,12 +29,49 @@ from numra_api.services.pdf_client import PdfServiceClient
 from numra_api.storage.exports import ExportStorage
 from numra_interpretation.llm.types import LLMProvider
 
+_ci_diag_log = logging.getLogger("numra_api.ci_diag")
+
+
+def _ci_diag_enabled(request: Request) -> bool:
+    settings = getattr(request.app.state, "settings", None)
+    return bool(settings is not None and settings.environment == "test")
+
 
 async def get_db(request: Request) -> AsyncIterator[AsyncSession]:
     sessionmaker = request.app.state.sessionmaker
+    if not _ci_diag_enabled(request):
+        async with sessionmaker() as session:
+            yield session
+            await session.commit()
+        return
+
+    # [CI-DIAG] -- only under ENVIRONMENT=test. Correlates each request's DB
+    # transaction with the flaky "stale read straight after my own write" pattern:
+    # logs the request, its backend xid just before COMMIT, and how long the COMMIT
+    # itself took, so a follow-up read that misses a just-committed row can be
+    # lined up against the exact commit that should have made it visible.
+    corr = getattr(getattr(request, "state", None), "correlation_id", None)
+    method, path = request.method, request.url.path
     async with sessionmaker() as session:
         yield session
+        try:
+            xid_row = await session.execute(text("SELECT txid_current()"))
+            pre_commit_xid = xid_row.scalar_one()
+        except Exception:  # pragma: no cover - diagnostics must never break a request
+            pre_commit_xid = None
+        started = time.perf_counter()
         await session.commit()
+        commit_ms = round((time.perf_counter() - started) * 1000, 2)
+        _ci_diag_log.info(
+            "[CI-DIAG] db-commit",
+            extra={
+                "correlation_id": corr,
+                "method": method,
+                "path": path,
+                "pre_commit_xid": pre_commit_xid,
+                "commit_ms": commit_ms,
+            },
+        )
 
 
 def get_settings_dep(request: Request) -> Settings:
@@ -135,7 +175,7 @@ def rate_limit_by_user(
 
 async def get_current_session(
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     session_token: str | None = Cookie(default=None, alias="numra_session"),
 ) -> SessionModel:
     if not session_token:
@@ -150,7 +190,7 @@ async def get_current_session(
 
 
 async def get_current_user(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     session: SessionModel = Depends(get_current_session),
 ) -> User:
     user = await get_user_by_id(db, user_id=session.user_id)

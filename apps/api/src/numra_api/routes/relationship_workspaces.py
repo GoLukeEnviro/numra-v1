@@ -42,7 +42,7 @@ def _workspace_to_summary(workspace: RelationshipWorkspace) -> WorkspaceSummaryO
 
 @router.get("", response_model=list[WorkspaceSummaryOut])
 async def list_workspaces_route(
-    user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+    user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db, scope="function")
 ) -> list[WorkspaceSummaryOut]:
     workspaces = await list_workspaces_for_viewer(db, user_id=user.id)
     return [_workspace_to_summary(w) for w in workspaces]
@@ -52,7 +52,7 @@ async def list_workspaces_route(
 async def get_workspace_overview_route(
     workspace_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> WorkspaceOverviewOut:
     workspace, dual_profile = await get_workspace_overview(
         db, workspace_id=workspace_id, viewer_user_id=user.id
@@ -65,7 +65,7 @@ async def patch_workspace_route(
     workspace_id: uuid.UUID,
     body: WorkspaceUpdateRequest,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> WorkspaceOut:
     workspace = await patch_relationship_type(
         db,

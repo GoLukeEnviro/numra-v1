@@ -101,7 +101,7 @@ async def _issue_authenticated_session(
 async def register(
     body: RegisterRequest,
     response: Response,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     settings: Settings = Depends(get_settings_dep),
 ) -> UserOut:
     """V1.6 B: a successful registration is signed in immediately (same cookies as
@@ -140,7 +140,7 @@ async def register(
 async def login(
     body: LoginRequest,
     response: Response,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     settings: Settings = Depends(get_settings_dep),
 ) -> UserOut:
     user = await get_user_by_email(db, email=body.email)
@@ -165,7 +165,7 @@ async def login(
 async def logout(
     request: Request,
     response: Response,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> None:
     token = request.cookies.get("numra_session")
     if token:
@@ -197,7 +197,7 @@ async def change_password(
     body: ChangePasswordRequest,
     user: User = Depends(get_current_user),
     session: SessionModel = Depends(get_current_session),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> None:
     """V1.5 Epic N: requires the current password even though the caller already has
     a valid session (a left-open or hijacked session should not be enough on its
@@ -216,7 +216,7 @@ async def change_password(
 async def list_sessions(
     user: User = Depends(get_current_user),
     session: SessionModel = Depends(get_current_session),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> list[SessionOut]:
     """V1.5 Epic N: every device/browser currently signed in as this user. No IP
     address or device identifier is stored anywhere (see models.tables.Session), so
@@ -237,7 +237,7 @@ async def list_sessions(
 async def revoke_other_sessions(
     user: User = Depends(get_current_user),
     session: SessionModel = Depends(get_current_session),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> None:
     """V1.5 Epic N: "Log out other devices" -- revokes every active session for this
     user except the one making this request."""
@@ -260,7 +260,7 @@ async def request_email_verification(
     user: User = Depends(get_current_user),
     settings: Settings = Depends(get_settings_dep),
     email_sender: EmailSender = Depends(get_email_sender),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> None:
     """V2: (re-)sends a verification link to the signed-in user's own email address.
     Invalidates any verification token requested earlier before issuing a new one --
@@ -277,7 +277,7 @@ async def request_email_verification(
 )
 async def verify_email(
     body: VerifyEmailRequest,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> None:
     """V2: unauthenticated -- the token itself, not a session, is the proof of
     ownership. Claims the token atomically; an unknown, already-used, or expired
@@ -295,7 +295,7 @@ async def forgot_password(
     body: ForgotPasswordRequest,
     settings: Settings = Depends(get_settings_dep),
     email_sender: EmailSender = Depends(get_email_sender),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> None:
     """V2: always answers 202 with no body, whether or not `body.email` belongs to an
     account -- anti-enumeration (see services/auth_recovery_service.forgot_password,
@@ -312,7 +312,7 @@ async def forgot_password(
 )
 async def reset_password(
     body: ResetPasswordRequest,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> None:
     """V2: unauthenticated -- the reset token is the proof of ownership. On success,
     every session for the user is revoked (not "every other" -- there is no caller

@@ -48,7 +48,7 @@ async def create_private_reflection_route(
     person_id: uuid.UUID,
     body: PrivateReflectionCreateRequest,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> PrivateReflectionOut:
     person = await get_person(db, person_id=person_id, user_id=user.id)
     if person is None:
@@ -67,7 +67,7 @@ async def create_private_reflection_route(
 async def list_private_reflections_route(
     person_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> list[PrivateReflectionOut]:
@@ -84,7 +84,7 @@ async def list_private_reflections_route(
 async def get_private_reflection_route(
     reflection_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> PrivateReflectionOut:
     reflection = await get_private_reflection_for_user(
         db, reflection_id=reflection_id, user_id=user.id
@@ -103,7 +103,7 @@ async def patch_private_reflection_route(
     reflection_id: uuid.UUID,
     body: PrivateReflectionPatchRequest,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> PrivateReflectionOut:
     reflection = await get_private_reflection_for_user(
         db, reflection_id=reflection_id, user_id=user.id
@@ -128,7 +128,7 @@ async def patch_private_reflection_route(
 async def delete_private_reflection_route(
     reflection_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> None:
     reflection = await get_private_reflection_for_user(
         db, reflection_id=reflection_id, user_id=user.id
@@ -148,7 +148,7 @@ async def share_private_reflection_route(
     reflection_id: uuid.UUID,
     body: SharePrivateReflectionRequest,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> SharedReflectionOut:
     reflection = await share_private_reflection(
         db, reflection_id=reflection_id, user_id=user.id, workspace_id=body.workspace_id

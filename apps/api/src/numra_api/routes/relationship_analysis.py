@@ -108,7 +108,7 @@ def _shadow_dynamics_to_out(analysis: ShadowDynamicsAnalysis) -> ShadowDynamicsA
 async def create_relationship_analysis_route(
     workspace_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
 ) -> RelationshipAnalysisOut:
     _job, analysis = await create_relationship_analysis_job(
@@ -124,7 +124,7 @@ async def create_relationship_analysis_route(
 async def get_latest_relationship_analysis_route(
     workspace_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> RelationshipAnalysisOut:
     await _require_membership(db, workspace_id=workspace_id, user_id=user.id)
     analysis = await get_latest_relationship_analysis_for_workspace(db, workspace_id=workspace_id)
@@ -141,7 +141,7 @@ async def get_relationship_analysis_route(
     workspace_id: uuid.UUID,  # noqa: ARG001 - path is namespaced under the workspace for URL clarity
     analysis_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> RelationshipAnalysisOut:
     analysis = await get_relationship_analysis_for_user(
         db, analysis_id=analysis_id, user_id=user.id
@@ -163,7 +163,7 @@ async def get_relationship_analysis_route(
 async def create_shadow_dynamics_route(
     workspace_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
 ) -> ShadowDynamicsAnalysisOut:
     _job, analysis = await create_shadow_dynamics_job(
@@ -179,7 +179,7 @@ async def create_shadow_dynamics_route(
 async def get_latest_shadow_dynamics_route(
     workspace_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> ShadowDynamicsAnalysisOut:
     await _require_membership(db, workspace_id=workspace_id, user_id=user.id)
     analysis = await get_latest_shadow_dynamics_for_workspace(db, workspace_id=workspace_id)
@@ -196,7 +196,7 @@ async def get_shadow_dynamics_route(
     workspace_id: uuid.UUID,  # noqa: ARG001 - path is namespaced under the workspace for URL clarity
     analysis_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> ShadowDynamicsAnalysisOut:
     analysis = await get_shadow_dynamics_analysis_for_user(
         db, analysis_id=analysis_id, user_id=user.id
@@ -210,7 +210,7 @@ async def get_shadow_dynamics_route(
 async def get_analysis_job_route(
     job_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> AnalysisJobOut:
     job = await get_analysis_job_for_user(db, job_id=job_id, user_id=user.id)
     if job is None:

@@ -47,7 +47,7 @@ def _export_to_out(export: Export) -> ExportOut:
 async def create_export_route(
     body: ExportCreateRequest,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     storage: ExportStorage = Depends(get_export_storage),
     pdf_client: PdfServiceClient = Depends(get_pdf_client),
 ) -> ExportOut:
@@ -65,7 +65,7 @@ async def create_export_route(
 @router.get("/exports", response_model=list[ExportOut])
 async def list_exports_route(
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> list[ExportOut]:
     exports = await list_exports_for_user(db, user_id=user.id)
     return [_export_to_out(export) for export in exports]
@@ -75,7 +75,7 @@ async def list_exports_route(
 async def download_export_route(
     export_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     storage: ExportStorage = Depends(get_export_storage),
 ) -> Response:
     export, content = await get_export_file(

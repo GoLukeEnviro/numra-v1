@@ -31,7 +31,7 @@ router = APIRouter(prefix="/v1/me", tags=["workspace"], dependencies=[Depends(re
 async def get_my_workspace_route(
     person_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> WorkspaceOverviewOut:
     """Schlanker Index über den Personal Workspace einer Person -- Counts +
     jeweils neuestes Element pro Bereich, kein Mega-Payload. PROFILE/TIMING/

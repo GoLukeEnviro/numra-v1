@@ -128,7 +128,7 @@ async def create_life_tracking_entry_route(
     person_id: uuid.UUID,
     body: LifeTrackingEntryCreateRequest,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> LifeTrackingEntryOut:
     await _require_person(db, person_id=person_id, user_id=user.id)
     await _validate_custom_metrics(db, person_id=person_id, custom_metrics=body.custom_metrics)
@@ -154,7 +154,7 @@ async def create_life_tracking_entry_route(
 async def list_life_tracking_entries_route(
     person_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     date_from: dt.date | None = Query(default=None, alias="from"),
     date_to: dt.date | None = Query(default=None, alias="to"),
     limit: int = Query(default=50, ge=1, le=200),
@@ -177,7 +177,7 @@ async def list_life_tracking_entries_route(
 async def get_life_tracking_entry_route(
     entry_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> LifeTrackingEntryOut:
     entry = await get_life_tracking_entry_for_user(db, entry_id=entry_id, user_id=user.id)
     if entry is None:
@@ -194,7 +194,7 @@ async def patch_life_tracking_entry_route(
     entry_id: uuid.UUID,
     body: LifeTrackingEntryPatchRequest,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> LifeTrackingEntryOut:
     entry = await get_life_tracking_entry_for_user(db, entry_id=entry_id, user_id=user.id)
     if entry is None:
@@ -221,7 +221,7 @@ async def patch_life_tracking_entry_route(
 async def delete_life_tracking_entry_route(
     entry_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> None:
     entry = await get_life_tracking_entry_for_user(db, entry_id=entry_id, user_id=user.id)
     if entry is None:
@@ -239,7 +239,7 @@ async def create_custom_metric_definition_route(
     person_id: uuid.UUID,
     body: CustomMetricDefinitionCreateRequest,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> CustomMetricDefinitionOut:
     await _require_person(db, person_id=person_id, user_id=user.id)
 
@@ -270,7 +270,7 @@ async def create_custom_metric_definition_route(
 async def list_custom_metric_definitions_route(
     person_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> list[CustomMetricDefinitionOut]:
     await _require_person(db, person_id=person_id, user_id=user.id)
     definitions = await list_custom_metric_definitions_for_person(db, person_id=person_id)
@@ -286,7 +286,7 @@ async def patch_custom_metric_definition_route(
     definition_id: uuid.UUID,
     body: CustomMetricDefinitionPatchRequest,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> CustomMetricDefinitionOut:
     """Nur `label` und `active` sind aenderbar. `metric_key` steht gar nicht im
     Request-Schema -- Unveraenderlichkeit ist hier keine Laufzeitpruefung, sondern

@@ -80,7 +80,7 @@ async def _connection_to_out(
 async def create_invitation_route(
     body: ConnectionInvitationCreateRequest,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     settings: Settings = Depends(get_settings_dep),
     _rate_limit: None = Depends(
         rate_limit_by_user("connections:create_invitation", limit=10, window_seconds=3600)
@@ -102,7 +102,7 @@ async def create_invitation_route(
 @router.get("/invitations", response_model=list[ConnectionInvitationOut])
 async def list_invitations_route(
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> list[ConnectionInvitationOut]:
@@ -118,7 +118,7 @@ async def list_invitations_route(
 async def revoke_invitation_route(
     invitation_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> ConnectionInvitationOut:
     invitation = await revoke_own_invitation(
         db, invitation_id=invitation_id, inviter_user_id=user.id
@@ -129,7 +129,7 @@ async def revoke_invitation_route(
 @router.get("/invitations/redeem/{token}", response_model=ConnectionInvitationPreviewOut)
 async def preview_invitation_route(
     token: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> ConnectionInvitationPreviewOut:
     invitation = await preview_invitation(db, token=token)
     return ConnectionInvitationPreviewOut(
@@ -146,7 +146,7 @@ async def preview_invitation_route(
 async def redeem_invitation_route(
     body: RedeemInvitationRequest,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     _rate_limit: None = Depends(
         rate_limit_by_user("connections:redeem_invitation", limit=10, window_seconds=3600)
     ),
@@ -164,7 +164,7 @@ async def redeem_invitation_route(
 async def decline_invitation_route(
     invitation_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> ConnectionInvitationOut:
     invitation = await decline_own_invitation(db, invitation_id=invitation_id, declining_user=user)
     return _invitation_to_out(invitation)
@@ -173,7 +173,7 @@ async def decline_invitation_route(
 @router.get("", response_model=list[UserConnectionOut])
 async def list_connections_route(
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> list[UserConnectionOut]:
@@ -189,7 +189,7 @@ async def list_connections_route(
 async def dissolve_connection_route(
     connection_id: uuid.UUID,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> UserConnectionOut:
     connection = await dissolve_own_connection(db, connection_id=connection_id, user_id=user.id)
     return await _connection_to_out(db, connection, viewer_id=user.id)

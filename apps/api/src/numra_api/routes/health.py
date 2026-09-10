@@ -99,7 +99,9 @@ def _overall_status(states: dict[str, HealthState]) -> Literal["healthy", "unhea
 
 
 @router.get("/ready")
-async def ready(request: Request, db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
+async def ready(
+    request: Request, db: AsyncSession = Depends(get_db, scope="function")
+) -> dict[str, Any]:
     settings: Settings = request.app.state.settings
 
     cache: dict[str, Any] | None = getattr(request.app.state, "health_ready_cache", None)

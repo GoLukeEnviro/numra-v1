@@ -20,7 +20,7 @@ async def delete_all_route(
     body: DeleteAccountRequest,
     response: Response,
     user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     storage: ExportStorage = Depends(get_export_storage),
 ) -> None:
     if not verify_password(user.password_hash, body.password):
