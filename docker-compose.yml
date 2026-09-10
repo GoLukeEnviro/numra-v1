@@ -9,7 +9,17 @@ services:
     volumes:
       - numra_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U numra -d numra"]
+      # Do not probe the temporary init server or open connections while the
+      # final postmaster is still starting (that logs a FATAL despite healthy startup).
+      # postgres:16-alpine execs the final postmaster as PID 1; its lockfile status
+      # becomes "ready" only after startup. A zero-I/O TCP probe avoids a libpq
+      # startup packet racing with shutdown and producing a monitoring-only FATAL.
+      test:
+        - CMD-SHELL
+        - >-
+          test "$$(head -n 1 "$${PGDATA}/postmaster.pid" 2>/dev/null)" = 1
+          && sed -n '8p' "$${PGDATA}/postmaster.pid" | grep -q '^ready *$'
+          && nc -z -w 1 127.0.0.1 5432
       interval: 5s
       timeout: 5s
       retries: 10

@@ -167,3 +167,34 @@ und normalisierte LF-Zeilenenden beheben die Ursache. Der erste Encoding-Fix wur
 zusätzlich auf LF korrigiert, nachdem `git diff --check` doppelte CR-Zeichen zeigte.
 Format-Check, Lint und Diff-Check werden vor dem finalen Push vollständig wiederholt.
 Kein Re-Run desselben Commits und keine Abschwächung der CI.
+
+
+### Vollsuite und zusätzlicher Compose-Startup-Befund
+
+Run [34527452954](https://github.com/GoLukeEnviro/numra-v1/actions/runs/34527452954)
+auf `e8d12c8`: alle zwölf Checks erfolgreich; finale Python-Vollsuite **747 passed**,
+486,52 s. Separates Engine-Coverage-Gate: **110 passed, 100 %**.
+
+Der erste Run `34527084231` hatte neben Encoding einen zweiten Fehler: Compose-
+Browser-Journey **1 passed**, anschließend strikter Log-Audit rot. PostgreSQL meldete
+um 20:36:11.794 UTC `FATAL: the database system is starting up`, 173 ms vor seiner
+Ready-Meldung. Ein pg_isready-Startup-Paket war während Startup angekommen. Dies ist
+ein anderer Mechanismus als der bereits behobene Commit-vor-Response-Fehler.
+
+Die Compose-Härtung prüft vor einer Verbindung den finalen Postmaster (PID 1) und
+Statuszeile 8 (`ready`) der PID-Datei, anschließend TCP mit BusyBox `nc -z -w 1` ohne
+Nutzdaten. PostgreSQL behandelt EOF vor dem ersten Startup-Byte ausdrücklich ohne
+Fehlerlog; ein libpq-Startup-Paket könnte bei zwischenzeitlichem Shutdown dagegen
+weiterhin FATAL auslösen. Quellen: [PostgreSQL 16 postmaster.c](https://raw.githubusercontent.com/postgres/postgres/REL_16_STABLE/src/backend/postmaster/postmaster.c),
+[PID-Dateiformat](https://raw.githubusercontent.com/postgres/postgres/REL_16_STABLE/src/include/utils/pidfile.h).
+Der Log-Audit bleibt unverändert streng. Keine längere pauschale Wartezeit.
+
+Reproduzierbar: `uv run python scripts/verify_postgres_startup.py` — fünf frische
+Postgres-16-Container plus je ein Neustart desselben initialisierten anonymen Volumes,
+Health-Probes alle 100 ms: **10/10 gesund, SQL erreichbar, stdout UND stderr ohne
+Traceback/Unhandled/FATAL/panic**. Geschlossener TCP-Port muss jeweils scheitern.
+Container und ausschließlich ihre eigenen anonymen Volumes werden entfernt. Die
+PID-1-Annahme gilt für die vorhandene Compose-Konfiguration ohne init/Wrapper;
+bei späterer Änderung dieser Topologie muss der Healthcheck angepasst werden.
+Unabhängiger Nachreview des Startup-Mechanismus erfolgt. Die Härtung erhält einen
+neuen Commit und einen vollständigen neuen CI-Lauf vor Merge.
