@@ -17,8 +17,10 @@ from numra_api.repositories.consent import (
     create_consent_event,
     create_consent_grant,
     get_active_grant,
+    get_grant_for_key,
     get_grant_for_workspace,
     list_grants_for_workspace,
+    reactivate_grant,
     revoke_all_active_grants_for_workspace,
     revoke_grant,
 )
@@ -55,6 +57,28 @@ async def grant_consent(
     )
     if existing is not None:
         return existing
+
+    # Re-grant after revoke -- a revoked row already owns the unique slot for this
+    # key (specs/v2/consent-spec.md: "Revocable ... at any time" implies re-grant).
+    # Reactivate it and append a GRANTED event so the audit trail stays
+    # GRANTED -> REVOKED -> GRANTED on one grant_id. `version` is untouched: it is
+    # the scope-taxonomy version at creation time, not a re-grant counter.
+    revoked = await get_grant_for_key(
+        db,
+        workspace_id=workspace_id,
+        grantor_user_id=grantor_user_id,
+        grantee_user_id=grantee_user_id,
+        scope=scope,
+    )
+    if revoked is not None:
+        grant = await reactivate_grant(db, grant=revoked)
+        await create_consent_event(
+            db,
+            grant_id=grant.id,
+            event_type=ConsentEventType.GRANTED,
+            actor_user_id=grantor_user_id,
+        )
+        return grant
 
     grant = await create_consent_grant(
         db,

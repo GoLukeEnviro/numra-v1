@@ -4,8 +4,10 @@ import pytest
 from sqlalchemy import select
 
 from numra_api.auth.passwords import hash_password
-from numra_api.models import ConsentEvent
+from numra_api.models import ConsentEvent, ConsentGrant
 from numra_api.repositories.users import create_user
+from numra_api.services.consent_service import assert_consent
+from numra_api.services.errors import ConsentNotGranted
 
 pytestmark = pytest.mark.integration
 
@@ -136,6 +138,144 @@ async def test_revoke_writes_event_and_clears_grant(client, sessionmaker) -> Non
     assert "CORE_NUMEROLOGY" not in {
         g["scope"] for g in consent_a["granted_by_me"] if g["revoked_at"] is None
     }
+
+
+async def test_regrant_after_revoke_reactivates_same_grant(client, sessionmaker) -> None:
+    workspace_id = await _connect(
+        client, sessionmaker, "consent-regrant-a@example.com", "consent-regrant-b@example.com"
+    )
+    headers_a = await _switch_user(client, "consent-regrant-a@example.com")
+    path = f"/v1/workspaces/{workspace_id}/consent"
+
+    first = await client.post(f"{path}/grant", json={"scope": "PRIVATE_JOURNAL"}, headers=headers_a)
+    assert first.status_code == 201
+    grant_id = first.json()["id"]
+
+    revoke = await client.post(
+        f"{path}/revoke", json={"scope": "PRIVATE_JOURNAL"}, headers=headers_a
+    )
+    assert revoke.status_code == 200
+    assert revoke.json()["id"] == grant_id
+
+    regrant = await client.post(
+        f"{path}/grant", json={"scope": "PRIVATE_JOURNAL"}, headers=headers_a
+    )
+    assert regrant.status_code == 201
+    assert regrant.json()["id"] == grant_id
+    assert regrant.json()["revoked_at"] is None
+
+    async with sessionmaker() as db:
+        events = (
+            (await db.execute(select(ConsentEvent).where(ConsentEvent.grant_id == grant_id)))
+            .scalars()
+            .all()
+        )
+        ordered = [e.event_type for e in sorted(events, key=lambda e: e.occurred_at)]
+        assert len(ordered) == 3
+        assert ordered.count("GRANTED") == 2
+        assert ordered.count("REVOKED") == 1
+        assert ordered[0] == "GRANTED"
+        assert ordered[-1] == "GRANTED"
+        grant = (
+            await db.execute(select(ConsentGrant).where(ConsentGrant.id == grant_id))
+        ).scalar_one()
+        # assert_consent passes again for the grantee after the re-grant.
+        await assert_consent(
+            db,
+            workspace_id=workspace_id,
+            grantor_user_id=grant.grantor_user_id,
+            grantee_user_id=grant.grantee_user_id,
+            scope="PRIVATE_JOURNAL",
+        )
+
+
+async def test_regrant_leaves_opposite_direction_independent(client, sessionmaker) -> None:
+    workspace_id = await _connect(
+        client, sessionmaker, "consent-regdir-a@example.com", "consent-regdir-b@example.com"
+    )
+    path = f"/v1/workspaces/{workspace_id}/consent"
+
+    headers_a = await _switch_user(client, "consent-regdir-a@example.com")
+    grant_a = await client.post(
+        f"{path}/grant", json={"scope": "PRIVATE_JOURNAL"}, headers=headers_a
+    )
+    await client.post(f"{path}/revoke", json={"scope": "PRIVATE_JOURNAL"}, headers=headers_a)
+    regrant_a = await client.post(
+        f"{path}/grant", json={"scope": "PRIVATE_JOURNAL"}, headers=headers_a
+    )
+    assert regrant_a.json()["id"] == grant_a.json()["id"]
+
+    headers_b = await _switch_user(client, "consent-regdir-b@example.com")
+    grant_b = await client.post(
+        f"{path}/grant", json={"scope": "PRIVATE_JOURNAL"}, headers=headers_b
+    )
+    assert grant_b.status_code == 201
+    assert grant_b.json()["id"] != grant_a.json()["id"]
+
+    headers_a = await _switch_user(client, "consent-regdir-a@example.com")
+    consent_a = (await client.get(path, headers=headers_a)).json()
+    active_by_a = {g["scope"] for g in consent_a["granted_by_me"] if g["revoked_at"] is None}
+    assert "PRIVATE_JOURNAL" in active_by_a
+
+
+async def test_grant_on_active_scope_is_idempotent(client, sessionmaker) -> None:
+    workspace_id = await _connect(
+        client, sessionmaker, "consent-idem-a@example.com", "consent-idem-b@example.com"
+    )
+    headers_a = await _switch_user(client, "consent-idem-a@example.com")
+    path = f"/v1/workspaces/{workspace_id}/consent"
+
+    first = await client.post(f"{path}/grant", json={"scope": "CORE_NUMEROLOGY"}, headers=headers_a)
+    second = await client.post(
+        f"{path}/grant", json={"scope": "CORE_NUMEROLOGY"}, headers=headers_a
+    )
+    assert first.status_code == 201
+    assert second.status_code == 201
+    assert first.json()["id"] == second.json()["id"]
+    assert second.json()["revoked_at"] is None
+
+    async with sessionmaker() as db:
+        granted_events = (
+            (
+                await db.execute(
+                    select(ConsentEvent).where(
+                        ConsentEvent.grant_id == first.json()["id"],
+                        ConsentEvent.event_type == "GRANTED",
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        # Only the single GRANTED event from the workspace's default auto-grant --
+        # the two idempotent re-grants add nothing.
+        assert len(granted_events) == 1
+
+
+async def test_assert_consent_fails_after_revoke_without_regrant(client, sessionmaker) -> None:
+    workspace_id = await _connect(
+        client, sessionmaker, "consent-arev-a@example.com", "consent-arev-b@example.com"
+    )
+    headers_a = await _switch_user(client, "consent-arev-a@example.com")
+    path = f"/v1/workspaces/{workspace_id}/consent"
+
+    grant = (
+        await client.post(f"{path}/grant", json={"scope": "PRIVATE_JOURNAL"}, headers=headers_a)
+    ).json()
+    await client.post(f"{path}/revoke", json={"scope": "PRIVATE_JOURNAL"}, headers=headers_a)
+
+    async with sessionmaker() as db:
+        row = (
+            await db.execute(select(ConsentGrant).where(ConsentGrant.id == grant["id"]))
+        ).scalar_one()
+        with pytest.raises(ConsentNotGranted):
+            await assert_consent(
+                db,
+                workspace_id=workspace_id,
+                grantor_user_id=row.grantor_user_id,
+                grantee_user_id=row.grantee_user_id,
+                scope="PRIVATE_JOURNAL",
+            )
 
 
 async def test_only_grantor_can_revoke(client, sessionmaker) -> None:

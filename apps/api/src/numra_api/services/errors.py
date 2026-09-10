@@ -168,6 +168,18 @@ class ConsentNotGranted(ApplicationError):
     status_code = 403
 
 
+class ConsentGrantConflict(ApplicationError):
+    """Defense-in-depth for `grant_consent` losing a race: two concurrent grant
+    requests for the same `(workspace, grantor, grantee, scope)` slot -- the
+    reactivate/create branch loses to the other request's INSERT, and the unique
+    index `uq_consent_grants_workspace_grantor_grantee_scope_version` is the only
+    real arbiter. Same rationale as `EmailAlreadyRegistered` in
+    routes/auth.py::register -- surfaces as 409, never a raw driver 500."""
+
+    code = "CONSENT_GRANT_CONFLICT"
+    status_code = 409
+
+
 class WorkspaceDissolved(ApplicationError):
     code = "WORKSPACE_DISSOLVED"
     status_code = 409
