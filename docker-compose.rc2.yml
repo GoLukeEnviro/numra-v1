@@ -1,0 +1,50 @@
+# RC2 Playwright real-journey overlay -- REALITY_CHECK_2 Phase 2.
+#
+# Used only with an explicit, isolated project name and this file layered on top
+# of docker-compose.yml. The wrapper script scripts/rc2-e2e.sh sets the required
+# interpolation vars and runs:
+#
+#   docker compose -p numra-rc2 -f docker-compose.yml -f docker-compose.rc2.yml ...
+#
+# It never touches the default `docker compose` project: a distinct project name
+# gives distinct container names, network and named volumes, and every published
+# host port is remapped off the defaults so a parallel `numra-v1` stack keeps its
+# 5432 / 6379 / 4300 / 8000 / 3000.
+#
+# The V2 feature flags and ALLOW_SELF_SIGNUP / EMAIL_BACKEND=logging live here
+# only -- never in docker-compose.yml, .env.example or any committed production
+# default. ENVIRONMENT=test (set by the wrapper) is what permits EMAIL_BACKEND=
+# logging, so no real verification/invite mail is ever sent.
+
+services:
+  postgres:
+    # !override replaces the base list instead of appending to it, so the default
+    # 5432 is not also published (Compose merges sequence fields by concatenation).
+    ports: !override
+      - "55432:5432"
+
+  redis:
+    ports: !override
+      - "56379:6379"
+
+  pdf:
+    ports: !override
+      - "44300:4300"
+
+  api:
+    environment:
+      EMAIL_BACKEND: logging
+      AVENYTH_V2_ENABLED: "true"
+      AVENYTH_CONNECTIONS_ENABLED: "true"
+      AVENYTH_RELATIONSHIP_WORKSPACES_ENABLED: "true"
+      # redeem_url the API mints for LINK/EMAIL invitations, and the browser
+      # Origin allowlist for state-changing /api/* calls -- both the remapped web
+      # port, not the 3000 default.
+      WEB_APP_BASE_URL: http://localhost:3100
+      CORS_ALLOWED_ORIGINS: '["http://localhost:5173","http://localhost:3100"]'
+    ports: !override
+      - "58000:8000"
+
+  web:
+    ports: !override
+      - "3100:3000"
