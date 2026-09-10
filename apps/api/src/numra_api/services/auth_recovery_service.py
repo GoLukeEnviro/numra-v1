@@ -71,7 +71,7 @@ async def request_email_verification(
     await create_verification_token(
         db, user_id=user.id, token_hash=hash_token(token), expires_at=expires_at
     )
-    link = f"{settings.web_app_base_url}/verify-email?token={token}"
+    link = settings.build_web_app_url(f"/verify-email?token={token}")
     subject, text_body, html_body = _verification_email_content(
         link=link, brand=settings.app_brand_name
     )
@@ -115,7 +115,7 @@ async def forgot_password(
     await create_password_reset_token(
         db, user_id=user.id, token_hash=hash_token(token), expires_at=expires_at
     )
-    link = f"{settings.web_app_base_url}/reset-password?token={token}"
+    link = settings.build_web_app_url(f"/reset-password?token={token}")
     subject, text_body, html_body = _password_reset_email_content(
         link=link, brand=settings.app_brand_name
     )

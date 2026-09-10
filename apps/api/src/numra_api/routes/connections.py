@@ -93,7 +93,7 @@ async def create_invitation_route(
         invitee_email=body.invitee_email,
         settings=settings,
     )
-    redeem_url = f"{settings.web_app_base_url}/connections/redeem?token={token}"
+    redeem_url = settings.build_web_app_url(f"/connections/redeem?token={token}")
     return ConnectionInvitationCreatedOut(
         **_invitation_to_out(invitation).model_dump(), token=token, redeem_url=redeem_url
     )

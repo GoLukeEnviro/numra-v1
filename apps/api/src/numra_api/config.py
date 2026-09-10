@@ -87,12 +87,16 @@ class Settings(BaseSettings):
     #: forgot-password fail fast and legibly rather than one of them being silently
     #: mislabeled "sent". Same three-way shape as `numra_llm_provider`.
     email_backend: EmailBackend = "logging"
-    #: Base URL of the web app the verification/reset links point to (no trailing
-    #: slash assumed by callers -- see services/auth_recovery_service.py). This is
-    #: also the "PUBLIC_APP_BASE_URL" the SMTP mail templates build absolute links
-    #: from -- it already is exactly that (a public, absolute app base URL), so the
-    #: SMTP work reuses it instead of introducing a second, duplicate setting.
-    web_app_base_url: str = "http://localhost:5173"
+    #: Base URL of the web app that connection-invitation redeem links, verify-email
+    #: links, and reset-password links all point to -- see `build_web_app_url()`
+    #: below, the single place that joins this with a path (trailing slash on this
+    #: value is tolerated, see that method). This is also the "PUBLIC_APP_BASE_URL"
+    #: the SMTP mail templates build absolute links from -- it already is exactly
+    #: that (a public, absolute app base URL), so the SMTP work reuses it instead of
+    #: introducing a second, duplicate setting. Default matches the real local
+    #: Next.js dev/prod port (apps/web, see docker-compose.yml's `web` service and
+    #: `cors_allowed_origins` above) -- not Vite's 5173, which this app does not use.
+    web_app_base_url: str = "http://localhost:3000"
     email_verification_token_ttl_hours: int = 24
     password_reset_token_ttl_minutes: int = 60
 
@@ -130,6 +134,15 @@ class Settings(BaseSettings):
     @property
     def cookies_secure(self) -> bool:
         return self.environment == "production"
+
+    def build_web_app_url(self, path: str) -> str:
+        """Joins `web_app_base_url` with `path`, tolerating a trailing slash on the
+        base and/or a leading slash on the path -- the single place invitation
+        redeem links (routes/connections.py) and verify-email/reset-password links
+        (services/auth_recovery_service.py) build their absolute URL, so all three
+        stay consistent without duplicating the join logic. Never derived from
+        request Host/Forwarded headers -- always this explicit setting."""
+        return f"{self.web_app_base_url.rstrip('/')}/{path.lstrip('/')}"
 
     @model_validator(mode="after")
     def _forbid_mock_llm_provider_in_production(self) -> Settings:

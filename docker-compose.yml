@@ -50,6 +50,11 @@ services:
       PDF_INTERNAL_URL: http://pdf:4300
       PDF_INTERNAL_TOKEN: ${PDF_INTERNAL_TOKEN:?PDF_INTERNAL_TOKEN is required}
       EXPORT_STORAGE_DIR: /app/data/exports
+      # Public base URL of the web app -- builds connection-invitation redeem links
+      # and verify-email/reset-password links (config.py's build_web_app_url()).
+      # Defaults to the port the `web` service below publishes; a real deployment
+      # overrides it with its public origin. Never derived from request headers.
+      WEB_APP_BASE_URL: ${WEB_APP_BASE_URL:-http://localhost:3000}
       RATE_LIMIT_BACKEND: ${RATE_LIMIT_BACKEND:-redis}
       REDIS_URL: redis://redis:6379/0
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
