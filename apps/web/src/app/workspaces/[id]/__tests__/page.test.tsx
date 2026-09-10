@@ -23,6 +23,7 @@ vi.mock("@/api/client", async () => {
         get: vi.fn(),
         list: vi.fn(),
         patch: vi.fn(),
+        checkins: { current: vi.fn() },
         consent: { list: vi.fn() },
       },
       connections: { list: vi.fn() },
@@ -68,6 +69,7 @@ beforeEach(() => {
     refresh: vi.fn(),
   } as ReturnType<typeof useAuth>);
   vi.mocked(api.workspaces.get).mockReset();
+  vi.mocked(api.workspaces.checkins.current).mockReset().mockResolvedValue(null);
   vi.mocked(api.workspaces.list).mockReset().mockResolvedValue([]);
   vi.mocked(api.workspaces.consent.list).mockReset().mockResolvedValue({ granted_by_me: [], granted_to_me: [] });
   vi.mocked(api.connections.list).mockReset().mockResolvedValue([]);
@@ -81,12 +83,12 @@ describe("RelationshipWorkspaceHubPage", () => {
     expect(await screen.findByRole("heading", { name: "Ada Lovelace", level: 1 })).toBeInTheDocument();
   });
 
-  it("renders the five remaining feature stub cards and a real Dynamics link", async () => {
+  it("renders the remaining feature stubs and real Dynamics and Check-ins links", async () => {
     vi.mocked(api.workspaces.get).mockResolvedValue(overview());
     renderPage();
 
     await screen.findByRole("heading", { name: "Ada Lovelace", level: 1 });
-    for (const title of ["Check-ins", "Aufgaben", "Roadmap", "Geteilte Reflexion", "Copilot"]) {
+    for (const title of ["Aufgaben", "Roadmap", "Geteilte Reflexion", "Copilot"]) {
       expect(screen.getAllByText(title).length).toBeGreaterThan(0);
     }
     const dynamicsLinks = screen
@@ -97,6 +99,10 @@ describe("RelationshipWorkspaceHubPage", () => {
     expect(
       dynamicsLinks.some((el) => /Beziehungsdimensionen/.test(el.textContent ?? "")),
     ).toBe(true);
+    expect(screen.getByRole("link", { name: /Eine gemeinsame Runde starten/ })).toHaveAttribute(
+      "href",
+      "/workspaces/ws-1/checkins",
+    );
   });
 
   it("keeps showing Loading instead of stale data while the workspace id in the response does not yet match the route (state isolation)", async () => {

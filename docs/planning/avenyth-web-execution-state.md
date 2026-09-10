@@ -3,14 +3,21 @@
 - **PLAN_VERSION:** 2
 - **VERIFIED_IMPLEMENTATION_MAIN_SHA:** 16d7e1a9cc33764af7180365fc80d86a4377f32b
 - **CURRENT_SEGMENT:** SEGMENT_C
-- **CURRENT_PR:** WEB-06a abgeschlossen in PR #53; dieser Nachtrag enthält die Abschlussdokumentation.
+- **CURRENT_PR:** #55 (WEB-06b), PR-CI ausstehend.
 - **LAST_MERGED_IMPLEMENTATION_PR:** #53 (WEB-06a)
 - **LAST_GREEN_IMPLEMENTATION_MAIN_SHA:** 16d7e1a9cc33764af7180365fc80d86a4377f32b
-- **CURRENT_TASK:** A1–A10, Migration, API/Client, Review, PR-CI und Post-Merge-CI abgeschlossen.
-- **NEXT_ACTION:** Finalen WEB-06b-Umfang vorlegen; Umsetzung erst in gesondertem Auftrag.
-- **HUMAN_GATE_REQUIRED:** false für den abgeschlossenen WEB-06a-Auftrag
+- **CURRENT_TASK:** WEB-06b Check-in-Frontend, Review und lokale Verifikation abgeschlossen.
+- **NEXT_ACTION:** Alle zwölf Required Checks auf dem exakten finalen PR-Head prüfen.
+- **HUMAN_GATE_REQUIRED:** false
 - **OPEN_BLOCKERS:** none
-- **LAST_UPDATED_AT:** 2026-09-10
+- **LAST_UPDATED_AT:** 2026-09-11
+
+## Laufend WEB-06b
+
+Check-in-Journey, Konfiguration, Historie, Datenschutz- und Retry-Grenzen sind
+implementiert. Lokale Nachweise und unabhängige Review:
+[WEB-06b-Evidence](pr-web-06b-evidence.md). Kein Produktionsdeployment und keine
+Aktivierung eines Produktionsflags.
 
 ## Abschluss WEB-06a
 

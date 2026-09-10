@@ -19,6 +19,7 @@ export function WorkspaceNavTabs({ workspaceId }: WorkspaceNavTabsProps) {
   const tabs = [
     { href: `/workspaces/${workspaceId}`, label: t("app.relationshipWorkspace.tabOverview") },
     { href: `/workspaces/${workspaceId}/dynamics`, label: t("app.relationshipWorkspace.tabDynamics") },
+    { href: `/workspaces/${workspaceId}/checkins`, label: t("app.relationshipWorkspace.tabCheckins") },
     { href: `/workspaces/${workspaceId}/consent`, label: t("app.relationshipWorkspace.tabConsent") },
   ];
 
@@ -32,7 +33,7 @@ export function WorkspaceNavTabs({ workspaceId }: WorkspaceNavTabsProps) {
             href={tab.href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "border-b-2 px-3 py-2 text-sm font-medium transition-colors",
+              "whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium transition-colors",
               active ? "border-gold text-ivory" : "border-transparent text-muted hover:text-text",
             )}
           >
