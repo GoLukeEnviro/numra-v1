@@ -16,6 +16,7 @@ import numra_api.repositories.relationship_roadmaps as roadmaps_repo
 import numra_api.repositories.workspace_tasks as tasks_repo
 from numra_api.models import WorkspaceTask
 from numra_api.models.enums import (
+    RoadmapStatus,
     TaskAcceptanceEventType,
     TaskType,
     WorkspaceMemberStatus,
@@ -27,6 +28,7 @@ from numra_api.services.errors import (
     InvalidRecipient,
     MilestoneNotInWorkspace,
     NotFoundError,
+    RoadmapArchived,
     TaskNotDeletable,
     TaskTransitionConflict,
 )
@@ -99,6 +101,11 @@ async def _require_milestone_in_workspace(
         raise MilestoneNotInWorkspace(
             f"milestone {roadmap_milestone_id} does not belong to workspace {workspace_id}"
         )
+    roadmap = await roadmaps_repo.get_roadmap_for_workspace(
+        db, roadmap_id=milestone.roadmap_id, workspace_id=workspace_id
+    )
+    if roadmap is not None and roadmap.status == RoadmapStatus.ARCHIVED:
+        raise RoadmapArchived(f"roadmap {roadmap.id} is archived and read-only")
 
 
 async def create_task(
@@ -366,6 +373,12 @@ async def patch_task(
     if due_date_set:
         updates["due_date"] = due_date
     if roadmap_milestone_id_set:
+        if task.roadmap_milestone_id is not None:
+            await _require_milestone_in_workspace(
+                db,
+                workspace_id=workspace_id,
+                roadmap_milestone_id=task.roadmap_milestone_id,
+            )
         if roadmap_milestone_id is not None:
             await _require_milestone_in_workspace(
                 db, workspace_id=workspace_id, roadmap_milestone_id=roadmap_milestone_id
@@ -376,14 +389,32 @@ async def patch_task(
     if status is not None:
         if status not in _PATCHABLE_STATUSES:
             raise TaskTransitionConflict(f"status {status} cannot be set directly via PATCH")
-        updates["status"] = status
+        expected = task.status
+        allowed = (
+            {WorkspaceTaskStatus.ACTIVE}
+            if status == WorkspaceTaskStatus.COMPLETED
+            else {
+                WorkspaceTaskStatus.PROPOSED,
+                WorkspaceTaskStatus.ACCEPTED,
+                WorkspaceTaskStatus.ACTIVE,
+                WorkspaceTaskStatus.COMPLETED,
+            }
+        )
+        if expected not in allowed:
+            raise TaskTransitionConflict(f"task {task_id} cannot transition to {status}")
+        won = await tasks_repo.conditionally_transition_status(
+            db, task_id=task.id, expected_status=expected, new_status=status
+        )
+        if not won:
+            raise TaskTransitionConflict(f"task {task_id} changed concurrently")
+        await db.refresh(task)
         # completed_at is server-derived, never client-supplied -- same
         # discipline as PersonalTask (routes/personal_tasks.py).
         if status == WorkspaceTaskStatus.COMPLETED:
             updates["completed_at"] = dt.datetime.now(dt.UTC)
             event_type = TaskAcceptanceEventType.COMPLETED
         else:
-            if task.status == WorkspaceTaskStatus.COMPLETED:
+            if expected == WorkspaceTaskStatus.COMPLETED:
                 updates["completed_at"] = None
             event_type = TaskAcceptanceEventType.ARCHIVED
 

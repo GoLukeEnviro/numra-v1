@@ -735,6 +735,14 @@ export const api = {
           method: "POST",
         }),
     },
+    sharedReflections: {
+      list: (workspaceId: string, params: { limit?: number; offset?: number } = {}) =>
+        request<SharedReflectionOut[]>(`/v1/workspaces/${workspaceId}/shared-reflections`, {
+          query: { limit: String(params.limit ?? 200), offset: String(params.offset ?? 0) },
+        }),
+      remove: (workspaceId: string, reflectionId: string) =>
+        request<void>(`/v1/workspaces/${workspaceId}/shared-reflections/${reflectionId}`, { method: "DELETE" }),
+    },
     roadmaps: {
       list: (workspaceId: string, params: { limit?: number; offset?: number } = {}) =>
         request<RelationshipRoadmapOut[]>(`/v1/workspaces/${workspaceId}/roadmaps`, {

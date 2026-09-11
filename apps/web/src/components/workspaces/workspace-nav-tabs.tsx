@@ -9,9 +9,7 @@ export interface WorkspaceNavTabsProps {
   workspaceId: string;
 }
 
-/** Simple three-link nav (Overview / Dynamics / Consent) shared by the hub, the
- *  dynamics page and the consent page -- no Radix Tabs, no new layout file, active
- *  state from `usePathname()`. */
+/** Shared relationship-workspace navigation with active state from `usePathname()`. */
 export function WorkspaceNavTabs({ workspaceId }: WorkspaceNavTabsProps) {
   const pathname = usePathname();
   const { t } = useLocale();
@@ -21,11 +19,13 @@ export function WorkspaceNavTabs({ workspaceId }: WorkspaceNavTabsProps) {
     { href: `/workspaces/${workspaceId}/dynamics`, label: t("app.relationshipWorkspace.tabDynamics") },
     { href: `/workspaces/${workspaceId}/checkins`, label: t("app.relationshipWorkspace.tabCheckins") },
     { href: `/workspaces/${workspaceId}/tasks`, label: t("app.relationshipWorkspace.tabTasks") },
+    { href: `/workspaces/${workspaceId}/roadmaps`, label: t("app.roadmaps.heading") },
+    { href: `/workspaces/${workspaceId}/reflections`, label: t("app.reflections.heading") },
     { href: `/workspaces/${workspaceId}/consent`, label: t("app.relationshipWorkspace.tabConsent") },
   ];
 
   return (
-    <nav className="mb-6 flex gap-1 border-b border-white/10">
+    <nav className="mb-6 flex flex-wrap gap-1 border-b border-white/10">
       {tabs.map((tab) => {
         const active = pathname === tab.href;
         return (

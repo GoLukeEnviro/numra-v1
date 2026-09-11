@@ -45,7 +45,7 @@ services:
       WEB_APP_BASE_URL: http://localhost:3100
       CORS_ALLOWED_ORIGINS: '["http://localhost:5173","http://localhost:3100"]'
     ports: !override
-      - "58000:8000"
+      - "58080:8000"
 
   web:
     ports: !override

@@ -298,6 +298,21 @@ async def test_task_milestone_link_cross_workspace_is_422(client, sessionmaker) 
     assert task.status_code == 422
     assert task.json()["code"] == "MILESTONE_NOT_IN_WORKSPACE"
 
+    local_task = (
+        await client.post(
+            f"/v1/workspaces/{workspace_y}/tasks",
+            json={"task_type": "JOINT_SHARED", "title": "Local task"},
+            headers=headers_y,
+        )
+    ).json()
+    patch = await client.patch(
+        f"/v1/workspaces/{workspace_y}/tasks/{local_task['id']}",
+        json={"roadmap_milestone_id": milestone_x["id"]},
+        headers=headers_y,
+    )
+    assert patch.status_code == 422
+    assert patch.json()["code"] == "MILESTONE_NOT_IN_WORKSPACE"
+
 
 # ---------------------------------------------------------------------------
 # IDOR

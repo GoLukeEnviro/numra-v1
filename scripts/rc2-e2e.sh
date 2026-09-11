@@ -29,10 +29,10 @@ case "${1:-}" in
     "${COMPOSE[@]}" build
     "${COMPOSE[@]}" up -d
     echo "waiting for api liveness/readiness + web ..."
-    for i in $(seq 1 90); do curl -sf http://127.0.0.1:58000/v1/health/live >/dev/null && break; sleep 2; done
-    curl -sf http://127.0.0.1:58000/v1/health/live  || { "${COMPOSE[@]}" logs; exit 1; }
-    for i in $(seq 1 90); do curl -sf http://127.0.0.1:58000/v1/health/ready >/dev/null && break; sleep 2; done
-    curl -sf http://127.0.0.1:58000/v1/health/ready || { "${COMPOSE[@]}" logs; exit 1; }
+    for i in $(seq 1 90); do curl -sf http://127.0.0.1:58080/v1/health/live >/dev/null && break; sleep 2; done
+    curl -sf http://127.0.0.1:58080/v1/health/live  || { "${COMPOSE[@]}" logs; exit 1; }
+    for i in $(seq 1 90); do curl -sf http://127.0.0.1:58080/v1/health/ready >/dev/null && break; sleep 2; done
+    curl -sf http://127.0.0.1:58080/v1/health/ready || { "${COMPOSE[@]}" logs; exit 1; }
     for i in $(seq 1 90); do curl -sf http://127.0.0.1:3100/login >/dev/null && break; sleep 2; done
     curl -sf http://127.0.0.1:3100/login >/dev/null || { "${COMPOSE[@]}" logs; exit 1; }
     "${COMPOSE[@]}" ps --all

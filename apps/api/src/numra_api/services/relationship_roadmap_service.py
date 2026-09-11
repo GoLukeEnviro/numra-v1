@@ -189,6 +189,7 @@ async def delete_roadmap(
 ) -> None:
     member = await get_workspace_member(db, workspace_id=workspace_id, user_id=user_id)
     _require_member(member, workspace_id=workspace_id)
+    await assert_workspace_active_by_id(db, workspace_id=workspace_id)
 
     roadmap = await roadmaps_repo.get_roadmap_for_workspace(
         db, roadmap_id=roadmap_id, workspace_id=workspace_id
@@ -229,7 +230,11 @@ async def create_milestone(
 
     await assert_workspace_active_by_id(db, workspace_id=workspace_id)
 
-    await _require_roadmap_for_workspace(db, workspace_id=workspace_id, roadmap_id=roadmap_id)
+    roadmap = await _require_roadmap_for_workspace(
+        db, workspace_id=workspace_id, roadmap_id=roadmap_id
+    )
+    if roadmap.status == RoadmapStatus.ARCHIVED:
+        raise RoadmapArchived(f"roadmap {roadmap_id} is archived and read-only")
 
     return await roadmaps_repo.create_milestone(
         db,
@@ -298,7 +303,11 @@ async def patch_milestone(
 
     await assert_workspace_active_by_id(db, workspace_id=workspace_id)
 
-    await _require_roadmap_for_workspace(db, workspace_id=workspace_id, roadmap_id=roadmap_id)
+    roadmap = await _require_roadmap_for_workspace(
+        db, workspace_id=workspace_id, roadmap_id=roadmap_id
+    )
+    if roadmap.status == RoadmapStatus.ARCHIVED:
+        raise RoadmapArchived(f"roadmap {roadmap_id} is archived and read-only")
 
     milestone = await roadmaps_repo.get_milestone_for_roadmap(
         db, milestone_id=milestone_id, roadmap_id=roadmap_id
@@ -340,7 +349,12 @@ async def delete_milestone(
 ) -> None:
     member = await get_workspace_member(db, workspace_id=workspace_id, user_id=user_id)
     _require_member(member, workspace_id=workspace_id)
-    await _require_roadmap_for_workspace(db, workspace_id=workspace_id, roadmap_id=roadmap_id)
+    await assert_workspace_active_by_id(db, workspace_id=workspace_id)
+    roadmap = await _require_roadmap_for_workspace(
+        db, workspace_id=workspace_id, roadmap_id=roadmap_id
+    )
+    if roadmap.status == RoadmapStatus.ARCHIVED:
+        raise RoadmapArchived(f"roadmap {roadmap_id} is archived and read-only")
 
     milestone = await roadmaps_repo.get_milestone_for_roadmap(
         db, milestone_id=milestone_id, roadmap_id=roadmap_id

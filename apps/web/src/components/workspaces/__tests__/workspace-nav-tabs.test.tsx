@@ -15,10 +15,10 @@ function renderTabs() {
 }
 
 describe("WorkspaceNavTabs", () => {
-  it("renders the five workspace tabs", () => {
+  it("renders the seven workspace tabs", () => {
     usePathname.mockReturnValue("/workspaces/ws-1");
     renderTabs();
-    expect(screen.getAllByRole("link")).toHaveLength(5);
+    expect(screen.getAllByRole("link")).toHaveLength(7);
     expect(screen.getByRole("link", { name: "Dynamiken" })).toHaveAttribute(
       "href",
       "/workspaces/ws-1/dynamics",
@@ -42,6 +42,15 @@ describe("WorkspaceNavTabs", () => {
     renderTabs();
     expect(screen.getByRole("link", { name: "Dynamiken" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("link", { name: "Übersicht" })).not.toHaveAttribute("aria-current");
+  });
+
+  it.each([
+    ["/workspaces/ws-1/roadmaps", "Roadmaps"],
+    ["/workspaces/ws-1/reflections", "Geteilte Reflexionen"],
+  ])("marks the WEB-08 tab active on %s", (path, label) => {
+    usePathname.mockReturnValue(path);
+    renderTabs();
+    expect(screen.getByRole("link", { name: label })).toHaveAttribute("aria-current", "page");
   });
 
   it("marks the Overview tab active on the hub route", () => {

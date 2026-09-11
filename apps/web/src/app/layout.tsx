@@ -5,6 +5,9 @@ import { BRAND_NAME } from "@/lib/brand";
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
+// Request-scoped CSP nonces require dynamic HTML rather than prerendered scripts.
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: BRAND_NAME,
   description:
