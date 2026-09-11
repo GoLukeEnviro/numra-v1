@@ -69,11 +69,12 @@ __all__ = [
 _PROVIDER_NAME = "ollama_cloud"
 
 # See the module docstring's "NOTE ON MODEL DEFAULTS" — unverified placeholders.
-_DEFAULT_MODEL_PREMIUM = "llama3.1:70b"
-_DEFAULT_MODEL_FAST = "llama3.1:8b"
+_DEFAULT_MODEL_PREMIUM = "deepseek-v4-pro:0813"
+_DEFAULT_MODEL_FAST = "deepseek-v4.1-flash"
 _DEFAULT_TIMEOUT_SECONDS = 30.0
 _DEFAULT_MAX_RETRIES = 3
-_DEFAULT_TEMPERATURE = 0.2
+_DEFAULT_TEMPERATURE = 1.0
+_DEFAULT_TOP_P = 1.0
 _BACKOFF_BASE_SECONDS = 0.5
 
 
@@ -218,6 +219,7 @@ class OllamaCloudProvider:
         model_fast: str | None = None,
         timeout_seconds: float | None = None,
         temperature: float | None = None,
+        top_p: float | None = None,
         max_retries: int | None = None,
         client: httpx.AsyncClient | None = None,
     ) -> None:
@@ -236,6 +238,9 @@ class OllamaCloudProvider:
             temperature
             if temperature is not None
             else _read_env_float("NUMRA_LLM_TEMPERATURE", _DEFAULT_TEMPERATURE)
+        )
+        self._top_p = (
+            top_p if top_p is not None else _read_env_float("NUMRA_LLM_TOP_P", _DEFAULT_TOP_P)
         )
         self._max_retries = (
             max_retries
@@ -358,7 +363,7 @@ class OllamaCloudProvider:
             "model": model,
             "messages": _build_messages(request),
             "stream": False,
-            "options": {"temperature": self._temperature},
+            "options": {"temperature": self._temperature, "top_p": self._top_p},
         }
         data = await self._post_chat_with_retry(payload)
         try:
@@ -385,7 +390,7 @@ class OllamaCloudProvider:
             "messages": _build_structured_messages(request, schema),
             "format": "json",
             "stream": False,
-            "options": {"temperature": self._temperature},
+            "options": {"temperature": self._temperature, "top_p": self._top_p},
         }
         data = await self._post_chat_with_retry(payload)
         try:
