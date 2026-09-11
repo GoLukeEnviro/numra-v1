@@ -172,6 +172,9 @@ test("RC2 two-account journey: connections/consent/dual-profile/type/dissolve ov
     // Measured-viewport gate -- BEFORE any product assertion, per context.
     await assertMeasuredViewport(A, vp);
     await assertMeasuredViewport(B, vp);
+    await expect
+      .poll(() => A.evaluate(async () => (await navigator.serviceWorker.getRegistrations()).length))
+      .toBeGreaterThan(0);
 
     await createSelfProfileViaUi(A, "Lukas", "Springer", "1986-07-18");
     await createSelfProfileViaUi(B, "Anna", "Berger", "1990-03-14");
@@ -425,6 +428,48 @@ test("RC2 two-account journey: connections/consent/dual-profile/type/dissolve ov
     await expect(A.getByRole("button", { name: "Als erledigt markieren" })).toBeVisible();
     await shoot(A, "09-task-accepted");
 
+    // --- WEB-08: A creates a roadmap with a review point and links the accepted
+    // shared task. B reads the same artifacts from an independent session.
+    await A.goto(`/workspaces/${workspaceId}/roadmaps`);
+    await A.getByRole("button", { name: "Roadmap anlegen" }).click();
+    await A.getByLabel("Titel").fill("Unser nächster gemeinsamer Abschnitt");
+    await A.getByLabel("Zeitraum").selectOption("30_DAY");
+    await A.locator("form").getByRole("button", { name: "Anlegen" }).click();
+    await expect(A.getByText("Unser nächster gemeinsamer Abschnitt", { exact: true })).toBeVisible();
+    await A.getByRole("button", { name: "Schritt hinzufügen" }).click();
+    const stepForm = A.locator("form", { has: A.getByLabel("Art des Schritts") });
+    await stepForm.getByLabel("Titel").fill("Gemeinsam zurückblicken");
+    await stepForm.getByLabel("Beschreibung").fill("Was hat uns in diesem Monat gutgetan?");
+    await stepForm.getByLabel("Art des Schritts").selectOption("REVIEW_POINT");
+    await stepForm.getByRole("button", { name: "Anlegen" }).click();
+    await expect(A.getByText("Gemeinsam zurückblicken", { exact: true })).toBeVisible();
+    await A.getByLabel("Aufgabe zuordnen").selectOption({ label: "Sonntag gemeinsam spazieren gehen" });
+    await expect(A.getByText(/Sonntag gemeinsam spazieren gehen/).last()).toBeVisible();
+
+    await B.goto(`/workspaces/${workspaceId}/roadmaps`);
+    await expect(B.getByText("Unser nächster gemeinsamer Abschnitt", { exact: true })).toBeVisible();
+    await expect(B.getByText("Gemeinsam zurückblicken", { exact: true })).toBeVisible();
+    await shoot(B, "10-web08-roadmap-shared");
+
+    // A writes a private reflection in the private person workspace, then shares
+    // an explicit immutable copy. B never receives access to the private source.
+    await A.goto(`/workspaces/${workspaceId}/reflections`);
+    await A.getByRole("link", { name: "Zum privaten Workspace" }).click();
+    await A.getByRole("button", { name: "Neuer Eintrag", exact: true }).click();
+    await A.getByLabel("Inhalt").fill("Ich wünsche mir mehr ruhige Zeit für unsere Gespräche.");
+    await A.getByRole("button", { name: "Speichern", exact: true }).click();
+    await expect(A.getByText("Ich wünsche mir mehr ruhige Zeit für unsere Gespräche.", { exact: true })).toBeVisible();
+    await A.goto(`/workspaces/${workspaceId}/reflections`);
+    await A.getByRole("button", { name: "Private Reflexion auswählen" }).click();
+    await A.getByLabel("Deine private Reflexion").selectOption({ index: 1 });
+    await expect(A.getByRole("heading", { name: "Vorschau der geteilten Kopie" })).toBeVisible();
+    await A.getByRole("button", { name: "Kopie jetzt teilen" }).click();
+    await expect(A.getByText("Ich wünsche mir mehr ruhige Zeit für unsere Gespräche.", { exact: true })).toBeVisible();
+    await B.goto(`/workspaces/${workspaceId}/reflections`);
+    await expect(B.getByText("Ich wünsche mir mehr ruhige Zeit für unsere Gespräche.", { exact: true })).toBeVisible();
+    await expect(B.getByRole("button", { name: "Geteilte Kopie entfernen" })).toHaveCount(0);
+    await shoot(B, "11-web08-explicit-shared-reflection");
+
     // --- Dissolve via the UI ---
     await A.goto("/connections");
     await A.getByRole("button", { name: "Verbindung auflösen" }).click();
@@ -449,6 +494,14 @@ test("RC2 two-account journey: connections/consent/dual-profile/type/dissolve ov
     await expect(A.getByText("Sonntag gemeinsam spazieren gehen", { exact: true })).toBeVisible();
     await expect(A.getByRole("button", { name: "Aufgabe anlegen" })).toHaveCount(0);
     await expect(A.getByRole("button", { name: "Als erledigt markieren" })).toHaveCount(0);
+
+    await A.goto(`/workspaces/${workspaceId}/roadmaps`);
+    await expect(A.getByText("Unser nächster gemeinsamer Abschnitt", { exact: true })).toBeVisible();
+    await expect(A.getByRole("button", { name: "Schritt hinzufügen" })).toHaveCount(0);
+    await A.goto(`/workspaces/${workspaceId}/reflections`);
+    await expect(A.getByText("Ich wünsche mir mehr ruhige Zeit für unsere Gespräche.", { exact: true })).toBeVisible();
+    await expect(A.getByRole("button", { name: "Kopie jetzt teilen" })).toHaveCount(0);
+    await expect(A.getByRole("button", { name: "Geteilte Kopie entfernen" })).toHaveCount(0);
 
     // Mutation lock, same-origin: PATCH -> 409 WORKSPACE_DISSOLVED, GET -> 200.
     const csrf = (await ctxA.cookies()).find((c) => c.name === "numra_csrf")?.value ?? "";

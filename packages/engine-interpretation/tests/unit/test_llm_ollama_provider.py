@@ -7,7 +7,11 @@ import httpx
 import pytest
 from pydantic import BaseModel
 
-from numra_interpretation.llm.ollama_provider import OllamaCloudProvider, OllamaProviderError
+from numra_interpretation.llm.ollama_provider import (
+    OllamaCloudProvider,
+    OllamaProviderError,
+    OllamaTimeoutError,
+)
 from numra_interpretation.llm.types import GenerationRequest, StructuredGenerationRequest
 
 pytestmark = pytest.mark.unit
@@ -153,6 +157,20 @@ def test_generate_retries_then_raises_after_max_attempts(monkeypatch) -> None:
     with pytest.raises(OllamaProviderError, match="failed after 3 attempts"):
         asyncio.run(provider.generate(request))
     assert attempts["count"] == 3
+
+
+def test_generate_maps_http_timeout_to_provider_timeout(monkeypatch) -> None:
+    monkeypatch.setenv("OLLAMA_BASE_URL", "https://ollama.example.invalid")
+    monkeypatch.setenv("OLLAMA_API_KEY", "test-key")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ReadTimeout("synthetic timeout", request=request)
+
+    provider = OllamaCloudProvider(
+        client=_client_with_transport(handler), timeout_seconds=0.01, max_retries=1
+    )
+    with pytest.raises(OllamaTimeoutError, match="timed out"):
+        asyncio.run(provider.generate(GenerationRequest(system_instructions="x")))
 
 
 def test_generate_structured_parses_json_content_into_schema(monkeypatch) -> None:

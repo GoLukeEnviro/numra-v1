@@ -101,6 +101,7 @@ async def delete_shared_reflection(
         # 403 that would confirm the row exists.
         raise NotFoundError(f"shared reflection {reflection_id} not found")
 
+    await assert_workspace_active_by_id(db, workspace_id=workspace_id)
     await shared_reflections_repo.delete_shared_reflection(db, reflection=reflection)
 
 
