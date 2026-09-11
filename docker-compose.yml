@@ -54,10 +54,13 @@ services:
       EMAIL_BACKEND: ${EMAIL_BACKEND:-disabled}
       NUMRA_LLM_PROVIDER: ${NUMRA_LLM_PROVIDER:-disabled}
       NUMRA_LLM_MAX_RETRIES: ${NUMRA_LLM_MAX_RETRIES:-3}
+      NUMRA_LLM_TEMPERATURE: ${NUMRA_LLM_TEMPERATURE:-1.0}
+      NUMRA_LLM_TOP_P: ${NUMRA_LLM_TOP_P:-1.0}
+      NUMRA_LLM_TIMEOUT_SECONDS: ${NUMRA_LLM_TIMEOUT_SECONDS:-120}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-}
       OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
-      NUMRA_LLM_MODEL_PREMIUM: ${NUMRA_LLM_MODEL_PREMIUM:-deepseek-v4-pro:cloud}
-      NUMRA_LLM_MODEL_FAST: ${NUMRA_LLM_MODEL_FAST:-deepseek-v4-flash:cloud}
+      NUMRA_LLM_MODEL_PREMIUM: ${NUMRA_LLM_MODEL_PREMIUM:-deepseek-v4-pro:0813}
+      NUMRA_LLM_MODEL_FAST: ${NUMRA_LLM_MODEL_FAST:-deepseek-v4.1-flash}
       PDF_INTERNAL_URL: http://pdf:4300
       PDF_INTERNAL_TOKEN: ${PDF_INTERNAL_TOKEN:?PDF_INTERNAL_TOKEN is required}
       EXPORT_STORAGE_DIR: /app/data/exports
@@ -96,8 +99,13 @@ services:
       EMAIL_BACKEND: ${EMAIL_BACKEND:-disabled}
       NUMRA_LLM_PROVIDER: ${NUMRA_LLM_PROVIDER:-disabled}
       NUMRA_LLM_MAX_RETRIES: ${NUMRA_LLM_MAX_RETRIES:-3}
+      NUMRA_LLM_TEMPERATURE: ${NUMRA_LLM_TEMPERATURE:-1.0}
+      NUMRA_LLM_TOP_P: ${NUMRA_LLM_TOP_P:-1.0}
+      NUMRA_LLM_TIMEOUT_SECONDS: ${NUMRA_LLM_TIMEOUT_SECONDS:-120}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-}
       OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
+      NUMRA_LLM_MODEL_PREMIUM: ${NUMRA_LLM_MODEL_PREMIUM:-deepseek-v4-pro:0813}
+      NUMRA_LLM_MODEL_FAST: ${NUMRA_LLM_MODEL_FAST:-deepseek-v4.1-flash}
       # The worker doesn't itself rate-limit anything, but it constructs the same
       # Settings model as the api service, whose production validator forbids
       # RATE_LIMIT_BACKEND=memory regardless of which process is asking.
@@ -125,8 +133,13 @@ services:
       EMAIL_BACKEND: ${EMAIL_BACKEND:-disabled}
       NUMRA_LLM_PROVIDER: ${NUMRA_LLM_PROVIDER:-disabled}
       NUMRA_LLM_MAX_RETRIES: ${NUMRA_LLM_MAX_RETRIES:-3}
+      NUMRA_LLM_TEMPERATURE: ${NUMRA_LLM_TEMPERATURE:-1.0}
+      NUMRA_LLM_TOP_P: ${NUMRA_LLM_TOP_P:-1.0}
+      NUMRA_LLM_TIMEOUT_SECONDS: ${NUMRA_LLM_TIMEOUT_SECONDS:-120}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-}
       OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
+      NUMRA_LLM_MODEL_PREMIUM: ${NUMRA_LLM_MODEL_PREMIUM:-deepseek-v4-pro:0813}
+      NUMRA_LLM_MODEL_FAST: ${NUMRA_LLM_MODEL_FAST:-deepseek-v4.1-flash}
       # Same rationale as the `worker` service above: constructs the shared Settings
       # model, whose production validator forbids RATE_LIMIT_BACKEND=memory.
       RATE_LIMIT_BACKEND: ${RATE_LIMIT_BACKEND:-redis}
