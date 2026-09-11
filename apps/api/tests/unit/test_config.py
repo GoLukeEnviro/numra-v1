@@ -86,6 +86,17 @@ def test_logging_email_backend_allowed_outside_production() -> None:
     Settings(database_url=_DB_URL, environment="test", email_backend="logging")  # must not raise
 
 
+def test_email_backend_defaults_to_safe_disabled_mode() -> None:
+    settings = Settings(
+        database_url=_DB_URL,
+        environment="production",
+        rate_limit_backend="redis",
+        redis_url="redis://redis:6379/0",
+    )
+
+    assert settings.email_backend == "disabled"
+
+
 def test_smtp_email_backend_requires_host_port_from_email_in_production() -> None:
     with pytest.raises(ValidationError, match="EMAIL_BACKEND=smtp requires"):
         Settings(
