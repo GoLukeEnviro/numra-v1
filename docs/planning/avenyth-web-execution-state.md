@@ -3,11 +3,11 @@
 - **PLAN_VERSION:** 2
 - **VERIFIED_IMPLEMENTATION_MAIN_SHA:** 7e8a19247457deacb5ac62f6edbc9c65925f452e
 - **CURRENT_SEGMENT:** SEGMENT_C
-- **CURRENT_PR:** WEB-06b abgeschlossen in PR #55; dieser Nachtrag enthält die Abschlussdokumentation.
-- **LAST_MERGED_IMPLEMENTATION_PR:** #53 (WEB-06a)
+- **CURRENT_PR:** WEB-07 Shared Tasks UI in Arbeit auf `codex/pr-web-07`.
+- **LAST_MERGED_IMPLEMENTATION_PR:** #55 (WEB-06b)
 - **LAST_GREEN_IMPLEMENTATION_MAIN_SHA:** 7e8a19247457deacb5ac62f6edbc9c65925f452e
-- **CURRENT_TASK:** WEB-06b Implementierung, Review, PR-CI und Post-Merge-CI abgeschlossen.
-- **NEXT_ACTION:** Nächsten priorisierten Web-Abschnitt festlegen.
+- **CURRENT_TASK:** WEB-07 lokal implementiert und geprüft; Review und PR-Abschluss laufen.
+- **NEXT_ACTION:** Review-Befunde beheben, PR-CI prüfen, mergen und Post-Merge-CI verifizieren.
 - **HUMAN_GATE_REQUIRED:** false
 - **OPEN_BLOCKERS:** none
 - **LAST_UPDATED_AT:** 2026-09-11
@@ -43,4 +43,4 @@ Originalcheckout, untracked `.planning/`, fremde Worktrees und bestehende
 Container/Volumes erhalten. Eigene Testdatenbank samt eigenem anonymen Volume,
 Startup-Testcontainer und PDF-Testprozess gezielt entfernt/beendet.
 Kein Produktionsdeployment, keine Flag-Aktivierung, kein Produktionsdatenbank-Eingriff.
-WEB-06b bleibt unimplementiert; [finaler Frontend-Umfang](pr-web-06b-scope.md).
+WEB-06b ist abgeschlossen. Der nächste Abschnitt ist [WEB-07 Shared Tasks](pr-web-07-plan.md).

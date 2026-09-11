@@ -20,6 +20,7 @@ export function WorkspaceNavTabs({ workspaceId }: WorkspaceNavTabsProps) {
     { href: `/workspaces/${workspaceId}`, label: t("app.relationshipWorkspace.tabOverview") },
     { href: `/workspaces/${workspaceId}/dynamics`, label: t("app.relationshipWorkspace.tabDynamics") },
     { href: `/workspaces/${workspaceId}/checkins`, label: t("app.relationshipWorkspace.tabCheckins") },
+    { href: `/workspaces/${workspaceId}/tasks`, label: t("app.relationshipWorkspace.tabTasks") },
     { href: `/workspaces/${workspaceId}/consent`, label: t("app.relationshipWorkspace.tabConsent") },
   ];
 
