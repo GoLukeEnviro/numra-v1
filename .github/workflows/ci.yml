@@ -314,7 +314,7 @@ jobs:
           done
       - name: Upload system-e2e diagnostics
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: system-e2e-diagnostics
           path: /tmp/system-e2e-artifacts
@@ -431,7 +431,7 @@ jobs:
           done
       - name: Upload docker-compose-e2e diagnostics
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: docker-compose-e2e-diagnostics
           path: /tmp/compose-e2e-artifacts
