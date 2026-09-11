@@ -1,7 +1,6 @@
 # PR-WEB-07 — Evidence
 
-Stand: Implementierung, lokale Prüfung und unabhängiger Review abgeschlossen;
-PR-CI, Merge und Post-Merge-CI folgen.
+Stand: abgeschlossen und auf `main` verifiziert.
 
 ## Umsetzung
 
@@ -44,4 +43,9 @@ Erfolgszustand. Das Abschluss-Re-Review fand keine verbleibenden Befunde.
 
 ## Review und CI
 
-Wird nach Review/PR mit finalen Commit- und Run-Links ergänzt.
+- Implementierungs-PR: [#57](https://github.com/GoLukeEnviro/numra-v1/pull/57).
+- Finaler PR-Head: `ea2ffad676b7d6b9dd3a2ad4d8c2e8c39ac1be6a`.
+- PR-CI: [34564656299](https://github.com/GoLukeEnviro/numra-v1/actions/runs/34564656299), alle zwölf Required Checks erfolgreich.
+- Squash-Merge-Commit: `935508c645bb8a923f958bfab5d34b5aacdb5af9`.
+- Getrennte Post-Merge-`main`-CI: [34565329664](https://github.com/GoLukeEnviro/numra-v1/actions/runs/34565329664), alle zwölf Required Checks erfolgreich.
+- Kein Produktionsdeployment und keine Aktivierung eines Produktionsflags.
