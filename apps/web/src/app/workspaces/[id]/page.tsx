@@ -86,11 +86,13 @@ function HubContent({ overview, workspaceId, checkinRoundOpen }: { overview: Wor
             title={t("app.relationshipWorkspace.stubReflectionTitle")}
             description={t("app.relationshipWorkspace.stubReflectionBody")}
           />
-          <FeatureStubCard
-            eyebrow={t("app.relationshipWorkspace.stubCopilotTitle")}
-            title={t("app.relationshipWorkspace.stubCopilotTitle")}
-            description={t("app.relationshipWorkspace.stubCopilotBody")}
-          />
+          <section>
+            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-bronze">{t("app.relationshipWorkspace.stubCopilotTitle")}</h2>
+            <Link href={`/workspaces/${workspaceId}/copilot`} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-surface p-6 transition-colors hover:border-gold/50">
+              <span><span className="block font-serif text-lg text-ivory">{t("app.relationshipWorkspace.stubCopilotTitle")}</span><span className="mt-1 block max-w-md text-sm text-muted">{t("app.relationshipWorkspace.stubCopilotBody")}</span></span>
+              <ArrowRight className="h-5 w-5 shrink-0 text-gold" aria-hidden="true" />
+            </Link>
+          </section>
         </div>
       </div>
     </div>
