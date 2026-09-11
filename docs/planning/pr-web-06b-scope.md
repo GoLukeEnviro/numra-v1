@@ -1,6 +1,7 @@
 # WEB-06b — finaler Frontend-Umfang auf dem WEB-06a-Backend
 
-Stand: WEB-06a gemergt und Post-Merge-CI erfolgreich; keine 06b-Implementierung.
+Stand: WEB-06b in PR #55 implementiert, gemergt und durch getrennte PR- und
+Post-Merge-CI verifiziert. Dieses Dokument hält den damals freigegebenen Umfang fest.
 Umsetzungsbasis: PR #53, geprüfter Merge-Commit `16d7e1a9cc33764af7180365fc80d86a4377f32b`.
 
 ## Oberfläche und Navigation

@@ -38,6 +38,7 @@ services:
       AVENYTH_CONNECTIONS_ENABLED: "true"
       AVENYTH_RELATIONSHIP_WORKSPACES_ENABLED: "true"
       AVENYTH_CHECKINS_ENABLED: "true"
+      AVENYTH_TASKS_ENABLED: "true"
       # redeem_url the API mints for LINK/EMAIL invitations, and the browser
       # Origin allowlist for state-changing /api/* calls -- both the remapped web
       # port, not the 3000 default.

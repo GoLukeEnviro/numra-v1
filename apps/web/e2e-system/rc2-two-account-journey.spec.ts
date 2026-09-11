@@ -399,6 +399,32 @@ test("RC2 two-account journey: connections/consent/dual-profile/type/dissolve ov
     await expect(A.getByRole("button", { name: "Neue Runde starten" })).toBeVisible();
     await shoot(A, "08-checkin-analyzed");
 
+    // --- WEB-07: A proposes a task; B explicitly accepts it; both then see the
+    // same ACTIVE shared artifact. No private-task consent is involved.
+    await A.goto(`/workspaces/${workspaceId}/tasks`);
+    await A.getByRole("button", { name: "Aufgabe anlegen" }).click();
+    await A.getByLabel("Aufgabentyp").selectOption("FOR_PARTNER_PROPOSED");
+    await A.getByLabel("Titel").fill("Sonntag gemeinsam spazieren gehen");
+    await A.getByLabel("Beschreibung (optional)").fill("Eine Stunde ohne feste Agenda.");
+    await A.getByRole("button", { name: "Anlegen" }).click();
+    await expect(A.getByText("Wartet auf Annahme", { exact: true })).toBeVisible();
+    await expect(A.getByRole("button", { name: "Annehmen" })).toHaveCount(0);
+
+    await B.goto(`/workspaces/${workspaceId}/tasks`);
+    await expect(B.getByText("Sonntag gemeinsam spazieren gehen", { exact: true })).toBeVisible();
+    const acceptTask = B.getByRole("button", { name: "Annehmen" });
+    await acceptTask.evaluate((element) => element.scrollIntoView({ block: "center" }));
+    const acceptBox = await acceptTask.boundingBox();
+    expect(acceptBox).not.toBeNull();
+    await B.mouse.click(acceptBox!.x + acceptBox!.width / 2, acceptBox!.y + acceptBox!.height / 2);
+    await expect(B.getByText("Aktiv", { exact: true }).last()).toBeVisible();
+    await expect(B.getByRole("button", { name: "Als erledigt markieren" })).toBeVisible();
+
+    await A.reload();
+    await expect(A.getByText("Aktiv", { exact: true }).last()).toBeVisible();
+    await expect(A.getByRole("button", { name: "Als erledigt markieren" })).toBeVisible();
+    await shoot(A, "09-task-accepted");
+
     // --- Dissolve via the UI ---
     await A.goto("/connections");
     await A.getByRole("button", { name: "Verbindung auflösen" }).click();
@@ -417,6 +443,12 @@ test("RC2 two-account journey: connections/consent/dual-profile/type/dissolve ov
     await expect(A.getByRole("heading", { name: "Auswertung dieser Runde" })).toBeVisible();
     await expect(A.getByRole("button", { name: /Runde starten/ })).toHaveCount(0);
     await expect(A.getByRole("button", { name: "Frage hinzufügen" })).toHaveCount(0);
+
+    await A.goto(`/workspaces/${workspaceId}/tasks`);
+    await expect(A.getByRole("heading", { name: "Historische Ansicht" })).toBeVisible();
+    await expect(A.getByText("Sonntag gemeinsam spazieren gehen", { exact: true })).toBeVisible();
+    await expect(A.getByRole("button", { name: "Aufgabe anlegen" })).toHaveCount(0);
+    await expect(A.getByRole("button", { name: "Als erledigt markieren" })).toHaveCount(0);
 
     // Mutation lock, same-origin: PATCH -> 409 WORKSPACE_DISSOLVED, GET -> 200.
     const csrf = (await ctxA.cookies()).find((c) => c.name === "numra_csrf")?.value ?? "";
