@@ -29,4 +29,4 @@
 
 - [x] Full web quality gates pass.
 - [x] Independent review passes.
-- [ ] Commit and stacked PR are created; no merge or deployment occurs.
+- [x] Commit and stacked PR are created; no merge or deployment occurs.
