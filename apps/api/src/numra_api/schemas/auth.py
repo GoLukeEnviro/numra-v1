@@ -31,6 +31,15 @@ class UserOut(BaseModel):
     email_verified_at: dt.datetime | None = None
 
 
+class MobileSessionOut(BaseModel):
+    """One-time native credential response. Only its hash is stored server-side."""
+
+    access_token: str
+    token_type: str = "Bearer"
+    expires_at: dt.datetime
+    user: UserOut
+
+
 class ChangePasswordRequest(BaseModel):
     """V1.5 Epic N. Same minimum-length rule as registration; the current password is
     always required (never trust a signed-in session alone to authorize a password

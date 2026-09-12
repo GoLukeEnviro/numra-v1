@@ -17,6 +17,21 @@ POST /v1/auth/forgot-password
 POST /v1/auth/reset-password
 ```
 
+Native mobile uses the same opaque, hashed server-side session model through a
+dedicated non-cookie boundary:
+
+```
+POST /v1/auth/mobile/login
+GET  /v1/auth/mobile/me
+POST /v1/auth/mobile/logout
+```
+
+The login response returns the random token exactly once; only its hash is stored.
+Native clients send it as `Authorization: Bearer` and keep it in OS secure storage.
+These routes do not change the Web cookie/CSRF contract and do not introduce JWTs or
+refresh tokens. General product endpoints remain cookie-authenticated until a later
+mobile increment explicitly expands the bearer boundary.
+
 Token model: random cryptographically secure token, only the hash persisted,
 single use, expiry, replay protection, rate limiting — mirrors the existing
 session-token handling in `apps/api/src/numra_api/auth/`.
