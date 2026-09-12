@@ -13,6 +13,11 @@
     "web:typecheck": "pnpm --filter @numra/web typecheck",
     "web:test": "pnpm --filter @numra/web test -- --run",
     "web:e2e": "pnpm --filter @numra/web exec playwright test",
+    "mobile:start": "pnpm --filter @numra/mobile start",
+    "mobile:test": "pnpm --filter @numra/mobile test",
+    "mobile:typecheck": "pnpm --filter @numra/mobile typecheck",
+    "mobile:lint": "pnpm --filter @numra/mobile lint",
+    "mobile:build:android": "pnpm --filter @numra/mobile exec expo export --platform android --output-dir .expo-export-verification",
     "pdf:test": "pnpm --filter @numra/pdf test",
     "verify": "python3 scripts/verify.py"
   },
