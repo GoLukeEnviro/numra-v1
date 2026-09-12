@@ -12,6 +12,7 @@ async function mockEvidence(page: Page) {
   const entries: Record<string, unknown>[] = [];
   await page.route("**/v1/auth/me", (route) => json(route, USER));
   await page.route("**/v1/people/person-1", (route) => json(route, PERSON));
+  await page.route("**/v1/people/person-1/custom-metric-definitions", (route) => json(route, []));
   await page.route("**/v1/people/person-1/life-tracking-entries**", async (route) => {
     if (route.request().method() === "POST") {
       const body = route.request().postDataJSON() as Record<string, unknown>;

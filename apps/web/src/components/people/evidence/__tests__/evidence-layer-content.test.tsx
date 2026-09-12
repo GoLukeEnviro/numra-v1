@@ -9,7 +9,10 @@ vi.mock("@/api/client", async () => {
   return {
     ...actual,
     api: {
-      people: { lifeTracking: { list: vi.fn(), create: vi.fn(), remove: vi.fn() } },
+      people: {
+        lifeTracking: { list: vi.fn(), create: vi.fn(), remove: vi.fn() },
+        customMetrics: { list: vi.fn(), create: vi.fn(), patch: vi.fn() },
+      },
       evidence: { result: vi.fn(), analyses: { list: vi.fn(), create: vi.fn(), remove: vi.fn() } },
     },
   };
@@ -50,6 +53,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(api.people.lifeTracking.list).mockResolvedValue([entry]);
   vi.mocked(api.evidence.analyses.list).mockResolvedValue([]);
+  vi.mocked(api.people.customMetrics.list).mockResolvedValue([]);
 });
 
 describe("EvidenceLayerContent", () => {
@@ -59,6 +63,46 @@ describe("EvidenceLayerContent", () => {
     expect(screen.getByText("Ruhiger Arbeitstag")).toBeInTheDocument();
     expect(screen.getByText("Stimmung 7/10")).toBeInTheDocument();
     expect(api.people.lifeTracking.list).toHaveBeenCalledWith("person-1", { limit: 200, offset: 0 });
+  });
+
+  it("creates, records, and retires a custom metric without changing its immutable key", async () => {
+    const definition = {
+      id: "metric-1", person_id: "person-1", metric_key: "creativity", label: "Kreativität",
+      scale_min: 1, scale_max: 10, active: true, created_at: "2026-09-12T08:00:00Z", retired_at: null,
+    };
+    vi.mocked(api.people.customMetrics.create).mockResolvedValue(definition);
+    vi.mocked(api.people.customMetrics.patch).mockResolvedValue({ ...definition, active: false, retired_at: "2026-09-12T09:00:00Z" });
+    vi.mocked(api.people.lifeTracking.create).mockResolvedValue({ ...entry, id: "entry-custom", custom_metrics: { creativity: 9 } });
+    renderContent();
+    await screen.findByText("Ruhiger Arbeitstag");
+
+    fireEvent.change(screen.getByLabelText("Technischer Schlüssel"), { target: { value: "creativity" } });
+    fireEvent.change(screen.getByLabelText("Anzeigename"), { target: { value: "Kreativität" } });
+    fireEvent.click(screen.getByRole("button", { name: "Messwert anlegen" }));
+    expect(await screen.findByLabelText("Kreativität")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Kreativität"), { target: { value: "9" } });
+    fireEvent.click(screen.getByRole("button", { name: "Tag speichern" }));
+    await waitFor(() => expect(api.people.lifeTracking.create).toHaveBeenCalledWith("person-1", expect.objectContaining({ custom_metrics: { creativity: 9 } })));
+
+    fireEvent.click(screen.getByRole("button", { name: "Kreativität stilllegen" }));
+    await waitFor(() => expect(api.people.customMetrics.patch).toHaveBeenCalledWith("metric-1", { active: false }));
+    expect(screen.queryByLabelText("Kreativität")).not.toBeInTheDocument();
+  });
+
+  it("uses server-defined scales and retains retired metric history", async () => {
+    vi.mocked(api.people.customMetrics.list).mockResolvedValue([
+      { id: "metric-active", person_id: "person-1", metric_key: "calm", label: "Ruhe", scale_min: 0, scale_max: 5, active: true, created_at: "2026-09-10T08:00:00Z", retired_at: null },
+      { id: "metric-retired", person_id: "person-1", metric_key: "clarity", label: "Klarheit", scale_min: 2, scale_max: 7, active: false, created_at: "2026-09-01T08:00:00Z", retired_at: "2026-09-10T08:00:00Z" },
+    ]);
+    vi.mocked(api.people.lifeTracking.list).mockResolvedValue([{ ...entry, custom_metrics: { calm: 0, clarity: 6 } }]);
+    renderContent();
+
+    const select = await screen.findByLabelText<HTMLSelectElement>("Ruhe");
+    expect([...select.options].map((option) => option.value)).toEqual(["", "0", "1", "2", "3", "4", "5"]);
+    expect(screen.getByText("Ruhe 0/5")).toBeInTheDocument();
+    expect(screen.getByText("Klarheit 6/7")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Klarheit")).not.toBeInTheDocument();
   });
 
   it("creates a daily entry with numeric metrics and refreshes the journal", async () => {

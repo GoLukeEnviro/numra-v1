@@ -164,6 +164,11 @@ export type LifeTrackingEntryCreateRequest =
   components["schemas"]["LifeTrackingEntryCreateRequest"];
 export type LifeTrackingEntryPatchRequest =
   components["schemas"]["LifeTrackingEntryPatchRequest"];
+export type CustomMetricDefinitionCreateRequest =
+  components["schemas"]["CustomMetricDefinitionCreateRequest"];
+export type CustomMetricDefinitionPatchRequest =
+  components["schemas"]["CustomMetricDefinitionPatchRequest"];
+export type CustomMetricDefinitionOut = components["schemas"]["CustomMetricDefinitionOut"];
 export type EvidenceResultOut = components["schemas"]["EvidenceResultOut"];
 export type PatternAnalysisCreateRequest = components["schemas"]["PatternAnalysisCreateRequest"];
 export type PatternAnalysisOut = components["schemas"]["PatternAnalysisOut"];
@@ -450,6 +455,22 @@ export const api = {
         }),
       remove: (entryId: string) =>
         request<void>(`/v1/life-tracking-entries/${entryId}`, { method: "DELETE" }),
+    },
+    customMetrics: {
+      list: (personId: string) =>
+        request<CustomMetricDefinitionOut[]>(
+          `/v1/people/${personId}/custom-metric-definitions`,
+        ),
+      create: (personId: string, body: CustomMetricDefinitionCreateRequest) =>
+        request<CustomMetricDefinitionOut>(
+          `/v1/people/${personId}/custom-metric-definitions`,
+          { method: "POST", body },
+        ),
+      patch: (definitionId: string, body: CustomMetricDefinitionPatchRequest) =>
+        request<CustomMetricDefinitionOut>(`/v1/custom-metric-definitions/${definitionId}`, {
+          method: "PATCH",
+          body,
+        }),
     },
   },
   calculations: {
