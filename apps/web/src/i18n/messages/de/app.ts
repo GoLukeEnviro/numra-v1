@@ -361,14 +361,16 @@ export const deApp = {
   // Konto löschen
   "app.deleteAccount.title": "Mein Konto löschen",
   "app.deleteAccount.body":
-    "Löscht dauerhaft alles, was AVENYTH über dich speichert. Es gibt kein Zurück, keinen nachträglichen Export und keine Schonfrist.",
+    "Löscht dauerhaft dein Konto und deine privaten Daten. Es gibt kein Zurück, keinen nachträglichen Export und keine Schonfrist.",
   "app.deleteAccount.listIntro": "Endgültig gelöscht werden:",
   "app.deleteAccount.itemProfiles": "jedes Personenprofil, das du angelegt hast",
   "app.deleteAccount.itemCalculations": "jede Berechnung samt gespeicherter Herleitung",
-  "app.deleteAccount.itemRelationships": "jeder Beziehungsvergleich",
+  "app.deleteAccount.itemRelationships": "deine privaten Beziehungsdaten und nicht aufbewahrungspflichtigen Vergleiche",
   "app.deleteAccount.itemReports": "jeder erzeugte Bericht",
   "app.deleteAccount.itemExports": "jedes exportierte PDF, inklusive der Dateien auf dem Server",
   "app.deleteAccount.itemAccount": "dein Konto und seine Zugangsdaten",
+  "app.deleteAccount.retainedHistory":
+    "Gemeinsam erzeugte historische Inhalte, die laut Aufbewahrungsrichtlinie der anderen Person erhalten bleiben, werden nur lesbar aufbewahrt und soweit technisch und rechtlich möglich pseudonymisiert.",
   "app.deleteAccount.exportHint":
     "Wenn du eine Kopie eines Berichts behalten willst, exportiere vorher sein PDF — exportierte Dateien werden ebenfalls gelöscht.",
   "app.deleteAccount.confirmLabel": "Mit deinem Passwort bestätigen",
@@ -517,6 +519,10 @@ export const deApp = {
   "app.personalTasks.archiveAction": "Archivieren",
 
   "app.connections.activeTitle": "Aktive Verbindungen",
+  "app.connections.historicalTitle": "Historische Verbindungen",
+  "app.connections.statusDissolved": "Aufgelöst · nur lesbar",
+  "app.connections.openHistory": "Historischen Workspace öffnen",
+  "app.connections.workspaceLoadError": "Historische Workspaces konnten nicht geladen werden",
   "app.connections.invitationsTitle": "Einladungen",
   "app.connections.emptyActiveTitle": "Noch keine Verbindungen",
   "app.connections.emptyActiveBody": "Lade jemanden ein, um eine gemeinsame Verbindung zu starten.",
@@ -528,6 +534,7 @@ export const deApp = {
   "app.connections.dissolveConfirm": "Diese Verbindung wirklich auflösen? Alle Freigaben werden zurückgezogen.",
   "app.connections.dissolveConfirmButton": "Endgültig auflösen",
   "app.connections.dissolveCancel": "Abbrechen",
+  "app.connections.dissolveError": "Die Verbindung konnte nicht aufgelöst werden.",
   "app.connections.revokeButton": "Zurückziehen",
   "app.connections.revokeConfirm": "Diese Einladung wirklich zurückziehen?",
   "app.connections.revokeConfirmButton": "Endgültig zurückziehen",

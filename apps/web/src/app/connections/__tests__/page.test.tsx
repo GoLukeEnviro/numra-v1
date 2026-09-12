@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import ConnectionsPage from "@/app/connections/page";
 import { LocaleProvider } from "@/i18n/context";
 import { useAuth } from "@/lib/auth-context";
-import { api } from "@/api/client";
+import { ApiError, api } from "@/api/client";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
@@ -66,6 +66,7 @@ beforeEach(() => {
   vi.mocked(api.connections.list).mockReset();
   vi.mocked(api.connections.listInvitations).mockReset();
   vi.mocked(api.connections.revokeInvitation).mockReset();
+  vi.mocked(api.connections.dissolve).mockReset();
   vi.mocked(api.workspaces.list).mockReset().mockResolvedValue([]);
 });
 
@@ -117,5 +118,51 @@ describe("ConnectionsPage", () => {
     renderPage();
 
     expect(await screen.findByText("Ada Lovelace")).toBeInTheDocument();
+  });
+
+  it("moves a dissolved connection into retained history and keeps its workspace reachable", async () => {
+    vi.mocked(api.connections.list).mockResolvedValue([CONNECTION]);
+    vi.mocked(api.connections.listInvitations).mockResolvedValue([]);
+    vi.mocked(api.workspaces.list).mockResolvedValue([{
+      id: "ws-1", connection_id: CONNECTION.id, status: "ACTIVE", relationship_type: "PARTNER",
+      created_at: "2026-09-01T00:00:00Z", dissolved_at: null,
+    }]);
+    vi.mocked(api.connections.dissolve).mockResolvedValue({
+      ...CONNECTION, status: "DISSOLVED", dissolved_at: "2026-09-12T10:00:00Z",
+    });
+    renderPage();
+
+    await screen.findByText("Ada Lovelace");
+    fireEvent.click(screen.getByRole("button", { name: "Verbindung auflösen" }));
+    fireEvent.click(screen.getByRole("button", { name: "Endgültig auflösen" }));
+
+    expect(await screen.findByRole("heading", { name: "Historische Verbindungen" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Historischen Workspace öffnen" })).toHaveAttribute("href", "/workspaces/ws-1");
+    expect(screen.queryByRole("button", { name: "Verbindung auflösen" })).not.toBeInTheDocument();
+  });
+
+  it("keeps a connection actionable and shows an alert when dissolution fails", async () => {
+    vi.mocked(api.connections.list).mockResolvedValue([CONNECTION]);
+    vi.mocked(api.connections.listInvitations).mockResolvedValue([]);
+    vi.mocked(api.connections.dissolve).mockRejectedValue(new ApiError("Auflösung blockiert", "CONFLICT", 409));
+    renderPage();
+
+    await screen.findByText("Ada Lovelace");
+    fireEvent.click(screen.getByRole("button", { name: "Verbindung auflösen" }));
+    fireEvent.click(screen.getByRole("button", { name: "Endgültig auflösen" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Auflösung blockiert");
+    expect(screen.getByRole("button", { name: "Verbindung auflösen" })).toBeInTheDocument();
+  });
+
+  it("shows a retryable error when retained workspace links cannot be loaded", async () => {
+    vi.mocked(api.connections.list).mockResolvedValue([{ ...CONNECTION, status: "DISSOLVED", dissolved_at: "2026-09-12T10:00:00Z" }]);
+    vi.mocked(api.connections.listInvitations).mockResolvedValue([]);
+    vi.mocked(api.workspaces.list).mockRejectedValue(new Error("Workspace-Zuordnung nicht verfügbar"));
+    renderPage();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Workspace-Zuordnung nicht verfügbar");
+    expect(screen.getByText("Ada Lovelace")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
   });
 });
