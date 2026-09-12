@@ -15,7 +15,7 @@ vi.mock("@/api/client", async () => {
   const actual = await vi.importActual<typeof import("@/api/client")>("@/api/client");
   return { ...actual, api: {
     ...actual.api,
-    people: { ...actual.api.people, get: vi.fn(), lifeTracking: { list: vi.fn(), create: vi.fn(), remove: vi.fn() } },
+    people: { ...actual.api.people, get: vi.fn(), lifeTracking: { list: vi.fn(), create: vi.fn(), remove: vi.fn() }, customMetrics: { list: vi.fn(), create: vi.fn(), patch: vi.fn() } },
     evidence: { result: vi.fn(), analyses: { list: vi.fn(), create: vi.fn(), remove: vi.fn() } },
   } };
 });
@@ -31,6 +31,7 @@ describe("EvidencePage", () => {
       created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z",
     });
     vi.mocked(api.people.lifeTracking.list).mockResolvedValue([]);
+    vi.mocked(api.people.customMetrics.list).mockResolvedValue([]);
     vi.mocked(api.evidence.analyses.list).mockResolvedValue([]);
   });
 
