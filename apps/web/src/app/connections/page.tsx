@@ -29,17 +29,21 @@ function ConnectionRow({
 }: {
   connection: UserConnectionOut;
   workspaceId: string | undefined;
-  onDissolved: (id: string) => void;
+  onDissolved: (connection: UserConnectionOut) => void;
 }) {
   const { t } = useLocale();
   const [confirming, setConfirming] = useState(false);
   const [dissolving, setDissolving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleDissolve() {
     setDissolving(true);
+    setError(null);
     try {
-      await api.connections.dissolve(connection.id);
-      onDissolved(connection.id);
+      const dissolved = await api.connections.dissolve(connection.id);
+      onDissolved(dissolved);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : t("app.connections.dissolveError"));
     } finally {
       setDissolving(false);
       setConfirming(false);
@@ -50,6 +54,7 @@ function ConnectionRow({
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 py-3 last:border-0">
       <div className="min-w-0">
         <p className="truncate text-sm font-medium text-ivory">{connection.counterpart_display_name}</p>
+        {error ? <p role="alert" className="mt-1 text-xs text-danger">{error}</p> : null}
       </div>
       <div className="flex flex-wrap items-center gap-2">
         {workspaceId && (
@@ -75,6 +80,14 @@ function ConnectionRow({
       </div>
     </div>
   );
+}
+
+function HistoricalConnectionRow({ connection, workspaceId }: { connection: UserConnectionOut; workspaceId: string | undefined }) {
+  const { t } = useLocale();
+  return <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 py-3 opacity-75 last:border-0">
+    <div className="min-w-0"><p className="truncate text-sm font-medium text-ivory">{connection.counterpart_display_name}</p><Badge variant="neutral">{t("app.connections.statusDissolved")}</Badge></div>
+    {workspaceId ? <LinkButton variant="ghost" size="sm" href={`/workspaces/${workspaceId}`}>{t("app.connections.openHistory")}</LinkButton> : null}
+  </div>;
 }
 
 function InvitationRow({ invitation, onRevoked }: { invitation: ConnectionInvitationOut; onRevoked: (id: string) => void }) {
@@ -128,7 +141,7 @@ function ConnectionsContent() {
   // Backend-Fix-C wird die Zuordnung client-seitig ueber die vorhandene
   // workspaces.list()/connection_id gemacht (siehe PR-Beschreibung "statt Fix C").
   const workspacesState = useAsync(() => api.workspaces.list(), []);
-  const [removedConnections, setRemovedConnections] = useState<Set<string>>(new Set());
+  const [connectionRows, setConnectionRows] = useState<UserConnectionOut[] | null>(null);
   const [removedInvitations, setRemovedInvitations] = useState<Set<string>>(new Set());
 
   if (connectionsState.status === "loading" || invitationsState.status === "loading") {
@@ -152,9 +165,9 @@ function ConnectionsContent() {
     return <ErrorState error={invitationsState.error} onRetry={invitationsState.reload} title={t("app.connections.loadError")} />;
   }
 
-  const connections = connectionsState.data.filter(
-    (c) => c.status === "ACTIVE" && !removedConnections.has(c.id),
-  );
+  const allConnections = connectionRows ?? connectionsState.data;
+  const connections = allConnections.filter((connection) => connection.status === "ACTIVE");
+  const historicalConnections = allConnections.filter((connection) => connection.status === "DISSOLVED");
   const invitations = invitationsState.data.filter((i) => !removedInvitations.has(i.id));
   const workspaceIdByConnectionId = new Map(
     workspacesState.status === "success"
@@ -174,6 +187,14 @@ function ConnectionsContent() {
           {t("app.connections.inviteCta")}
         </LinkButton>
       </header>
+
+      {workspacesState.status === "error" ? (
+        isPhaseDisabledError(workspacesState.error) ? (
+          <PhaseDisabledState code={workspacesState.error.code} title={t("app.connections.workspaceLoadError")} />
+        ) : (
+          <ErrorState error={workspacesState.error} onRetry={workspacesState.reload} title={t("app.connections.workspaceLoadError")} />
+        )
+      ) : null}
 
       <Card>
         <CardHeader>
@@ -196,12 +217,14 @@ function ConnectionsContent() {
                 key={c.id}
                 connection={c}
                 workspaceId={workspaceIdByConnectionId.get(c.id)}
-                onDissolved={(id) => setRemovedConnections((prev) => new Set(prev).add(id))}
+                onDissolved={(updated) => setConnectionRows((current) => (current ?? connectionsState.data).map((connection) => connection.id === updated.id ? updated : connection))}
               />
             ))
           )}
         </CardContent>
       </Card>
+
+      {historicalConnections.length ? <Card><CardHeader><CardTitle className="text-base">{t("app.connections.historicalTitle")}</CardTitle></CardHeader><CardContent>{historicalConnections.map((connection) => <HistoricalConnectionRow key={connection.id} connection={connection} workspaceId={workspaceIdByConnectionId.get(connection.id)} />)}</CardContent></Card> : null}
 
       <Card>
         <CardHeader>
