@@ -1,8 +1,11 @@
-import { useEffect, useReducer, useState } from "react";
-import { ActivityIndicator, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { useEffect, useMemo, useReducer, useState } from "react";
+import { ActivityIndicator, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 
 import { loadPublicConfig, resolveApiOrigin } from "./src/api/public-config";
+import { createAuthClient } from "./src/api/auth-client";
+import { authReducer, initialAuthState } from "./src/auth/auth-state";
+import { secureTokenStore } from "./src/auth/secure-token-store";
 import { initialLaunchState, launchReducer } from "./src/screens/launch-state";
 
 const colors = {
@@ -13,6 +16,62 @@ const colors = {
   muted: "#6e6558",
   line: "#d8cbb7",
 };
+
+function AuthPanel({ brandName }: { brandName: string }) {
+  const origin = resolveApiOrigin(process.env.EXPO_PUBLIC_API_URL);
+  const client = useMemo(() => createAuthClient(origin, secureTokenStore), [origin]);
+  const [state, dispatch] = useReducer(authReducer, initialAuthState);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    client.restore()
+      .then((user) => active && dispatch({ type: "restored", user }))
+      .catch(() => active && dispatch({ type: "failed", message: "Sitzung konnte nicht geprüft werden." }));
+    return () => { active = false; };
+  }, [client]);
+
+  const signIn = async () => {
+    dispatch({ type: "signingIn" });
+    try {
+      const user = await client.login(email.trim(), password);
+      setPassword("");
+      dispatch({ type: "signedIn", user });
+    } catch (error) {
+      dispatch({
+        type: "failed",
+        message: error instanceof Error && error.message === "INVALID_CREDENTIALS"
+          ? "E-Mail oder Passwort falsch."
+          : "Anmeldung derzeit nicht möglich.",
+      });
+    }
+  };
+
+  const signOut = async () => {
+    try { await client.logout(); } catch { /* local credential is cleared in finally */ }
+    dispatch({ type: "signedOut" });
+  };
+
+  if (state.status === "restoring") return <><ActivityIndicator color={colors.gold} /><Text style={styles.body}>Sitzung wird geprüft …</Text></>;
+  if (state.status === "signedIn") return <>
+    <Text style={styles.marker}>ANGEMELDET</Text>
+    <Text style={styles.cardTitle}>Willkommen bei {brandName}</Text>
+    <Text style={styles.body}>{state.user.email}</Text>
+    <Pressable accessibilityRole="button" onPress={signOut} style={styles.secondaryButton}><Text style={styles.secondaryButtonLabel}>Abmelden</Text></Pressable>
+  </>;
+
+  return <>
+    <Text style={styles.marker}>SICHERE ANMELDUNG</Text>
+    <Text style={styles.cardTitle}>{brandName}</Text>
+    <TextInput accessibilityLabel="E-Mail" autoCapitalize="none" autoComplete="email" keyboardType="email-address" onChangeText={setEmail} placeholder="E-Mail" style={styles.input} value={email} />
+    <TextInput accessibilityLabel="Passwort" autoComplete="current-password" onChangeText={setPassword} onSubmitEditing={signIn} placeholder="Passwort" secureTextEntry style={styles.input} value={password} />
+    {state.status === "signedOut" && state.error && <Text accessibilityRole="alert" style={styles.error}>{state.error}</Text>}
+    <Pressable accessibilityRole="button" disabled={state.status === "signingIn" || !email.trim() || !password} onPress={signIn} style={styles.button}>
+      <Text style={styles.buttonLabel}>{state.status === "signingIn" ? "Anmeldung …" : "Anmelden"}</Text>
+    </Pressable>
+  </>;
+}
 
 export default function App() {
   const [state, dispatch] = useReducer(launchReducer, initialLaunchState);
@@ -65,11 +124,7 @@ export default function App() {
         )}
 
         {state.status === "ready" && (
-          <>
-            <Text style={styles.marker}>BEREIT</Text>
-            <Text style={styles.cardTitle}>{state.config.brandName} ist erreichbar</Text>
-            <Text style={styles.body}>Die mobile Grundlage ist verbunden. Die sichere Anmeldung folgt im nächsten Increment.</Text>
-          </>
+          <AuthPanel brandName={state.config.brandName} />
         )}
 
         {state.status === "misconfigured" && (
@@ -107,5 +162,8 @@ const styles = StyleSheet.create({
   body: { color: colors.muted, fontSize: 15, lineHeight: 22, marginTop: 10 },
   button: { backgroundColor: colors.ink, borderRadius: 999, paddingHorizontal: 22, paddingVertical: 13, marginTop: 22 },
   buttonLabel: { color: colors.surface, fontSize: 15, fontWeight: "700" },
+  secondaryButton: { borderColor: colors.ink, borderWidth: 1, borderRadius: 999, paddingHorizontal: 22, paddingVertical: 13, marginTop: 22 },
+  secondaryButtonLabel: { color: colors.ink, fontSize: 15, fontWeight: "700" },
+  input: { alignSelf: "stretch", borderColor: colors.line, borderWidth: 1, borderRadius: 12, color: colors.ink, fontSize: 16, marginTop: 12, paddingHorizontal: 14, paddingVertical: 12 },
+  error: { color: "#9d2d20", fontSize: 14, marginTop: 10 },
 });
-
