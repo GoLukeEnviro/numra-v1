@@ -164,6 +164,16 @@ export type LifeTrackingEntryCreateRequest =
   components["schemas"]["LifeTrackingEntryCreateRequest"];
 export type LifeTrackingEntryPatchRequest =
   components["schemas"]["LifeTrackingEntryPatchRequest"];
+export type CustomMetricDefinitionCreateRequest =
+  components["schemas"]["CustomMetricDefinitionCreateRequest"];
+export type CustomMetricDefinitionPatchRequest =
+  components["schemas"]["CustomMetricDefinitionPatchRequest"];
+export type CustomMetricDefinitionOut = components["schemas"]["CustomMetricDefinitionOut"];
+export type EvidenceResultOut = components["schemas"]["EvidenceResultOut"];
+export type PatternAnalysisCreateRequest = components["schemas"]["PatternAnalysisCreateRequest"];
+export type PatternAnalysisOut = components["schemas"]["PatternAnalysisOut"];
+export type CorrelationTarget = components["schemas"]["CorrelationTarget"];
+export type ConfidenceCategory = components["schemas"]["ConfidenceCategory"];
 
 export type EntitlementSetOut = components["schemas"]["EntitlementSetOut"];
 
@@ -446,6 +456,22 @@ export const api = {
       remove: (entryId: string) =>
         request<void>(`/v1/life-tracking-entries/${entryId}`, { method: "DELETE" }),
     },
+    customMetrics: {
+      list: (personId: string) =>
+        request<CustomMetricDefinitionOut[]>(
+          `/v1/people/${personId}/custom-metric-definitions`,
+        ),
+      create: (personId: string, body: CustomMetricDefinitionCreateRequest) =>
+        request<CustomMetricDefinitionOut>(
+          `/v1/people/${personId}/custom-metric-definitions`,
+          { method: "POST", body },
+        ),
+      patch: (definitionId: string, body: CustomMetricDefinitionPatchRequest) =>
+        request<CustomMetricDefinitionOut>(`/v1/custom-metric-definitions/${definitionId}`, {
+          method: "PATCH",
+          body,
+        }),
+    },
   },
   calculations: {
     create: (personId: string, body: CalculateRequest) =>
@@ -458,6 +484,35 @@ export const api = {
     /** Calculation history for a person — server-authoritative, newest first. */
     list: (personId: string) =>
       request<CalculationSummaryOut[]>(`/v1/people/${personId}/calculations`),
+  },
+  evidence: {
+    result: (
+      personId: string,
+      params: PatternAnalysisCreateRequest,
+    ) =>
+      request<EvidenceResultOut>(`/v1/people/${personId}/evidence-results`, {
+        query: {
+          metric_key: params.metric_key,
+          correlation_target: params.correlation_target,
+          correlation_target_value: String(params.correlation_target_value),
+        },
+      }),
+    analyses: {
+      list: (personId: string, params: { limit?: number; offset?: number } = {}) =>
+        request<PatternAnalysisOut[]>(`/v1/people/${personId}/pattern-analyses`, {
+          query: {
+            limit: params.limit === undefined ? undefined : String(params.limit),
+            offset: params.offset === undefined ? undefined : String(params.offset),
+          },
+        }),
+      create: (personId: string, body: PatternAnalysisCreateRequest) =>
+        request<PatternAnalysisOut>(`/v1/people/${personId}/pattern-analyses`, {
+          method: "POST",
+          body,
+        }),
+      remove: (analysisId: string) =>
+        request<void>(`/v1/pattern-analyses/${analysisId}`, { method: "DELETE" }),
+    },
   },
   relationships: {
     create: (body: RelationshipCreateRequest) =>
