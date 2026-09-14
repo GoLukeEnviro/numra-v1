@@ -89,6 +89,9 @@ export function DeleteAccountPanel() {
                 <li key={key}>{t(key)}</li>
               ))}
             </ul>
+            <p className="mt-4 rounded-lg border border-white/10 bg-black/20 p-3 text-sm leading-6 text-text">
+              {t("app.deleteAccount.retainedHistory")}
+            </p>
             <p className="mt-4 text-sm text-text">{t("app.deleteAccount.exportHint")}</p>
 
             <form onSubmit={handleSubmit} className="mt-5" noValidate>

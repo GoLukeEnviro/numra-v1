@@ -21,6 +21,7 @@ export function WorkspaceNavTabs({ workspaceId }: WorkspaceNavTabsProps) {
     { href: `/workspaces/${workspaceId}/tasks`, label: t("app.relationshipWorkspace.tabTasks") },
     { href: `/workspaces/${workspaceId}/roadmaps`, label: t("app.roadmaps.heading") },
     { href: `/workspaces/${workspaceId}/reflections`, label: t("app.reflections.heading") },
+    { href: `/workspaces/${workspaceId}/copilot`, label: t("nav.copilot") },
     { href: `/workspaces/${workspaceId}/consent`, label: t("app.relationshipWorkspace.tabConsent") },
   ];
 
