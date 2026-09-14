@@ -362,14 +362,16 @@ export const enApp: Record<keyof typeof deApp, string> = {
   // Delete account
   "app.deleteAccount.title": "Delete my account",
   "app.deleteAccount.body":
-    "Permanently erases everything AVENYTH stores for you. There is no undo, no export step afterwards and no grace period.",
+    "Permanently erases your account and private data. There is no undo, no export step afterwards and no grace period.",
   "app.deleteAccount.listIntro": "This deletes, permanently:",
   "app.deleteAccount.itemProfiles": "every person profile you have created",
   "app.deleteAccount.itemCalculations": "every calculation and its stored trace",
-  "app.deleteAccount.itemRelationships": "every relationship comparison",
+  "app.deleteAccount.itemRelationships": "your private relationship data and comparisons not subject to retention",
   "app.deleteAccount.itemReports": "every generated report",
   "app.deleteAccount.itemExports": "every exported PDF, including the files on the server",
   "app.deleteAccount.itemAccount": "your account and its login credentials",
+  "app.deleteAccount.retainedHistory":
+    "Shared historical content that the retention policy preserves for the other person remains read-only and is pseudonymized wherever technically and legally possible.",
   "app.deleteAccount.exportHint":
     "If you want a copy of a report, export its PDF before continuing — exported files are deleted from disk too.",
   "app.deleteAccount.confirmLabel": "Confirm with your password",
@@ -518,6 +520,10 @@ export const enApp: Record<keyof typeof deApp, string> = {
   "app.personalTasks.archiveAction": "Archive",
 
   "app.connections.activeTitle": "Active connections",
+  "app.connections.historicalTitle": "Historical connections",
+  "app.connections.statusDissolved": "Dissolved · read-only",
+  "app.connections.openHistory": "Open historical workspace",
+  "app.connections.workspaceLoadError": "Historical workspaces could not be loaded",
   "app.connections.invitationsTitle": "Invitations",
   "app.connections.emptyActiveTitle": "No connections yet",
   "app.connections.emptyActiveBody": "Invite someone to start a shared connection.",
@@ -529,6 +535,7 @@ export const enApp: Record<keyof typeof deApp, string> = {
   "app.connections.dissolveConfirm": "Really dissolve this connection? All grants will be revoked.",
   "app.connections.dissolveConfirmButton": "Dissolve permanently",
   "app.connections.dissolveCancel": "Cancel",
+  "app.connections.dissolveError": "The connection could not be dissolved.",
   "app.connections.revokeButton": "Revoke",
   "app.connections.revokeConfirm": "Really revoke this invitation?",
   "app.connections.revokeConfirmButton": "Revoke permanently",
