@@ -32,6 +32,27 @@ These routes do not change the Web cookie/CSRF contract and do not introduce JWT
 refresh tokens. General product endpoints remain cookie-authenticated until a later
 mobile increment explicitly expands the bearer boundary.
 
+MOBILE-12C is the first such expansion. Three read-only, person-scoped endpoints now
+accept either credential through one combined dependency
+(`deps.get_current_user_any_auth`):
+
+```
+GET /v1/people                              (list only -- the native Today screen
+                                             has to resolve which person to read)
+GET /v1/people/{person_id}/timing
+GET /v1/people/{person_id}/daily-brief
+```
+
+The presence of an `Authorization` header selects the bearer path; otherwise the
+`numra_session` cookie is used exactly as before. Nothing else changes: the same
+ownership lookup, the same generic `NOT_AUTHENTICATED` 401, the same 404 for a
+person the caller does not own, and the unchanged cookie/CSRF contract for the
+browser. Every mutating route (and every other read) stays cookie-only, so a stolen
+bearer token can still not write. OpenAPI documents the alternative the same way the
+`/v1/auth/mobile/*` routes already do -- as an optional `Authorization` header
+parameter next to the optional `numra_session` cookie parameter; the project defines
+no `components.securitySchemes`, and MOBILE-12C deliberately does not introduce one.
+
 Token model: random cryptographically secure token, only the hash persisted,
 single use, expiry, replay protection, rate limiting — mirrors the existing
 session-token handling in `apps/api/src/numra_api/auth/`.
@@ -133,6 +154,9 @@ PR-V2-09  Private + Shared Copilot
 PR-V2-10  Dissolution + Account Deletion + Privacy Closure
 PR-V2-11  Evidence Layer
 PR-V2-12  Native Mobile
+           PR-V2-12A   Native Mobile Foundation (Expo shell + public config)
+           MOBILE-12B  Native bearer auth boundary (login/me/logout)
+           MOBILE-12C  Native Today/Daily-Brief (read-only)
 ```
 
 Every PR: starts from current `main`, stays focused, contains tests, contains a

@@ -8,7 +8,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from numra_api.deps import get_current_user, get_db, require_csrf
+from numra_api.deps import get_current_user, get_current_user_any_auth, get_db, require_csrf
 from numra_api.models import User
 from numra_api.repositories.calculations import (
     get_calculation_for_user,
@@ -109,7 +109,7 @@ async def get_calculation_route(
 async def get_timing_route(
     person_id: uuid.UUID,
     as_of_date: dt.date,
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_current_user_any_auth),
     db: AsyncSession = Depends(get_db, scope="function"),
 ) -> dict[str, Any]:
     """Ad-hoc, non-persisted timing lookup — recomputes the engine for the given
@@ -127,7 +127,7 @@ async def get_timing_route(
 async def get_daily_brief_route(
     person_id: uuid.UUID,
     as_of_date: dt.date,
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_current_user_any_auth),
     db: AsyncSession = Depends(get_db, scope="function"),
 ) -> DailyBriefOut:
     """V1.5 Epic K: a deterministic, reproducible Daily Brief -- Personal Day/Month/

@@ -1,12 +1,14 @@
-import { useEffect, useMemo, useReducer, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { ActivityIndicator, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 
 import { loadPublicConfig, resolveApiOrigin } from "./src/api/public-config";
 import { createAuthClient } from "./src/api/auth-client";
+import { createTodayClient, todayIsoDate } from "./src/api/today-client";
 import { authReducer, initialAuthState } from "./src/auth/auth-state";
 import { secureTokenStore } from "./src/auth/secure-token-store";
 import { initialLaunchState, launchReducer } from "./src/screens/launch-state";
+import { initialTodayState, todayReducer } from "./src/screens/today-state";
 
 const colors = {
   ink: "#17140f",
@@ -16,6 +18,57 @@ const colors = {
   muted: "#6e6558",
   line: "#d8cbb7",
 };
+
+function TodayPanel({ origin, onUnauthorized }: { origin: string; onUnauthorized: () => void }) {
+  const client = useMemo(() => createTodayClient(origin, secureTokenStore), [origin]);
+  const [state, dispatch] = useReducer(todayReducer, initialTodayState);
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      const person = await client.getFirstPerson();
+      if (!person) return { type: "noPerson" } as const;
+      const asOfDate = todayIsoDate();
+      const [timing, brief] = await Promise.all([
+        client.getTiming(person.id, asOfDate),
+        client.getDailyBrief(person.id, asOfDate),
+      ]);
+      return { type: "loaded", person, timing, brief } as const;
+    };
+
+    load()
+      .then((action) => active && dispatch(action))
+      .catch((error) => {
+        if (!active) return;
+        if (error instanceof Error && error.message === "UNAUTHORIZED") {
+          dispatch({ type: "unauthorized" });
+          onUnauthorized();
+          return;
+        }
+        dispatch({ type: "failed", message: "Tagesimpuls konnte nicht geladen werden." });
+      });
+
+    return () => { active = false; };
+  }, [client, onUnauthorized]);
+
+  if (state.status === "loading") return <><ActivityIndicator color={colors.gold} /><Text style={styles.body}>Tagesimpuls wird geladen …</Text></>;
+  if (state.status === "noPerson") return <Text style={styles.body}>Noch kein Profil hinterlegt. Lege es in der Web-App an, dann erscheint dein Tagesimpuls hier.</Text>;
+  if (state.status === "unauthorized") return <Text accessibilityRole="alert" style={styles.error}>Sitzung abgelaufen. Bitte erneut anmelden.</Text>;
+  if (state.status === "error") return <Text accessibilityRole="alert" style={styles.error}>{state.message}</Text>;
+
+  return <>
+    <Text style={styles.marker}>HEUTE · {state.brief.as_of_date}</Text>
+    <Text style={styles.body}>
+      Jahr {state.timing.personal_year.display_value} · Monat {state.timing.personal_month.display_value} · Tag {state.timing.personal_day.display_value}
+    </Text>
+    {state.brief.sections.map((section) => (
+      <View key={section.metric_id} style={styles.section}>
+        <Text style={styles.sectionTitle}>{section.display_name_de} {section.display_value}</Text>
+        <Text style={styles.body}>{section.text_de}</Text>
+      </View>
+    ))}
+  </>;
+}
 
 function AuthPanel({ brandName }: { brandName: string }) {
   const origin = resolveApiOrigin(process.env.EXPO_PUBLIC_API_URL);
@@ -53,11 +106,21 @@ function AuthPanel({ brandName }: { brandName: string }) {
     dispatch({ type: "signedOut" });
   };
 
+  // A rejected token on the Today endpoints means the same thing it means in
+  // `auth-client.restore()`: the stored credential is worthless, so it gets deleted
+  // and the screen falls back to the sign-in form. The reducers stay pure; this
+  // caller owns the side effect.
+  const handleUnauthorized = useCallback(() => {
+    void secureTokenStore.delete();
+    dispatch({ type: "failed", message: "Sitzung abgelaufen. Bitte erneut anmelden." });
+  }, []);
+
   if (state.status === "restoring") return <><ActivityIndicator color={colors.gold} /><Text style={styles.body}>Sitzung wird geprüft …</Text></>;
   if (state.status === "signedIn") return <>
     <Text style={styles.marker}>ANGEMELDET</Text>
     <Text style={styles.cardTitle}>Willkommen bei {brandName}</Text>
     <Text style={styles.body}>{state.user.email}</Text>
+    <TodayPanel origin={origin} onUnauthorized={handleUnauthorized} />
     <Pressable accessibilityRole="button" onPress={signOut} style={styles.secondaryButton}><Text style={styles.secondaryButtonLabel}>Abmelden</Text></Pressable>
   </>;
 
@@ -166,4 +229,6 @@ const styles = StyleSheet.create({
   secondaryButtonLabel: { color: colors.ink, fontSize: 15, fontWeight: "700" },
   input: { alignSelf: "stretch", borderColor: colors.line, borderWidth: 1, borderRadius: 12, color: colors.ink, fontSize: 16, marginTop: 12, paddingHorizontal: 14, paddingVertical: 12 },
   error: { color: "#9d2d20", fontSize: 14, marginTop: 10 },
+  section: { alignSelf: "stretch", borderTopColor: colors.line, borderTopWidth: 1, marginTop: 16, paddingTop: 12 },
+  sectionTitle: { color: colors.ink, fontSize: 16, fontWeight: "700" },
 });
