@@ -11,6 +11,8 @@ from numra_api.auth.passwords import hash_password, verify_password
 from numra_api.auth.sessions import generate_session_token, hash_session_token
 from numra_api.config import Settings
 from numra_api.deps import (
+    get_current_bearer_session,
+    get_current_bearer_user,
     get_current_session,
     get_current_user,
     get_db,
@@ -34,6 +36,7 @@ from numra_api.schemas.auth import (
     ChangePasswordRequest,
     ForgotPasswordRequest,
     LoginRequest,
+    MobileSessionOut,
     RegisterRequest,
     ResetPasswordRequest,
     SessionOut,
@@ -159,6 +162,58 @@ async def login(
         is_active=user.is_active,
         email_verified_at=user.email_verified_at,
     )
+
+
+def _user_out(user: User) -> UserOut:
+    return UserOut(
+        id=str(user.id),
+        email=user.email,
+        role=str(user.role),
+        is_active=user.is_active,
+        email_verified_at=user.email_verified_at,
+    )
+
+
+@router.post(
+    "/mobile/login",
+    response_model=MobileSessionOut,
+    dependencies=[Depends(rate_limit_by_ip("auth:mobile-login", limit=10, window_seconds=60))],
+)
+async def mobile_login(
+    body: LoginRequest,
+    response: Response,
+    db: AsyncSession = Depends(get_db, scope="function"),
+    settings: Settings = Depends(get_settings_dep),
+) -> MobileSessionOut:
+    user = await get_user_by_email(db, email=body.email)
+    if user is None or not verify_password(user.password_hash, body.password) or not user.is_active:
+        raise InvalidCredentials("invalid email or password")
+
+    token = generate_session_token()
+    expires_at = dt.datetime.now(dt.UTC) + dt.timedelta(hours=settings.session_ttl_hours)
+    await create_session(
+        db, user_id=user.id, token_hash=hash_session_token(token), expires_at=expires_at
+    )
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Pragma"] = "no-cache"
+    return MobileSessionOut(
+        access_token=token,
+        expires_at=expires_at,
+        user=_user_out(user),
+    )
+
+
+@router.get("/mobile/me", response_model=UserOut)
+async def mobile_me(user: User = Depends(get_current_bearer_user)) -> UserOut:
+    return _user_out(user)
+
+
+@router.post("/mobile/logout", status_code=204)
+async def mobile_logout(
+    session: SessionModel = Depends(get_current_bearer_session),
+    db: AsyncSession = Depends(get_db, scope="function"),
+) -> None:
+    await revoke_session(db, token_hash=session.token_hash, now=dt.datetime.now(dt.UTC))
 
 
 @router.post("/logout", status_code=204, dependencies=[Depends(require_csrf)])
