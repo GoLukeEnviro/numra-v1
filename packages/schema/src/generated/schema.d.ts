@@ -5619,7 +5619,9 @@ export interface operations {
     list_people_route_v1_people_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                Authorization?: string | null;
+            };
             path?: never;
             cookie?: {
                 numra_session?: string | null;
@@ -5946,7 +5948,9 @@ export interface operations {
             query: {
                 as_of_date: string;
             };
-            header?: never;
+            header?: {
+                Authorization?: string | null;
+            };
             path: {
                 person_id: string;
             };
@@ -6434,7 +6438,9 @@ export interface operations {
             query: {
                 as_of_date: string;
             };
-            header?: never;
+            header?: {
+                Authorization?: string | null;
+            };
             path: {
                 person_id: string;
             };

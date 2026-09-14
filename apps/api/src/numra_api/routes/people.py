@@ -7,7 +7,13 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from numra_api.config import Settings
-from numra_api.deps import get_current_user, get_db, get_settings_dep, require_csrf
+from numra_api.deps import (
+    get_current_user,
+    get_current_user_any_auth,
+    get_db,
+    get_settings_dep,
+    require_csrf,
+)
 from numra_api.models import NameIdentity, User
 from numra_api.repositories.identities import list_name_identities_for_person, sync_identity_history
 from numra_api.repositories.people import (
@@ -47,7 +53,8 @@ def _identity_to_out(identity: NameIdentity) -> NameIdentityOut:
 
 @router.get("", response_model=list[PersonOut])
 async def list_people_route(
-    user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db, scope="function")
+    user: User = Depends(get_current_user_any_auth),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> list[PersonOut]:
     people = await list_people(db, user_id=user.id)
     return [_to_out(p) for p in people]

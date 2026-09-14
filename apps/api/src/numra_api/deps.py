@@ -229,6 +229,27 @@ async def get_current_bearer_user(
     return user
 
 
+async def get_current_user_any_auth(
+    request: Request,
+    authorization: str | None = Header(default=None, alias="Authorization"),
+    session_token: str | None = Cookie(default=None, alias="numra_session"),
+    db: AsyncSession = Depends(get_db, scope="function"),
+) -> User:
+    """Accept either credential on a read-only route the native app shares with the
+    browser (MOBILE-12C). The presence of an `Authorization` header — not its validity
+    — selects the bearer path, so a native client never silently falls back to an
+    ambient cookie and a broken token still fails loudly with the generic 401.
+
+    Both branches delegate to the existing resolvers rather than repeating the session
+    lookup, which is why ownership, revocation and the disabled-account behaviour stay
+    byte-identical to the cookie-only routes."""
+    if authorization is not None:
+        bearer_session = await get_current_bearer_session(authorization=authorization, db=db)
+        return await get_current_bearer_user(db=db, session=bearer_session)
+    cookie_session = await get_current_session(request=request, db=db, session_token=session_token)
+    return await get_current_user(db=db, session=cookie_session)
+
+
 async def require_admin(user: User = Depends(get_current_user)) -> User:
     """Admin-only gate. `is_active` is already guaranteed by the composed
     `get_current_user` above -- this only adds the role check."""
