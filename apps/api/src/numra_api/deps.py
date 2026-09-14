@@ -201,6 +201,34 @@ async def get_current_user(
     return user
 
 
+async def get_current_bearer_session(
+    authorization: str | None = Header(default=None, alias="Authorization"),
+    db: AsyncSession = Depends(get_db, scope="function"),
+) -> SessionModel:
+    """Resolve a non-ambient native credential without changing browser auth."""
+    if not authorization:
+        raise NotAuthenticated("no bearer token")
+    scheme, separator, token = authorization.partition(" ")
+    if not separator or scheme.lower() != "bearer" or not token.strip() or " " in token.strip():
+        raise NotAuthenticated("malformed bearer token")
+    session = await get_active_session_by_token_hash(
+        db, token_hash=hash_session_token(token.strip()), now=dt.datetime.now(dt.UTC)
+    )
+    if session is None:
+        raise NotAuthenticated("session not found, expired, or revoked")
+    return session
+
+
+async def get_current_bearer_user(
+    db: AsyncSession = Depends(get_db, scope="function"),
+    session: SessionModel = Depends(get_current_bearer_session),
+) -> User:
+    user = await get_user_by_id(db, user_id=session.user_id)
+    if user is None or not user.is_active:
+        raise NotAuthenticated("session user no longer exists")
+    return user
+
+
 async def require_admin(user: User = Depends(get_current_user)) -> User:
     """Admin-only gate. `is_active` is already guaranteed by the composed
     `get_current_user` above -- this only adds the role check."""
