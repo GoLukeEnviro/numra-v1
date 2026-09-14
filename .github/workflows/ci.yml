@@ -173,6 +173,10 @@ jobs:
       - run: pnpm --filter @numra/web exec tsc --noEmit
       - run: pnpm --filter @numra/web test -- --run
       - run: pnpm --filter @numra/web build
+      - run: pnpm --filter @numra/mobile lint
+      - run: pnpm --filter @numra/mobile typecheck
+      - run: pnpm --filter @numra/mobile test
+      - run: pnpm --filter @numra/mobile exec expo export --platform android --output-dir .expo-export-ci
 
   playwright:
     runs-on: ubuntu-latest

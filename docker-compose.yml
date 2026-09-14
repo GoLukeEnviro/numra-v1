@@ -51,6 +51,7 @@ services:
       SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
       ALLOW_SELF_SIGNUP: ${ALLOW_SELF_SIGNUP:-false}
       ENVIRONMENT: ${ENVIRONMENT:-production}
+      EMAIL_BACKEND: ${EMAIL_BACKEND:-disabled}
       NUMRA_LLM_PROVIDER: ${NUMRA_LLM_PROVIDER:-disabled}
       NUMRA_LLM_MAX_RETRIES: ${NUMRA_LLM_MAX_RETRIES:-3}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-}
@@ -92,6 +93,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://numra:${POSTGRES_PASSWORD:-numra_dev_password}@postgres:5432/numra
       APP_TIMEZONE: ${APP_TIMEZONE:-Europe/Berlin}
       SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
+      EMAIL_BACKEND: ${EMAIL_BACKEND:-disabled}
       NUMRA_LLM_PROVIDER: ${NUMRA_LLM_PROVIDER:-disabled}
       NUMRA_LLM_MAX_RETRIES: ${NUMRA_LLM_MAX_RETRIES:-3}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-}
@@ -120,6 +122,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://numra:${POSTGRES_PASSWORD:-numra_dev_password}@postgres:5432/numra
       APP_TIMEZONE: ${APP_TIMEZONE:-Europe/Berlin}
       SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
+      EMAIL_BACKEND: ${EMAIL_BACKEND:-disabled}
       NUMRA_LLM_PROVIDER: ${NUMRA_LLM_PROVIDER:-disabled}
       NUMRA_LLM_MAX_RETRIES: ${NUMRA_LLM_MAX_RETRIES:-3}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-}

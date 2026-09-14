@@ -79,14 +79,15 @@ class Settings(BaseSettings):
     #: risk that letting one configure e.g. session/CSRF behavior would.
     app_brand_name: str = "AVENYTH"
 
-    #: "logging" (default) only logs the email instead of sending it -- fine for local
-    #: dev/CI/E2E, never for real users; not permitted when ENVIRONMENT=production (see
-    #: the validator below). "disabled" is the `numra_llm_provider="disabled"` analogue:
+    #: "logging" only logs the email instead of sending it -- fine when local dev/CI/E2E
+    #: selects it explicitly, never for real users; not permitted when
+    #: ENVIRONMENT=production (see the validator below). "disabled" is the safe default
+    #: and the `numra_llm_provider="disabled"` analogue:
     #: no real send mechanism exists in V1 (see email/sender.py), so it is what a
     #: production deployment configures today -- request-email-verification/
     #: forgot-password fail fast and legibly rather than one of them being silently
     #: mislabeled "sent". Same three-way shape as `numra_llm_provider`.
-    email_backend: EmailBackend = "logging"
+    email_backend: EmailBackend = "disabled"
     #: Base URL of the web app that connection-invitation redeem links, verify-email
     #: links, and reset-password links all point to -- see `build_web_app_url()`
     #: below, the single place that joins this with a path (trailing slash on this
