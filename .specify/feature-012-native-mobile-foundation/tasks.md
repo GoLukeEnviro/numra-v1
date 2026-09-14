@@ -19,4 +19,4 @@
 - [x] Add Expo package and workspace wiring.
 - [x] Run full mobile and existing web verification.
 - [x] Review the focused diff and dependency audit.
-- [ ] Commit, push and open a stacked PR without merging or deploying.
+- [x] Commit, push and open a stacked PR without merging or deploying.

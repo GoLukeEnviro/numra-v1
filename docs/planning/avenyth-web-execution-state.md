@@ -1,16 +1,49 @@
 # AVENYTH Web — Execution State
 
 - **PLAN_VERSION:** 2
-- **VERIFIED_IMPLEMENTATION_MAIN_SHA:** 935508c645bb8a923f958bfab5d34b5aacdb5af9
+- **VERIFIED_IMPLEMENTATION_MAIN_SHA:** f444c4a6be103294ed43e4ce9f15f37ef3434146
 - **CURRENT_SEGMENT:** SEGMENT_C
-- **CURRENT_PR:** WEB-07 Shared Tasks UI in PR #57 abgeschlossen.
-- **LAST_MERGED_IMPLEMENTATION_PR:** #57 (WEB-07)
-- **LAST_GREEN_IMPLEMENTATION_MAIN_SHA:** 935508c645bb8a923f958bfab5d34b5aacdb5af9
-- **CURRENT_TASK:** WEB-07 abgeschlossen und vollständig verifiziert.
-- **NEXT_ACTION:** PR-V2-08 Roadmaps + Shared Reflection planen und umsetzen.
+- **CURRENT_PR:** MOBILE-12B Native Authentication in PR #79 abgeschlossen (Kette WEB-09→WEB-11→WEB-10→MOBILE-12A→MOBILE-12B).
+- **LAST_MERGED_IMPLEMENTATION_PR:** #79 (MOBILE-12B), Doku-Nachzug #81
+- **LAST_GREEN_IMPLEMENTATION_MAIN_SHA:** 55f05cf412e19717159a9f2a4eb191e3f4dcfe88
+- **CURRENT_TASK:** WEB-09/WEB-11/WEB-10/MOBILE-12A/MOBILE-12B abgeschlossen und unabhängig sicherheitsgeprüft.
+- **NEXT_ACTION:** MOBILE-12C (read-only mobile Today-/Daily-Brief, Bearer-Grenze gezielt auf einen read-only Produktvertrag erweitern) planen und umsetzen.
 - **HUMAN_GATE_REQUIRED:** false
-- **OPEN_BLOCKERS:** none
-- **LAST_UPDATED_AT:** 2026-09-11
+- **OPEN_BLOCKERS:** PR #74 (Ollama-Sampling) hinter main, 13 offene Dependabot-PRs — beides außerhalb dieses Feature-Stacks, separat zu priorisieren.
+- **LAST_UPDATED_AT:** 2026-09-14
+
+## Abschluss WEB-09 / WEB-11 / WEB-10 / MOBILE-12A / MOBILE-12B
+
+Implementierung durch einen anderen Agenten (Codex) als gestapelte PR-Kette
+main→#75(WEB-09)→#76(WEB-11)→#77(WEB-10)→#78(MOBILE-12A)→#79(MOBILE-12B)
+vorgelegt. Vor Übernahme unabhängig verifiziert (Explore-Agent: PR-/CI-Zustand
+per `gh` gegen GitHub geprüft, nicht nur den Bericht übernommen) und einem
+eigenen Security-Review unterzogen (Fokus: mobile Bearer-Auth-Trennung von
+Cookie-Auth, Token-Hashing, generische Fehlercodes, SecureStore-Handling) —
+keine kritischen/wichtigen Findings.
+
+Beim Merge trat ein reales Problem auf: Squash-Merge von PR #75 hat die
+gestapelte Basis-Kette gebrochen (GitHub schließt automatisch abhängige PRs,
+wenn deren Basis-Branch gelöscht wird, und retargetet die Basis nicht
+zuverlässig). Root-Cause behoben statt umgangen: betroffene PRs jeweils per
+temporär wiederhergestelltem Basis-Branch reopened, Basis explizit auf `main`
+gesetzt, Branch per Rebase (web11) bzw. `gh pr update-branch` (web10/mobile12a/
+mobile12b) aktualisiert, CI erneut grün abgewartet, erst dann regulär gemergt
+(ab #76 Merge-Commit statt Squash, um die Kette nicht erneut zu brechen).
+
+Finaler Merge-Commit `f444c4a` (PR #79), Post-Merge-CI
+[34874665663](https://github.com/GoLukeEnviro/numra-v1/actions/runs/34874665663)
+auf `main` erfolgreich. Anschließend Doku-PR
+[#81](https://github.com/GoLukeEnviro/numra-v1/pull/81) (veraltete Checkbox-
+Status in `.specify/feature-012*` nachgezogen, sachlich durch obigen Review
+gedeckt), Post-Merge-CI
+[34877496756](https://github.com/GoLukeEnviro/numra-v1/actions/runs/34877496756)
+auf `55f05cf` erfolgreich.
+
+Kein Produktionsdeployment, keine Flag-Aktivierung. Serverseitige Durchsetzung
+der Dissolution-Sperre (Consent/Mutation nach Auflösung) ist vorbestehender,
+nicht in diesem Diff geänderter Backend-Code — nicht Teil dieses Reviews,
+sollte bei Bedarf separat erneut verifiziert werden.
 
 ## Abschluss WEB-07
 
