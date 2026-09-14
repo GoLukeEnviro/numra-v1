@@ -267,3 +267,19 @@ def test_reads_model_env_vars(monkeypatch) -> None:
     provider = OllamaCloudProvider(client=client)
     asyncio.run(provider.generate(GenerationRequest(system_instructions="x")))
     assert captured["payload"]["model"] == "custom-fast-model"
+
+
+def test_generate_sends_configured_top_p_sampling_option(monkeypatch) -> None:
+    monkeypatch.setenv("OLLAMA_BASE_URL", "https://ollama.example.invalid")
+    monkeypatch.setenv("OLLAMA_API_KEY", "test-key")
+
+    captured: dict = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["payload"] = json.loads(request.content)
+        return httpx.Response(200, json={"message": {"content": "ok"}})
+
+    provider = OllamaCloudProvider(client=_client_with_transport(handler), top_p=1.0)
+    asyncio.run(provider.generate(GenerationRequest(system_instructions="x")))
+
+    assert captured["payload"]["options"]["top_p"] == 1.0

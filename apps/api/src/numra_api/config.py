@@ -33,9 +33,10 @@ class Settings(BaseSettings):
     numra_llm_max_retries: int = 3
     ollama_base_url: str | None = None
     ollama_api_key: str | None = None
-    numra_llm_model_premium: str = "deepseek-v4-pro:cloud"
-    numra_llm_model_fast: str = "deepseek-v4-flash:cloud"
-    numra_llm_temperature: float = 0.2
+    numra_llm_model_premium: str = "deepseek-v4-pro:0813"
+    numra_llm_model_fast: str = "deepseek-v4.1-flash"
+    numra_llm_temperature: float = 1.0
+    numra_llm_top_p: float = 1.0
     numra_llm_timeout_seconds: int = 120
 
     pdf_internal_token: str = "dev-only-insecure-pdf-token"

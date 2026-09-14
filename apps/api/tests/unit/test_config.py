@@ -19,6 +19,15 @@ def test_mock_llm_provider_allowed_outside_production() -> None:
     Settings(database_url=_DB_URL, environment="test", numra_llm_provider="mock")  # must not raise
 
 
+def test_llm_sampling_defaults_to_deepseek_recommended_values() -> None:
+    settings = Settings(database_url=_DB_URL, environment="test")
+
+    assert settings.numra_llm_model_fast == "deepseek-v4.1-flash"
+    assert settings.numra_llm_model_premium == "deepseek-v4-pro:0813"
+    assert settings.numra_llm_temperature == 1.0
+    assert settings.numra_llm_top_p == 1.0
+
+
 def test_disabled_and_ollama_llm_provider_allowed_in_production() -> None:
     # rate_limit_backend="redis"/email_backend="disabled" here only to isolate this
     # test from the *other* production validators

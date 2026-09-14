@@ -36,6 +36,7 @@ def build_llm_provider(settings: Settings) -> LLMProvider:
             model_fast=settings.numra_llm_model_fast,
             timeout_seconds=float(settings.numra_llm_timeout_seconds),
             temperature=settings.numra_llm_temperature,
+            top_p=settings.numra_llm_top_p,
             max_retries=settings.numra_llm_max_retries,
         )
     if settings.numra_llm_provider == "mock":
