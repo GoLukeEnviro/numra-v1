@@ -6,5 +6,5 @@
 - [x] GREEN: SecureStore adapter and auth client.
 - [x] RED/GREEN: login/session UI state.
 - [x] Regenerate OpenAPI and TypeScript schema.
-- [ ] Run focused and full verification.
-- [ ] Review, commit, push and open a stacked PR without merge/deploy.
+- [x] Run focused and full verification.
+- [x] Review, commit, push and open a stacked PR without merge/deploy.
