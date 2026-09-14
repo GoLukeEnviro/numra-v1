@@ -15,13 +15,17 @@ function renderTabs() {
 }
 
 describe("WorkspaceNavTabs", () => {
-  it("renders the seven workspace tabs", () => {
+  it("renders the eight workspace tabs including Copilot", () => {
     usePathname.mockReturnValue("/workspaces/ws-1");
     renderTabs();
-    expect(screen.getAllByRole("link")).toHaveLength(7);
+    expect(screen.getAllByRole("link")).toHaveLength(8);
     expect(screen.getByRole("link", { name: "Dynamiken" })).toHaveAttribute(
       "href",
       "/workspaces/ws-1/dynamics",
+    );
+    expect(screen.getByRole("link", { name: "Copilot" })).toHaveAttribute(
+      "href",
+      "/workspaces/ws-1/copilot",
     );
   });
 
@@ -47,6 +51,7 @@ describe("WorkspaceNavTabs", () => {
   it.each([
     ["/workspaces/ws-1/roadmaps", "Roadmaps"],
     ["/workspaces/ws-1/reflections", "Geteilte Reflexionen"],
+    ["/workspaces/ws-1/copilot", "Copilot"],
   ])("marks the WEB-08 tab active on %s", (path, label) => {
     usePathname.mockReturnValue(path);
     renderTabs();

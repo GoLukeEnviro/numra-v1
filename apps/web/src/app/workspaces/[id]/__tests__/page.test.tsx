@@ -103,6 +103,10 @@ describe("RelationshipWorkspaceHubPage", () => {
       "href",
       "/workspaces/ws-1/checkins",
     );
+    expect(screen.getByRole("link", { name: /Copilot für diesen Workspace öffnen/ })).toHaveAttribute(
+      "href",
+      "/workspaces/ws-1/copilot",
+    );
   });
 
   it("keeps showing Loading instead of stale data while the workspace id in the response does not yet match the route (state isolation)", async () => {
