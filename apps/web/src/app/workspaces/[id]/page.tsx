@@ -10,7 +10,6 @@ import { WorkspaceNavTabs } from "@/components/workspaces/workspace-nav-tabs";
 import { RelationshipTypeSelector } from "@/components/workspaces/relationship-type-selector";
 import { DualProfileGrid } from "@/components/workspaces/dual-profile-grid";
 import { ConsentSummaryCard } from "@/components/workspaces/consent-summary-card";
-import { FeatureStubCard } from "@/components/workspaces/feature-stub-card";
 import { useLocale } from "@/i18n/context";
 import { useAsync } from "@/lib/use-async";
 import { useAuth } from "@/lib/auth-context";
@@ -76,16 +75,20 @@ function HubContent({ overview, workspaceId, checkinRoundOpen }: { overview: Wor
               <ArrowRight className="h-5 w-5 shrink-0 text-gold" aria-hidden="true" />
             </Link>
           </section>
-          <FeatureStubCard
-            eyebrow={t("app.relationshipWorkspace.stubRoadmapTitle")}
-            title={t("app.relationshipWorkspace.stubRoadmapTitle")}
-            description={t("app.relationshipWorkspace.stubRoadmapBody")}
-          />
-          <FeatureStubCard
-            eyebrow={t("app.relationshipWorkspace.stubReflectionTitle")}
-            title={t("app.relationshipWorkspace.stubReflectionTitle")}
-            description={t("app.relationshipWorkspace.stubReflectionBody")}
-          />
+          <section>
+            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-bronze">{t("app.relationshipWorkspace.stubRoadmapTitle")}</h2>
+            <Link href={`/workspaces/${workspaceId}/roadmaps`} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-surface p-6 transition-colors hover:border-gold/50">
+              <span><span className="block font-serif text-lg text-ivory">{t("app.relationshipWorkspace.stubRoadmapTitle")}</span><span className="mt-1 block max-w-md text-sm text-muted">{t("app.relationshipWorkspace.stubRoadmapBody")}</span></span>
+              <ArrowRight className="h-5 w-5 shrink-0 text-gold" aria-hidden="true" />
+            </Link>
+          </section>
+          <section>
+            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-bronze">{t("app.relationshipWorkspace.stubReflectionTitle")}</h2>
+            <Link href={`/workspaces/${workspaceId}/reflections`} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-surface p-6 transition-colors hover:border-gold/50">
+              <span><span className="block font-serif text-lg text-ivory">{t("app.relationshipWorkspace.stubReflectionTitle")}</span><span className="mt-1 block max-w-md text-sm text-muted">{t("app.relationshipWorkspace.stubReflectionBody")}</span></span>
+              <ArrowRight className="h-5 w-5 shrink-0 text-gold" aria-hidden="true" />
+            </Link>
+          </section>
           <section>
             <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-bronze">{t("app.relationshipWorkspace.stubCopilotTitle")}</h2>
             <Link href={`/workspaces/${workspaceId}/copilot`} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-surface p-6 transition-colors hover:border-gold/50">

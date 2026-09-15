@@ -665,9 +665,9 @@ export const enApp: Record<keyof typeof deApp, string> = {
   "app.relationshipWorkspace.stubTasksTitle": "Tasks",
   "app.relationshipWorkspace.stubTasksBody": "Shared tasks between you two -- coming in a later PR.",
   "app.relationshipWorkspace.stubRoadmapTitle": "Roadmap",
-  "app.relationshipWorkspace.stubRoadmapBody": "Milestones for this workspace -- coming in a later PR.",
+  "app.relationshipWorkspace.stubRoadmapBody": "View and maintain the milestones for this workspace.",
   "app.relationshipWorkspace.stubReflectionTitle": "Shared reflection",
-  "app.relationshipWorkspace.stubReflectionBody": "Shared reflections for this workspace -- coming in a later PR.",
+  "app.relationshipWorkspace.stubReflectionBody": "View the shared reflections for this workspace.",
   "app.relationshipWorkspace.stubCopilotTitle": "Copilot",
   "app.relationshipWorkspace.stubCopilotBody": "Open this workspace's copilot to reflect together or privately.",
 

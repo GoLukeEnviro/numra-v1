@@ -664,9 +664,9 @@ export const deApp = {
   "app.relationshipWorkspace.stubTasksTitle": "Aufgaben",
   "app.relationshipWorkspace.stubTasksBody": "Geteilte Aufgaben zwischen euch beiden -- kommt in einem späteren PR.",
   "app.relationshipWorkspace.stubRoadmapTitle": "Roadmap",
-  "app.relationshipWorkspace.stubRoadmapBody": "Meilensteine für diesen Workspace -- kommt in einem späteren PR.",
+  "app.relationshipWorkspace.stubRoadmapBody": "Meilensteine für diesen Workspace ansehen und pflegen.",
   "app.relationshipWorkspace.stubReflectionTitle": "Geteilte Reflexion",
-  "app.relationshipWorkspace.stubReflectionBody": "Gemeinsame Reflexionen zu diesem Workspace -- kommt in einem späteren PR.",
+  "app.relationshipWorkspace.stubReflectionBody": "Gemeinsame Reflexionen zu diesem Workspace ansehen.",
   "app.relationshipWorkspace.stubCopilotTitle": "Copilot",
   "app.relationshipWorkspace.stubCopilotBody": "Copilot für diesen Workspace öffnen und gemeinsam oder privat reflektieren.",
 
