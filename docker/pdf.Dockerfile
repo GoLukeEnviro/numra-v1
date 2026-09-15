@@ -9,7 +9,7 @@
 # the hard way via a real docker-compose-e2e run: package.json had drifted to
 # resolving 1.62.1 against this image's baked-in 1.56.1 browser, and every PDF
 # export failed fast (not a timeout -- a real fixed bug immune to waiting longer).
-FROM mcr.microsoft.com/playwright:v1.56.1-jammy AS base
+FROM mcr.microsoft.com/playwright:v1.63.0-jammy AS base
 WORKDIR /app
 
 COPY apps/pdf/package.json ./
