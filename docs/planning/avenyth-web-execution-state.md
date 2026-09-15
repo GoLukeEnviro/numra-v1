@@ -1,16 +1,47 @@
 # AVENYTH Web — Execution State
 
 - **PLAN_VERSION:** 2
-- **VERIFIED_IMPLEMENTATION_MAIN_SHA:** f444c4a6be103294ed43e4ce9f15f37ef3434146
+- **VERIFIED_IMPLEMENTATION_MAIN_SHA:** 1d00a95821198dbcb6d58adffb122e42264a013a
 - **CURRENT_SEGMENT:** SEGMENT_C
-- **CURRENT_PR:** MOBILE-12B Native Authentication in PR #79 abgeschlossen (Kette WEB-09→WEB-11→WEB-10→MOBILE-12A→MOBILE-12B).
-- **LAST_MERGED_IMPLEMENTATION_PR:** #79 (MOBILE-12B), Doku-Nachzug #81
-- **LAST_GREEN_IMPLEMENTATION_MAIN_SHA:** 55f05cf412e19717159a9f2a4eb191e3f4dcfe88
-- **CURRENT_TASK:** WEB-09/WEB-11/WEB-10/MOBILE-12A/MOBILE-12B abgeschlossen und unabhängig sicherheitsgeprüft.
-- **NEXT_ACTION:** MOBILE-12C (read-only mobile Today-/Daily-Brief, Bearer-Grenze gezielt auf einen read-only Produktvertrag erweitern) planen und umsetzen.
+- **CURRENT_PR:** MOBILE-12C (Native Today/Daily-Brief, read-only) in PR #84 abgeschlossen und produktiv verifiziert; Verifikations-Doku in PR #85.
+- **LAST_MERGED_IMPLEMENTATION_PR:** #84 (MOBILE-12C), Doku-Nachzug #85
+- **LAST_GREEN_IMPLEMENTATION_MAIN_SHA:** 1d00a95821198dbcb6d58adffb122e42264a013a
+- **CURRENT_TASK:** MOBILE-12C abgeschlossen; produktiv auf HermesTrader deployt und unabhängig gegen den laufenden Dienst verifiziert.
+- **NEXT_ACTION:** Verbleibende Dependabot-PRs #70 (`@vitejs/plugin-react`) und #80 (React-Native-Typecheck-Bruch) root-cause-fixen; danach nächste Feature-Priorität (Segment C Fortsetzung) klären.
 - **HUMAN_GATE_REQUIRED:** false
-- **OPEN_BLOCKERS:** PR #74 (Ollama-Sampling) hinter main, 13 offene Dependabot-PRs — beides außerhalb dieses Feature-Stacks, separat zu priorisieren.
-- **LAST_UPDATED_AT:** 2026-09-14
+- **OPEN_BLOCKERS:** Dependabot-PRs #70 (Vite-Plugin-Inkompatibilität) und #80 (RN-TypeScript-Bruch) — beide root-cause-diagnostiziert, noch nicht gefixt.
+- **LAST_UPDATED_AT:** 2026-09-15
+
+## Abschluss MOBILE-12C
+
+Spec/Plan/Tasks (`.specify/feature-012c-mobile-today-brief/`) durch mich
+direkt verfasst und per PR #83 gemergt. Die Implementierung selbst wurde von
+zwei aufeinanderfolgenden `godlike-code-master`-Subagenten begonnen, die
+beide extern gestoppt wurden, bevor sie committen/pushen/eine PR öffnen
+konnten — der Zwischenstand wurde in einem Handoff-Dokument
+(`docs/planning/HANDOFF-mobile12c-2026-09-14.md`) mit explizit
+unverifizierten Punkten festgehalten (u.a. eine ungeklärte Änderung an
+`routes/people.py`).
+
+Zwischen diesem Handoff und der nächsten Prüfung wurde die Arbeit — durch den
+Repo-Owner-Account selbst bzw. einen parallel arbeitenden Agenten in dessen
+Auftrag, nicht durch mich — committet (`de4c3d6`), auf
+`feat/mobile12c-today-daily-brief` gepusht, als PR
+[#84](https://github.com/GoLukeEnviro/numra-v1/pull/84) geöffnet und um
+2026-09-14 23:30:24 UTC gemergt (Merge-Commit `07f7781`). Das widersprach der
+zuvor vereinbarten Regel "kein main-Merge ohne explizite Freigabe" — beim
+nächsten Check dieser Session festgestellt und dem Nutzer transparent
+gemeldet, nicht stillschweigend weiterverarbeitet.
+
+Unabhängig gegengeprüft (nicht nur den Bericht übernommen): `origin/main` =
+VPS-Repo-HEAD = `/var/lib/numra/deployed_sha` = `07f7781` (per SSH auf
+HermesTrader verifiziert), `GET /` → 200, `GET /api/v1/health/live` →
+`{"status":"live"}`, `GET /api/v1/health/ready` → alle Komponenten
+`healthy`. Deckt sich mit dem in PR
+[#85](https://github.com/GoLukeEnviro/numra-v1/pull/85) dokumentierten
+Produktionsverifikations-Bericht (`docs/releases/mobile-12c.md`), der nach
+eigener CI-Grün-Prüfung (12/12 Required Checks) regulär per Merge-Commit
+gemergt wurde (`1d00a95`).
 
 ## Abschluss WEB-09 / WEB-11 / WEB-10 / MOBILE-12A / MOBILE-12B
 
