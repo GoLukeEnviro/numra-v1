@@ -1,17 +1,17 @@
 # AVENYTH PWA — Canonical Execution State
 
-- **PLAN_VERSION:** 3
+- **PLAN_VERSION:** 4
 - **STATUS_DATE:** 2026-09-16
 - **CANONICAL_CLIENT:** responsive web application / installable PWA (`apps/web`)
 - **NATIVE_MOBILE:** frozen; historical MOBILE-12A/B/C code remains, no new feature work
-- **VERIFIED_MAIN_SHA:** `53d72eaa7e31a9380613d3ae4cbfb043bab18b34`
+- **VERIFIED_MAIN_SHA:** `dc68f1e673a3ab7bbc90aa0f8a3f70c8405d30e8`
 - **VERIFIED_PRODUCTION_SHA:** `b0ff3380be1765a1b438283cfdad4656c9890d73`
-- **LAST_MERGED_PR:** [#100](https://github.com/GoLukeEnviro/numra-v1/pull/100)
-- **LAST_GREEN_MAIN_RUN:** [35115398359](https://github.com/GoLukeEnviro/numra-v1/actions/runs/35115398359), 12/12 required checks successful
+- **LAST_MERGED_PR:** [#101](https://github.com/GoLukeEnviro/numra-v1/pull/101)
+- **LAST_GREEN_MAIN_RUN:** [35118318354](https://github.com/GoLukeEnviro/numra-v1/actions/runs/35118318354), 12/12 required checks successful
 - **CURRENT_MILESTONE:** PWA Product Closure
-- **CURRENT_TASK:** PWA-03 — production feature/flag inventory and parity smoke
-- **NEXT_ACTION:** decide how to resolve the numra-audit version-drift finding (see `docs/audits/2026-09-16-pwa-03-production-parity.md`) before starting PWA-04
-- **OPEN_RELEASE_BLOCKERS:** none in production; numra-audit instance has an unresolved version-drift risk relative to current main, blocking a fully confident PWA-04 start
+- **CURRENT_TASK:** PWA-04 — two-account relationship acceptance
+- **NEXT_ACTION:** confirm both PWA-01 synthetic audit sessions on the audit instance are still authenticated; if expired, ask the user for a manual login only
+- **OPEN_RELEASE_BLOCKERS:** none in production; numra-audit code parity with main verified directly (`RESOLVED_BY_DIRECT_CONTAINER_CODE_VERIFICATION`, see `docs/audits/2026-09-16-pwa-03-production-parity.md`)
 
 This file is the single current execution-state source. Historical plans and gap
 reports remain in the repository as evidence, but do not override this state.
@@ -77,8 +77,8 @@ records are intentionally retained until Product Closure.
 |---|---|---|
 | PWA-01 | Isolated dense-state, two-account audit; defects recorded and fixed | **complete** |
 | PWA-02 | Current documentation agrees on scope, completion and next action | **complete** |
-| PWA-03 | Sanitized production flag/topology inventory and route/API parity smoke | **in progress** |
-| PWA-04 | Controlled two-account relationship acceptance, including analysis, consent changes and dissolution history | queued |
+| PWA-03 | Sanitized production flag/topology inventory and route/API parity smoke | **complete** |
+| PWA-04 | Controlled two-account relationship acceptance, including analysis, consent changes and dissolution history | **in progress** |
 | PWA-05 | Controlled email lifecycle: verify, resend, forgot/reset and anti-enumeration | queued |
 | PWA-06 | Personal Copilot, real-provider report generation and PDF acceptance | queued |
 | PWA-07 | Privacy/evidence acceptance: export, account deletion, cascade and cleanup proof | queued |
