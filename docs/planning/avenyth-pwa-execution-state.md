@@ -1,17 +1,17 @@
 # AVENYTH PWA — Canonical Execution State
 
-- **PLAN_VERSION:** 2
+- **PLAN_VERSION:** 3
 - **STATUS_DATE:** 2026-09-16
 - **CANONICAL_CLIENT:** responsive web application / installable PWA (`apps/web`)
 - **NATIVE_MOBILE:** frozen; historical MOBILE-12A/B/C code remains, no new feature work
-- **VERIFIED_MAIN_SHA:** `b0ff3380be1765a1b438283cfdad4656c9890d73`
-- **VERIFIED_PRODUCTION_SHA:** `c388456a3b9b734d29e68fef4001dd70c9318f6d`
-- **LAST_MERGED_PR:** [#99](https://github.com/GoLukeEnviro/numra-v1/pull/99)
-- **LAST_GREEN_MAIN_RUN:** [35113001720](https://github.com/GoLukeEnviro/numra-v1/actions/runs/35113001720), 12/12 required checks successful
+- **VERIFIED_MAIN_SHA:** `53d72eaa7e31a9380613d3ae4cbfb043bab18b34`
+- **VERIFIED_PRODUCTION_SHA:** `b0ff3380be1765a1b438283cfdad4656c9890d73`
+- **LAST_MERGED_PR:** [#100](https://github.com/GoLukeEnviro/numra-v1/pull/100)
+- **LAST_GREEN_MAIN_RUN:** [35115398359](https://github.com/GoLukeEnviro/numra-v1/actions/runs/35115398359), 12/12 required checks successful
 - **CURRENT_MILESTONE:** PWA Product Closure
 - **CURRENT_TASK:** PWA-03 — production feature/flag inventory and parity smoke
-- **NEXT_ACTION:** PWA-03 — read HermesTrader identity gate, then inventory flags/topology
-- **OPEN_RELEASE_BLOCKERS:** none proven
+- **NEXT_ACTION:** decide how to resolve the numra-audit version-drift finding (see `docs/audits/2026-09-16-pwa-03-production-parity.md`) before starting PWA-04
+- **OPEN_RELEASE_BLOCKERS:** none in production; numra-audit instance has an unresolved version-drift risk relative to current main, blocking a fully confident PWA-04 start
 
 This file is the single current execution-state source. Historical plans and gap
 reports remain in the repository as evidence, but do not override this state.
