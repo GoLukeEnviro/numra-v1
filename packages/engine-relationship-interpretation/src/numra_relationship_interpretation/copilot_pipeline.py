@@ -145,8 +145,13 @@ async def generate_copilot_reply(
             ) from retry_exc
 
     health = await llm.health()
+    text = reply.text
+    if health.provider == "mock":
+        text = (
+            "Für diese Frage gibt es in den freigegebenen Daten noch keine ausreichende Grundlage."
+        )
     return CopilotReplyResult(
-        text=reply.text,
+        text=text,
         basis_type=reply.basis_type,
         numeric_claims=reply.numeric_claims,
         model_provider=health.provider,

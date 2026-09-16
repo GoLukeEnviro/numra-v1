@@ -83,6 +83,12 @@ async def test_mock_provider_reply_defaults_to_insufficient_evidence(profile_sel
     )
     assert result.basis_type == "INSUFFICIENT_EVIDENCE"
     assert result.basis_type in VALID_BASIS_TYPES
+    assert result.text == (
+        "Für diese Frage gibt es in den freigegebenen Daten noch keine ausreichende Grundlage."
+    )
+    assert "[system]" not in result.text
+    assert "[profile_fact:" not in result.text
+    assert "Was sagt mein Lebenspfad aus?" not in result.text
 
 
 @pytest.mark.asyncio
