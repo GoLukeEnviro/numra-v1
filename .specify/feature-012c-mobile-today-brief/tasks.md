@@ -20,4 +20,5 @@
 - [x] Run full mobile and web verification.
 - [x] Update `specs/v2/api-contract.md` (auth-extensions bullet + roadmap entry).
 - [x] Review the focused diff and dependency audit.
-- [ ] Commit, push and open a stacked PR without merging or deploying.
+- [x] Commit and open PR #84; the work was subsequently merged and production-verified
+  as recorded in `docs/releases/mobile-12c.md`.

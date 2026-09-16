@@ -4,6 +4,10 @@
 
 Draft — Phase 0 spec freeze.
 
+This label describes the status of this scope document, not current delivery. The
+implemented/frozen product state and remaining acceptance roadmap are maintained in
+[`../../docs/planning/avenyth-pwa-execution-state.md`](../../docs/planning/avenyth-pwa-execution-state.md).
+
 ## One-line definition
 
 AVENYTH is a **Personal & Relationship Development OS based on deterministic

@@ -1,16 +1,20 @@
-# AVENYTH Web — Execution State
+# AVENYTH Web — Delivery History
 
-- **PLAN_VERSION:** 2
-- **VERIFIED_IMPLEMENTATION_MAIN_SHA:** 1d00a95821198dbcb6d58adffb122e42264a013a
-- **CURRENT_SEGMENT:** SEGMENT_C
-- **CURRENT_PR:** MOBILE-12C (Native Today/Daily-Brief, read-only) in PR #84 abgeschlossen und produktiv verifiziert; Verifikations-Doku in PR #85.
-- **LAST_MERGED_IMPLEMENTATION_PR:** #84 (MOBILE-12C), Doku-Nachzug #85
-- **LAST_GREEN_IMPLEMENTATION_MAIN_SHA:** 1d00a95821198dbcb6d58adffb122e42264a013a
-- **CURRENT_TASK:** MOBILE-12C abgeschlossen; produktiv auf HermesTrader deployt und unabhängig gegen den laufenden Dienst verifiziert.
-- **NEXT_ACTION:** Verbleibende Dependabot-PRs #70 (`@vitejs/plugin-react`) und #80 (React-Native-Typecheck-Bruch) root-cause-fixen; danach nächste Feature-Priorität (Segment C Fortsetzung) klären.
+> **Current state:** This detailed delivery log is retained as historical evidence. The
+> canonical current execution state and Product Closure roadmap are in
+> [`avenyth-pwa-execution-state.md`](avenyth-pwa-execution-state.md).
+
+- **PLAN_VERSION:** 3
+- **VERIFIED_IMPLEMENTATION_MAIN_SHA:** c388456a3b9b734d29e68fef4001dd70c9318f6d
+- **CURRENT_SEGMENT:** PWA_PRODUCT_CLOSURE
+- **CURRENT_PR:** PWA-02 documentation reconciliation
+- **LAST_MERGED_IMPLEMENTATION_PR:** #98 (mock Copilot disclosure regression)
+- **LAST_GREEN_IMPLEMENTATION_MAIN_SHA:** c388456a3b9b734d29e68fef4001dd70c9318f6d
+- **CURRENT_TASK:** PWA-02; V2 web delivery through WEB-11 is complete, native mobile is frozen.
+- **NEXT_ACTION:** PWA-03 production feature/flag inventory and parity smoke.
 - **HUMAN_GATE_REQUIRED:** false
-- **OPEN_BLOCKERS:** Dependabot-PRs #70 (Vite-Plugin-Inkompatibilität) und #80 (RN-TypeScript-Bruch) — beide root-cause-diagnostiziert, noch nicht gefixt.
-- **LAST_UPDATED_AT:** 2026-09-15
+- **OPEN_BLOCKERS:** none proven; open Dependabot PRs are a separate maintenance lane.
+- **LAST_UPDATED_AT:** 2026-09-16
 
 ## Abschluss MOBILE-12C
 
@@ -117,4 +121,5 @@ Originalcheckout, untracked `.planning/`, fremde Worktrees und bestehende
 Container/Volumes erhalten. Eigene Testdatenbank samt eigenem anonymen Volume,
 Startup-Testcontainer und PDF-Testprozess gezielt entfernt/beendet.
 Kein Produktionsdeployment, keine Flag-Aktivierung, kein Produktionsdatenbank-Eingriff.
-WEB-07 ist abgeschlossen. Der nächste Abschnitt ist PR-V2-08 Roadmaps + Shared Reflection.
+WEB-07 was followed by completed WEB-08, WEB-09, WEB-10 and WEB-11 delivery. For the
+current sequence, use [`avenyth-pwa-execution-state.md`](avenyth-pwa-execution-state.md).

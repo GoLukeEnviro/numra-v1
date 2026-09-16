@@ -1,5 +1,11 @@
 # Technical-Debt-Report — numra-v1
 
+> **Historischer Snapshot:** Die Bewertungen und Zählwerte stammen vom 2026-08-23.
+> Dependabot, Live-LLM-Smoke und Teile des Backup-Nachweises wurden danach umgesetzt.
+> Der aktuelle Restbestand ist in
+> [`product-closure-overview-2026-09-16.md`](product-closure-overview-2026-09-16.md)
+> eingeordnet.
+
 > **Bericht:** Erfassung, Bewertung und Priorisierung technischer Schulden
 > **Stand:** 2026-08-23 · **Branch:** `main` · **Commit:** `f4be7ee7`
 > **Konsistent mit:** [`gap-analyse.md`](./gap-analyse.md)

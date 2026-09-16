@@ -1,5 +1,9 @@
 # GAP-Bericht & Technische Schuldenanalyse — numra-v1
 
+> **Historischer Snapshot:** Dieser Bericht ist für seinen Referenzstand 2026-09-11
+> korrekt, aber nicht mehr die aktuelle Roadmap. WEB-08–11 sind abgeschlossen. Siehe
+> [`product-closure-overview-2026-09-16.md`](product-closure-overview-2026-09-16.md).
+
 **Projekt**: numra-v1 (NUMRA / AVENYTH)
 **Pfad**: `e:/VS-code-Projekte-5.2025/numra-v1`
 **Datum**: 2026-09-11

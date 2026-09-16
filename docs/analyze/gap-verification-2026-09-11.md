@@ -1,5 +1,9 @@
 # Verifizierte GAP-Befundmatrix — 2026-09-11
 
+> **Historischer Snapshot:** Diese Matrix bleibt als WEB-08-Entscheidungsnachweis
+> erhalten. Der aktuelle Product-Closure-Stand steht in
+> [`product-closure-overview-2026-09-16.md`](product-closure-overview-2026-09-16.md).
+
 Referenz ist `origin/main` bei `6344539f8807e3f9c557ec8beb434935ae04e5e0`; Änderungen aus `codex/web08-release-basis` sind als **in Arbeit** gekennzeichnet. Der ursprüngliche Gesamtscore wird nicht fortgeschrieben. Risiko bezeichnet den geschlossenen Testkreis.
 
 | ID | Prüfergebnis und Quelle | Status | Risiko / Entscheidung | Paket und Abnahme |

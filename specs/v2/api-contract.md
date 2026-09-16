@@ -140,6 +140,11 @@ content (`specs/v2/privacy-spec.md`).
 
 ## PR structure (Section 53)
 
+The list below is the original delivery sequence, not an open-work list. PR-V2-00 through
+PR-V2-11 are implemented. PR-V2-12A/B/C was completed and subsequently frozen in favor of
+the responsive PWA; current execution state lives in
+[`../../docs/planning/avenyth-pwa-execution-state.md`](../../docs/planning/avenyth-pwa-execution-state.md).
+
 ```
 PR-V2-00  Specs + ADRs + PR #15 resolution                (this phase)
 PR-V2-01  Brand + auth + entitlements
