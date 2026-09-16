@@ -67,6 +67,8 @@ marks superseded analyses as snapshots instead of rewriting their original concl
 
 - Replace permissive CSP behavior with a nonce/hash-based policy where compatible.
 - Add SAST/security scanning beyond dependency audits.
+- Triage the one moderate Dependabot security alert currently reported on the default
+  branch and prove whether the affected dependency is shipped/runtime-reachable.
 - Measure and close targeted frontend coverage gaps rather than relying on old counts.
 - Version a sanitized production topology/template while keeping secrets external.
 - Add monitoring/alerting and perform a documented backup restore drill.
@@ -76,7 +78,8 @@ marks superseded analyses as snapshots instead of rewriting their original concl
 
 At review time, PRs #89–#97 are Dependabot updates. They are not missing product features.
 PRs for pytest, Tailwind, Express and ESLint include major-version changes and require
-focused migration review. No open GitHub issues were found.
+focused migration review. GitHub reports one moderate Dependabot security alert on the
+default branch; it is not yet triaged. No open GitHub issues were found.
 
 ## Documentation decisions
 
@@ -95,4 +98,3 @@ Execute PWA-03 as a read-only production parity audit, publish a sanitized inven
 turn any mismatch into a focused PR. Do not add more synthetic content until the deployed
 feature boundary is known. The executable sequence is in
 `docs/plans/2026-09-16-pwa-product-closure.md`.
-

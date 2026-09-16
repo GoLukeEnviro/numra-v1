@@ -68,6 +68,8 @@ records are intentionally retained until Product Closure.
   sanitized, versioned inventory.
 - Monitoring/alerting, CSP hardening, restore rehearsal and versioned production topology
   remain engineering/operations work, not reasons to reopen completed product features.
+- GitHub currently reports one moderate Dependabot security alert on the default branch;
+  its affected package and runtime relevance still require explicit triage.
 
 ## Product Closure roadmap
 
@@ -80,7 +82,7 @@ records are intentionally retained until Product Closure.
 | PWA-05 | Controlled email lifecycle: verify, resend, forgot/reset and anti-enumeration | queued |
 | PWA-06 | Personal Copilot, real-provider report generation and PDF acceptance | queued |
 | PWA-07 | Privacy/evidence acceptance: export, account deletion, cascade and cleanup proof | queued |
-| PWA-08 | Security/test hardening: CSP, SAST and targeted frontend coverage | queued |
+| PWA-08 | Security/test hardening: triage current alert, CSP, SAST and targeted frontend coverage | queued |
 | PWA-09 | Operations: monitoring, sanitized versioned deployment topology and restore drill | queued |
 | PWA-10 | Final desktop/mobile-PWA regression, accessibility/performance/install checks, closure decision and audit teardown | queued |
 
@@ -105,4 +107,3 @@ records are intentionally retained until Product Closure.
 - Do not use personal production accounts or real relationship/journal data for acceptance.
 - Do not expose secrets in documentation, screenshots, CI output or audit artifacts.
 - Do not treat historical unchecked checklists as evidence that completed features are open.
-

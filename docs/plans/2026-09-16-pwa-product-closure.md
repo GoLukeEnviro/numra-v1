@@ -167,9 +167,11 @@ database queries only as sanitized assertions, never as a shortcut around produc
 - Create/modify: targeted frontend tests for gaps measured in this task
 - Create: `docs/security/pwa-hardening.md` if no equivalent exists
 
-First add a failing header assertion for the desired CSP, then introduce nonce/hash handling
-without `unsafe-inline` where compatible. Add a pinned SAST job. Measure frontend coverage
-and add tests only for high-risk uncovered auth, consent, privacy and error-state branches.
+First inspect the current moderate Dependabot alert without disclosing repository secrets;
+record the affected package, reachability and remediation decision. Then add a failing header
+assertion for the desired CSP and introduce nonce/hash handling without `unsafe-inline` where
+compatible. Add a pinned SAST job. Measure frontend coverage and add tests only for high-risk
+uncovered auth, consent, privacy and error-state branches.
 
 ## Task 8: PWA-09 operations closure
 
@@ -194,4 +196,3 @@ performance, PWA install/update/offline-shell checks and production health smoke
 go/no-go decision with residual risks. Only after a go decision, delete run-tagged synthetic
 accounts, verify cascades, remove the isolated audit stack/volumes and audit-only Tailscale
 mapping, then record the teardown result.
-
