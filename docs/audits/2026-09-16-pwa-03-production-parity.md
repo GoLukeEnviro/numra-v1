@@ -111,10 +111,7 @@ branch is present and unchanged in the audit container:
 
 ```python
 if health.provider == "mock":
-    text = (
-        "Für diese Frage gibt es in den freigegebenen Daten noch keine ausreichende "
-        "Grundlage."
-    )
+    text = "Für diese Frage gibt es in den freigegebenen Daten noch keine ausreichende Grundlage."
 ```
 
 This matches the PWA-01 report's own record of the live verification at the
