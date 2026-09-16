@@ -148,8 +148,7 @@ async def generate_copilot_reply(
     text = reply.text
     if health.provider == "mock":
         text = (
-            "Für diese Frage gibt es in den freigegebenen Daten noch keine ausreichende "
-            "Grundlage."
+            "Für diese Frage gibt es in den freigegebenen Daten noch keine ausreichende Grundlage."
         )
     return CopilotReplyResult(
         text=text,
