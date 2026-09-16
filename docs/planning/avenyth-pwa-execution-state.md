@@ -1,16 +1,16 @@
 # AVENYTH PWA — Canonical Execution State
 
-- **PLAN_VERSION:** 1
+- **PLAN_VERSION:** 2
 - **STATUS_DATE:** 2026-09-16
 - **CANONICAL_CLIENT:** responsive web application / installable PWA (`apps/web`)
 - **NATIVE_MOBILE:** frozen; historical MOBILE-12A/B/C code remains, no new feature work
-- **VERIFIED_MAIN_SHA:** `c388456a3b9b734d29e68fef4001dd70c9318f6d`
+- **VERIFIED_MAIN_SHA:** `b0ff3380be1765a1b438283cfdad4656c9890d73`
 - **VERIFIED_PRODUCTION_SHA:** `c388456a3b9b734d29e68fef4001dd70c9318f6d`
-- **LAST_MERGED_PR:** [#98](https://github.com/GoLukeEnviro/numra-v1/pull/98)
-- **LAST_GREEN_MAIN_RUN:** [35071761497](https://github.com/GoLukeEnviro/numra-v1/actions/runs/35071761497), 12/12 required checks successful
+- **LAST_MERGED_PR:** [#99](https://github.com/GoLukeEnviro/numra-v1/pull/99)
+- **LAST_GREEN_MAIN_RUN:** [35113001720](https://github.com/GoLukeEnviro/numra-v1/actions/runs/35113001720), 12/12 required checks successful
 - **CURRENT_MILESTONE:** PWA Product Closure
-- **CURRENT_TASK:** PWA-02 — documentation reconciliation and canonical roadmap
-- **NEXT_ACTION:** PWA-03 — production feature/flag inventory and parity smoke
+- **CURRENT_TASK:** PWA-03 — production feature/flag inventory and parity smoke
+- **NEXT_ACTION:** PWA-03 — read HermesTrader identity gate, then inventory flags/topology
 - **OPEN_RELEASE_BLOCKERS:** none proven
 
 This file is the single current execution-state source. Historical plans and gap
@@ -76,8 +76,8 @@ records are intentionally retained until Product Closure.
 | ID | Outcome / exit gate | State |
 |---|---|---|
 | PWA-01 | Isolated dense-state, two-account audit; defects recorded and fixed | **complete** |
-| PWA-02 | Current documentation agrees on scope, completion and next action | **in progress** |
-| PWA-03 | Sanitized production flag/topology inventory and route/API parity smoke | queued |
+| PWA-02 | Current documentation agrees on scope, completion and next action | **complete** |
+| PWA-03 | Sanitized production flag/topology inventory and route/API parity smoke | **in progress** |
 | PWA-04 | Controlled two-account relationship acceptance, including analysis, consent changes and dissolution history | queued |
 | PWA-05 | Controlled email lifecycle: verify, resend, forgot/reset and anti-enumeration | queued |
 | PWA-06 | Personal Copilot, real-provider report generation and PDF acceptance | queued |
