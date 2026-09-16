@@ -1,5 +1,9 @@
 # Gap-Analyse Deep Dive — numra-v1
 
+> **Historischer Snapshot:** Diese Analyse basiert auf dem Stand vom 2026-08-23. Sie
+> enthält inzwischen geschlossene oder neu bewertete Lücken. Für den aktuellen Stand siehe
+> [`product-closure-overview-2026-09-16.md`](product-closure-overview-2026-09-16.md).
+
 > **Bericht:** Ist-Soll-Analyse der IT-Landschaft `numra-v1`
 > **Stand:** 2026-08-23 · **Branch:** `main` · **Commit:** `f4be7ee7`
 > **Messbasis:** Read-only-Analyse-Skripte (`inventar.py`, `git_metriken.py`, `muster_scan.py`) + Artefakt-Recherche

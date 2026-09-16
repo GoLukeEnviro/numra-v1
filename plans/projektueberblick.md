@@ -1,5 +1,12 @@
 # NUMRA / AVENYTH — Strukturierter Projektüberblick
 
+> **Historischer Snapshot:** Dieses Dokument beschreibt den Stand vom 2026-09-11 und
+> bleibt als Analyse-Evidenz erhalten. Es ist kein aktueller Roadmap-Status. Der aktuelle
+> Überblick steht in
+> [`../docs/analyze/product-closure-overview-2026-09-16.md`](../docs/analyze/product-closure-overview-2026-09-16.md),
+> die kanonische Roadmap in
+> [`../docs/planning/avenyth-pwa-execution-state.md`](../docs/planning/avenyth-pwa-execution-state.md).
+
 > **Stand:** 2026-09-11 · **Quelle:** Read-only-Analyse des Repos (Manifeste, ADRs, Specs, Planning-/Release-Dokumente, CI-Workflow)
 > **Evidenz:** Alle Zahlen sind als `BERICHTET` (aus Repo-Artefakten übernommen) bzw. `UNVERIFIZIERT` (in diesem Lauf nicht nachgemessen) gekennzeichnet. Es wurden keine Kommandos ausgeführt und keine Geheimnisse ausgelesen.
 > **Hinweis:** Für `GEMESSEN`-Evidenz (Messskripte, Abhängigkeits-Audits, Coverage) ist ein separater Lauf mit Kommando-Ausführung nötig — siehe §11.

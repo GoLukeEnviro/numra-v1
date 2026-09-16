@@ -4,6 +4,14 @@ A deterministic, auditable numerology platform: a pure-Python calculation engine
 Postgres-backed FastAPI service, an LLM-assisted long-form report pipeline, a Next.js
 web app, and an internal PDF renderer.
 
+## Current delivery status
+
+The responsive web application / installable PWA is the canonical AVENYTH client. The
+V2 relationship feature set is implemented and the project is in Product Closure. Native
+mobile development is frozen. See the
+[canonical PWA execution state](docs/planning/avenyth-pwa-execution-state.md) and the
+[current product-closure overview](docs/analyze/product-closure-overview-2026-09-16.md).
+
 **Core principle: NUMRA does not guess.** Every numerological value comes from
 `packages/engine-numerology`, a network-free, database-free, LLM-free Python package
 with a fully documented formula for every metric it computes
