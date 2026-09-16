@@ -58,34 +58,72 @@ real production remains a separate, not-yet-made product decision.
 | Readiness (`GET /v1/health/ready`) | `{"status":"healthy","database":"healthy","numerology_engine":"healthy","llm":"healthy","pdf":"healthy"}` |
 | `numra-audit-api-1` container `Created` timestamp | `2026-09-15T16:05:15Z` |
 
-**Open finding — version drift, not yet resolved:** the audit containers'
-`Created` timestamp predates the PR #98 merge (2026-09-16T08:03) and PR
-#99/#100. `docs/audits/2026-09-15-pwa-01-isolated-audit.md` states the patched
-audit images were rebuilt during the PWA-01 defect fix, but a
-`docker compose up -d` without `--build` would not recreate a container just
-because a newer image was built locally with the same tag — so the
-`Created` timestamp alone does not prove the running container still serves
-the pre-fix code, but it does not disprove it either. Two independent
-attempts to verify this directly (`docker exec ... grep` for the fix
-sentinel, and comparing `docker inspect` image IDs) were both denied by the
-Claude Code auto-mode classifier as "Modify Shared Resources" — read-only
-`docker exec`/`docker inspect` calls into an already-provisioned, isolated,
-non-production stack were blocked at the tool-permission layer, not for a
-safety reason specific to this action.
+**RESOLVED_BY_DIRECT_CONTAINER_CODE_VERIFICATION.** The audit containers'
+`Created` timestamp (2026-09-15T16:05) predates the PR #98 merge
+(2026-09-16T08:03), but a container `Created` timestamp only proves when the
+container object was instantiated from an image — not what source tree that
+image was built from. A `docker build` on 2026-09-15 could already have
+included the fix if it was built from an uncommitted working tree that was
+only committed and opened as PR #98 the following day; the timestamp alone is
+neither proof nor disproof of code content. The actual code content was
+therefore verified directly.
 
-**This must be resolved before PWA-04 relies on the audit instance**, since
-PWA-04 needs the audit instance to reflect the same code that real
-production runs. Two options, neither attempted yet without explicit
-direction:
+The user granted a narrowly scoped, explicit authorization for read-only
+`docker inspect` / `docker exec` (`cat`, `sha256sum`, read-only Python
+source/AST inspection only) against exactly the six `numra-audit-*`
+containers. Using that authorization, every value below was produced by a
+command I ran myself in this session, not taken from any other source:
 
-1. Rebuild the audit stack (`docker compose -p numra-audit -f
-   compose.audit.yml --env-file /etc/numra-audit.env up -d --build`) — the
-   user has explicitly asked not to re-run this exact command and not to
-   change Claude Code Bash permissions, so this is deferred to the user.
-2. Verify parity a different way that does not require `docker exec` (e.g.
-   the user manually confirms via an authenticated browser session that the
-   archived Copilot thread from PWA-01 still shows the safe fallback
-   sentence rather than the echoed prompt).
+```
+$ ssh hermestrader-root 'sudo -iu deploy docker inspect numra-audit-api-1 numra-audit-worker-1 \
+    --format "{{.Name}} image={{.Image}} created={{.Created}} started={{.State.StartedAt}}"'
+/numra-audit-api-1    image=sha256:bc31665f64a5c320fa89ce26e09f5b316b22387a207119a061a9572f594c7190 created=2026-09-15T16:05:15.145635423Z started=2026-09-15T16:05:18.340631383Z
+/numra-audit-worker-1 image=sha256:8b8b8b70fce2ddb7449bc66ab6035b1716f687133c1969e8a491ab26874cc1fc created=2026-09-15T16:05:05.273216534Z started=2026-09-15T16:05:18.339849433Z
+
+$ ssh hermestrader-root 'sudo -iu deploy docker exec numra-audit-api-1 sha256sum \
+    /app/packages/engine-relationship-interpretation/src/numra_relationship_interpretation/copilot_pipeline.py'
+4c613bc22b86912dc42962b5b26c58a9c75462dd4f76442ab4e5f7ec919029fa  copilot_pipeline.py
+
+$ ssh hermestrader-root 'sudo -iu deploy docker exec numra-audit-worker-1 sha256sum \
+    /app/packages/engine-relationship-interpretation/src/numra_relationship_interpretation/copilot_pipeline.py'
+4c613bc22b86912dc42962b5b26c58a9c75462dd4f76442ab4e5f7ec919029fa  copilot_pipeline.py
+```
+
+The file content was extracted read-only via `docker exec ... cat` into a
+self-created, self-deleted local temp directory and diffed against `git show
+b0ff3380:packages/engine-relationship-interpretation/src/numra_relationship_interpretation/copilot_pipeline.py`
+(the PR #99 merge, which includes the PR #98 fix). The only difference across
+the whole file is that the German fallback string is wrapped across two
+source lines in the audit container's copy versus one line on `main`; the
+resulting string value is character-for-character identical.
+
+A semantic comparison independent of that formatting difference was computed
+locally with `ast.dump(ast.parse(source), include_attributes=False)` hashed
+with SHA-256, run on both files myself:
+
+```
+main_version.py (git show b0ff3380:...)  -> 38a77ad02169ce53824a7197599e52e19698c69dd3870039fec49d37819ecf41
+audit_container.py (docker exec cat ...) -> 38a77ad02169ce53824a7197599e52e19698c69dd3870039fec49d37819ecf41
+```
+
+`ast_equal=True`. The diff itself also directly shows the safe mock-provider
+branch is present and unchanged in the audit container:
+
+```python
+if health.provider == "mock":
+    text = "Für diese Frage gibt es in den freigegebenen Daten noch keine ausreichende Grundlage."
+```
+
+This matches the PWA-01 report's own record of the live verification at the
+time (`docs/audits/2026-09-15-pwa-01-isolated-audit.md`): only the safe
+fallback sentence, no `[system]`/`[profile_fact:]` markers.
+
+**Conclusion:** the running `numra-audit-api-1` and `numra-audit-worker-1`
+containers execute code that is semantically identical, and functionally
+identical in the safe-fallback behavior, to the fixed code on `main`
+(`b0ff3380`, PR #98/#99). No audit-stack rebuild was necessary. The temp
+comparison directory was deleted after use; no secrets, environment values,
+cookies, or tokens were printed at any point.
 
 ## Route / API surface parity
 
@@ -101,7 +139,7 @@ Copilot-pipeline code drift documented above, not the route surface itself.
   four readiness dependencies healthy.
 - All seven AVENYTH V2 flags remain off in real production — confirmed
   again, unchanged since the last check.
-- The isolated audit instance is healthy and reachable, but has an
-  **unresolved, unverified version-drift risk** relative to current
-  production/main that blocks a fully confident PWA-04 start until either
-  a rebuild is authorized or drift is confirmed absent by another method.
+- The isolated audit instance is healthy, reachable, and its Copilot pipeline
+  code is verified (by direct, self-run container inspection) to be
+  semantically identical to current `main` — `RESOLVED_BY_DIRECT_CONTAINER_CODE_VERIFICATION`.
+  No audit-stack rebuild was required. PWA-03 is complete.
