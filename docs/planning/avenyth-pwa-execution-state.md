@@ -1,17 +1,17 @@
 # AVENYTH PWA — Canonical Execution State
 
-- **PLAN_VERSION:** 4
-- **STATUS_DATE:** 2026-09-16
+- **PLAN_VERSION:** 5
+- **STATUS_DATE:** 2026-09-18
 - **CANONICAL_CLIENT:** responsive web application / installable PWA (`apps/web`)
 - **NATIVE_MOBILE:** frozen; historical MOBILE-12A/B/C code remains, no new feature work
-- **VERIFIED_MAIN_SHA:** `dc68f1e673a3ab7bbc90aa0f8a3f70c8405d30e8`
-- **VERIFIED_PRODUCTION_SHA:** `b0ff3380be1765a1b438283cfdad4656c9890d73`
-- **LAST_MERGED_PR:** [#101](https://github.com/GoLukeEnviro/numra-v1/pull/101)
-- **LAST_GREEN_MAIN_RUN:** [35118318354](https://github.com/GoLukeEnviro/numra-v1/actions/runs/35118318354), 12/12 required checks successful
+- **VERIFIED_MAIN_SHA:** `b39ea41e79f2be92e3a040acbe2cc91f1cd65686`
+- **VERIFIED_PRODUCTION_SHA:** `b0ff3380be1765a1b438283cfdad4656c9890d73` (re-verify — the auto-deploy timer may have advanced this since last check)
+- **LAST_MERGED_PR:** [#102](https://github.com/GoLukeEnviro/numra-v1/pull/102)
+- **LAST_GREEN_MAIN_RUN:** [35148550972](https://github.com/GoLukeEnviro/numra-v1/actions/runs/35148550972), 12/12 required checks successful
 - **CURRENT_MILESTONE:** PWA Product Closure
 - **CURRENT_TASK:** PWA-04 — two-account relationship acceptance
-- **NEXT_ACTION:** confirm both PWA-01 synthetic audit sessions on the audit instance are still authenticated; if expired, ask the user for a manual login only
-- **OPEN_RELEASE_BLOCKERS:** none in production; numra-audit code parity with main verified directly (`RESOLVED_BY_DIRECT_CONTAINER_CODE_VERIFICATION`, see `docs/audits/2026-09-16-pwa-03-production-parity.md`)
+- **NEXT_ACTION:** BLOCKED — see `docs/releases/2026-09-18-pwa04-session-handoff.md` for exact resume steps (both audit accounts need a fresh manual login; browser tooling was disconnected mid-session before it could complete)
+- **OPEN_RELEASE_BLOCKERS:** none in production; numra-audit code parity with main verified directly (`RESOLVED_BY_DIRECT_CONTAINER_CODE_VERIFICATION`, see `docs/audits/2026-09-16-pwa-03-production-parity.md`); PWA-04 itself blocked on manual login only, see handoff doc
 
 This file is the single current execution-state source. Historical plans and gap
 reports remain in the repository as evidence, but do not override this state.
