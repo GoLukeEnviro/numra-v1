@@ -39,6 +39,12 @@ services:
       AVENYTH_RELATIONSHIP_WORKSPACES_ENABLED: "true"
       AVENYTH_CHECKINS_ENABLED: "true"
       AVENYTH_TASKS_ENABLED: "true"
+      # PWA-04 (automated acceptance): the relationship Copilot and the evidence
+      # layer are part of the audited V2 surface -- the RC2 journey exercises
+      # both, so the isolated RC2 stack force-enables all seven flags, exactly
+      # like the numra-audit stack does.
+      AVENYTH_COPILOT_ENABLED: "true"
+      AVENYTH_EVIDENCE_LAYER_ENABLED: "true"
       # redeem_url the API mints for LINK/EMAIL invitations, and the browser
       # Origin allowlist for state-changing /api/* calls -- both the remapped web
       # port, not the 3000 default.

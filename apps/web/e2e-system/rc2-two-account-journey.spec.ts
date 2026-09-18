@@ -19,11 +19,34 @@ import path from "node:path";
  * Run once per viewport project (desktop-1440x900, mobile-390x844); the target
  * size comes from the project metadata and is re-asserted from the live DOM
  * before any product assertion.
+ *
+ * The stack under test is configurable: RC2_BASE_URL (playwright.rc2.config.ts)
+ * overrides the default local numra-rc2 stack, so the SAME suite can run as an
+ * automated acceptance pass against a remote audit instance. Accounts are
+ * self-registered per run (ALLOW_SELF_SIGNUP=true on every non-prod stack), so
+ * no manual login and no stored credential is ever needed.
  */
 
 const PASSWORD = "correct-horse-battery-staple-2026";
 const uniqueEmail = (tag: string) =>
   `system-e2e-rc2-${tag}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`;
+
+// Env-parameterized so the SAME suite can run as an automated acceptance pass
+// against the remote audit instance (RC2_BASE_URL): there the free-text
+// records carry the AUDIT prefix (the PWA-01 inventory convention), while
+// local/CI runs keep the neutral defaults. The birth dates stay fixed --
+// 1986-07-18 deliberately resolves to the canonical MASTER-22 Life Path that
+// the shadow-dynamics block relies on.
+const AUDIT_PREFIX = process.env.RC2_MSG_PREFIX || "";
+const NAME_A = { first: process.env.RC2_FIRST_A || "Lukas", last: process.env.RC2_LAST_A || "Springer" };
+const NAME_B = { first: process.env.RC2_FIRST_B || "Anna", last: process.env.RC2_LAST_B || "Berger" };
+const SHARED_COPILOT_MSG = `${AUDIT_PREFIX}Was zeigt sich in den freigegebenen Daten?`;
+const PRIVATE_COPILOT_MSG = `${AUDIT_PREFIX}Meine private Frage: Was brauche ich gerade?`;
+const EVIDENCE_NOTE = `${AUDIT_PREFIX}Ruhiger Fokus nach dem Spaziergang.`;
+// The deterministic mock provider's fixed reply (PR #98): the regression guard
+// for the prompt-echo defect -- internal prompt text must never surface here.
+const SAFE_MOCK_REPLY =
+  "Für diese Frage gibt es in den freigegebenen Daten noch keine ausreichende Grundlage.";
 
 const DEFAULT_SCOPE_LABELS = ["Kernzahlen", "Beziehungs-Einblicke", "Aktuelles Timing"];
 const EXTENDED_SCOPE_LABELS = [
@@ -176,8 +199,8 @@ test("RC2 two-account journey: connections/consent/dual-profile/type/dissolve ov
       .poll(() => A.evaluate(async () => (await navigator.serviceWorker.getRegistrations()).length))
       .toBeGreaterThan(0);
 
-    await createSelfProfileViaUi(A, "Lukas", "Springer", "1986-07-18");
-    await createSelfProfileViaUi(B, "Anna", "Berger", "1990-03-14");
+    await createSelfProfileViaUi(A, NAME_A.first, NAME_A.last, "1986-07-18");
+    await createSelfProfileViaUi(B, NAME_B.first, NAME_B.last, "1990-03-14");
 
     // --- A creates a LINK invitation via the UI, reads the real redeem_url ---
     await A.goto("/connections/invite");
@@ -187,7 +210,11 @@ test("RC2 two-account journey: connections/consent/dual-profile/type/dissolve ov
     const redeemInput = A.locator("input[readonly]").first();
     await expect(redeemInput).toBeVisible();
     const redeemUrl = await redeemInput.inputValue();
-    expect(redeemUrl).toMatch(/^http:\/\/localhost:3100\/connections\/redeem\?token=/);
+    // WEB_APP_BASE_URL is stack-specific (localhost:3100 locally, the audit
+    // origin remotely) -- assert against the page's own origin, never a
+    // hardcoded host, so the same suite verifies any target stack.
+    const redeemOrigin = new URL(A.url()).origin;
+    expect(redeemUrl.startsWith(`${redeemOrigin}/connections/redeem?token=`)).toBe(true);
     const copyBtn = A.getByRole("button", { name: /Kopieren/ });
     await expect(copyBtn).toBeInViewport();
     await expect(copyBtn).toBeEnabled();
@@ -470,10 +497,89 @@ test("RC2 two-account journey: connections/consent/dual-profile/type/dissolve ov
     await expect(B.getByRole("button", { name: "Geteilte Kopie entfernen" })).toHaveCount(0);
     await shoot(B, "11-web08-explicit-shared-reflection");
 
+    // --- PWA-04: relationship Copilot, both scopes, two real accounts. ---
+    // Shared scope: A writes, B reads the SAME thread. Private scope: each
+    // side only ever sees its own thread -- the separation is the product
+    // claim, so it is asserted from both accounts, not just one.
+    await A.goto(`/workspaces/${workspaceId}/copilot`);
+    await expect(A.getByRole("heading", { name: "Beziehungs-Copilot" })).toBeVisible();
+    await expect(A.getByRole("button", { name: "Gemeinsam" })).toHaveAttribute("aria-pressed", "true");
+    await A.getByLabel("Nachricht").fill(SHARED_COPILOT_MSG);
+    await A.getByRole("button", { name: "Senden", exact: true }).click();
+    await expect(A.getByText(SAFE_MOCK_REPLY)).toBeVisible({ timeout: 60_000 });
+    // The mock provider must never echo internal prompt text (PR #98 regression).
+    await expect(A.getByText("[system]")).toHaveCount(0);
+    await expect(A.getByText(/profile_fact:/)).toHaveCount(0);
+    await shoot(A, "12-copilot-shared-a");
+
+    // B sees A's shared message in the same thread.
+    await B.goto(`/workspaces/${workspaceId}/copilot`);
+    await expect(B.getByRole("heading", { name: "Beziehungs-Copilot" })).toBeVisible();
+    await expect(B.getByText(SHARED_COPILOT_MSG)).toBeVisible({ timeout: 30_000 });
+    await shoot(B, "12-copilot-shared-b-sees-a");
+
+    // Private scope: A's private thread is invisible to B, and vice versa.
+    await A.getByRole("button", { name: "Privat" }).click();
+    await expect(A.getByText(/Dein Partner sieht weder deine Fragen noch die Antworten/)).toBeVisible();
+    await expect(A.getByText(SHARED_COPILOT_MSG)).toHaveCount(0);
+    await A.getByLabel("Nachricht").fill(PRIVATE_COPILOT_MSG);
+    await A.getByRole("button", { name: "Senden", exact: true }).click();
+    await expect(A.getByText(PRIVATE_COPILOT_MSG)).toBeVisible({ timeout: 60_000 });
+    await shoot(A, "13-copilot-private-a");
+
+    await B.reload();
+    await expect(B.getByText(PRIVATE_COPILOT_MSG)).toHaveCount(0);
+    await expect(B.getByText(SHARED_COPILOT_MSG)).toBeVisible();
+
+    // --- PWA-04: evidence layer (life tracking) on A's own person, real UI. ---
+    // A's SELF person is reachable through the people list; the evidence page
+    // is person-scoped and private to A. The deterministic evidence policy
+    // needs >= 30 samples, so this run asserts the honest NO_RELIABLE_PATTERN
+    // path (the qualified-result path is covered by the mocked e2e spec).
+    await A.goto("/people");
+    await A.getByRole("link", { name: new RegExp(NAME_A.first) }).first().click();
+    await expect(A).toHaveURL(/\/people\/[0-9a-f-]{36}$/);
+    const personAUrl = A.url();
+    await A.getByRole("link", { name: "Evidenz" }).click();
+    await expect(A).toHaveURL(/\/people\/[0-9a-f-]{36}\/evidence$/);
+    await expect(A.getByRole("heading", { name: "Life Tracking & Evidenz" })).toBeVisible();
+    await expect(A.getByText("Noch keine Beobachtungen vorhanden.")).toBeVisible();
+
+    await A.getByLabel("Stimmung").selectOption("8");
+    await A.getByLabel("Energie").selectOption("7");
+    await A.getByLabel("Notiz (optional)").fill(EVIDENCE_NOTE);
+    await A.getByRole("button", { name: "Tag speichern" }).click();
+    await expect(A.getByText(EVIDENCE_NOTE)).toBeVisible();
+    await expect(A.getByText("Stimmung 8/10")).toBeVisible();
+
+    await A.getByLabel("Messwert").selectOption("energy");
+    await A.getByLabel("Zahl").selectOption("7");
+    await A.getByRole("button", { name: "Muster prüfen" }).click();
+    await expect(A.getByText("Noch kein belastbares Muster")).toBeVisible({ timeout: 30_000 });
+    await expect(A.getByText("Die Datenlage reicht nach der aktiven Evidenzrichtlinie noch nicht für eine verlässliche Aussage.")).toBeVisible();
+    await shoot(A, "14-evidence-no-reliable-pattern");
+
+    // The evidence page is private: B must NOT be able to read A's person data.
+    // A non-owned person resolves to an error state (never a data leak), so the
+    // assertion is on the absence of A's actual content, not a specific copy.
+    const personAId = personAUrl.match(/\/people\/([0-9a-f-]{36})/)![1];
+    await B.goto(`/people/${personAId}/evidence`);
+    await expect(B.getByRole("heading", { name: "Life Tracking & Evidenz" })).toHaveCount(0);
+    await expect(B.getByText(EVIDENCE_NOTE)).toHaveCount(0);
+    await expect(B.getByText("Stimmung 8/10")).toHaveCount(0);
+
     // --- Dissolve via the UI ---
     await A.goto("/connections");
+    // Wait for the dissolve POST itself, not just the optimistic UI removal:
+    // navigating while the request is still in flight can read the workspace
+    // overview before its transaction committed (observed flake: the hub then
+    // rendered ACTIVE even though the dissolve had been accepted).
+    const dissolveResponse = A.waitForResponse(
+      (response) => response.url().includes("/dissolve") && response.request().method() === "POST",
+    );
     await A.getByRole("button", { name: "Verbindung auflösen" }).click();
     await A.getByRole("button", { name: "Endgültig auflösen" }).click();
+    expect((await dissolveResponse).status()).toBe(200);
     await expect(A.getByRole("button", { name: "Verbindung auflösen" })).toHaveCount(0);
 
     // Read-only after dissolution: UI shows the dissolved state, GET still works.
@@ -502,6 +608,12 @@ test("RC2 two-account journey: connections/consent/dual-profile/type/dissolve ov
     await expect(A.getByText("Ich wünsche mir mehr ruhige Zeit für unsere Gespräche.", { exact: true })).toBeVisible();
     await expect(A.getByRole("button", { name: "Kopie jetzt teilen" })).toHaveCount(0);
     await expect(A.getByRole("button", { name: "Geteilte Kopie entfernen" })).toHaveCount(0);
+
+    // Copilot history stays readable after dissolution; composing is blocked.
+    await A.goto(`/workspaces/${workspaceId}/copilot`);
+    await expect(A.getByRole("heading", { name: "Beziehungs-Copilot" })).toBeVisible();
+    await expect(A.getByText("Dieser Workspace ist aufgelöst. Das Gespräch bleibt als Historie lesbar.")).toBeVisible();
+    await expect(A.getByText(SHARED_COPILOT_MSG)).toBeVisible();
 
     // Mutation lock, same-origin: PATCH -> 409 WORKSPACE_DISSOLVED, GET -> 200.
     const csrf = (await ctxA.cookies()).find((c) => c.name === "numra_csrf")?.value ?? "";
