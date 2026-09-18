@@ -4,14 +4,14 @@
 - **STATUS_DATE:** 2026-09-18
 - **CANONICAL_CLIENT:** responsive web application / installable PWA (`apps/web`)
 - **NATIVE_MOBILE:** frozen; historical MOBILE-12A/B/C code remains, no new feature work
-- **VERIFIED_MAIN_SHA:** `b39ea41e79f2be92e3a040acbe2cc91f1cd65686`
+- **VERIFIED_MAIN_SHA:** `5c00d329826991b5de57f98d281c4732278d9807`
 - **VERIFIED_PRODUCTION_SHA:** `b0ff3380be1765a1b438283cfdad4656c9890d73` (re-verify — the auto-deploy timer may have advanced this since last check)
-- **LAST_MERGED_PR:** [#102](https://github.com/GoLukeEnviro/numra-v1/pull/102)
-- **LAST_GREEN_MAIN_RUN:** [35148550972](https://github.com/GoLukeEnviro/numra-v1/actions/runs/35148550972), 12/12 required checks successful
+- **LAST_MERGED_PR:** [#104](https://github.com/GoLukeEnviro/numra-v1/pull/104)
+- **LAST_GREEN_MAIN_RUN:** post-merge run on `5c00d329` (12/12 required checks green on the PR head `dcf81d72`; see `docs/audits/2026-09-18-pwa-04-automated-two-account.md`)
 - **CURRENT_MILESTONE:** PWA Product Closure
-- **CURRENT_TASK:** PWA-04 — two-account relationship acceptance
-- **NEXT_ACTION:** BLOCKED — see `docs/releases/2026-09-18-pwa04-session-handoff.md` for exact resume steps (both audit accounts need a fresh manual login; browser tooling was disconnected mid-session before it could complete)
-- **OPEN_RELEASE_BLOCKERS:** none in production; numra-audit code parity with main verified directly (`RESOLVED_BY_DIRECT_CONTAINER_CODE_VERIFICATION`, see `docs/audits/2026-09-16-pwa-03-production-parity.md`); PWA-04 itself blocked on manual login only, see handoff doc
+- **CURRENT_TASK:** PWA-04 — two-account relationship acceptance (automated path unblocked; see `docs/audits/2026-09-18-pwa-04-automated-two-account.md`)
+- **NEXT_ACTION:** PWA-04 acceptance now runs unattended: `scripts/rc2-e2e.sh audit` locally, or the same suite against the remote audit instance via `RC2_BASE_URL=https://hermestrader.taile6801f.ts.net:8444 RC2_MSG_PREFIX=AUDIT npx playwright test --config=playwright.rc2.config.ts`. The manual-login blocker is resolved (non-prod stacks have ALLOW_SELF_SIGNUP=true and the journey self-registers its accounts). Next: PWA-05 email lifecycle, or a real-UI run of this suite against the audit instance.
+- **OPEN_RELEASE_BLOCKERS:** none in production; numra-audit code parity with main verified directly (`RESOLVED_BY_DIRECT_CONTAINER_CODE_VERIFICATION`, see `docs/audits/2026-09-16-pwa-03-production-parity.md`); the former PWA-04 manual-login blocker is resolved by the automated two-account acceptance suite
 
 This file is the single current execution-state source. Historical plans and gap
 reports remain in the repository as evidence, but do not override this state.
