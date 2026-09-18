@@ -103,3 +103,45 @@ output; CI parity: `.github/workflows/rc2-journey.yml` runs the same suite
 - Evidence qualified-pattern rendering stays with the mocked spec; the
   deterministic policy needs 30 samples / 45 days and a 0.5 effect size, which
   a journey-sized run cannot reach honestly.
+
+## First run against the real audit instance (2026-09-18, same day)
+
+`RC2_BASE_URL=https://hermestrader.taile6801f.ts.net:8444` — the suite reached
+the audit instance and drove it for real. Two findings, both about the
+*environment*, not the product:
+
+1. **The register limit blocks the remote run.** The audit instance's Redis
+   cannot be reached from here (no SSH path to HermesTrader), so there is no
+   equivalent of the local `reset-limits` verb. Desktop reached the journey,
+   registered its first account, and then the second registration hit
+   `RATE_LIMIT_EXCEEDED` (retry after 2467s) — the same 5/hour/IP cap, shared
+   across every visitor of that instance. Mobile never started (same counter).
+   **One 60-second operator action removes this permanently**: either flush
+   `auth:*` in the audit stack's Redis
+   (`docker exec numra-audit-redis-1 redis-cli --scan --pattern 'auth:*' | xargs redis-cli del`
+   on HermesTrader), or raise/disable the cap for the audit stack only (e.g. an
+   `AUDIT`-scoped env override). Until then, space remote runs more than an
+   hour apart, or run them with a distinct client IP.
+2. **The analysis worker had not picked up the job.** Desktop's Dynamics step
+   started the relationship analysis and the page correctly rendered
+   `Queued / Waiting for a worker to pick this analysis up` with a 0% progress
+   bar — the test's 120s wait then expired. On the local stack the same step
+   completes in seconds, so this reads as the audit stack's
+   `analysis-worker` being down or starved, not a client defect (the UI showed
+   the honest queued state throughout, and no error surface appeared).
+
+Both are operational preconditions for an unattended remote audit, not code
+defects; none of them justified a source change here.
+
+Synthetic state created on the audit instance by this attempt (add to the
+PWA-01 cleanup inventory):
+
+- `system-e2e-rc2-a-1789742293100-9ldy4i@example.com` (registered; journey did
+  not finish)
+- `rc2-remote-probe-1789742261@example.com` (`6b807275-647d-4301-ab78-4fd03c2c79a7`,
+  single registration probe)
+- relationship workspace `bbf09486-badf-4b1a-b4cc-2cdc235e4ca8` (invitation →
+  consent → dual profile reached; dissolved only for the local runs)
+
+Also note: the remote run's `RC2_MSG_PREFIX="AUDIT "` applied to free-text
+records, matching the inventory convention.
