@@ -22,6 +22,12 @@ const executablePath = fs.existsSync(localChromium) ? localChromium : undefined;
  * this run exercises.
  */
 const port = Number(process.env.COMPOSE_WEB_PORT || 3100);
+// The stack under test: the local numra-rc2 compose stack by default. Point
+// RC2_BASE_URL at a remote instance (e.g. the numra-audit stack on
+// HermesTrader) to run this exact suite as an automated acceptance pass
+// against it -- accounts are self-registered per run, so no manual login or
+// stored credential is ever involved.
+const baseURL = process.env.RC2_BASE_URL || `http://localhost:${port}`;
 
 const DESKTOP = { width: 1440, height: 900 };
 const MOBILE = { width: 390, height: 844 };
@@ -37,7 +43,7 @@ export default defineConfig({
   expect: { timeout: 15_000 },
   reporter: [["list"], ["html", { open: "never" }]],
   use: {
-    baseURL: `http://localhost:${port}`,
+    baseURL,
     trace: "retain-on-failure",
     ...(executablePath ? { launchOptions: { executablePath } } : {}),
   },
