@@ -1,5 +1,15 @@
 # Release-Verifizierungs-Runbook (Production, HermesTrader)
 
+> **Host note (2026-09-19):** Production now runs on this host (`agent0-1`,
+> `https://agent0-1.taile6801f.ts.net:8443`, deployment checkout `/opt/numra/repo`).
+> The HermesTrader VPS still runs its stack as the explicit fallback until the
+> operator approves retirement. This runbook was written for and executed against
+> HermesTrader; its steps and rules apply unchanged to whichever host is primary —
+> only the SSH target and the deployed paths differ (see
+> `docs/ops/2026-09-19-hermestrader-to-agent0-migration.md`). Re-verify which host
+> is primary before executing it, and never assume an auto-deploy timer exists on
+> agent0: production there advances only by an explicit deploy.
+
 ## Zweck
 
 Nach jedem Release, das `main` verändert (RBAC/Rollen, Migrationen, neue

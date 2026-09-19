@@ -106,6 +106,12 @@ output; CI parity: `.github/workflows/rc2-journey.yml` runs the same suite
 
 ## First run against the real audit instance (2026-09-18, same day)
 
+> **Host note (2026-09-19):** the audit instance has since moved to this host
+> (`agent0-1`, `https://agent0-1.taile6801f.ts.net:8444`) and now runs with the
+> analysis-worker included, so both findings below are resolved in the current
+> environment. The `hermestrader.taile6801f.ts.net:8444` references in this
+> section describe the run as it happened and stay as written.
+
 `RC2_BASE_URL=https://hermestrader.taile6801f.ts.net:8444` — the suite reached
 the audit instance and drove it for real. Two findings, both about the
 *environment*, not the product:

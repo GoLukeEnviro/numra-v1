@@ -1,17 +1,17 @@
 # AVENYTH PWA — Canonical Execution State
 
 - **PLAN_VERSION:** 5
-- **STATUS_DATE:** 2026-09-18
+- **STATUS_DATE:** 2026-09-19
 - **CANONICAL_CLIENT:** responsive web application / installable PWA (`apps/web`)
 - **NATIVE_MOBILE:** frozen; historical MOBILE-12A/B/C code remains, no new feature work
-- **VERIFIED_MAIN_SHA:** `5c00d329826991b5de57f98d281c4732278d9807`
-- **VERIFIED_PRODUCTION_SHA:** `b0ff3380be1765a1b438283cfdad4656c9890d73` (re-verify — the auto-deploy timer may have advanced this since last check)
-- **LAST_MERGED_PR:** [#104](https://github.com/GoLukeEnviro/numra-v1/pull/104)
-- **LAST_GREEN_MAIN_RUN:** post-merge run on `5c00d329` (12/12 required checks green on the PR head `dcf81d72`; see `docs/audits/2026-09-18-pwa-04-automated-two-account.md`)
+- **VERIFIED_MAIN_SHA:** `7de49ddccc98d213a138bbab0d72b846a5860fa3`
+- **VERIFIED_PRODUCTION_SHA:** `b0ff3380be1765a1b438283cfdad4656c9890d73` (no auto-deploy on this host — deliberately not advanced since the migration)
+- **LAST_MERGED_PR:** [#112](https://github.com/GoLukeEnviro/numra-v1/pull/112)
+- **LAST_GREEN_MAIN_RUN:** post-merge run on `7de49ddc` (12/12 required checks green on the PR head `4137378`; see PR #112)
 - **CURRENT_MILESTONE:** PWA Product Closure
-- **CURRENT_TASK:** PWA-04 — two-account relationship acceptance (automated path unblocked; see `docs/audits/2026-09-18-pwa-04-automated-two-account.md`)
-- **NEXT_ACTION:** PWA-04 acceptance now runs unattended: `scripts/rc2-e2e.sh audit` locally, or the same suite against the remote audit instance via `RC2_BASE_URL=https://hermestrader.taile6801f.ts.net:8444 RC2_MSG_PREFIX=AUDIT npx playwright test --config=playwright.rc2.config.ts`. The manual-login blocker is resolved (non-prod stacks have ALLOW_SELF_SIGNUP=true and the journey self-registers its accounts). Next: PWA-05 email lifecycle, or a real-UI run of this suite against the audit instance.
-- **OPEN_RELEASE_BLOCKERS:** none in production; numra-audit code parity with main verified directly (`RESOLVED_BY_DIRECT_CONTAINER_CODE_VERIFICATION`, see `docs/audits/2026-09-16-pwa-03-production-parity.md`); the former PWA-04 manual-login blocker is resolved by the automated two-account acceptance suite
+- **CURRENT_TASK:** PWA-04 — two-account relationship acceptance. The automated acceptance path runs unattended; the review findings from 2026-09-19 are being closed as a sequential PR chain (off-origin guard and mock prompt-leak class already merged).
+- **NEXT_ACTION:** Continue the finding chain — inventory/documentation sync, then the E2E assertion hardening (dissolution/evidence), the Redis reset hardening and the register rate-limit integration test. The PWA-04 acceptance itself is runnable at any time: `scripts/rc2-e2e.sh audit` locally, or against the current audit instance with `RC2_BASE_URL=https://agent0-1.taile6801f.ts.net:8444 RC2_MSG_PREFIX=AUDIT npx playwright test --config=playwright.rc2.config.ts`. Both previously blocking environment findings are resolved on this host (rate limit is resettable locally; the analysis worker is part of the stack).
+- **OPEN_RELEASE_BLOCKERS:** none in production; the audit instance runs on this host with code parity to `main`. The former PWA-04 remote blockers (shared register rate limit, missing analysis worker) were environment findings of the retired VPS stack and do not apply to the current audit instance.
 
 This file is the single current execution-state source. Historical plans and gap
 reports remain in the repository as evidence, but do not override this state.
@@ -76,7 +76,7 @@ records are intentionally retained until Product Closure.
 | ID | Outcome / exit gate | State |
 |---|---|---|
 | PWA-01 | Isolated dense-state, two-account audit; defects recorded and fixed | **complete** |
-| PWA-02 | Current documentation agrees on scope, completion and next action | **complete** |
+| PWA-02 | Current documentation agrees on scope, completion and next action | **complete, re-synced 2026-09-19** — the host migration and the PWA-04 finding chain had made the audit-host references stale; `docs/ops/2026-09-19-hermestrader-to-agent0-migration.md` and the cross-environment table in `docs/audits/2026-09-15-pwa-01-isolated-audit.md` now carry the current host, and `NEXT_ACTION` above reflects the real state |
 | PWA-03 | Sanitized production flag/topology inventory and route/API parity smoke | **complete** |
 | PWA-04 | Controlled two-account relationship acceptance, including analysis, consent changes and dissolution history | **in progress** |
 | PWA-05 | Controlled email lifecycle: verify, resend, forgot/reset and anti-enumeration | queued |
