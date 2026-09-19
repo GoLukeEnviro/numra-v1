@@ -33,9 +33,30 @@ reset_limits() {
   # across runs and a second pass within the hour would fail with
   # RATE_LIMIT_EXCEEDED. The counter is throwaway state of this throwaway
   # stack -- clear it so every run starts from a known state.
-  docker exec "${PROJECT}-redis-1" sh -lc \
-    'redis-cli --scan --pattern "auth:*" | while read -r k; do redis-cli del "$k" >/dev/null; done' \
-    2>/dev/null || true
+  #
+  # This must never fail silently: a no-op reset is indistinguishable from a
+  # successful one until the run dies several minutes later with
+  # RATE_LIMIT_EXCEEDED, which is exactly the failure this helper exists to
+  # prevent. So the redis call's own exit status decides: unreachable redis is a
+  # hard error in the deterministic up/audit paths (set -e propagates it), while
+  # "no matching keys" is a normal, reported outcome.
+  #
+  # Addressed by compose service (not a hardcoded container name) so a project
+  # rename cannot silently turn this into a no-op.
+  local deleted
+  if ! deleted=$("${COMPOSE[@]}" exec -T redis \
+    sh -lc 'n=0; for k in $(redis-cli --scan --pattern "auth:*"); do redis-cli del "$k" >/dev/null; n=$((n+1)); done; echo "$n"'); then
+    echo "reset-limits: FAILED -- could not reach the stack's redis; the register" >&2
+    echo "rate-limit counters were NOT cleared. Fix the stack before running the suite." >&2
+    return 1
+  fi
+  deleted=$(printf '%s' "$deleted" | tr -d '\r\n')
+  if [ "${deleted:-0}" = "0" ]; then
+    echo "reset-limits: no auth:* counters present (clean state)"
+  else
+    echo "reset-limits: cleared ${deleted} auth:* counter(s)"
+  fi
+  # Never touch other namespaces: admin:* and friends are not rate-limit state.
 }
 
 wait_healthy() {
@@ -76,7 +97,6 @@ case "${1:-}" in
     ;;
   reset-limits)
     reset_limits
-    echo "rate-limit counters cleared"
     ;;
   logs) "${COMPOSE[@]}" logs --no-color ;;
   down) "${COMPOSE[@]}" down -v --remove-orphans ;;
