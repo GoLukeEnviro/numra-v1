@@ -8,6 +8,14 @@ Audit URL: `https://hermestrader.taile6801f.ts.net:8444/`
 
 Production URL: `https://hermestrader.taile6801f.ts.net:8443/`
 
+> **Host note (2026-09-19):** both stacks were migrated from the `HermesTrader`
+> VPS to this host (`agent0-1`) with fresh secrets; the audit instance now runs as
+> the `numra-audit` Compose project here. The URLs above are the historical
+> HermesTrader origin and stay as written because this report documents that
+> environment. The current audit origin is
+> `https://agent0-1.taile6801f.ts.net:8444`; see `docs/ops/release-verification.md`
+> and the environment table in "Synthetic cleanup inventory" below.
+
 ## Safety boundary
 
 - The audit stack uses its own Compose project, network, PostgreSQL volume, export volume, API port, and web port.
@@ -41,6 +49,87 @@ Run tag: `1789487271746`
   - 1 active Copilot thread containing the post-fix verification message and safe response
 
 All disposable titles and free-text records use the `AUDIT` prefix where the product surface permits it. The run tag, account addresses, person IDs, and workspace ID are sufficient to identify the remaining records for cleanup.
+
+### Environments this inventory spans
+
+Three environments hold synthetic audit records. They are separate data stores and
+must be cleaned up separately — deleting in one never touches another:
+
+| Environment | Where it runs | Data store | Audit endpoint |
+|---|---|---|---|
+| **HermesTrader audit** (historical) | VPS `HermesTrader` | that host's `numra-audit` Postgres volume | `https://hermestrader.taile6801f.ts.net:8444` (retired mapping) |
+| **agent0 audit** (current) | this host, project `numra-audit` | container `numra-audit-postgres-1`, database `numra` | `https://agent0-1.taile6801f.ts.net:8444` |
+| **RC2 local** (throwaway) | this host, project `numra-rc2` | container `numra-rc2-postgres-1` | local only |
+
+`numra-prod` holds no audit records and is never part of any cleanup below.
+
+### PWA-04 additions (RC2 automated two-account runs, 2026-09-18)
+
+Added by the remote run recorded in `docs/audits/2026-09-18-pwa-04-automated-two-account.md`:
+
+- HermesTrader audit environment:
+  - Account `rc2-remote-probe-1789742261@example.com` — `6b807275-647d-4301-ab78-4fd03c2c79a7`
+    (single registration probe)
+  - Account `system-e2e-rc2-a-1789742293100-9ldy4i@example.com` (registered; journey did not finish)
+  - Relationship workspace `bbf09486-badf-4b1a-b4cc-2cdc235e4ca8`
+
+### agent0 audit additions (2026-09-19)
+
+Added by the first full RC2 pass against the agent0 audit instance
+(`RC2_MSG_PREFIX=AUDIT-AGENT0`), recorded in
+`/home/hermes/reports/numra-agent0-migration-report-20260919.md` until that report
+is folded into the repository:
+
+- Accounts (agent0 audit environment):
+  - `system-e2e-rc2-a-1789828234271-2mxgwu@example.com` — `2e44d465-5a98-45dd-a1fa-2c0159635086`
+  - `system-e2e-rc2-b-1789828234271-18iv52@example.com` — `91266cfc-9764-4960-a201-39e1af663b67`
+  - `system-e2e-rc2-a-1789828275131-6p7fyo@example.com` — `98ff5c79-80dc-4213-bc40-c1754b9ca247`
+  - `system-e2e-rc2-b-1789828275131-mvg224@example.com` — `00db0e69-f225-457f-af22-ee97388ec78b`
+- Relationship workspaces (both `DISSOLVED`):
+  - `e1a1f083-b040-419a-82cf-38fba7904b6b`
+  - `f63adcf3-043f-44b3-8dfa-4783b0b542bb`
+- Person profiles (SELF, both members of each workspace):
+  - `26ef2f22-fcc5-4e40-a737-8d7ab4070360`, `9afff1b1-2b30-45ad-8931-62bb963aea44`
+  - `6409f2e6-e1eb-4ee6-9ec5-788af1eab409`, `c7b4d76a-424b-4e33-894c-56942830ab33`
+- Aggregate counters in that database (read-only, 2026-09-19): users 4,
+  relationship_workspaces 2, people 4, analysis_jobs 3 (all COMPLETE),
+  relationship_analyses 1, shadow_dynamics_analyses 2, reports 0, chat_threads 4.
+
+### RC2 local (throwaway, no inventory entry needed)
+
+The `numra-rc2` Compose project is created and destroyed by `scripts/rc2-e2e.sh`
+itself: `audit` and `down` both run `docker compose down -v`, which removes the
+project's Postgres and export volumes. Records created by a local run never
+outlive the run. **Cleanup owner: the runner**; no manual step is required, and
+no `numra-rc2` containers or volumes exist between runs.
+
+### Cleanup ownership and deletion condition (all environments)
+
+- **Owner:** the PWA-10 closure gate. Nothing above is deleted before a
+  documented Go in PWA-10 — the records are the reproducibility evidence for
+  PWA-01/PWA-04.
+- **Condition:** the documented PWA-10 Go, per `docs/planning/avenyth-pwa-execution-state.md`
+  ("PWA-10 is the only gate that authorizes deletion of audit records and
+  retirement of the isolated audit stack").
+- **Production:** `numra-prod` appears in this inventory only to state that it
+  holds no audit records; it is never cleaned up.
+
+### Stored prompt-scaffolding rows (counted, not yet cleaned)
+
+The mock-provider prompt echo (defect recorded above) was persisted into
+`result_json` before PR #112 closed the leak class for every pipeline. Read-only
+count as of 2026-09-19 in the **agent0 audit** database:
+
+| Table | Rows with scaffolding markers |
+|---|---|
+| `relationship_analyses` | 1 of 1 |
+| `shadow_dynamics_analyses` | 2 of 2 |
+
+Markers checked: `[system]`, `profile_fact:`. No row content was read or
+recorded. These rows live only in the isolated audit database; production is
+unaffected (`NUMRA_LLM_PROVIDER=disabled` there). They are counted here so the
+PWA-10 cleanup covers them; the deletion itself follows the same Go gate as the
+rest of this inventory.
 
 ## Verified product flows
 
