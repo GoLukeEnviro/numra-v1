@@ -331,10 +331,10 @@ async def _generate_section(
         # calculation_appendix all cite the same core metrics) still produce distinct
         # text — otherwise the global lint's DuplicateParagraphDetection would
         # (correctly) flag genuinely identical output.
-        seed_phrases = (spec.section_id, spec.title) + tuple(
-            block.content for block in context_blocks
+        mock_text = deterministic_elaboration(
+            _mock_seed_phrases(section_id=spec.section_id, title=spec.title, blocks=context_blocks),
+            spec.target_word_count,
         )
-        mock_text = deterministic_elaboration(seed_phrases, spec.target_word_count)
 
     request = StructuredGenerationRequest(
         system_instructions=_SYSTEM_INSTRUCTIONS,
@@ -418,6 +418,32 @@ async def _generate_section(
         summary=summary or f"{spec.title}: {word_count} words generated.",
         metric_refs=spec.metric_refs,
         knowledge_refs=spec.knowledge_refs,
+    )
+
+
+def _mock_seed_phrases(
+    *, section_id: str, title: str, blocks: list[ContextBlock] | tuple[ContextBlock, ...]
+) -> tuple[str, ...]:
+    """The seed phrases the mock report text is composed from: the section's own
+    id/title (so sections whose grounding facts overlap still produce distinct text
+    for the global lint's DuplicateParagraphDetection) plus every block's content
+    that is a GROUNDING FACT about the profile.
+
+    `instruction_supplement` blocks are deliberately excluded. Their content is an
+    instruction addressed to the model ("The only valid ids …", "Target length for
+    this section: …", "numeric_claims must include …"), not a fact about the
+    person. Seeding the filler from them re-published those sentences as product
+    text — through `content_json`, into the report reader — and they carry no
+    bracket prefix, so `contains_prompt_scaffolding` cannot catch them: it detects
+    the request FRAMING (`[system]`, `[role:label]`), not instruction prose.
+
+    `untrusted_user_content` is excluded for the same class of reason — it is the
+    other person's journal entry, and the mock has no business republishing it as
+    the reader's own section prose.
+    """
+    excluded_roles = {"instruction_supplement", "untrusted_user_content"}
+    return (section_id, title) + tuple(
+        block.content for block in blocks if block.role not in excluded_roles
     )
 
 
