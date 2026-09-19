@@ -243,14 +243,16 @@ async def _render(
     is_mock_provider: bool,
     mock_fallback: str,
 ) -> str:
-    """One rendering call. For `MockLLMProvider` the deterministic `mock_fallback`
-    is returned instead of the provider's output: that provider echoes its whole
-    request back (system instructions + every grounding block), which is internal
-    prompt scaffolding and must never become product text. A real provider's own
-    output is returned unchanged and is checked for scaffolding by the caller's
-    validation gate."""
-    if is_mock_provider:
-        return mock_fallback
+    """One rendering call.
+
+    The provider is always called, mock included, so provider wrappers and the
+    failure/repair path keep working. `MockLLMProvider` echoes its whole request
+    back (system instructions + every grounding block), which is internal prompt
+    scaffolding and must never become product text -- so for the mock the
+    deterministic `mock_fallback` replaces the returned text. A real provider's
+    own output is returned unchanged and is checked for scaffolding by the
+    caller's validation gate.
+    """
     request = StructuredGenerationRequest(
         system_instructions=system_instructions,
         context_blocks=context_blocks,
@@ -259,7 +261,7 @@ async def _render(
     )
     result = await llm.generate_structured(request, _GeneratedText)
     assert isinstance(result, _GeneratedText)
-    return result.text
+    return mock_fallback if is_mock_provider else result.text
 
 
 async def _generate_dimension_statement(

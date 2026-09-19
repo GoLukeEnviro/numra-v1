@@ -348,18 +348,23 @@ async def _generate_section(
         target_schema_name="GeneratedSectionContent",
     )
 
+    # The provider is ALWAYS called, mock included: the retry/timeout/error state
+    # machine and any provider wrapper (e.g. a flaky test double that delegates to
+    # the mock) must still run. For the mock the returned text is discarded in
+    # favour of `mock_text` below, because `MockLLMProvider` echoes its whole
+    # request back and that scaffolding must never become report content.
+    result = await llm.generate_structured(request, GeneratedSectionContent)
+    assert isinstance(result, GeneratedSectionContent)
+
     if is_mock_provider:
         assert mock_text is not None  # set in the is_mock_provider branch above
-        # Deterministic, scaffolding-free mock rendering (see that branch for why the
-        # request is never sent to the mock). Numeric facts stay as
-        # {{metric:ID}}/{{special:ID}} placeholders for `_resolve_placeholders`.
+        # Deterministic, scaffolding-free mock rendering (see that branch).
+        # Numeric facts stay as {{metric:ID}}/{{special:ID}} placeholders for
+        # `_resolve_placeholders`.
         text = mock_text
         summary = ""  # filled from the measured word count below
         section_claims = normalize_numeric_claims(numeric_claims, profile)
     else:
-        result = await llm.generate_structured(request, GeneratedSectionContent)
-        assert isinstance(result, GeneratedSectionContent)
-
         # A provider that echoed its own request back has rendered nothing.
         # Rendering or persisting that scaffolding is never acceptable, so it fails
         # here and the caller's one-repair-attempt path handles it like any other
