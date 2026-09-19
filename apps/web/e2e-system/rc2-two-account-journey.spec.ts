@@ -2,6 +2,8 @@ import { test, expect, type Browser, type BrowserContext, type Page } from "@pla
 import fs from "node:fs";
 import path from "node:path";
 
+import { isOffOriginApiRequest } from "../src/lib/off-origin-guard";
+
 /**
  * REALITY_CHECK_2 Phase 2 -- the REAL two-account journey.
  *
@@ -79,11 +81,17 @@ async function shoot(page: Page, name: string) {
   await page.screenshot({ path: path.join(shotDir(), `${name}.png`), fullPage: true });
 }
 
-/** Off-origin guard: the browser must only ever hit same-origin /api/*. */
+/** Off-origin guard: the browser must only ever hit same-origin /api/*.
+ *
+ * The predicate lives in `src/lib/off-origin-guard.ts` so it is unit-testable
+ * (see its own spec): this journey is the only place it runs against real
+ * traffic, and an inline copy previously hardcoded a stale API port that made
+ * the guard blind on the current stack. `pageOrigin` is read from the live page
+ * at request time, never hardcoded.
+ */
 function watchOrigin(page: Page, sink: string[]) {
   page.on("request", (req) => {
-    const u = new URL(req.url());
-    if (u.port === "58000" || u.port === "8000" || u.hostname === "api") sink.push(req.url());
+    if (isOffOriginApiRequest(req.url(), new URL(page.url()).origin)) sink.push(req.url());
   });
 }
 
@@ -633,4 +641,52 @@ test("RC2 two-account journey: connections/consent/dual-profile/type/dissolve ov
     await ctxA.close();
     await ctxB.close();
   }
+});
+
+/**
+ * Negative probe for the off-origin guard above.
+ *
+ * A guard that never fires is indistinguishable from a journey that never
+ * violates the contract, so this test proves the predicate is live against real
+ * browser traffic on THIS stack: the page performs one API-shaped request to a
+ * foreign origin, and the guard must report it.
+ *
+ * The probe is a top-level navigation, not a `fetch`: the app ships
+ * `connect-src 'self'`, so a scripted `fetch` would be stopped by CSP before the
+ * request layer ever sees it, and the guard would look blind for the wrong
+ * reason. Navigations are not covered by `connect-src`, and an off-origin
+ * navigation (a redirect or a link aimed at the API's own origin) is the more
+ * realistic regression this guard exists to catch.
+ *
+ * No hardcoded API port and no external network: the probe origin is a
+ * reserved-invalid host (`*.invalid` can never resolve) which is intercepted and
+ * aborted locally, so the request is seen by the guard but never dialled. The
+ * predicate's port-independence is pinned separately by the unit spec
+ * (`src/lib/__tests__/off-origin-guard.test.ts`), which asserts the real RC2
+ * port explicitly.
+ */
+test("RC2 off-origin guard: an off-origin API call is detected on this stack", async ({
+  page,
+}: {
+  page: Page;
+}) => {
+  const offOrigin: string[] = [];
+  watchOrigin(page, offOrigin);
+
+  // Reserved-invalid TLD: the browser must never reach it, and the abort keeps
+  // even the DNS attempt off the network.
+  const probeOrigin = "http://rc2-off-origin-probe.invalid";
+  await page.route(`${probeOrigin}/**`, (route) => route.abort());
+
+  await page.goto("/login");
+
+  // Aborted by the route above -- the promise rejection is the expected outcome.
+  await page.goto(`${probeOrigin}/v1/public/config`).catch(() => undefined);
+
+  await expect
+    .poll(() => offOrigin.length, {
+      timeout: 15_000,
+      message: "the off-origin guard must report an off-origin API call on this stack",
+    })
+    .toBeGreaterThan(0);
 });
