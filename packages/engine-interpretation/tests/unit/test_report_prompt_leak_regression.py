@@ -19,12 +19,14 @@ from numra_interpretation.errors import InvalidReportSection
 from numra_interpretation.knowledge_loader import load_knowledge_base
 from numra_interpretation.llm.mock_provider import MockLLMProvider
 from numra_interpretation.llm.types import (
+    ContextBlock,
     GenerationRequest,
     GenerationResult,
     ProviderHealth,
     StructuredGenerationRequest,
 )
 from numra_interpretation.report import build_manifest, generate_report
+from numra_interpretation.report.pipeline import _mock_seed_phrases
 from numra_numerology.engine import calculate_profile
 from numra_numerology.models.person import PersonInput
 
@@ -107,6 +109,83 @@ async def test_report_mock_sections_have_no_prompt_scaffolding(
             assert marker not in section.text, (
                 f"report section {section.section_id!r} leaked {marker!r}: {section.text[:120]!r}"
             )
+
+
+async def test_report_mock_sections_have_no_internal_instruction_text(
+    sample_profile, knowledge_base
+) -> None:
+    """The bracket-marker check above is not sufficient on its own.
+
+    The mock section text is seeded from every context block's raw content, which
+    includes the `instruction_supplement` blocks — those carry PROMPT INSTRUCTIONS,
+    not grounding facts, and they are plain prose with no bracket prefix, so
+    `contains_prompt_scaffolding` never matches them. The report therefore shipped
+    sentences like "The only valid ids in the metric placeholder namespace are: …"
+    (and, for FULL/ULTIMATE, "Target length for this section: …",
+    "numeric_claims must include exactly one entry per metric id: …") as product
+    text, persisted in `content_json` and rendered by the report reader.
+
+    These exact sentences are what the mock text must not contain; the assertion is
+    on the sentences themselves rather than on the block list, so it still holds if
+    the instruction wording changes.
+    """
+    instruction_sentences = (
+        "The only valid ids in the metric placeholder namespace are",
+        "The only valid ids in the special placeholder namespace are",
+        "Never invent an id outside these two lists",
+        "Target length for this section",
+        "Do not pad with repetition to reach this length",
+        "numeric_claims must include exactly one entry per metric id",
+        "never the metric-placeholder syntax used in the text field",
+    )
+    manifest = build_manifest(report_type="QUICK", calculation_id="calc-1")
+
+    report = await generate_report(
+        profile=sample_profile,
+        knowledge=knowledge_base,
+        manifest=manifest,
+        llm=MockLLMProvider(),
+    )
+
+    assert report.sections
+    for section in report.sections:
+        for sentence in instruction_sentences:
+            assert sentence not in section.text, (
+                f"report section {section.section_id!r} leaked internal instruction "
+                f"text {sentence!r}: {section.text[:160]!r}"
+            )
+
+
+async def test_mock_seed_phrases_exclude_instruction_supplements() -> None:
+    """The unit-level counterpart: whatever the seed helper receives, an
+    `instruction_supplement` block never contributes a seed phrase. Its content is an
+    instruction to the model, never a grounding fact about the profile."""
+    blocks = (
+        ContextBlock(role="profile_fact", label="life_path", content="life_path = 22/4"),
+        ContextBlock(role="knowledge", label="life_path", content="knowledge prose"),
+        ContextBlock(
+            role="instruction_supplement",
+            label="valid_placeholder_ids",
+            content="The only valid ids in the metric placeholder namespace are: life_path.",
+        ),
+        ContextBlock(
+            role="instruction_supplement",
+            label="word_count_target",
+            content="Target length for this section: approximately 136 words.",
+        ),
+        ContextBlock(role="untrusted_user_content", label="journal", content="user entry text"),
+    )
+
+    seeds = _mock_seed_phrases(section_id="life_path", title="Life Path", blocks=blocks)
+
+    assert seeds[0] == "life_path"
+    assert seeds[1] == "Life Path"
+    assert "life_path = 22/4" in seeds
+    assert "knowledge prose" in seeds
+    # The actual defect: instruction text must never be a seed phrase.
+    for seed in seeds:
+        assert "The only valid ids" not in seed, seeds
+        assert "Target length for this section" not in seed, seeds
 
 
 async def test_report_fails_closed_on_provider_scaffolding(sample_profile, knowledge_base) -> None:

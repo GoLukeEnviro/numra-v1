@@ -72,13 +72,17 @@ All checks passed! / Success: no issues found in 88 source files
 - **Word-count fidelity against `MockLLMProvider` is approximate by construction.** The
   mock provider deliberately **echoes** its structured request (system instructions +
   every grounding block + numeric-claim lines) back as `text`, rather than generating
-  prose — that is by design (see its own docstring, Phase 3), useful for round-trip
-  correctness testing but structurally unable to hit a tight per-section word target
-  the way a real LLM would. The pipeline computes an overhead-aware elaboration length
-  to get close anyway, and the linter's `WordCountValidation` check uses a generous
-  tolerance (50% + a 250-word flat allowance) reflecting that reality — it still catches
-  a genuinely missing/near-empty section, just not tight prose-length precision, which
-  only a real generation quality evaluation (out of scope here) could meaningfully check.
+  prose — that is by design (see its own docstring, Phase 3), and that echo is exactly
+  why the pipeline no longer publishes the mock's return value as report content (see
+  the rendering guard and `_mock_seed_phrases` in `report/pipeline.py`). The mock path
+  instead composes its own deterministic text from the section's own grounding facts —
+  never from the `instruction_supplement` blocks, which carry prompt instructions rather
+  than facts about the person — at the section's full target length, so it is filler
+  rather than prose and cannot hit a tight per-section word target the way a real LLM
+  would. The linter's `WordCountValidation` check therefore still uses a generous
+  tolerance (50% + a 250-word flat allowance): it catches a genuinely missing/near-empty
+  section, not tight prose-length precision, which only a real generation quality
+  evaluation (out of scope here) could meaningfully check.
 - **`MAX_ATTEMPTS=3`** (workers) and the pipeline's **one repair attempt** (per section,
   inside a single job run) are two independent limits, not compounded — a section that
   fails numeric-claim validation gets one immediate regeneration attempt within the same

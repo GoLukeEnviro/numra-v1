@@ -390,7 +390,7 @@ test("RC2 two-account journey: connections/consent/dual-profile/type/dissolve ov
     await expect(relSection.getByText("Berechnungs-Version")).toBeVisible();
     await relProvenance.first().click();
     await expect(relSection.getByText(/Kanonische Werte|Wissenseinträge/).first()).toBeVisible();
-    assertNoPromptScaffolding(relSection, "relationship analysis");
+    await assertNoPromptScaffolding(relSection, "relationship analysis");
     await shoot(A, "06c-relationship-analysis");
 
     // Shadow dynamics: MUST reach COMPLETE for these (valid, master-22) profiles --
@@ -420,7 +420,7 @@ test("RC2 two-account journey: connections/consent/dual-profile/type/dissolve ov
     // The shadow block is no longer a debugging wall: the mock path renders
     // deterministic, scaffolding-free prose, so the rendered block is asserted for
     // internal prompt markers and captured as evidence like every other surface.
-    assertNoPromptScaffolding(shadowSection, "shadow dynamics");
+    await assertNoPromptScaffolding(shadowSection, "shadow dynamics");
     await shoot(A, "07a-shadow-dynamics");
 
     // Second context reads the same COMPLETE shadow analysis read-only (per
