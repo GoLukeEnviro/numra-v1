@@ -1,4 +1,4 @@
-import { test, expect, type Browser, type BrowserContext, type Page } from "@playwright/test";
+import { test, expect, type Browser, type BrowserContext, type Locator, type Page } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -93,6 +93,31 @@ function watchOrigin(page: Page, sink: string[]) {
   page.on("request", (req) => {
     if (isOffOriginApiRequest(req.url(), new URL(page.url()).origin)) sink.push(req.url());
   });
+}
+
+/**
+ * Internal prompt scaffolding must never reach the DOM.
+ *
+ * Every LLM-rendered surface is asserted with this. The marker list is the same
+ * framing `MockLLMProvider` composes (`[system]`, `[role:label]` blocks), which is
+ * also what a real provider would return if it ever echoed its request.
+ */
+const PROMPT_SCAFFOLDING_MARKERS = [
+  "[system]",
+  "[profile_fact:",
+  "[knowledge:",
+  "[instruction_supplement:",
+  "[untrusted_user_content:",
+  "[user_instructions]",
+] as const;
+
+async function assertNoPromptScaffolding(scope: Locator, label: string) {
+  for (const marker of PROMPT_SCAFFOLDING_MARKERS) {
+    await expect(
+      scope.getByText(marker, { exact: false }),
+      `${label} must not render internal prompt scaffolding (${marker})`,
+    ).toHaveCount(0);
+  }
 }
 
 async function assertMeasuredViewport(page: Page, expected: Vp) {
@@ -352,22 +377,21 @@ test("RC2 two-account journey: connections/consent/dual-profile/type/dissolve ov
     await expect(A).toHaveURL(new RegExp(`/workspaces/${workspaceId}/dynamics`));
     await expect(A.getByRole("heading", { name: "Dynamiken", exact: true })).toBeVisible();
 
-    const isDesktop = test.info().project.name === "desktop-1440x900";
     const relSection = A.locator("section", {
       has: A.getByText("Beziehungsanalyse", { exact: true }),
     });
-    if (isDesktop) {
-      // Relationship analysis: full success path. Desktop only -- the mock provider
-      // echoes the raw grounding facts as "prose", producing a very tall DOM that
-      // is slow to render under mobile emulation for no extra signal (the responsive
-      // layout is covered by the mocked pr-web-05-visual-baseline suite).
-      await relSection.getByRole("button", { name: "Beziehungsanalyse starten" }).click();
-      const relProvenance = relSection.getByRole("button", { name: "Herkunft", exact: true });
-      await expect(relProvenance.first()).toBeVisible({ timeout: 120_000 });
-      await expect(relSection.getByText("Berechnungs-Version")).toBeVisible();
-      await relProvenance.first().click();
-      await expect(relSection.getByText(/Kanonische Werte|Wissenseinträge/).first()).toBeVisible();
-    }
+    // Relationship analysis: full success path, BOTH viewports. The mock provider no
+    // longer echoes grounding facts as "prose" (the pipeline renders deterministic,
+    // scaffolding-free text for it), so the DOM stays small enough for mobile and the
+    // rendered block is asserted rather than skipped.
+    await relSection.getByRole("button", { name: "Beziehungsanalyse starten" }).click();
+    const relProvenance = relSection.getByRole("button", { name: "Herkunft", exact: true });
+    await expect(relProvenance.first()).toBeVisible({ timeout: 120_000 });
+    await expect(relSection.getByText("Berechnungs-Version")).toBeVisible();
+    await relProvenance.first().click();
+    await expect(relSection.getByText(/Kanonische Werte|Wissenseinträge/).first()).toBeVisible();
+    assertNoPromptScaffolding(relSection, "relationship analysis");
+    await shoot(A, "06c-relationship-analysis");
 
     // Shadow dynamics: MUST reach COMPLETE for these (valid, master-22) profiles --
     // on BOTH viewports. A FAILED outcome here is a regression of the master-number
@@ -393,11 +417,11 @@ test("RC2 two-account journey: connections/consent/dual-profile/type/dissolve ov
     // pattern_intensity is a text label, never a progress bar / score.
     await expect(shadowSection.locator('[role="progressbar"]')).toHaveCount(0);
     await expect(shadowSection).not.toContainText("%");
-    // No screenshot: the mock LLM provider echoes raw grounding facts into the
-    // interaction-pattern statement, so a fullPage shot is an unreadable debug
-    // wall. The structural assertions above (both person blocks, provenance,
-    // meta footer, no progressbar, COMPLETE reached) are the evidence; the
-    // rendered look is proven by the curated pr-web-05-visual-baseline suite.
+    // The shadow block is no longer a debugging wall: the mock path renders
+    // deterministic, scaffolding-free prose, so the rendered block is asserted for
+    // internal prompt markers and captured as evidence like every other surface.
+    assertNoPromptScaffolding(shadowSection, "shadow dynamics");
+    await shoot(A, "07a-shadow-dynamics");
 
     // Second context reads the same COMPLETE shadow analysis read-only (per
     // workspace, IDOR-gated GET), no error.
@@ -515,9 +539,10 @@ test("RC2 two-account journey: connections/consent/dual-profile/type/dissolve ov
     await A.getByLabel("Nachricht").fill(SHARED_COPILOT_MSG);
     await A.getByRole("button", { name: "Senden", exact: true }).click();
     await expect(A.getByText(SAFE_MOCK_REPLY)).toBeVisible({ timeout: 60_000 });
-    // The mock provider must never echo internal prompt text (PR #98 regression).
-    await expect(A.getByText("[system]")).toHaveCount(0);
-    await expect(A.getByText(/profile_fact:/)).toHaveCount(0);
+    // The mock provider must never echo internal prompt text (PR #98 regression),
+    // on any LLM-rendered surface -- checked with the same marker list the engine
+    // side enforces before persisting.
+    await assertNoPromptScaffolding(A.locator("main"), "copilot thread");
     await shoot(A, "12-copilot-shared-a");
 
     // B sees A's shared message in the same thread.

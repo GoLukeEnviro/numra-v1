@@ -18,6 +18,7 @@ import re
 from pydantic import BaseModel, ConfigDict
 
 from numra_interpretation.knowledge_loader import KnowledgeBase
+from numra_interpretation.llm.rendering_guard import contains_prompt_scaffolding, grounding_prose
 from numra_interpretation.llm.types import ContextBlock, StructuredGenerationRequest
 from numra_interpretation.llm.types import LLMProvider as LLMProviderProtocol
 from numra_interpretation.llm.validator import (
@@ -169,13 +170,21 @@ def _validate_and_resolve_text(
     is_mock_provider: bool,
 ) -> str:
     """The grounding gate every rendered `ThemeStatement.text` must pass before it is
-    accepted: first the unauthorized-literal check on the still-placeholder-bearing
-    raw text (skipped for `MockLLMProvider`, exactly like
+    accepted: first the prompt-scaffolding check (a provider that echoed its own
+    request has rendered nothing and must fail, mock included — its scaffolding is
+    replaced with deterministic prose upstream, see `pipeline._render`), then the
+    unauthorized-literal check on the still-placeholder-bearing raw text (skipped for
+    `MockLLMProvider`, exactly like
     `numra_interpretation.report.pipeline._generate_section` — its deterministic
     filler echoes raw grounding facts by design, which is not "the model inventing a
     claim"), then placeholder resolution against the real profile data. Raises
-    `InvalidAnalysisSection` on either an unauthorized literal or an unknown
-    placeholder id — the caller's existing one-repair-attempt pattern catches it."""
+    `InvalidAnalysisSection` on any of them — the caller's existing one-repair-attempt
+    pattern catches it."""
+    if contains_prompt_scaffolding(text):
+        raise InvalidAnalysisSection(
+            "PromptScaffoldingRejected: provider returned its own prompt scaffolding "
+            "instead of rendered text (never rendered or persisted)"
+        )
     if not is_mock_provider:
         unauthorized = _find_unauthorized_numeric_literals(
             text, profile_a=profile_a, profile_b=profile_b
@@ -231,7 +240,17 @@ async def _render(
     system_instructions: str,
     context_blocks: tuple[ContextBlock, ...],
     metadata: dict[str, str],
+    is_mock_provider: bool,
+    mock_fallback: str,
 ) -> str:
+    """One rendering call. For `MockLLMProvider` the deterministic `mock_fallback`
+    is returned instead of the provider's output: that provider echoes its whole
+    request back (system instructions + every grounding block), which is internal
+    prompt scaffolding and must never become product text. A real provider's own
+    output is returned unchanged and is checked for scaffolding by the caller's
+    validation gate."""
+    if is_mock_provider:
+        return mock_fallback
     request = StructuredGenerationRequest(
         system_instructions=system_instructions,
         context_blocks=context_blocks,
@@ -264,6 +283,14 @@ async def _generate_dimension_statement(
         system_instructions=_RELATIONSHIP_SYSTEM_INSTRUCTIONS,
         context_blocks=blocks,
         metadata={"dimension_id": dimension_id, "attempt": str(attempt)},
+        is_mock_provider=is_mock_provider,
+        # Deterministic, scaffolding-free mock rendering: the dimension's own
+        # knowledge text plus this dimension's canonical refs as placeholders the
+        # caller's resolver turns into the real display values.
+        mock_fallback=grounding_prose(
+            context.dimension_blocks[dimension_id][0].content,
+            "Diese Deutung stuetzt sich auf {{metric:a:life_path}} und {{metric:b:life_path}}.",
+        ),
     )
     text = _validate_and_resolve_text(
         raw_text, profile_a=profile_a, profile_b=profile_b, is_mock_provider=is_mock_provider
@@ -380,6 +407,14 @@ async def _generate_shadow_statement(
         system_instructions=_SHADOW_SYSTEM_INSTRUCTIONS,
         context_blocks=blocks,
         metadata={"component": label, "attempt": str(attempt)},
+        is_mock_provider=is_mock_provider,
+        # Deterministic, scaffolding-free mock rendering: the component's own
+        # pre-computed base text (its deterministic shadow theme/interaction rule)
+        # plus both person refs as placeholders the caller's resolver resolves.
+        mock_fallback=grounding_prose(
+            base_content,
+            "Diese Deutung stuetzt sich auf {{metric:a:life_path}} und {{metric:b:life_path}}.",
+        ),
     )
     text = _validate_and_resolve_text(
         raw_text, profile_a=profile_a, profile_b=profile_b, is_mock_provider=is_mock_provider
