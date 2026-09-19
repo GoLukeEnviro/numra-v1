@@ -14,6 +14,7 @@ import re
 from numra_interpretation.composer import CORE_METRIC_IDS, TIMING_METRIC_IDS, compose_section
 from numra_interpretation.errors import InvalidReportSection
 from numra_interpretation.knowledge_loader import KnowledgeBase
+from numra_interpretation.llm.rendering_guard import contains_prompt_scaffolding
 from numra_interpretation.llm.types import (
     ContextBlock,
     NumericClaim,
@@ -317,34 +318,23 @@ async def _generate_section(
             )
         )
 
+    mock_text: str | None = None
     if is_mock_provider:
-        # Deterministic, network-free filler so MockLLMProvider-driven tests can
-        # exercise realistic section lengths (including ULTIMATE-scale, 15,000+ words)
-        # without a real model. Never sent to a real provider — see the module
-        # docstring and the `is_mock_provider` branch this guards: injecting synthetic
-        # filler text into a *real* LLM's prompt would just be prompt noise a real
-        # model has no reason to reproduce, and risks being echoed back verbatim.
-        overhead_words = len(f"[system] {_SYSTEM_INSTRUCTIONS}".split())
-        overhead_words += sum(
-            len(f"[{b.role}:{b.label}] {b.content}".split()) for b in context_blocks
-        )
-        overhead_words += 3 * len(numeric_claims)
-
+        # `MockLLMProvider` ignores the target length and echoes the whole request
+        # back (system instructions + every grounding block), so the mock path
+        # composes its deterministic text here instead: same grounding phrases, no
+        # request framing, and aimed at the section's full target length so the
+        # word-count lint sees a realistic section.
+        #
         # Always lead with the section's own id/title so sections whose grounding
         # facts happen to overlap (e.g. executive_profile/development/
         # calculation_appendix all cite the same core metrics) still produce distinct
-        # elaboration text — otherwise the global lint's DuplicateParagraphDetection
-        # would (correctly) flag genuinely identical output.
+        # text — otherwise the global lint's DuplicateParagraphDetection would
+        # (correctly) flag genuinely identical output.
         seed_phrases = (spec.section_id, spec.title) + tuple(
             block.content for block in context_blocks
         )
-        elaboration_target = max(5, spec.target_word_count - overhead_words)
-        elaboration = deterministic_elaboration(seed_phrases, elaboration_target)
-        context_blocks.append(
-            ContextBlock(
-                role="instruction_supplement", label="elaboration_seed", content=elaboration
-            )
-        )
+        mock_text = deterministic_elaboration(seed_phrases, spec.target_word_count)
 
     request = StructuredGenerationRequest(
         system_instructions=_SYSTEM_INSTRUCTIONS,
@@ -358,16 +348,43 @@ async def _generate_section(
         target_schema_name="GeneratedSectionContent",
     )
 
+    # The provider is ALWAYS called, mock included: the retry/timeout/error state
+    # machine and any provider wrapper (e.g. a flaky test double that delegates to
+    # the mock) must still run. For the mock the returned text is discarded in
+    # favour of `mock_text` below, because `MockLLMProvider` echoes its whole
+    # request back and that scaffolding must never become report content.
     result = await llm.generate_structured(request, GeneratedSectionContent)
     assert isinstance(result, GeneratedSectionContent)
 
-    # Self-heals a known-metric_id-but-wrong-display_value claim (silently substitutes
-    # the canonical value the pipeline already computed) instead of raising — the
-    # provider's temperature-0.2 sampling occasionally mistypes/invents a literal
-    # value even though it correctly names which metric_id the claim is about. Only
-    # an unknown metric_id (real confusion about which facts exist) still raises. See
-    # `normalize_numeric_claims`'s docstring for the full rationale.
-    section_claims = normalize_numeric_claims(result.numeric_claims, profile)
+    if is_mock_provider:
+        assert mock_text is not None  # set in the is_mock_provider branch above
+        # Deterministic, scaffolding-free mock rendering (see that branch).
+        # Numeric facts stay as {{metric:ID}}/{{special:ID}} placeholders for
+        # `_resolve_placeholders`.
+        text = mock_text
+        summary = ""  # filled from the measured word count below
+        section_claims = normalize_numeric_claims(numeric_claims, profile)
+    else:
+        # A provider that echoed its own request back has rendered nothing.
+        # Rendering or persisting that scaffolding is never acceptable, so it fails
+        # here and the caller's one-repair-attempt path handles it like any other
+        # invalid section.
+        if contains_prompt_scaffolding(result.text):
+            raise InvalidReportSection(
+                f"PromptScaffoldingRejected: section {spec.section_id!r} returned prompt "
+                "scaffolding instead of rendered text (never rendered or persisted)"
+            )
+
+        # Self-heals a known-metric_id-but-wrong-display_value claim (silently
+        # substitutes the canonical value the pipeline already computed) instead of
+        # raising — the provider's temperature-0.2 sampling occasionally mistypes or
+        # invents a literal value even though it correctly names which metric_id the
+        # claim is about. Only an unknown metric_id (real confusion about which facts
+        # exist) still raises. See `normalize_numeric_claims`'s docstring.
+        section_claims = normalize_numeric_claims(result.numeric_claims, profile)
+        text = result.text
+        summary = result.summary or f"{spec.title}: {spec.target_word_count} words targeted."
+
     validate_metric_ref_coverage(
         section_claims,
         tuple(claim.metric_id for claim in numeric_claims),
@@ -377,10 +394,10 @@ async def _generate_section(
     # template_text (still carrying {{metric:ID}}/{{special:ID}} placeholders) is
     # linted BEFORE placeholder resolution — the unauthorized-literal check only means
     # anything against the model's own raw wording, not against the profile's own
-    # values that resolution will substitute in. Mock output is exempt: MockLLMProvider
-    # deliberately echoes raw grounding facts (including bare digits) as part of how it
-    # fabricates deterministic content, which is not "the model inventing a claim".
-    template_text = result.text
+    # values that resolution will substitute in. Mock output is exempt: its
+    # deterministic filler echoes raw grounding facts (including bare digits) by
+    # design, which is not "the model inventing a claim".
+    template_text = text
     if not is_mock_provider:
         unauthorized = find_unauthorized_numeric_literals(template_text, profile)
         if unauthorized:
@@ -389,16 +406,16 @@ async def _generate_section(
                 f"digit(s) {unauthorized!r} not referenced via a metric/special placeholder"
             )
 
-    text = _resolve_placeholders(template_text, profile)
-    word_count = len(text.split())
+    resolved_text = _resolve_placeholders(template_text, profile)
+    word_count = len(resolved_text.split())
 
     return StructuredReportSection(
         section_id=spec.section_id,
         title=spec.title,
         order_index=spec.order_index,
-        text=text,
+        text=resolved_text,
         word_count=word_count,
-        summary=result.summary or f"{spec.title}: {word_count} words generated.",
+        summary=summary or f"{spec.title}: {word_count} words generated.",
         metric_refs=spec.metric_refs,
         knowledge_refs=spec.knowledge_refs,
     )
