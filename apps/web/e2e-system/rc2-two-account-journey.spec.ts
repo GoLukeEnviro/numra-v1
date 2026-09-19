@@ -593,13 +593,21 @@ test("RC2 two-account journey: connections/consent/dual-profile/type/dissolve ov
     await shoot(A, "14-evidence-no-reliable-pattern");
 
     // The evidence page is private: B must NOT be able to read A's person data.
-    // A non-owned person resolves to an error state (never a data leak), so the
-    // assertion is on the absence of A's actual content, not a specific copy.
+    // The product contract for a non-owned person is a resolved denial the user can
+    // see and act on -- `people.get` answers 404 and the page renders the app's
+    // error state carrying that code -- never a working page, never a crash, never a
+    // leak. Both halves are asserted, so a blank or broken page cannot satisfy the
+    // test the way an absence-only check would.
     const personAId = personAUrl.match(/\/people\/([0-9a-f-]{36})/)![1];
     await B.goto(`/people/${personAId}/evidence`);
+    const denial = B.getByRole("alert").filter({ hasText: "NOT_FOUND" });
+    await expect(denial).toBeVisible({ timeout: 15_000 });
+    await expect(denial).toContainText("person");
     await expect(B.getByRole("heading", { name: "Life Tracking & Evidenz" })).toHaveCount(0);
     await expect(B.getByText(EVIDENCE_NOTE)).toHaveCount(0);
     await expect(B.getByText("Stimmung 8/10")).toHaveCount(0);
+    // Not a broken page: no generic 500 surface anywhere in the document.
+    await expect(B.getByText(/Internal Server Error|\b500\b/)).toHaveCount(0);
 
     // --- Dissolve via the UI ---
     await A.goto("/connections");
@@ -646,6 +654,14 @@ test("RC2 two-account journey: connections/consent/dual-profile/type/dissolve ov
     await A.goto(`/workspaces/${workspaceId}/copilot`);
     await expect(A.getByRole("heading", { name: "Beziehungs-Copilot" })).toBeVisible();
     await expect(A.getByText("Dieser Workspace ist aufgelöst. Das Gespräch bleibt als Historie lesbar.")).toBeVisible();
+    await expect(A.getByText(SHARED_COPILOT_MSG)).toBeVisible();
+    // "Composing is blocked" is asserted, not assumed: the composer form and its
+    // send button must be gone (the component renders them only while the
+    // workspace is not DISSOLVED), and no send can be triggered by keyboard either.
+    await expect(A.getByLabel("Nachricht")).toHaveCount(0);
+    await expect(A.getByRole("button", { name: "Senden", exact: true })).toHaveCount(0);
+    await expect(A.locator("form")).toHaveCount(0);
+    await A.keyboard.press("Enter");
     await expect(A.getByText(SHARED_COPILOT_MSG)).toBeVisible();
 
     // Mutation lock, same-origin: PATCH -> 409 WORKSPACE_DISSOLVED, GET -> 200.
