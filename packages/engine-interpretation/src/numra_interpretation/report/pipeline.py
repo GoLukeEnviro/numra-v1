@@ -14,6 +14,8 @@ import re
 from numra_interpretation.composer import (
     CORE_METRIC_IDS,
     TIMING_METRIC_IDS,
+    ExtendedInterpretationSection,
+    InterpretationSection,
     compose_interpretation,
     compose_section,
 )
@@ -449,12 +451,16 @@ def _composed_prose_index(profile: CanonicalProfile, knowledge: KnowledgeBase) -
     genau das ist der Text, den der Mock verwenden soll.
     """
     interpretation = compose_interpretation(profile, knowledge)
-    index: dict[str, str] = {}
-    for section in (
+    # Explicit union type: the three tuples hold sibling section models, and an
+    # unannotated starred unpack would widen the element type to `BaseModel` (mypy),
+    # hiding that both models carry `metric_id`/`text_de`.
+    sections: tuple[InterpretationSection | ExtendedInterpretationSection, ...] = (
         *interpretation.sections,
         *interpretation.timing_sections,
         *interpretation.extended_sections,
-    ):
+    )
+    index: dict[str, str] = {}
+    for section in sections:
         index.setdefault(section.metric_id, section.text_de)
     return index
 
