@@ -131,4 +131,68 @@ Lokale Löschung erst nach Worktree- und Dirty-Check; Remote-Branches sind davon
 
 ## Ergebnis des Laufs
 
-_Wird nach Abschluss des Cleanups ergänzt (gelöschte Branches mit Vorher-SHA, Ergebnis der Dependabot-Entscheidungen, Verifikation von `delete_branch_on_merge`, Post-Merge-CI)._
+**Reihenfolge wie freigegeben:** erst die Closure-Kette abschließen, dann Hygiene. Die Closure-Kette endete mit dem Merge von PR #156 (`test/report-output-marker-proofs`, Merge-Commit `2a8899d`), der mit vollständiger CI (16 Checks) und grünem Post-Merge-Lauf auf `main` landete.
+
+### Gelöschte Remote-Branches
+
+**25 Branches** wurden einzeln durch den Pre-Delete-Guard gelassen und gelöscht (frischer Remote-Read == Manifest-SHA, kein offener PR-Head, kein fremdes Worktree, sauberer Checkout, Nachweis in `main`):
+
+- `ancestor-of-main` (vollständig in der Historie): 15 Branches — `copilot/branches-overview`, `copilot/fix-github-actions-job`, `copilot/pr-3-merge-and-close-pr-2`, `docs/product-closure-roadmap`, `docs/pwa-02-closure`, `docs/pwa-03-code-parity-resolved`, `docs/pwa-03-production-parity`, `docs/pwa04-session-handoff`, `docs/release-a-verification-runbook`, `feat/mobile12c-today-daily-brief`, `feat/numra-v1-5-product-completion`, `fix/copilot-mock-safe-response`, `fix/numra-v1-production-completion`, `fix/v1.6-c-timing-report-grounding`, `test/report-output-marker-proofs`
+- `patch-identical zum Merge-Commit des gemergten PRs` (Squash-Merges): 10 Branches — `codex/ollama-top-p`, `codex/pr-web-06a`, `codex/pr-web-06a-evidence`, `codex/pr-web-06b`, `codex/pr-web-06b-docs`, `codex/pr-web-07`, `codex/pr-web-07-evidence`, `feat/pr-web-02-personal-workspace`, `feat/pr-web-03-connections-invitations-consent`, `feat/pr-web-04-relationship-workspace-core`
+
+**Sonderfälle:**
+
+- `feat/report-prompt-v3` (PR #15, nie gemergt): annotierter Archiv-Tag `archive/pr-15-report-prompt-v3` (Tag-Objekt `720ed2fe4c266caac6da27d69513c0d1238b2e73`) zeigt auf den verifizierten Head-SHA `e87b1552755c357b85c635d321e56a0c615fa6f2`; der Tag ist auf dem Remote verifiziert, danach wurde der Branch gelöscht.
+- `copilot/5df610237a5ff0992a7d9fd3074a7bc5f696455b`: gelöscht (SHA `feea3d13451fcc1cf80a841631457e44b4f6ea85`), kein Archiv-Tag — der Inhalt ist durch die spätere Implementierung überholt.
+- Die vier Dependabot-Branches (`dependabot/pip/httpx-gte-0.28.1`, `dependabot/pip/ruff-gte-0.16.7`, `dependabot/pip/hypothesis-gte-6.168.0`, `dependabot/npm_and_yarn/safe-minor-and-patch-6e65b2d03c`) verschwanden mit dem Schließen ihrer PRs: GitHub entfernt den Head-Branch einer geschlossenen Dependabot-PR — verifiziert durch die leere Branch-Abfrage danach. Der `safe-minor-and-patch`-Branch enthielt zusätzlich die bewusst nicht übernommenen Updates (vitest 5.0.1 → #164, apps/mobile → #165); ihre Versionen stehen dort, deshalb ist der Branch ohne Informationsverlust entbehrlich.
+
+### Merges
+
+| PR | Inhalt | Merge-Commit | Post-Merge-CI |
+|---|---|---|---|
+| #156 | Prompt-Material-Nachweis für Report → DOM/PDF/Export (Closure-Kette) | `2a8899d` | grün, 20 Checks |
+| #158 | Sicherer Dependency-Batch (httpx, ruff, hypothesis, lucide-react, tailwind-merge, autoprefixer) | `fa869f6` | siehe Abschnitt `Post-Merge-Verifikation` |
+
+Der Batch war nötig, weil die Branch-Protection `strict: true` erzwingt: vier Einzelmerges hätten vier serielle CI-Zyklen gekostet, ein kontrollierter Batch einen.
+
+### Ausgeschlossen und mit eigenem Issue versehen
+
+| Thema | Issue | Begründung |
+|---|---|---|
+| Tailwind 3 → 4 | #159 | Major-Migration, im Dependabot-PR drei rote Jobs |
+| Express 4 → 5 (PDF-Service) | #160 | Major-Migration, PR nur `BEHIND` — grüne Checks bedeuteten nichts |
+| ESLint 8/9 → 10 | #161 | Major, `web-lint-typecheck-build-test` rot |
+| React 18 → 19 | #162 | Major, drei rote Jobs |
+| pytest-Konstraint | #163 | `uv.lock` installiert bereits 9.1.1; es geht nur um die Deklaration |
+| vitest 5.0.1 | #164 | bricht die jest-dom-Typaugmentierung → `tsc --noEmit` rot (lokal reproduziert) |
+| apps/mobile | #165 | wird von CI überhaupt nicht gebaut/getestet — grüne CI bewiese dort nichts |
+
+Die zugehörigen Dependabot-PRs (#89, #94, #95, #96, #97) wurden mit Verweis auf ihr Issue geschlossen; #90, #91, #92 und #153 mit Verweis auf den Batch-PR #158.
+
+### Repository-Einstellung
+
+`delete_branch_on_merge` wurde von `false` auf `true` gesetzt und frisch zurückgelesen (`{"delete_branch_on_merge": true}`). Weitere Einstellungen wurden nicht angefasst. Die Verifikation dieser Einstellung ist der Merge dieses Dokumentations-PRs selbst: danach muss genau sein Head-Branch verschwunden sein.
+
+### Lokale Branches
+
+- `fix/mock-prompt-leak-all-pipelines` (Inhalt in `main`) — entfernt.
+- `fix/error-code-classification` — entfernt; sein eigener Inhalt war überholt (die neuere Fassung ohne Ausnahmetext im nutzersichtbaren Fehlercode steht in `main`).
+- `test/report-output-marker-proofs` (nach dem #156-Merge tot) — entfernt.
+- `fix/user-visible-error-codes` war beim Aufräumen bereits nicht mehr vorhanden.
+- `main` wurde per Fast-Forward auf `origin/main` gezogen; der Checkout steht auf `main`.
+
+### Restore
+
+Jeder gelöschte Branch ist über seinen SHA in der Tabelle oben wiederherstellbar (Kommando siehe Abschnitt „Wiederherstellung eines gelöschten Branches"); PR #15 zusätzlich über den Archiv-Tag.
+
+### Post-Merge-Verifikation
+
+| `main`-Stand | Herkunft | Ergebnis |
+|---|---|---|
+| `2a8899d` | Merge PR #156 (Closure-Kette) | 20 Checks, 0 Fehler — grün |
+| `fa869f6` | Merge PR #158 (Dependency-Batch) | 16 Checks, 0 Fehler; CI-Lauf `35528510287` 12/12 Jobs grün |
+
+Der Merge dieses Dokumentations-PRs ist zugleich der angekündigte Test für
+`delete_branch_on_merge`: danach muss dessen Head-Branch verschwunden und nur `main`
+übrig geblieben sein.
+

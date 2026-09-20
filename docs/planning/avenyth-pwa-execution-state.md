@@ -4,14 +4,15 @@
 - **STATUS_DATE:** 2026-09-20
 - **CANONICAL_CLIENT:** responsive web application / installable PWA (`apps/web`)
 - **NATIVE_MOBILE:** frozen; historical MOBILE-12A/B/C code remains, no new feature work
-- **VERIFIED_MAIN_SHA:** `03ab289611b8317e296bfbbbb911d28f95705c4b` (PR #129 — der letzte
-  verhaltensändernde Merge vor dem Kontodatenexport)
+- **VERIFIED_MAIN_SHA:** `fa869f6ec4b66940dec9278af1a34d452f6af3aa` (PR #158 — der letzte verhaltensändernde Merge: der
+  sichere Dependency-Batch; die Closure-Kette davor, #156, war test-only und ist deshalb kein
+  neuer Baseline-Kandidat, sondern im Delivery-Map-Eintrag unten vermerkt)
 - **VERIFIED_PRODUCTION_SHA:** `b0ff3380be1765a1b438283cfdad4656c9890d73` (no auto-deploy on this host — deliberately not advanced since the migration)
-- **LAST_MERGED_PR:** [#129](https://github.com/GoLukeEnviro/numra-v1/pull/129)
-- **LAST_GREEN_MAIN_RUN:** post-merge run on `03ab2896` (12/12 jobs green, run `35489419293`)
+- **LAST_MERGED_PR:** [#158](https://github.com/GoLukeEnviro/numra-v1/pull/158)
+- **LAST_GREEN_MAIN_RUN:** post-merge run on `fa869f6e` (12/12 jobs green, run `35528510287`)
 - **CURRENT_MILESTONE:** PWA Product Closure
-- **CURRENT_TASK:** PWA-06 — the audit stack still runs the mock provider, so the real-provider acceptance (relationship analysis, shadow dynamics, QUICK/FULL/ULTIMATE reports, workspace Copilot, PDF) has not been demonstrated in the acceptance environment; the Personal Copilot surface does not exist (#123). PWA-05 waits on an external mail provider (see its roadmap row).
-- **NEXT_ACTION:** Continue with the gates that need no operator input: switch the **audit** stack to a real LLM provider (#124) and run the PWA-06 acceptance, then PWA-08 (the `ALLOW_SELF_SIGNUP` decision, #115), PWA-09 (monitoring, sanitized deployment topology, backup/restore state, runbooks) and PWA-10. One external blocker is outstanding: an SMTP provider plus a controlled non-`@example.com` mailbox for PWA-05 (#121) — deliberately scheduled last. Audit records stay untouched: only PWA-10 authorizes teardown and deletion.
+- **CURRENT_TASK:** PWA-06 — the audit stack still runs the mock provider, so the real-provider acceptance (relationship analysis, shadow dynamics, QUICK/FULL/ULTIMATE reports, workspace Copilot, PDF) has not been demonstrated in the acceptance environment; the Personal Copilot surface does not exist (#123). PWA-05 waits on an external mail provider (see its roadmap row). The 2026-09-20 closure chain (#146, #152, #154, #155, #156) and the branch/dependency hygiene pass are landed — see the delivery map — so the repository itself holds no open product blocker.
+- **NEXT_ACTION:** Continue with the gates that need no operator input: switch the **audit** stack to a real LLM provider (#124) and run the PWA-06 acceptance, then PWA-08 (the `ALLOW_SELF_SIGNUP` decision, #115), PWA-09 (monitoring, sanitized deployment topology, backup/restore state, runbooks) and PWA-10. One external blocker is outstanding: an SMTP provider plus a controlled non-`@example.com` mailbox for PWA-05 (#121) — deliberately scheduled last. Audit records stay untouched: only PWA-10 authorizes teardown and deletion. Deliberately non-blocking follow-ups opened by the hygiene pass: the major upgrades #159 (Tailwind 4), #160 (Express 5), #161 (ESLint 10), #162 (React 19) and #163 (pytest constraint), plus #164 (vitest 5.0.1 breaks the jest-dom type augmentation) and #165 (decide how `apps/mobile` gets CI coverage).
 - **OPEN_RELEASE_BLOCKERS:** none in production; the audit instance runs on this host with code parity to `main`. The former PWA-04 remote blockers (shared register rate limit, missing analysis worker) were environment findings of the retired VPS stack and do not apply to the current audit instance.
 
 This file is the single current execution-state source. Historical plans and gap
@@ -62,6 +63,8 @@ records are intentionally retained until Product Closure.
 | PWA-01 isolated dense-state audit | complete | `docs/audits/2026-09-15-pwa-01-isolated-audit.md` |
 | Mock Copilot disclosure regression | fixed and deployed | PR #98, main SHA above |
 | PWA-04 two-account acceptance + finding chain | complete | `docs/audits/2026-09-18-pwa-04-automated-two-account.md`; PRs #111, #112, #113, #114, #116 |
+| Closure chain #134/#135/#136/#137/#145/#146/#152/#154/#155/#156 | complete | PRs #146, #152, #154, #155 and the test-only #156 (merge `2a8899d`, post-merge `main` 20 checks green) |
+| Branch + dependency hygiene 2026-09-20 | complete | `docs/audits/2026-09-20-branch-hygiene.md`; 37 → 1 remote branch, safe dependency batch PR #158 (`fa869f6`), seven follow-up issues #159–#165 |
 
 ## Evidence boundary
 
