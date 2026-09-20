@@ -49,6 +49,43 @@ class _FlakyProvider:
         return await self._mock.generate_structured(request, schema)
 
 
+class _ScaffoldingProvider:
+    """Meldet sich als *echter* Provider und rendert nichts: jede Sektion kommt als
+    Prompt-Rahmung zurueck. Damit laeuft der Pfad, den #137 beschreibt -- die
+    Scaffolding-Pruefung der Pipeline schlaegt zweimal zu (Erstversuch + Reparatur),
+    und der Job muss danach als retrybarer Fehler enden, nicht als UNEXPECTED_ERROR."""
+
+    def __init__(self) -> None:
+        self.calls = 0
+        self._mock = MockLLMProvider()
+
+    async def health(self):
+        from numra_interpretation.llm.types import ProviderHealth
+
+        return ProviderHealth(
+            status="healthy", provider="ollama_cloud", checked_at=dt.datetime.now(dt.UTC)
+        )
+
+    async def generate(self, request):
+        return await self._mock.generate(request)
+
+    async def generate_structured(self, request, schema):
+        from numra_interpretation.report.schemas import GeneratedSectionContent
+
+        self.calls += 1
+        if schema is GeneratedSectionContent:
+            return schema(
+                text=(
+                    "[system] interne Anweisung\n"
+                    "[profile_fact:life_path] life_path = 6\n"
+                    "[user_instructions] Schreibe 2-4 Saetze."
+                ),
+                numeric_claims=request.numeric_claims,
+                summary="s",
+            )
+        return schema()
+
+
 async def _login(client, sessionmaker, email: str) -> dict:
     async with sessionmaker() as db:
         await create_user(db, email=email, password_hash=hash_password("password12345"))
@@ -100,6 +137,42 @@ async def _clear_backoff(sessionmaker, job_id: str) -> None:
         job = result.scalar_one()
         job.next_attempt_at = None
         await db.commit()
+
+
+async def test_scaffolding_rejection_is_retryable_and_keeps_internals_out_of_the_code(
+    client, sessionmaker, lukas_payload
+) -> None:
+    """#137: `PromptScaffoldingRejected` kam als unbekannter Typ beim Service an und
+    wurde als `UNEXPECTED_ERROR` **ohne** Retry verbucht — obwohl die uebrigen
+    Validierungsfehler retrybar sind und der Job-Retry der naechste, unabhaengige
+    Versuch ist. Ausserdem wird `error_code` dem Nutzer im Fortschritts-DOM woertlich
+    gezeigt: interne Texte gehoeren ins Log, nicht in die Spalte."""
+    _headers, job_id = await _create_report_job(
+        client, sessionmaker, lukas_payload, email="retry-scaffolding@example.com"
+    )
+    provider = _ScaffoldingProvider()
+
+    claimed = await run_one_cycle(sessionmaker, llm=provider)
+    assert claimed is True
+
+    job = await _load_job(sessionmaker, job_id)
+    # Retrybar: zurueck in QUEUED mit Backoff, nicht terminal FAILED.
+    assert job.status == ReportJobStatus.QUEUED
+    assert job.attempt_count == 1
+    assert job.next_attempt_at is not None
+    # Zwei Versuche: Erstversuch + der eine erlaubte Reparaturversuch der Pipeline.
+    assert provider.calls == 2
+
+    code = job.error_code or ""
+    assert code == "REPORT_GENERATION_ERROR"
+    for leaked in (
+        "InvalidReportSection",
+        "PromptScaffoldingRejected",
+        "profile_fact",
+        "executive_profile",
+        "[system]",
+    ):
+        assert leaked not in code, f"interner Text im nutzersichtbaren error_code: {leaked!r}"
 
 
 async def test_retryable_failure_is_requeued_not_failed(

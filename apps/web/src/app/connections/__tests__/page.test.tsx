@@ -163,6 +163,6 @@ describe("ConnectionsPage", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Workspace-Zuordnung nicht verfügbar");
     expect(screen.getByText("Ada Lovelace")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Erneut versuchen" })).toBeInTheDocument();
   });
 });

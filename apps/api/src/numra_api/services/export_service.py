@@ -68,7 +68,9 @@ async def create_export(
         logger.warning(
             "PDF export failed for export_id=%s report_id=%s: %s", export.id, report.id, exc
         )
-        await mark_export_failed(db, export=export, error_code=f"PDF_RENDER_FAILED: {exc}")
+        # Kategorie statt Ausnahmetext: `ExportOut.error_code` geht an den Nutzer, der
+        # Grund steht bereits in der Logzeile darueber.
+        await mark_export_failed(db, export=export, error_code="PDF_RENDER_FAILED")
         return export
 
     file_ref = await storage.save(

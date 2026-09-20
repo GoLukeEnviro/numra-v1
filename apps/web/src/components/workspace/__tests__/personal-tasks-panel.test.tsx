@@ -62,7 +62,7 @@ describe("PersonalTasksPanel", () => {
     vi.mocked(api.personalTasks.list).mockRejectedValue(new Error("boom"));
     renderPanel();
     expect(await screen.findByRole("alert")).toHaveTextContent("boom");
-    expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Erneut versuchen" })).toBeInTheDocument();
   });
 
   it("shows the empty state with a create CTA when there are no tasks", async () => {
