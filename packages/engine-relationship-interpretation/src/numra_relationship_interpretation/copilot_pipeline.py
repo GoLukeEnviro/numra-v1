@@ -29,6 +29,7 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict
 
 from numra_interpretation.errors import InvalidReportSection
+from numra_interpretation.llm.rendering_guard import contains_prompt_scaffolding
 from numra_interpretation.llm.types import LLMProvider as LLMProviderProtocol
 from numra_interpretation.llm.types import NumericClaim, StructuredGenerationRequest
 from numra_interpretation.llm.validator import validate_numeric_claims
@@ -95,8 +96,23 @@ def _validate_claims_against_profiles(
 
 
 def _validate_reply(
-    reply: _CopilotGeneratedReply, *, grounding_profiles: tuple[CanonicalProfile, ...]
+    reply: _CopilotGeneratedReply,
+    *,
+    grounding_profiles: tuple[CanonicalProfile, ...],
+    is_mock_provider: bool,
 ) -> None:
+    # Die Scaffolding-Pruefung war hier bisher die einzige Ausnahme im ganzen
+    # LLM-Pfad: die Copilot-Antwort verliess sich darauf, dass der Provider sich selbst
+    # als "mock" meldet, und ein Provider, der seine Anfrage zurueckgibt, ohne das zu
+    # tun (Wrapper, kuenftiger Provider, Mock-Unterklasse), haette seinen kompletten
+    # Prompt als `ChatMessage.content` persistiert. Der Mock-Pfad bleibt ausgenommen --
+    # er echot per Konstruktion und wird unten durch den festen, belegten Satz ersetzt,
+    # nicht durch Ablehnung.
+    if not is_mock_provider and contains_prompt_scaffolding(reply.text):
+        raise AnalysisGenerationError(
+            "PROMPT_SCAFFOLDING_REJECTED: reply carries request scaffolding instead of "
+            "rendered text (never rendered or persisted)"
+        )
     if reply.basis_type not in VALID_BASIS_TYPES:
         raise AnalysisGenerationError(
             f"INVALID_BASIS_TYPE: {reply.basis_type!r} is not one of {sorted(VALID_BASIS_TYPES)}"
@@ -132,21 +148,30 @@ async def generate_copilot_reply(
     discipline as `pipeline.generate_relationship_analysis`. The caller (
     `numra_api.services.copilot_service`) catches this and persists the ASSISTANT
     `ChatMessage` as FAILED, it never propagates as an uncaught 500."""
+    # Die Provider-Identitaet steht vor der Validierung fest: die Scaffolding-Pruefung
+    # haengt davon ab (siehe `_validate_reply`), und `health()` ist ein billiger,
+    # provider-eigener Aufruf ohne Netzwerkzugriff.
+    health = await llm.health()
+    is_mock_provider = health.provider == "mock"
+
     try:
         reply = await _generate_once(request=request, llm=llm)
-        _validate_reply(reply, grounding_profiles=grounding_profiles)
+        _validate_reply(
+            reply, grounding_profiles=grounding_profiles, is_mock_provider=is_mock_provider
+        )
     except (AnalysisGenerationError, InvalidReportSection) as exc:
         try:
             reply = await _generate_once(request=request, llm=llm)
-            _validate_reply(reply, grounding_profiles=grounding_profiles)
+            _validate_reply(
+                reply, grounding_profiles=grounding_profiles, is_mock_provider=is_mock_provider
+            )
         except (AnalysisGenerationError, InvalidReportSection) as retry_exc:
             raise AnalysisGenerationError(
                 f"COPILOT_REPLY_VALIDATION_FAILED: failed twice: first={exc}; retry={retry_exc}"
             ) from retry_exc
 
-    health = await llm.health()
     text = reply.text
-    if health.provider == "mock":
+    if is_mock_provider:
         text = (
             "Für diese Frage gibt es in den freigegebenen Daten noch keine ausreichende Grundlage."
         )
