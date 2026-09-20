@@ -2206,8 +2206,7 @@
       },
       "ExportType": {
         "enum": [
-          "pdf",
-          "json"
+          "pdf"
         ],
         "title": "ExportType",
         "type": "string"

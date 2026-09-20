@@ -88,9 +88,24 @@ ungetestet sind. Nachgeführt:
 
 ## 5 — Bewusst offen
 
-* **`@typescript-eslint/no-floating-promises`** ist nicht aktiv (#136). Die manuelle
-  Prüfung aller Testdateien fand keine stillen Fehlschläge, aber ohne Gate bleibt das
-  eine manuelle Zusicherung.
 * **Style-`unsafe-inline`** (siehe §2) — akzeptierte Ausnahme, nicht behoben.
 * **Keine DAST-/Fuzzing-Stufe.** Der Umfang der Roadmap verlangt SAST; dynamische
   Angriffe auf die Live-Oberflächen sind nicht Teil dieses Nachweises.
+
+## 6 — Promise-Lint-Gate (nachtraeglich geschlossen, #136)
+
+`@typescript-eslint/no-floating-promises` und `no-misused-promises` sind jetzt als
+**Fehler** aktiv (typbewusstes Linting ueber `parserOptions.project`). Damit ist die
+manuelle Zusicherung aus §5 ersetzt:
+
+* `apps/web/.eslintrc.json`: beide Regeln fuer `**/*.ts`/`**/*.tsx`;
+  `checksVoidReturn.attributes` ist aus, weil `onClick={async () => ...}` in React
+  bewusst so geschrieben wird und kein vergessenes `await` ist.
+* `apps/web/tsconfig.e2e.json` (neu): die gemockten Playwright-Specs unter `e2e/` waren
+  aus `tsconfig.json` **ausgeschlossen** und damit fuer typbewusstes Linting und fuer
+  `tsc --noEmit` unsichtbar — genau dort ist eine nicht abgewartete Zusicherung
+  (`expect(locator).toBeVisible()`) der teuerste stille Fehlschlag. Sie sind jetzt
+  typgeprueft.
+* Wirksamkeitsnachweis, nicht nur "lint ist gruen": eine Wegwerfdatei mit einem
+  vergessenen `await` wurde von der Regel gefangen, dieselbe Zeile mit `void` nicht.
+

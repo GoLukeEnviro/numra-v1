@@ -613,16 +613,30 @@ async def generate_report(
             )
         except InvalidReportSection:
             # One controlled repair attempt (master prompt §100) — regenerate once.
-            section = await _generate_section(
-                profile=profile,
-                knowledge=knowledge,
-                spec=spec,
-                llm=llm,
-                global_summaries=tuple(summaries),
-                attempt=2,
-                is_mock_provider=is_mock_provider,
-                planned_focus=planned_focus,
-            )
+            try:
+                section = await _generate_section(
+                    profile=profile,
+                    knowledge=knowledge,
+                    spec=spec,
+                    llm=llm,
+                    global_summaries=tuple(summaries),
+                    attempt=2,
+                    is_mock_provider=is_mock_provider,
+                    planned_focus=planned_focus,
+                )
+            except InvalidReportSection as exc:
+                # Nach dem Reparaturversuch ist der Abschnitt nicht renderbar. Das ist
+                # ein Generierungsfehler dieser Pipeline -- genau wie die
+                # Lint-Validierung weiter unten -- und kein beliebiger Laufzeitfehler.
+                # Ungewrappt sah der API-Layer einen unbekannten Typ und verbuchte ihn
+                # als UNEXPECTED_ERROR ohne Retry (#137), obwohl der Job-Retry der
+                # naechste, unabhaengige Versuch ist. Der Grund bleibt in der Nachricht
+                # (fuer Logs und Engine-Tests) und in der Ausnahmekette; was der Nutzer
+                # zu sehen bekommt, entscheidet der API-Layer und speichert dort nur die
+                # Kategorie.
+                raise ReportGenerationError(
+                    f"REPORT_SECTION_UNRENDERABLE: {spec.section_id}: {exc}"
+                ) from exc
         sections.append(section)
         summaries.append(section.summary)
 

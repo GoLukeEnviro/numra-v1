@@ -79,6 +79,27 @@ async def test_create_export_renders_real_pdf_and_downloads_it(
     assert len(download_response.content) == export["file_size_bytes"]
 
 
+async def test_export_type_json_is_rejected_at_the_schema_boundary(
+    client, sessionmaker, llm, lukas_payload
+) -> None:
+    """#134: `ExportType` bot frueher oeffentlich `json` an, der Service lehnte den Wert
+    dann mit `NOT_FOUND` ab -- ein angebotener Enum-Wert, der wie ein fehlender Report
+    aussah. Die strukturierte JSON-Auskunft ist ein eigener Pfad
+    (`GET /v1/account/export`, Format `avenyth.account-export`); der Report-Export kennt
+    nur noch PDF und weist alles andere an der Schemagrenze mit 422 ab, mit dem
+    erlaubten Wert in der Antwort.
+    """
+    headers = await _login(client, sessionmaker, "export-type@example.com")
+    report_id = await _create_complete_report(client, sessionmaker, llm, headers, lukas_payload)
+
+    response = await client.post(
+        "/v1/exports", json={"report_id": report_id, "export_type": "json"}, headers=headers
+    )
+
+    assert response.status_code == 422
+    assert "pdf" in response.text
+
+
 async def test_list_exports_returns_users_own_exports(
     client, sessionmaker, llm, lukas_payload
 ) -> None:

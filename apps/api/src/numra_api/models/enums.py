@@ -28,8 +28,12 @@ class NameIdentityKind(StrEnum):
 
 
 class ExportType(StrEnum):
+    #: Nur PDF. Ein Report wird als PDF gerendert; die strukturierte JSON-Auskunft ist
+    #: ein eigener, separater Pfad (`GET /v1/account/export`, Format
+    #: `avenyth.account-export`). Ein `JSON`-Wert hier war oeffentlich im Schema
+    #: angeboten, wurde vom Service aber immer abgelehnt (#134) -- zwei konkurrierende
+    #: Semantiken fuer "JSON-Export" waren genau der Drift, den das erzeugt hat.
     PDF = "pdf"
-    JSON = "json"
 
 
 class ExportStatus(StrEnum):

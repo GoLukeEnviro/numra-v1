@@ -23,6 +23,7 @@ from numra_api.repositories.reports import (
     requeue_job_for_retry,
 )
 from numra_api.services.errors import NotFoundError
+from numra_interpretation.errors import InvalidReportSection
 from numra_interpretation.knowledge_loader import load_knowledge_base
 from numra_interpretation.llm.errors import LLMProviderError
 from numra_interpretation.llm.types import LLMProvider
@@ -172,11 +173,30 @@ async def run_report_job(
         # Pipeline-level failures (LLM unavailable, lint/schema validation failed) are
         # treated as retryable: a fresh generation attempt — possibly once transient
         # provider trouble clears — may succeed where this one didn't.
+        #
+        # Der gespeicherte Fehlercode bleibt eine reine Kategorie: er wird dem Nutzer im
+        # Fortschritts-DOM woertlich angezeigt (`report-progress-view.tsx`). Interne
+        # Details (Section-Ids, Lint-Regelnamen, Klassen-Reprs) gehoeren ins Log, nicht
+        # in die Oberflaeche (#137).
+        logger.warning("Report job %s failed during generation: %s", job.id, exc)
         await _handle_job_failure(
             db,
             job=job,
             report=report,
-            error_code=f"REPORT_GENERATION_ERROR: {exc}",
+            error_code="REPORT_GENERATION_ERROR",
+            retryable=True,
+        )
+    except InvalidReportSection as exc:
+        # Verteidigungslinie: die Pipeline normalisiert Abschnittsfehler nach zwei
+        # Versuchen selbst zu `ReportGenerationError` (#137). Kaeme der Typ trotzdem
+        # hier an, gehoert er in dieselbe Klasse — validiert, retrybar — und darf nicht
+        # als UNEXPECTED_ERROR ohne Retry enden.
+        logger.warning("Report job %s rejected a section: %s", job.id, exc)
+        await _handle_job_failure(
+            db,
+            job=job,
+            report=report,
+            error_code="REPORT_VALIDATION_FAILED",
             retryable=True,
         )
     except LLMProviderError as exc:
@@ -184,19 +204,20 @@ async def run_report_job(
         # ReportGenerationError (e.g. a timeout/5xx raised mid-section-generation).
         # `exc.retryable` — set by the provider's own error classification — decides
         # backoff-and-retry vs. terminal failure.
+        logger.warning("Report job %s failed at the provider: %s", job.id, exc)
         await _handle_job_failure(
             db,
             job=job,
             report=report,
-            error_code=f"LLM_PROVIDER_ERROR: {exc}",
+            error_code="LLM_PROVIDER_ERROR",
             retryable=exc.retryable,
         )
-    except Exception as exc:  # noqa: BLE001 - last-resort guard, see docstring above
+    except Exception:  # noqa: BLE001 - last-resort guard, see docstring above
         # An unexpected bug (not a known provider/pipeline failure type) must still
         # never crash the worker's poll loop. Treated as non-retryable: an
         # unclassified failure is not known to be transient, so retrying blind could
         # spin through all attempts on a bug that will never succeed.
         logger.exception("Unexpected error while running report job %s", job.id)
         await _handle_job_failure(
-            db, job=job, report=report, error_code=f"UNEXPECTED_ERROR: {exc}", retryable=False
+            db, job=job, report=report, error_code="UNEXPECTED_ERROR", retryable=False
         )

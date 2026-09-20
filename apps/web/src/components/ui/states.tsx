@@ -1,9 +1,14 @@
+"use client";
+
 import type { ReactNode } from "react";
 import { Loader2, AlertTriangle, Inbox, Clock, Lock, Sparkles } from "lucide-react";
 import { ApiError } from "@/api/client";
 import { Button } from "@/components/ui/button";
+import { useLocale } from "@/i18n/context";
 
-export function LoadingState({ label = "Loading…" }: { label?: string }) {
+export function LoadingState({ label }: { label?: string }) {
+  const { t } = useLocale();
+  const text = label ?? t("common.loading");
   return (
     <div
       role="status"
@@ -11,7 +16,7 @@ export function LoadingState({ label = "Loading…" }: { label?: string }) {
       className="flex flex-col items-center justify-center gap-3 rounded-xl border border-white/10 bg-surface p-12 text-muted"
     >
       <Loader2 className="h-6 w-6 animate-spin text-gold" aria-hidden="true" />
-      <span className="text-sm">{label}</span>
+      <span className="text-sm">{text}</span>
     </div>
   );
 }
@@ -38,18 +43,19 @@ export function EmptyState({
 export function ErrorState({
   error,
   onRetry,
-  title = "Something went wrong",
+  title,
 }: {
   error: unknown;
   onRetry?: () => void;
   title?: string;
 }) {
+  const { t } = useLocale();
   const message =
     error instanceof ApiError
       ? error.message
       : error instanceof Error
         ? error.message
-        : "An unexpected error occurred.";
+        : t("common.errorFallback");
   const code = error instanceof ApiError ? error.code : undefined;
 
   return (
@@ -59,7 +65,7 @@ export function ErrorState({
     >
       <div className="flex items-center gap-2 text-danger">
         <AlertTriangle className="h-5 w-5" aria-hidden="true" />
-        <h3 className="font-serif text-base">{title}</h3>
+        <h3 className="font-serif text-base">{title ?? t("common.somethingWrong")}</h3>
       </div>
       <p className="text-sm text-text">
         {code && <span className="mr-2 rounded bg-black/20 px-1.5 py-0.5 font-mono text-xs">{code}</span>}
@@ -67,7 +73,7 @@ export function ErrorState({
       </p>
       {onRetry && (
         <Button variant="secondary" size="sm" onClick={onRetry}>
-          Try again
+          {t("common.tryAgain")}
         </Button>
       )}
     </div>

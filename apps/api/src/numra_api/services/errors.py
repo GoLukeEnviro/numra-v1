@@ -56,6 +56,18 @@ class ExportRenderFailed(ApplicationError):
     status_code = 502
 
 
+class UnsupportedExportType(ApplicationError):
+    """Verteidigungslinie unterhalb des Schemas: `ExportCreateRequest.export_type`
+    laesst nur noch `pdf` zu (siehe `models.enums.ExportType`), der Endpunkt ist also
+    bereits an der Grenze geschlossen. Der Fehler greift erst, wenn jemand dem Enum
+    spaeter einen Wert hinzufuegt, ohne den Renderpfad mitzuziehen -- dann ist "422
+    unsupported" die richtige Antwort, nicht das frueher hier geworfene `NOT_FOUND`
+    (das den Aufrufer auf die falsche Faehrte schickte, #134)."""
+
+    code = "UNSUPPORTED_EXPORT_TYPE"
+    status_code = 422
+
+
 class EmailDeliveryUnavailable(ApplicationError):
     """Raised by `email.sender.DisabledEmailSender.send` -- EMAIL_BACKEND=disabled
     means exactly that: no email is ever sent, and a caller must never be able to

@@ -2740,7 +2740,7 @@ export interface components {
          * ExportType
          * @enum {string}
          */
-        ExportType: "pdf" | "json";
+        ExportType: "pdf";
         /** ForgotPasswordRequest */
         ForgotPasswordRequest: {
             /**

@@ -1,7 +1,23 @@
 {
   "root": true,
   "extends": ["next/core-web-vitals"],
+  "plugins": ["@typescript-eslint"],
+  "parserOptions": {
+    "project": ["./tsconfig.json", "./tsconfig.e2e.json"]
+  },
   "rules": {
     "@next/next/no-html-link-for-pages": "off"
-  }
+  },
+  "overrides": [
+    {
+      "files": ["**/*.ts", "**/*.tsx"],
+      "rules": {
+        "@typescript-eslint/no-floating-promises": "error",
+        "@typescript-eslint/no-misused-promises": [
+          "error",
+          { "checksVoidReturn": { "attributes": false } }
+        ]
+      }
+    }
+  ]
 }

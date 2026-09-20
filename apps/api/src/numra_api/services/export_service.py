@@ -20,7 +20,7 @@ from numra_api.repositories.exports import (
     mark_export_failed,
 )
 from numra_api.repositories.reports import get_report_for_user
-from numra_api.services.errors import NotFoundError, ReportNotReady
+from numra_api.services.errors import NotFoundError, ReportNotReady, UnsupportedExportType
 from numra_api.services.pdf_client import PdfServiceClient, PdfServiceUnavailable
 from numra_api.storage.exports import ExportStorage
 
@@ -43,8 +43,11 @@ async def create_export(
         raise NotFoundError(f"report {report_id} not found")
     if report.status != "COMPLETE" or report.content_json is None:
         raise ReportNotReady(f"report {report_id} is not COMPLETE yet (status={report.status})")
+    # Unerreichbar ueber die HTTP-Grenze: `ExportCreateRequest.export_type` laesst nur
+    # `pdf` zu. Die Pruefung bleibt als Verteidigungslinie stehen, damit ein spaeter
+    # ergaenzter Enum-Wert nicht stillschweigend ein PDF rendert (#134).
     if export_type is not ExportType.PDF:
-        raise NotFoundError(f"unsupported export_type: {export_type!r}")
+        raise UnsupportedExportType(f"unsupported export_type: {export_type!r}")
 
     export = await create_export_record(
         db, user_id=user_id, report_id=report.id, export_type=export_type
@@ -65,7 +68,9 @@ async def create_export(
         logger.warning(
             "PDF export failed for export_id=%s report_id=%s: %s", export.id, report.id, exc
         )
-        await mark_export_failed(db, export=export, error_code=f"PDF_RENDER_FAILED: {exc}")
+        # Kategorie statt Ausnahmetext: `ExportOut.error_code` geht an den Nutzer, der
+        # Grund steht bereits in der Logzeile darueber.
+        await mark_export_failed(db, export=export, error_code="PDF_RENDER_FAILED")
         return export
 
     file_ref = await storage.save(
