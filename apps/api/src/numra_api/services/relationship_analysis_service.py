@@ -366,28 +366,30 @@ async def run_relationship_analysis_job(
         await mark_job_status(db, job=job, status=AnalysisJobStatus.COMPLETE, progress=100)
 
     except AnalysisGenerationError as exc:
+        logger.warning("Analysis job %s failed during generation: %s", job.id, exc)
         await _handle_job_failure(
             db,
             job=job,
             fail_analysis=lambda: fail_relationship_analysis(db, analysis=analysis),
-            error_code=f"ANALYSIS_GENERATION_ERROR: {exc}",
+            error_code="ANALYSIS_GENERATION_ERROR",
             retryable=True,
         )
     except LLMProviderError as exc:
+        logger.warning("Analysis job %s failed at the provider: %s", job.id, exc)
         await _handle_job_failure(
             db,
             job=job,
             fail_analysis=lambda: fail_relationship_analysis(db, analysis=analysis),
-            error_code=f"LLM_PROVIDER_ERROR: {exc}",
+            error_code="LLM_PROVIDER_ERROR",
             retryable=exc.retryable,
         )
-    except Exception as exc:  # noqa: BLE001 - last-resort guard, see report_service.py
+    except Exception:  # noqa: BLE001 - last-resort guard, see report_service.py
         logger.exception("Unexpected error while running relationship analysis job %s", job.id)
         await _handle_job_failure(
             db,
             job=job,
             fail_analysis=lambda: fail_relationship_analysis(db, analysis=analysis),
-            error_code=f"UNEXPECTED_ERROR: {exc}",
+            error_code="UNEXPECTED_ERROR",
             retryable=False,
         )
 
@@ -441,31 +443,33 @@ async def run_shadow_dynamics_job(
             db,
             job=job,
             fail_analysis=lambda: fail_shadow_dynamics_analysis(db, analysis=analysis),
-            error_code=f"ANALYSIS_GENERATION_ERROR: {exc}",
+            error_code="ANALYSIS_GENERATION_ERROR",
             retryable=False,
         )
     except AnalysisGenerationError as exc:
+        logger.warning("Analysis job %s failed during generation: %s", job.id, exc)
         await _handle_job_failure(
             db,
             job=job,
             fail_analysis=lambda: fail_shadow_dynamics_analysis(db, analysis=analysis),
-            error_code=f"ANALYSIS_GENERATION_ERROR: {exc}",
+            error_code="ANALYSIS_GENERATION_ERROR",
             retryable=True,
         )
     except LLMProviderError as exc:
+        logger.warning("Analysis job %s failed at the provider: %s", job.id, exc)
         await _handle_job_failure(
             db,
             job=job,
             fail_analysis=lambda: fail_shadow_dynamics_analysis(db, analysis=analysis),
-            error_code=f"LLM_PROVIDER_ERROR: {exc}",
+            error_code="LLM_PROVIDER_ERROR",
             retryable=exc.retryable,
         )
-    except Exception as exc:  # noqa: BLE001 - last-resort guard, see report_service.py
+    except Exception:  # noqa: BLE001 - last-resort guard, see report_service.py
         logger.exception("Unexpected error while running shadow dynamics job %s", job.id)
         await _handle_job_failure(
             db,
             job=job,
             fail_analysis=lambda: fail_shadow_dynamics_analysis(db, analysis=analysis),
-            error_code=f"UNEXPECTED_ERROR: {exc}",
+            error_code="UNEXPECTED_ERROR",
             retryable=False,
         )

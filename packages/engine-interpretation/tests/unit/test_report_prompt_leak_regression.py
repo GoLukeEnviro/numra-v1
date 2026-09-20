@@ -15,7 +15,6 @@ from pathlib import Path
 
 import pytest
 
-from numra_interpretation.errors import InvalidReportSection
 from numra_interpretation.knowledge_loader import load_knowledge_base
 from numra_interpretation.llm.mock_provider import MockLLMProvider
 from numra_interpretation.llm.types import (
@@ -26,7 +25,11 @@ from numra_interpretation.llm.types import (
     StructuredGenerationRequest,
 )
 from numra_interpretation.report import build_manifest, generate_report
-from numra_interpretation.report.pipeline import _mock_sentences, _summary_from_text
+from numra_interpretation.report.pipeline import (
+    ReportGenerationError,
+    _mock_sentences,
+    _summary_from_text,
+)
 from numra_numerology.engine import calculate_profile
 from numra_numerology.models.person import PersonInput
 
@@ -295,7 +298,7 @@ async def test_report_fails_closed_on_provider_scaffolding(sample_profile, knowl
     """
     manifest = build_manifest(report_type="QUICK", calculation_id="calc-1")
 
-    with pytest.raises(InvalidReportSection, match="PromptScaffoldingRejected"):
+    with pytest.raises(ReportGenerationError, match="REPORT_SECTION_UNRENDERABLE"):
         await generate_report(
             profile=sample_profile,
             knowledge=knowledge_base,
@@ -313,7 +316,7 @@ async def test_report_fails_closed_on_inline_provider_scaffolding(
     the audit stack (relationship analysis, 2026-09-20)."""
     manifest = build_manifest(report_type="QUICK", calculation_id="calc-1")
 
-    with pytest.raises(InvalidReportSection, match="PromptScaffoldingRejected"):
+    with pytest.raises(ReportGenerationError, match="REPORT_SECTION_UNRENDERABLE"):
         await generate_report(
             profile=sample_profile,
             knowledge=knowledge_base,

@@ -6,7 +6,6 @@ from pathlib import Path
 
 import pytest
 
-from numra_interpretation.errors import InvalidReportSection
 from numra_interpretation.knowledge_loader import load_knowledge_base
 from numra_interpretation.llm.mock_provider import MockLLMProvider
 from numra_interpretation.llm.types import (
@@ -347,11 +346,13 @@ async def test_generate_report_rejects_bare_numeric_literal_from_real_provider(
 async def test_generate_report_bare_literal_on_repair_attempt_also_raises(
     sample_profile, knowledge_base
 ) -> None:
-    """Documents the existing one-repair-attempt limit interacting with the new check:
-    if the repair attempt also types a bare literal, the pipeline's single permitted
-    repair is already spent, so the raw InvalidReportSection propagates (generate_report
-    only wraps the *lint-after-assembly* failure path into ReportGenerationError, not a
-    second per-section retry — see pipeline.py's per-section try/except)."""
+    """One-repair-attempt limit interacting with the bare-literal check: if the repair
+    attempt also types a bare literal, the pipeline's single permitted repair is spent
+    and the failure is normalized into `ReportGenerationError`
+    (``REPORT_SECTION_UNRENDERABLE``, #137). Vorher propagierte hier der rohe
+    `InvalidReportSection`; der API-Layer verbuchte ihn deshalb als UNEXPECTED_ERROR
+    ohne Retry, obwohl der Job-Retry der naechste unabhaengige Versuch ist. Die
+    Begruendung bleibt in der Nachricht erhalten."""
     index = build_metric_display_value_index(sample_profile)
     bare_digit = next(
         d for value in index.values() for d in re.findall(r"\d+", value) if len(d) >= 2
@@ -376,7 +377,7 @@ async def test_generate_report_bare_literal_on_repair_attempt_also_raises(
             )
 
     manifest = build_manifest(report_type="QUICK", calculation_id="calc-1")
-    with pytest.raises(InvalidReportSection):
+    with pytest.raises(ReportGenerationError, match="REPORT_SECTION_UNRENDERABLE"):
         await generate_report(
             profile=sample_profile,
             knowledge=knowledge_base,
@@ -742,7 +743,7 @@ async def test_generate_report_timing_section_raises_when_repair_also_fails(
                 title=section_id, text=text, numeric_claims=claims, summary="s"
             )
 
-    with pytest.raises(InvalidReportSection, match="MissingMetricCoverage"):
+    with pytest.raises(ReportGenerationError, match="MissingMetricCoverage"):
         await generate_report(
             profile=sample_profile,
             knowledge=knowledge_base,
