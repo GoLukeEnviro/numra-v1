@@ -21,6 +21,7 @@ error -- see services/auth_recovery_service.forgot_password.
 from __future__ import annotations
 
 import logging
+import re
 from typing import Protocol
 
 from numra_api.services.errors import EmailDeliveryUnavailable
@@ -28,6 +29,23 @@ from numra_api.services.errors import EmailDeliveryUnavailable
 __all__ = ["DisabledEmailSender", "EmailSender", "LoggingEmailSender"]
 
 logger = logging.getLogger(__name__)
+
+
+#: Any `?token=...` value in a rendered mail body. Recovery links (verify-email,
+#: reset-password, connection redeem) all carry their credential this way.
+_TOKEN_IN_URL = re.compile(r"([?&]token=)[^\s\"'&<>]+", re.IGNORECASE)
+
+
+def _redact_recovery_tokens(text: str) -> str:
+    """Replace a bearer token in a link with a placeholder, keeping the rest.
+
+    `LoggingEmailSender` deliberately writes what it *would* have sent, so a
+    developer or CI run can see the flow happened. The token is different: it is a
+    working one-time credential for that account, and a log is the one artefact
+    that reliably ends up pasted into an issue, a CI bundle or a screenshot. The
+    link's shape and host stay visible -- only the secret is masked.
+    """
+    return _TOKEN_IN_URL.sub(r"\1<redacted>", text)
 
 
 class EmailSender(Protocol):
@@ -39,7 +57,11 @@ class EmailSender(Protocol):
 class LoggingEmailSender:
     async def send(self, *, to: str, subject: str, body: str, html_body: str | None = None) -> None:
         logger.info(
-            "email(to=%s, subject=%r, has_html=%s): %s", to, subject, html_body is not None, body
+            "email(to=%s, subject=%r, has_html=%s): %s",
+            to,
+            subject,
+            html_body is not None,
+            _redact_recovery_tokens(body),
         )
 
 
