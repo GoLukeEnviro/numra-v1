@@ -27,6 +27,10 @@ const nextConfig = {
             key: "Permissions-Policy",
             value: "camera=(), microphone=(), geolocation=(), payment=()",
           },
+          // Transport policy for the paths the middleware matcher excludes. Both
+          // live surfaces terminate TLS (the Tailscale tunnel); `includeSubDomains`
+          // and `preload` are deliberately omitted -- see middleware.ts.
+          { key: "Strict-Transport-Security", value: "max-age=31536000" },
         ],
       },
     ];
