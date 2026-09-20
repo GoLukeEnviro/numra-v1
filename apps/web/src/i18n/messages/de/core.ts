@@ -20,6 +20,7 @@ export const deCore = {
 
   "common.loading": "Wird geladen…",
   "common.tryAgain": "Erneut versuchen",
+  "common.errorFallback": "Ein unerwarteter Fehler ist aufgetreten.",
   "common.somethingWrong": "Etwas ist schiefgelaufen",
   "common.networkError": "Der Server ist nicht erreichbar.",
   "common.appLoading": "AVENYTH wird geladen…",
