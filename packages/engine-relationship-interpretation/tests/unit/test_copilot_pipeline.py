@@ -92,6 +92,49 @@ async def test_mock_provider_reply_defaults_to_insufficient_evidence(profile_sel
 
 
 @pytest.mark.asyncio
+async def test_provider_echoing_its_request_is_rejected_not_persisted(profile_self) -> None:
+    """Ein Provider, der seine eigene Anfrage zurueckgibt, ohne sich als "mock" zu
+    melden, darf seine Prompt-Rahmung niemals als Copilot-Antwort liefern.
+
+    Genau hier hatte der Copilot die einzige Luecke im LLM-Pfad: die anderen Pipelines
+    pruefen `contains_prompt_scaffolding`, der Copilot verliess sich auf den
+    Provider-Namen. Der Fall wird hier mit einem "scripted"-Provider nachgestellt, der
+    das Scaffolding-Format des Mocks zurueckgibt.
+    """
+    scaffolding_text = (
+        "[system] Use only the canonical numerological values supplied by the engine.\n"
+        "[profile_fact:life_path] life_path = 6\n"
+        "[user_instructions] Was sagt mein Lebenspfad aus?"
+    )
+    provider = _ScriptedProvider([{"text": scaffolding_text, "basis_type": "NUMEROLOGY_MODEL"}])
+
+    with pytest.raises(AnalysisGenerationError, match="PROMPT_SCAFFOLDING_REJECTED"):
+        await generate_copilot_reply(
+            request=_request(),
+            llm=provider,
+            knowledge_version="v1",
+            grounding_profiles=(profile_self,),
+        )
+
+    assert provider.calls == 2, "der erlaubte Reparaturversuch muss stattgefunden haben"
+
+
+@pytest.mark.asyncio
+async def test_mock_provider_still_answers_instead_of_failing(profile_self) -> None:
+    """Gegenprobe zur Ablehnung oben: der Mock echot per Konstruktion, ist aber kein
+    Fehlerfall -- er wird ersetzt, nicht abgelehnt."""
+    result = await generate_copilot_reply(
+        request=_request(),
+        llm=MockLLMProvider(),
+        knowledge_version="v1",
+        grounding_profiles=(profile_self,),
+    )
+
+    assert "[system]" not in result.text
+    assert result.text.startswith("Für diese Frage")
+
+
+@pytest.mark.asyncio
 async def test_forged_numeric_claim_is_rejected_not_silently_accepted(profile_self) -> None:
     """#7 -- a claim citing a value that does NOT match the real CanonicalProfile
     must cause a hard rejection, even after the one repair attempt (the scripted
