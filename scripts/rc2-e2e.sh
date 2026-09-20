@@ -21,6 +21,11 @@ export PDF_INTERNAL_TOKEN=rc2-only-pdf-token
 export ENVIRONMENT=test
 export ALLOW_SELF_SIGNUP=true
 export NUMRA_LLM_PROVIDER=mock
+# This script always starts its stack with the deterministic mock provider (line
+# above), so the journey may and must assert the mock's fixed Copilot reply -- a
+# stronger guard than "some answer appeared". An acceptance run against a stack with
+# a REAL provider must NOT set this (see the spec's RC2_EXPECT_MOCK).
+export RC2_EXPECT_MOCK=1
 export RATE_LIMIT_BACKEND=redis
 export COMPOSE_WEB_PORT=3100
 
