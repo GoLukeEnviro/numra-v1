@@ -344,7 +344,14 @@ class OllamaCloudProvider:
 
         client = self._get_client()
         last_error: Exception | None = None
-        for attempt in range(self._max_retries):
+        # `max_retries` is the number of total attempts and must never be 0:
+        # a configured 0 still makes exactly one attempt and fails with a typed
+        # provider error. The previous `range(self._max_retries)` loop made zero
+        # attempts and tripped the trailing assert (AssertionError instead of
+        # OllamaProviderError) — found by the audit-stack outage probe with
+        # NUMRA_LLM_MAX_RETRIES=0.
+        attempts = max(1, self._max_retries)
+        for attempt in range(attempts):
             try:
                 response = await client.post("/api/chat", json=payload)
                 response.raise_for_status()
@@ -352,10 +359,11 @@ class OllamaCloudProvider:
                 return data
             except (httpx.HTTPError, json.JSONDecodeError) as exc:
                 last_error = exc
-                if attempt < self._max_retries - 1:
+                if attempt < attempts - 1:
                     await asyncio.sleep(_BACKOFF_BASE_SECONDS * (2**attempt))
-        assert last_error is not None
-        raise self._classify_http_error(last_error, self._max_retries)
+        if last_error is None:  # pragma: no cover - defensive; the loop always runs
+            raise OllamaInternalError("Ollama request made no attempt (invalid max_retries)")
+        raise self._classify_http_error(last_error, attempts)
 
     async def generate(self, request: GenerationRequest) -> GenerationResult:
         model = self._model_fast
