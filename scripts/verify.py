@@ -84,6 +84,26 @@ def main() -> int:
     results.append(
         run("openapi drift check", ["uv", "run", "python3", "scripts/export_openapi.py", "--check"])
     )
+    # PWA-08 static analysis. The same command is pinned as a CI job; keeping it here
+    # too means the gate is reachable from the repository's own verification recipe on a
+    # machine whose CI credentials cannot push workflow changes.
+    results.append(
+        run(
+            "sast (bandit, medium+)",
+            [
+                "uv",
+                "run",
+                "--with",
+                "bandit==1.8.6",
+                "bandit",
+                "-q",
+                "-r",
+                "apps/api/src",
+                "packages",
+                "-ll",
+            ],
+        )
+    )
 
     if shutil.which("pnpm"):
         results.append(run("web lint", ["pnpm", "--filter", "@numra/web", "lint"]))
