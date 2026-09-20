@@ -48,6 +48,7 @@ from numra_api.services.account_export_service import (
     FORMAT_VERSION,
     SECTION_NAMES,
 )
+from numra_api.worker import run_one_cycle
 
 pytestmark = pytest.mark.integration
 
@@ -612,6 +613,77 @@ async def test_export_never_contains_credentials_or_internals(client, sessionmak
 # ---------------------------------------------------------------------------
 # Soft-Delete / Tombstone
 # ---------------------------------------------------------------------------
+
+
+#: Prompt-Rahmung: dieselben Marker, die `contains_prompt_scaffolding` in den Engines
+#: erkennt (`PROMPT_SCAFFOLDING_MARKERS`) — hier als Nachweis auf dem Ausgabekanal.
+_SCAFFOLDING_MARKERS = (
+    "[system]",
+    "[profile_fact:",
+    "[knowledge:",
+    "[instruction_supplement:",
+    "[untrusted_user_content:",
+    "[user_instructions]",
+)
+
+#: Formulierungen aus den Prompt-Anweisungen der Report-Pipeline. Sie tragen *keine*
+#: Klammer-Marker und laufen deshalb an `contains_prompt_scaffolding` vorbei — genau
+#: diese Klasse hat den Dump-Text im Mock-Report erzeugt (#132, #135).
+_INSTRUCTION_PROSE = (
+    "The only valid ids",
+    "Target length for this section",
+    "numeric_claims must include",
+    "Write 2-4 sentences",
+    "You are rendering a non-diagnostic",
+)
+
+
+async def test_generated_report_reaches_the_export_without_prompt_scaffolding(
+    client, sessionmaker, llm, lukas_payload
+) -> None:
+    """#135: der Kontodatenexport ist nach dem DOM und dem PDF der dritte Ausgabekanal
+    des Reportpfads — und der einzige, der den Text maschinenlesbar weiterreicht.
+
+    Geprueft wird beides: die Klammer-Rahmung und die Instruktionsprosa, die keine
+    Marker traegt. Die Positivkontrolle stellt sicher, dass der generierte Reporttext
+    wirklich im Export landet — sonst waeren die Negativzusicherungen trivial gruen,
+    weil der Text nie ankam.
+    """
+    headers = await _signup(client, sessionmaker, _OWNER)
+    person = (await client.post("/v1/people", json=lukas_payload, headers=headers)).json()
+    calculation = (
+        await client.post(
+            f"/v1/people/{person['id']}/calculations",
+            json={"as_of_date": "2026-01-01"},
+            headers=headers,
+        )
+    ).json()
+    report = (
+        await client.post(
+            "/v1/reports",
+            json={"calculation_id": calculation["id"], "report_type": "QUICK"},
+            headers=headers,
+        )
+    ).json()
+    assert await run_one_cycle(sessionmaker, llm=llm) is True
+
+    async with sessionmaker() as db:
+        stored = (
+            await db.execute(select(Report).where(Report.id == uuid.UUID(report["id"])))
+        ).scalar_one()
+        assert stored.status == "COMPLETE", "der Report muss fertig generiert sein"
+        section_text = stored.content_json["sections"][0]["text"]
+
+    _, document = await _export(client)
+    raw = json.dumps(document, ensure_ascii=False)
+
+    probe = re.sub(r"\s+", " ", section_text)[:40]
+    assert probe in re.sub(r"\s+", " ", raw), "Positivkontrolle: Reporttext fehlt im Export"
+
+    for marker in _SCAFFOLDING_MARKERS:
+        assert marker not in raw, f"Prompt-Rahmung im Kontodatenexport: {marker!r}"
+    for phrase in _INSTRUCTION_PROSE:
+        assert phrase not in raw, f"Instruktionsprosa im Kontodatenexport: {phrase!r}"
 
 
 async def test_deleted_account_cannot_export_its_data(client, sessionmaker) -> None:

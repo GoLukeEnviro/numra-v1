@@ -7,11 +7,15 @@ if one isn't reachable, rather than silently skipping.
 
 from __future__ import annotations
 
+import io
 import uuid
 
 import pytest
+from pypdf import PdfReader
+from sqlalchemy import select
 
 from numra_api.auth.passwords import hash_password
+from numra_api.models import Report
 from numra_api.repositories.users import create_user
 from numra_api.worker import run_one_cycle
 
@@ -180,3 +184,64 @@ async def test_download_nonexistent_export_returns_404(client, sessionmaker) -> 
     headers = await _login(client, sessionmaker, "export-404@example.com")
     response = await client.get(f"/v1/exports/{uuid.uuid4()}/download", headers=headers)
     assert response.status_code == 404
+
+
+#: Dieselben Marker, die `contains_prompt_scaffolding` in den Engines erkennt (#135).
+_SCAFFOLDING_MARKERS = (
+    "[system]",
+    "[profile_fact:",
+    "[knowledge:",
+    "[instruction_supplement:",
+    "[untrusted_user_content:",
+    "[user_instructions]",
+)
+
+#: Prompt-Anweisungen ohne Klammer-Marker — die Klasse, die den Dump-Text im Mock-Report
+#: erzeugt hat und die ein reiner Marker-Check nicht sieht (#132, #135).
+_INSTRUCTION_PROSE = (
+    "The only valid ids",
+    "Target length for this section",
+    "numeric_claims must include",
+    "Write 2-4 sentences",
+    "You are rendering a non-diagnostic",
+)
+
+
+async def test_exported_pdf_text_layer_carries_no_prompt_material(
+    client, sessionmaker, llm, lukas_payload
+) -> None:
+    """#135: das PDF ist der zweite Ausgabekanal des Reportpfads. Geprueft wird der
+    **Textlayer** des wirklich gerenderten Chromium-PDFs — nicht nur, dass die Datei mit
+    `%PDF-` beginnt (das tat der System-Journey bisher als einzige Zusicherung).
+
+    Die Positivkontrolle ist hier entscheidend: ohne sie waere "kein Marker gefunden"
+    auch dann gruen, wenn die Textextraktion gar nichts liefert.
+    """
+    headers = await _login(client, sessionmaker, "export-pdflayer@example.com")
+    report_id = await _create_complete_report(client, sessionmaker, llm, headers, lukas_payload)
+
+    async with sessionmaker() as db:
+        stored = (
+            await db.execute(select(Report).where(Report.id == uuid.UUID(report_id)))
+        ).scalar_one()
+        section_text = stored.content_json["sections"][0]["text"]
+
+    created = await client.post(
+        "/v1/exports", json={"report_id": report_id, "export_type": "pdf"}, headers=headers
+    )
+    export = created.json()
+    download = await client.get(f"/v1/exports/{export['id']}/download", headers=headers)
+    assert download.status_code == 200
+
+    reader = PdfReader(io.BytesIO(download.content))
+    text = "\n".join(page.extract_text() or "" for page in reader.pages)
+    flat = " ".join(text.split())
+
+    probe = " ".join(section_text.split())[:40]
+    assert probe in flat, "Positivkontrolle: der Reporttext ist nicht im PDF-Textlayer"
+    assert len(flat) > 500, "der Textlayer ist zu duenn fuer eine belastbare Aussage"
+
+    for marker in _SCAFFOLDING_MARKERS:
+        assert marker not in text, f"Prompt-Rahmung im PDF-Textlayer: {marker!r}"
+    for phrase in _INSTRUCTION_PROSE:
+        assert phrase not in text, f"Instruktionsprosa im PDF-Textlayer: {phrase!r}"

@@ -129,6 +129,55 @@ async function assertNoPromptScaffolding(scope: Locator, label: string) {
   }
 }
 
+/**
+ * Creates a QUICK report for the account's first profile through the API and returns the
+ * report id.
+ *
+ * #135: the report path is the only LLM path that is *also* shipped as a PDF and inside
+ * the account export, and it was the only one without a DOM marker assertion. The
+ * journey drives the reader through the UI; only the job setup uses the API, because the
+ * onboarding flow never surfaces the calculation id. Same double-submit CSRF value the
+ * web client sends.
+ */
+async function createQuickReport(page: Page): Promise<string> {
+  const csrf = (await page.context().cookies()).find((cookie) => cookie.name === "numra_csrf")
+    ?.value;
+  const people = (await (await page.request.get("/api/v1/people")).json()) as { id: string }[];
+  const personId = people[0]?.id;
+  if (!personId) throw new Error("kein Profil fuer den Report gefunden");
+
+  const calculations = (await (
+    await page.request.get(`/api/v1/people/${personId}/calculations`)
+  ).json()) as { id: string }[];
+  const calculationId = calculations[0]?.id;
+  if (!calculationId) throw new Error("keine Berechnung fuer den Report gefunden");
+
+  const created = await page.request.post("/api/v1/reports", {
+    headers: { "x-csrf-token": csrf ?? "" },
+    data: { calculation_id: calculationId, report_type: "QUICK" },
+  });
+  expect(created.status(), await created.text()).toBe(201);
+  const report = (await created.json()) as { id: string; job_id?: string };
+
+  // The job is asynchronous; wait for COMPLETE before opening the reader, otherwise the
+  // assertion would run against a pending state and prove nothing.
+  const jobId = report.job_id;
+  if (jobId) {
+    for (let attempt = 0; attempt < 90; attempt += 1) {
+      const job = (await (await page.request.get(`/api/v1/report-jobs/${jobId}`)).json()) as {
+        status: string;
+        error_code?: string | null;
+      };
+      if (job.status === "COMPLETE") break;
+      if (job.status === "FAILED") {
+        throw new Error(`Report-Job fehlgeschlagen: ${job.error_code ?? "ohne Fehlercode"}`);
+      }
+      await page.waitForTimeout(2000);
+    }
+  }
+  return report.id;
+}
+
 async function assertCopilotReply(
   page: Page,
   { question, label, timeoutMs }: { question: string; label: string; timeoutMs: number },
@@ -644,6 +693,17 @@ test("RC2 two-account journey: connections/consent/dual-profile/type/dissolve ov
     await expect(B.getByText("Stimmung 8/10")).toHaveCount(0);
     // Not a broken page: no generic 500 surface anywhere in the document.
     await expect(B.getByText(/Internal Server Error|\b500\b/)).toHaveCount(0);
+
+    // --- #135: der Report-Reader wird auf dieselben internen Marker geprueft wie
+    // Beziehungsanalyse, Schatten-Dynamik und Copilot. Der Report ist der einzige
+    // LLM-Pfad, der zusaetzlich als PDF und im Kontodatenexport ausgeliefert wird -- und
+    // hatte bis hierher gar keine DOM-Zusicherung. ---
+    const reportId = await createQuickReport(A);
+    await A.goto(`/reports/${reportId}`);
+    await expect(A.getByRole("heading", { name: "Export" })).toBeVisible({ timeout: 120_000 });
+    await expect(A.getByText(/Etwas ist schief|Something went wrong/i)).toHaveCount(0);
+    await assertNoPromptScaffolding(A.locator("main"), "report reader");
+    await shoot(A, "13-report-reader");
 
     // --- Dissolve via the UI ---
     await A.goto("/connections");
