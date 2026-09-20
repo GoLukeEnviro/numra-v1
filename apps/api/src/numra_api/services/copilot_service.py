@@ -339,18 +339,19 @@ async def post_message(
             model_name=result.model_name,
         )
     except AnalysisGenerationError as exc:
+        logger.warning("Copilot reply for thread %s failed: %s", thread.id, exc)
         assistant_message = await update_message(
             db,
             message=assistant_message,
             status=ChatMessageStatus.FAILED,
-            error_code=f"ANALYSIS_GENERATION_ERROR: {exc}"[:80],
+            error_code="ANALYSIS_GENERATION_ERROR",
         )
-    except LLMProviderError as exc:
+    except LLMProviderError:
         assistant_message = await update_message(
             db,
             message=assistant_message,
             status=ChatMessageStatus.FAILED,
-            error_code=f"LLM_PROVIDER_ERROR: {exc}"[:80],
+            error_code="LLM_PROVIDER_ERROR",
         )
     except ApplicationError as exc:
         # A consent gate (build_shared_context's mutual-consent requirement) or
