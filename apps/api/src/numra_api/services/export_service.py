@@ -20,7 +20,7 @@ from numra_api.repositories.exports import (
     mark_export_failed,
 )
 from numra_api.repositories.reports import get_report_for_user
-from numra_api.services.errors import NotFoundError, ReportNotReady
+from numra_api.services.errors import NotFoundError, ReportNotReady, UnsupportedExportType
 from numra_api.services.pdf_client import PdfServiceClient, PdfServiceUnavailable
 from numra_api.storage.exports import ExportStorage
 
@@ -43,8 +43,11 @@ async def create_export(
         raise NotFoundError(f"report {report_id} not found")
     if report.status != "COMPLETE" or report.content_json is None:
         raise ReportNotReady(f"report {report_id} is not COMPLETE yet (status={report.status})")
+    # Unerreichbar ueber die HTTP-Grenze: `ExportCreateRequest.export_type` laesst nur
+    # `pdf` zu. Die Pruefung bleibt als Verteidigungslinie stehen, damit ein spaeter
+    # ergaenzter Enum-Wert nicht stillschweigend ein PDF rendert (#134).
     if export_type is not ExportType.PDF:
-        raise NotFoundError(f"unsupported export_type: {export_type!r}")
+        raise UnsupportedExportType(f"unsupported export_type: {export_type!r}")
 
     export = await create_export_record(
         db, user_id=user_id, report_id=report.id, export_type=export_type
