@@ -21,6 +21,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/account/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Account Route
+         * @description Der eigene, strukturierte Kontodatenexport (PWA-07, #125).
+         *
+         *     `StreamingResponse`, weil das Dokument Kategorie fuer Kategorie erzeugt wird: der
+         *     Speicherbedarf haengt an der groessten Einzelkategorie statt an der Kontogroesse
+         *     (siehe `services/account_export_service.py`).
+         *
+         *     Die Session holt der Generator sich selbst aus dem `sessionmaker` -- bewusst
+         *     *nicht* ueber `Depends(get_db, scope="function")`: FastAPI schliesst
+         *     funktionsgebundene Dependencies vor dem Streaming des Bodys, eine dort geliehene
+         *     Session waere also schon zu, bevor die erste Kategorie geschrieben ist (Details im
+         *     Modul-Docstring des Services).
+         *
+         *     Bewusst ein reines `GET`: die Anfrage veraendert nichts, und der Browser soll den
+         *     Download direkt ausloesen koennen. Es gibt deshalb auch keine CSRF-Pruefung --
+         *     dieselbe Begruendung wie bei `GET /v1/exports`.
+         */
+        get: operations["export_account_route_v1_account_export_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/audit": {
         parameters: {
             query?: never;
@@ -4145,6 +4179,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_account_route_v1_account_export_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
             };
             /** @description Validation Error */
             422: {

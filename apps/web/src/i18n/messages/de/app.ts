@@ -295,6 +295,16 @@ export const deApp = {
   "app.privacy.deleteOneBody":
     "Jedes Profil lässt sich auf seiner eigenen Seite löschen; dabei wird auch entfernt, was daraus berechnet wurde.",
 
+  // Einstellungen: Kontodatenexport (PWA-07)
+  "app.exportData.title": "Deine Daten exportieren",
+  "app.exportData.body":
+    "Lade eine strukturierte Kopie deiner Kontodaten als JSON-Datei herunter: Profile, Berechnungen, eigene Reflexionen, Notizen und Aufgaben, Lebens-Tracking, Check-ins, geteilte Workspace-Artefakte, Berichte und Chatverläufe.",
+  "app.exportData.includes":
+    "Der Export enthält ausschließlich Daten dieses Kontos. Passwörter, Sitzungen, Zugangs-Token und interne Prompt-Bausteine werden nie exportiert.",
+  "app.exportData.hint":
+    "Der Download startet direkt im Browser; die Datei heißt avenyth-account-export-<Zeitstempel>.json und trägt Formatversion und Erzeugungszeitpunkt.",
+  "app.exportData.action": "Daten herunterladen",
+
   // Einstellungen: Sicherheit
   "app.security.title": "Sicherheit",
   "app.security.body": "Passwort ändern und verwalten, wo du angemeldet bist.",

@@ -3,6 +3,7 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { DeleteAccountPanel } from "@/components/settings/delete-account-panel";
+import { ExportAccountPanel } from "@/components/settings/export-account-panel";
 import { useLocale } from "@/i18n/context";
 
 function PrivacyContent() {
@@ -59,6 +60,9 @@ function PrivacyContent() {
           </ul>
         </CardContent>
       </Card>
+
+      {/* Export liegt bewusst VOR dem Löschen: die Kopie nimmt man vorher mit. */}
+      <ExportAccountPanel />
 
       <Card className="mb-4">
         <CardHeader>
