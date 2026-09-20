@@ -297,6 +297,16 @@ export const enApp: Record<keyof typeof deApp, string> = {
   "app.privacy.deleteOneBody":
     "Any individual profile can be deleted from that profile's own page, which also removes what was calculated from it.",
 
+  // Settings: account data export (PWA-07)
+  "app.exportData.title": "Export your data",
+  "app.exportData.body":
+    "Download a structured copy of your account data as a JSON file: profiles, calculations, your own reflections, notes and tasks, life tracking, check-ins, shared workspace artefacts, reports and chat histories.",
+  "app.exportData.includes":
+    "The export contains data from this account only. Passwords, sessions, access tokens and internal prompt scaffolding are never exported.",
+  "app.exportData.hint":
+    "The download starts straight from your browser; the file is named avenyth-account-export-<timestamp>.json and carries its format version and generation time.",
+  "app.exportData.action": "Download data",
+
   // Settings: security
   "app.security.title": "Security",
   "app.security.body": "Change your password and manage where you're signed in.",

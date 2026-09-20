@@ -5809,6 +5809,54 @@
         ]
       }
     },
+    "/v1/account/export": {
+      "get": {
+        "description": "Der eigene, strukturierte Kontodatenexport (PWA-07, #125).\n\n`StreamingResponse`, weil das Dokument Kategorie fuer Kategorie erzeugt wird: der\nSpeicherbedarf haengt an der groessten Einzelkategorie statt an der Kontogroesse\n(siehe `services/account_export_service.py`).\n\nDie Session holt der Generator sich selbst aus dem `sessionmaker` -- bewusst\n*nicht* ueber `Depends(get_db, scope=\"function\")`: FastAPI schliesst\nfunktionsgebundene Dependencies vor dem Streaming des Bodys, eine dort geliehene\nSession waere also schon zu, bevor die erste Kategorie geschrieben ist (Details im\nModul-Docstring des Services).\n\nBewusst ein reines `GET`: die Anfrage veraendert nichts, und der Browser soll den\nDownload direkt ausloesen koennen. Es gibt deshalb auch keine CSRF-Pruefung --\ndieselbe Begruendung wie bei `GET /v1/exports`.",
+        "operationId": "export_account_route_v1_account_export_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Account Route",
+        "tags": [
+          "account"
+        ]
+      }
+    },
     "/v1/admin/audit": {
       "get": {
         "operationId": "list_audit_v1_admin_audit_get",

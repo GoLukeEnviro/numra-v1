@@ -567,6 +567,11 @@ export const api = {
      * export file for the current user, then invalidates the session server-side. */
     deleteAll: (body: DeleteAccountRequest) =>
       request<void>("/v1/account/delete-all", { method: "POST", body }),
+    /** The structured account-data export (PWA-07). A plain same-origin URL like
+     * `api.exports.downloadUrl`: the response is `application/json` with a
+     * `Content-Disposition: attachment` filename, so an `<a href>` downloads it
+     * without any client-side blob handling. */
+    exportUrl: () => `${API_PREFIX}/v1/account/export`,
   },
   /**
    * V1.6 admin console. Every endpoint here sits behind `require_admin` in the
