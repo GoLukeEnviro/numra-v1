@@ -16,6 +16,23 @@
 This file is the single current execution-state source. Historical plans and gap
 reports remain in the repository as evidence, but do not override this state.
 
+## Baseline semantics (read before updating the fields above)
+
+The **product baseline** is the last fully tested, behaviour-changing merge — not the
+last merge of any kind. Concretely:
+
+- `VERIFIED_MAIN_SHA` names the last behaviour-changing merge that passed the full CI
+  set. A pure closure/documentation PR does **not** become a new product baseline and
+  must not be written into that field; it is recorded in the delivery map instead.
+- `LAST_MERGED_PR` names that same behaviour-changing PR, and `LAST_GREEN_MAIN_RUN`
+  its post-merge run — so the three fields always describe one consistent revision.
+- This is stated explicitly so a later parser or reviewer does not misread a
+  deliberately-not-advanced field as staleness. Renaming these fields is out of scope:
+  unknown readers may depend on the current names.
+
+For PWA-04 this means: baseline `665d4447` (PR #116). PR #118 is the closure
+documentation that records it, not a baseline of its own.
+
 ## Current product position
 
 The V2 relationship core described by `PR-V2-00` through `PR-V2-11` is implemented.
