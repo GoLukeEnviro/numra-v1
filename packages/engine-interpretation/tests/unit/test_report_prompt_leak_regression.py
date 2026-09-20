@@ -48,6 +48,15 @@ FORBIDDEN_SCAFFOLDING_MARKERS = (
 
 _SCAFFOLDING = "[system] internal prompt text\n[profile_fact:life_path] grounded fact follows\n"
 
+#: The shape a *generative* model leaves behind when it copies a context block's label
+#: into its prose instead of echoing the request: the marker sits inside a sentence.
+#: Captured on the audit stack on 2026-09-20, where the persisted relationship-analysis
+#: text carried "... die durch [profile_fact:a:expression] gepraegt ist ...".
+_INLINE_SCAFFOLDING = (
+    "Der Ausdruck zeigt sich als strukturierte Sichtweise, die durch "
+    "[profile_fact:life_path] gepraegt ist und das grosse Ganze betont."
+)
+
 
 @pytest.fixture(scope="module")
 def knowledge_base():
@@ -88,6 +97,31 @@ class _ScaffoldingProvider:
         if schema is GeneratedSectionContent:
             return schema(text=_SCAFFOLDING, numeric_claims=request.numeric_claims, summary="s")
         # The outline step accepts an empty outline from a provider that cannot fill it.
+        return schema()
+
+
+class _InlineScaffoldingProvider:
+    """A real provider that copies a context block's label into its own sentence."""
+
+    async def health(self) -> ProviderHealth:
+        return ProviderHealth(
+            status="healthy", provider="ollama_cloud", checked_at=dt.datetime.now(dt.UTC)
+        )
+
+    async def generate(self, request: GenerationRequest) -> GenerationResult:
+        raise AssertionError("not used")
+
+    async def generate_structured(
+        self,
+        request: StructuredGenerationRequest,
+        schema: type,  # type: ignore[no-untyped-def]
+    ):
+        from numra_interpretation.report.schemas import GeneratedSectionContent
+
+        if schema is GeneratedSectionContent:
+            return schema(
+                text=_INLINE_SCAFFOLDING, numeric_claims=request.numeric_claims, summary="s"
+            )
         return schema()
 
 
@@ -204,4 +238,22 @@ async def test_report_fails_closed_on_provider_scaffolding(sample_profile, knowl
             knowledge=knowledge_base,
             manifest=manifest,
             llm=_ScaffoldingProvider(),
+        )
+
+
+async def test_report_fails_closed_on_inline_provider_scaffolding(
+    sample_profile, knowledge_base
+) -> None:
+    """Same contract for the shape a generative model produces: the block label is
+    embedded in the middle of its own sentence instead of starting a line. The detector
+    is no longer line-anchored precisely because this shape reached product output on
+    the audit stack (relationship analysis, 2026-09-20)."""
+    manifest = build_manifest(report_type="QUICK", calculation_id="calc-1")
+
+    with pytest.raises(InvalidReportSection, match="PromptScaffoldingRejected"):
+        await generate_report(
+            profile=sample_profile,
+            knowledge=knowledge_base,
+            manifest=manifest,
+            llm=_InlineScaffoldingProvider(),
         )
