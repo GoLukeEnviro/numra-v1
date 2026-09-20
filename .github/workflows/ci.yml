@@ -128,6 +128,27 @@ jobs:
       - name: pip-audit (Python dependencies)
         run: uvx pip-audit
 
+  sast:
+    # PWA-08 hardening (#140): pinned static analysis for the Python surface. `-ll`
+    # puts the gate at MEDIUM+ so it carries real signal instead of a low-severity
+    # backlog -- the tree is clean at that level today (449 LOW, 0 MEDIUM/HIGH) and a
+    # new medium/high finding fails the build. No `--baseline` file on purpose: a
+    # baseline freezes the current set and hides new findings in old files. The command
+    # is byte-identical to `scripts/verify.py` ("sast (bandit, medium+)") and to
+    # docs/security/pwa-hardening.md, so CI and the local verification recipe cannot
+    # drift. The gate's failure mode is proven by a negative test (real MEDIUM fixture
+    # -> job fails -> fixture removed -> green): docs/audits/2026-09-21-pwa-08-sast.md.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ env.UV_VERSION }}
+      - run: uv python install ${{ env.PYTHON_VERSION }}
+      - run: uv sync --all-packages --all-groups
+      - name: bandit (pinned 1.8.6, MEDIUM and above)
+        run: uv run --with bandit==1.8.6 bandit -q -r apps/api/src packages -ll
+
   schema-and-openapi-drift:
     runs-on: ubuntu-latest
     steps:
