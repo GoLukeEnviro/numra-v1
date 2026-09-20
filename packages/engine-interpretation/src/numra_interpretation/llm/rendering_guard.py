@@ -22,8 +22,6 @@ The mock provider paths keep their own deterministic substitution on top, since
 
 from __future__ import annotations
 
-import re
-
 __all__ = [
     "PROMPT_SCAFFOLDING_MARKERS",
     "contains_prompt_scaffolding",
@@ -46,17 +44,25 @@ PROMPT_SCAFFOLDING_MARKERS: tuple[str, ...] = (
     "[user_instructions]",
 )
 
-#: Anchored to the start of the text or of a line, which is exactly how the
-#: scaffolding is composed — so ordinary prose that merely mentions a bracketed
-#: word is not rejected.
-_SCAFFOLDING_PATTERN = re.compile(
-    r"(?m)^[ \t]*(?:" + "|".join(re.escape(marker) for marker in PROMPT_SCAFFOLDING_MARKERS) + r")"
-)
-
 
 def contains_prompt_scaffolding(text: str) -> bool:
-    """True when ``text`` carries request scaffolding instead of rendered prose."""
-    return bool(_SCAFFOLDING_PATTERN.search(text))
+    """True when ``text`` carries request scaffolding instead of rendered prose.
+
+    Matches a marker **anywhere** in the text, not only at the start of a line. Two
+    shapes reach product output and both are the same defect:
+
+    * a provider that *echoes* its request composes one line per request field, so the
+      marker starts a line (``MockLLMProvider`` by design, any future provider by
+      accident);
+    * a *generative* model does not echo — it copies a block's label into the middle of
+      its own sentence (``"... die durch [profile_fact:a:expression] gepraegt ist ..."``,
+      captured on the audit stack on 2026-09-20).
+
+    An earlier line-anchored version of this check let the second shape through, which
+    is how prompt scaffolding ended up rendered in a relationship analysis. The markers
+    are bracketed and role-prefixed, so ordinary prose cannot collide with them.
+    """
+    return any(marker in text for marker in PROMPT_SCAFFOLDING_MARKERS)
 
 
 def grounding_prose(*values: str) -> str:

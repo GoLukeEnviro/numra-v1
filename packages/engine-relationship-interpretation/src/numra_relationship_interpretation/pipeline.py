@@ -54,7 +54,13 @@ __all__ = ["generate_relationship_analysis", "generate_shadow_dynamics"]
 #: Bumped whenever the prompt shape/instructions here change materially — snapshotted
 #: onto every persisted analysis, same role as
 #: `numra_api.services.report_service.PROMPT_VERSION`.
-PROMPT_VERSION = "numra-relationship-v1"
+#:
+#: v2 adds the explicit prohibition against reproducing the bracketed context-block
+#: labels (`[profile_fact:a:<id>]`). A real provider on the audit stack (2026-09-20)
+#: copied those labels into its own sentences, where they rendered as internal tokens;
+#: the fail-closed guard in `_validate_and_resolve_text` rejects that, and this
+#: instruction removes the temptation in the first place.
+PROMPT_VERSION = "numra-relationship-v2"
 
 _RELATIONSHIP_SYSTEM_INSTRUCTIONS = (
     "You are rendering a non-diagnostic, symbolic numerology relationship reflection "
@@ -66,7 +72,11 @@ _RELATIONSHIP_SYSTEM_INSTRUCTIONS = (
     "known metric id for a single scalar fact or a known special id for a non-scalar "
     "fact such as hidden passion or karmic lessons, always prefixed with which person "
     "the fact belongs to (a for Person A, b for Person B), rather than typing digits "
-    "yourself. Never type a numerology value as a literal digit. Do not state or "
+    "yourself. Never type a numerology value as a literal digit. Never reproduce the "
+    "bracketed context-block labels you were given (things like '[profile_fact:a:...]', "
+    "'[knowledge:...]' or '[system]') anywhere in your answer — those labels are "
+    "prompt framing addressed to you, and the only citation syntax that belongs in "
+    "your prose is the placeholder syntax. Do not state or "
     "imply a compatibility score, match percentage, or numeric rating of the "
     "relationship. Never use psychiatric, clinical, or personality-disorder language, "
     "and never frame an attachment style as a diagnosis — only as a descriptive, "
@@ -85,7 +95,10 @@ _SHADOW_SYSTEM_INSTRUCTIONS = (
     "known special id for a non-scalar fact such as hidden passion or karmic lessons, "
     "always prefixed with which person the fact belongs to (a for Person A, b for "
     "Person B), rather than typing digits yourself. Never type a numerology value as "
-    "a literal digit. Do not state or imply a compatibility score or match "
+    "a literal digit. Never reproduce the bracketed context-block labels you were given "
+    "(things like '[profile_fact:a:...]', '[knowledge:...]' or '[system]') anywhere in "
+    "your answer — those labels are prompt framing addressed to you. Do not state or "
+    "imply a compatibility score or match "
     "percentage. Never use psychiatric, clinical, or personality-disorder language, "
     "and never frame an attachment style as a diagnosis. Write 2-4 sentences for the "
     "'text' field only."

@@ -120,6 +120,30 @@ async def test_provider_echoing_its_request_is_rejected_not_persisted(profile_se
 
 
 @pytest.mark.asyncio
+async def test_provider_embedding_a_block_label_in_prose_is_rejected(profile_self) -> None:
+    """Die zweite Form desselben Defekts: ein *generatives* Modell echot nicht, es
+    kopiert den Block-Namen mitten in seinen eigenen Satz. Genau diese Form ist am
+    2026-09-20 auf der Audit-Instanz in einer Beziehungsanalyse gerendert worden --
+    der damals zeilenverankerte Detektor hat sie nicht gesehen.
+    """
+    inline_text = (
+        "Dein Lebenspfad wird hier durch [profile_fact:life_path] beschrieben und "
+        "betont das grosse Ganze."
+    )
+    provider = _ScriptedProvider([{"text": inline_text, "basis_type": "NUMEROLOGY_MODEL"}])
+
+    with pytest.raises(AnalysisGenerationError, match="PROMPT_SCAFFOLDING_REJECTED"):
+        await generate_copilot_reply(
+            request=_request(),
+            llm=provider,
+            knowledge_version="v1",
+            grounding_profiles=(profile_self,),
+        )
+
+    assert provider.calls == 2, "der erlaubte Reparaturversuch muss stattgefunden haben"
+
+
+@pytest.mark.asyncio
 async def test_mock_provider_still_answers_instead_of_failing(profile_self) -> None:
     """Gegenprobe zur Ablehnung oben: der Mock echot per Konstruktion, ist aber kein
     Fehlerfall -- er wird ersetzt, nicht abgelehnt."""

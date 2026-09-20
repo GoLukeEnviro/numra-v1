@@ -54,6 +54,18 @@ FORBIDDEN_SCAFFOLDING_MARKERS = (
 
 _SCAFFOLDING = "[system] internal prompt text\n[profile_fact:life_path] grounded fact follows\n"
 
+#: The shape a *real* provider leaves behind when it copies a context block's label
+#: into its own prose instead of echoing the request: the marker sits inside a
+#: sentence, never at the start of a line. Captured from the audit stack on
+#: 2026-09-20 (RC2 journey against the real Ollama provider), where the persisted
+#: `result_json` carried "... die durch [profile_fact:a:expression] gepraegt ist ...".
+#: The line-anchored detector missed it, so the analysis rendered the scaffolding.
+_INLINE_SCAFFOLDING = (
+    "In der Kommunikation zeigt sich eine strukturierte Ausdrucksweise, die durch "
+    "[profile_fact:a:expression] gepraegt ist, waehrend Person B mit "
+    "[profile_fact:b:expression] eher grosszuegig zuhoert."
+)
+
 
 @pytest.fixture(scope="module")
 def knowledge_base():
@@ -103,6 +115,25 @@ class _ScaffoldingProvider:
         schema: type,  # type: ignore[no-untyped-def]
     ):
         return schema(text=_SCAFFOLDING)
+
+
+class _InlineScaffoldingProvider:
+    """Stands in for a real provider that copies a context block's label into prose."""
+
+    async def health(self) -> ProviderHealth:
+        return ProviderHealth(
+            status="healthy", provider="ollama_cloud", checked_at=dt.datetime.now(dt.UTC)
+        )
+
+    async def generate(self, request: GenerationRequest) -> GenerationResult:
+        raise AssertionError("not used")
+
+    async def generate_structured(
+        self,
+        request: StructuredGenerationRequest,
+        schema: type,  # type: ignore[no-untyped-def]
+    ):
+        return schema(text=_INLINE_SCAFFOLDING)
 
 
 async def test_relationship_analysis_mock_text_has_no_prompt_scaffolding(
@@ -176,5 +207,44 @@ async def test_relationship_analysis_fails_closed_on_provider_scaffolding(
             relationship_type="PARTNER",
             frame_knowledge=frame,
             llm=_ScaffoldingProvider(),
+            knowledge_version="0.1.0",
+        )
+
+
+async def test_relationship_analysis_fails_closed_on_inline_scaffolding(
+    profile_a, profile_b
+) -> None:
+    """Same contract, but for the shape a real model actually produces: the marker is
+    embedded in a sentence rather than starting a line. This is the case that reached
+    the UI on the audit stack — the line-anchored detector alone does not cover it."""
+    frame = load_relationship_frame(KNOWLEDGE_ROOT, "PARTNER")
+    assert frame is not None
+
+    with pytest.raises(AnalysisGenerationError):
+        await generate_relationship_analysis(
+            profile_a=profile_a,
+            profile_b=profile_b,
+            relationship_type="PARTNER",
+            frame_knowledge=frame,
+            llm=_InlineScaffoldingProvider(),
+            knowledge_version="0.1.0",
+        )
+
+
+async def test_shadow_dynamics_fails_closed_on_inline_scaffolding(
+    profile_a, profile_b, knowledge_base
+) -> None:
+    """The shadow-dynamics path shares `_validate_and_resolve_text`; a marker inside a
+    sentence must fail it there too."""
+    rules = load_shadow_interaction_rules(KNOWLEDGE_ROOT)
+
+    with pytest.raises(AnalysisGenerationError):
+        await generate_shadow_dynamics(
+            profile_a=profile_a,
+            profile_b=profile_b,
+            relationship_type="PARTNER",
+            knowledge=knowledge_base,
+            shadow_rules=rules,
+            llm=_InlineScaffoldingProvider(),
             knowledge_version="0.1.0",
         )
