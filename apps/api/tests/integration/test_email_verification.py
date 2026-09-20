@@ -88,6 +88,44 @@ async def test_verify_email_unknown_token_rejected(client) -> None:
     assert response.json()["code"] == "INVALID_OR_EXPIRED_TOKEN"
 
 
+async def test_verify_email_twice_keeps_the_first_verification_timestamp(
+    client, sessionmaker, fake_email_sender
+) -> None:
+    """Verifying an already-verified account must not move `email_verified_at`.
+
+    The column is documented as set-once ("Set once ... never cleared afterwards",
+    models/tables.py). Re-verifying is a legal, idempotent no-op: it returns 204 and
+    leaves the recorded instant untouched, so the timestamp keeps meaning "when this
+    address was first proven" rather than "when it was last touched". A rewrite here
+    would also let anyone who can trigger a resend move that audit instant forward.
+    """
+    headers = await _login(client, sessionmaker, "verify-twice@example.com")
+    await client.post("/v1/auth/request-email-verification", headers=headers)
+    first_token = _extract_token(fake_email_sender.sent[0]["body"])
+    first_verify = await client.post("/v1/auth/verify-email", json={"token": first_token})
+    assert first_verify.status_code == 204
+
+    async with sessionmaker() as db:
+        user = await get_user_by_email(db, email="verify-twice@example.com")
+        first_verified_at = user.email_verified_at
+        assert first_verified_at is not None
+    assert first_verified_at.tzinfo is not None  # noqa: SIM103 -- explicit: it is stored tz-aware
+
+    # A fresh resend + verify on the already-verified account.
+    assert (
+        await client.post("/v1/auth/request-email-verification", headers=headers)
+    ).status_code == 204
+    second_token = _extract_token(fake_email_sender.sent[1]["body"])
+    second = await client.post("/v1/auth/verify-email", json={"token": second_token})
+    assert second.status_code == 204, "re-verification is an idempotent no-op, not an error"
+
+    async with sessionmaker() as db:
+        user = await get_user_by_email(db, email="verify-twice@example.com")
+        assert user.email_verified_at == first_verified_at, (
+            "email_verified_at must keep the FIRST verification instant"
+        )
+
+
 async def test_verify_email_expired_token_rejected_with_same_error(client, sessionmaker) -> None:
     async with sessionmaker() as db:
         user = await create_user(

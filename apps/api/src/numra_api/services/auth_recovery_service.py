@@ -88,7 +88,13 @@ async def verify_email(db: AsyncSession, *, token: str) -> None:
         # The token's owning user was deleted between the claim and this lookup --
         # treat identically to any other invalid token rather than a 500.
         raise InvalidOrExpiredToken("email verification token is invalid, expired, or used")
-    await mark_email_verified(db, user=user, verified_at=now)
+    # Set-once (see models/tables.py: "Set once ... never cleared afterwards"). A
+    # second verification of an already-verified account is a legal, idempotent
+    # no-op that keeps the FIRST instant: rewriting it would let anyone able to
+    # trigger a resend move that audit timestamp forward, and would make the column
+    # mean "last touched" instead of "when the address was first proven".
+    if user.email_verified_at is None:
+        await mark_email_verified(db, user=user, verified_at=now)
 
 
 async def forgot_password(
