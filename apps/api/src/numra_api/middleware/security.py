@@ -60,6 +60,12 @@ class SecurityHeadersMiddleware:
                 headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
                 headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
                 headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+                # HSTS on the API surface too: the web middleware's matcher excludes
+                # /api/*, so without this line the API answers carry no transport
+                # policy at all. Omitted are `includeSubDomains` (the tunnel's
+                # sub-zone is not ours to commit) and `preload` (a one-way door that
+                # needs a domain decision) -- same choice as the web surface.
+                headers["Strict-Transport-Security"] = "max-age=31536000"
             await send(message)
 
         await self.app(scope, receive, send_wrapper)

@@ -18,6 +18,11 @@ export function middleware(request: NextRequest) {
   headers.set("x-nonce", nonce);
   const response = NextResponse.next({ request: { headers } });
   response.headers.set("Content-Security-Policy", csp);
+  // HSTS: both live surfaces terminate TLS (the Tailscale tunnel), so a browser
+  // that ever reached this host over plaintext must not be allowed to stay there.
+  // `includeSubDomains` is deliberately omitted -- the tunnel's sub-zone is not
+  // ours to commit, and `preload` is a one-way door that needs a domain decision.
+  response.headers.set("Strict-Transport-Security", "max-age=31536000");
   response.headers.set("Cache-Control", "private, no-store");
   return response;
 }
