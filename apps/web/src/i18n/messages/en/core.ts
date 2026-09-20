@@ -21,6 +21,7 @@ export const enCore: Record<keyof typeof deCore, string> = {
 
   "common.loading": "Loading…",
   "common.tryAgain": "Try again",
+  "common.errorFallback": "An unexpected error occurred.",
   "common.somethingWrong": "Something went wrong",
   "common.networkError": "Could not reach the server.",
   "common.appLoading": "Loading AVENYTH…",
