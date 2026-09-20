@@ -1,20 +1,37 @@
 # AVENYTH PWA — Canonical Execution State
 
 - **PLAN_VERSION:** 5
-- **STATUS_DATE:** 2026-09-19
+- **STATUS_DATE:** 2026-09-20
 - **CANONICAL_CLIENT:** responsive web application / installable PWA (`apps/web`)
 - **NATIVE_MOBILE:** frozen; historical MOBILE-12A/B/C code remains, no new feature work
-- **VERIFIED_MAIN_SHA:** `7de49ddccc98d213a138bbab0d72b846a5860fa3`
+- **VERIFIED_MAIN_SHA:** `665d4447edd72bde8b3598fa2fd5b4511d1c3709`
 - **VERIFIED_PRODUCTION_SHA:** `b0ff3380be1765a1b438283cfdad4656c9890d73` (no auto-deploy on this host — deliberately not advanced since the migration)
-- **LAST_MERGED_PR:** [#112](https://github.com/GoLukeEnviro/numra-v1/pull/112)
-- **LAST_GREEN_MAIN_RUN:** post-merge run on `7de49ddc` (12/12 required checks green on the PR head `4137378`; see PR #112)
+- **LAST_MERGED_PR:** [#116](https://github.com/GoLukeEnviro/numra-v1/pull/116)
+- **LAST_GREEN_MAIN_RUN:** post-merge run on `665d4447` (12/12 jobs green, run `35477414287`)
 - **CURRENT_MILESTONE:** PWA Product Closure
-- **CURRENT_TASK:** PWA-04 — two-account relationship acceptance. The automated acceptance path runs unattended; the review findings from 2026-09-19 are being closed as a sequential PR chain (off-origin guard and mock prompt-leak class already merged).
-- **NEXT_ACTION:** Continue the finding chain — inventory/documentation sync, then the E2E assertion hardening (dissolution/evidence), the Redis reset hardening and the register rate-limit integration test. The PWA-04 acceptance itself is runnable at any time: `scripts/rc2-e2e.sh audit` locally, or against the current audit instance with `RC2_BASE_URL=https://agent0-1.taile6801f.ts.net:8444 RC2_MSG_PREFIX=AUDIT npx playwright test --config=playwright.rc2.config.ts`. Both previously blocking environment findings are resolved on this host (rate limit is resettable locally; the analysis worker is part of the stack).
+- **CURRENT_TASK:** PWA-05 — controlled email lifecycle (read-only reality check first: verification mail, resend, forgot/reset, token expiry and single use, anti-enumeration, current provider and runtime configuration).
+- **NEXT_ACTION:** Start PWA-05 read-only. PWA-04 is closed: the acceptance suite runs unattended via `scripts/rc2-e2e.sh audit` locally, or against the current audit instance with `RC2_BASE_URL=https://agent0-1.taile6801f.ts.net:8444 RC2_MSG_PREFIX=AUDIT npx playwright test --config=playwright.rc2.config.ts`. Derive the PWA-05 issue, test matrix and atomic PR chain from that read-only pass before writing code. Audit records stay untouched: only PWA-10 authorizes teardown and deletion.
 - **OPEN_RELEASE_BLOCKERS:** none in production; the audit instance runs on this host with code parity to `main`. The former PWA-04 remote blockers (shared register rate limit, missing analysis worker) were environment findings of the retired VPS stack and do not apply to the current audit instance.
 
 This file is the single current execution-state source. Historical plans and gap
 reports remain in the repository as evidence, but do not override this state.
+
+## Baseline semantics (read before updating the fields above)
+
+The **product baseline** is the last fully tested, behaviour-changing merge — not the
+last merge of any kind. Concretely:
+
+- `VERIFIED_MAIN_SHA` names the last behaviour-changing merge that passed the full CI
+  set. A pure closure/documentation PR does **not** become a new product baseline and
+  must not be written into that field; it is recorded in the delivery map instead.
+- `LAST_MERGED_PR` names that same behaviour-changing PR, and `LAST_GREEN_MAIN_RUN`
+  its post-merge run — so the three fields always describe one consistent revision.
+- This is stated explicitly so a later parser or reviewer does not misread a
+  deliberately-not-advanced field as staleness. Renaming these fields is out of scope:
+  unknown readers may depend on the current names.
+
+For PWA-04 this means: baseline `665d4447` (PR #116). PR #118 is the closure
+documentation that records it, not a baseline of its own.
 
 ## Current product position
 
@@ -43,12 +60,20 @@ records are intentionally retained until Product Closure.
 | Workspace-hub route/card repair | complete | PR #87 |
 | PWA-01 isolated dense-state audit | complete | `docs/audits/2026-09-15-pwa-01-isolated-audit.md` |
 | Mock Copilot disclosure regression | fixed and deployed | PR #98, main SHA above |
+| PWA-04 two-account acceptance + finding chain | complete | `docs/audits/2026-09-18-pwa-04-automated-two-account.md`; PRs #111, #112, #113, #114, #116 |
 
 ## Evidence boundary
 
 ### Verified
 
 - PR #98 and the post-merge `main` run completed all 12 required CI checks.
+- PWA-04 closed on `665d4447`: post-merge `main` run `35477414287` finished 12/12 jobs green.
+- The PWA-04 acceptance suite ran unattended on the merge commit — `scripts/rc2-e2e.sh audit`,
+  4 passed on desktop 1440x900 and mobile 390x844, exit 0, with the 06c/07a evidence
+  screenshots regenerated.
+- The mock-report leak is closed at the source: QUICK/FULL/ULTIMATE generation shows
+  0 bracketed markers and 0 instruction-prose hits, and freshly persisted
+  `report_sections.content_json` rows (14/14) carry neither.
 - Production and audit API readiness covered database, calculation engine, LLM and PDF.
 - The audit exercised sign-up, people, connections, consent, relationship workspace,
   tasks, roadmaps, milestones, shared reflection, check-in and shared Copilot flows.
@@ -78,7 +103,7 @@ records are intentionally retained until Product Closure.
 | PWA-01 | Isolated dense-state, two-account audit; defects recorded and fixed | **complete** |
 | PWA-02 | Current documentation agrees on scope, completion and next action | **complete, re-synced 2026-09-19** — the host migration and the PWA-04 finding chain had made the audit-host references stale; `docs/ops/2026-09-19-hermestrader-to-agent0-migration.md` and the cross-environment table in `docs/audits/2026-09-15-pwa-01-isolated-audit.md` now carry the current host, and `NEXT_ACTION` above reflects the real state |
 | PWA-03 | Sanitized production flag/topology inventory and route/API parity smoke | **complete** |
-| PWA-04 | Controlled two-account relationship acceptance, including analysis, consent changes and dissolution history | **in progress** |
+| PWA-04 | Controlled two-account relationship acceptance, including analysis, consent changes and dissolution history | **complete, closed 2026-09-20** — the suite runs unattended (`scripts/rc2-e2e.sh audit`, 4 passed desktop+mobile) and the 2026-09-19 review findings are merged: #111 off-origin guard, #112 pipeline prompt-leak fix, #113 inventory/audit-doc sync, #114 E2E assertion hardening + Redis reset + register rate-limit test, #116 unbracketed instruction prose + `await` fix |
 | PWA-05 | Controlled email lifecycle: verify, resend, forgot/reset and anti-enumeration | queued |
 | PWA-06 | Personal Copilot, real-provider report generation and PDF acceptance | queued |
 | PWA-07 | Privacy/evidence acceptance: export, account deletion, cascade and cleanup proof | queued |
