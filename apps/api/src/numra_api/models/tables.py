@@ -1259,10 +1259,11 @@ class ChatThread(Base):
     """PR-V2-09 -- specs/v2/copilot-grounding-spec.md Thread model. The CHECK
     constraint below is the DB-level arbiter of which `workspace_id`/`owner_user_id`
     shape is legal for each `scope`, mirrored (never trusted alone) by
-    services/copilot_service.py; the two partial unique indexes are what make
-    `POST .../copilot/threads` idempotent get-or-create (at most one non-archived
-    SHARED thread per workspace, at most one non-archived PRIVATE thread per
-    (workspace, owner)) safe under concurrent creation, not just app-level locking."""
+    services/copilot_service.py; the three partial unique indexes are what make the
+    Copilot `POST .../threads` create paths idempotent get-or-create (at most one
+    non-archived SHARED thread per workspace, at most one non-archived PRIVATE thread
+    per (workspace, owner), at most one non-archived PERSONAL thread per owner) safe
+    under concurrent creation, not just app-level locking."""
 
     __tablename__ = "chat_threads"
     __table_args__ = (
@@ -1287,6 +1288,12 @@ class ChatThread(Base):
             "owner_user_id",
             unique=True,
             postgresql_where=text("scope = 'RELATIONSHIP_PRIVATE' AND archived_at IS NULL"),
+        ),
+        Index(
+            "uq_chat_threads_one_personal_per_owner",
+            "owner_user_id",
+            unique=True,
+            postgresql_where=text("scope = 'PERSONAL_PRIVATE' AND archived_at IS NULL"),
         ),
         Index("ix_chat_threads_workspace_id_scope", "workspace_id", "scope"),
     )

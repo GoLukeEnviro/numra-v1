@@ -62,6 +62,43 @@ async def get_private_thread_for_owner(
     return result.scalar_one_or_none()
 
 
+async def get_personal_thread_for_owner(
+    db: AsyncSession, *, owner_user_id: uuid.UUID
+) -> ChatThread | None:
+    """The one non-archived PERSONAL_PRIVATE thread for `owner_user_id`, if any --
+    at most one can exist (`uq_chat_threads_one_personal_per_owner`). A personal
+    thread has `workspace_id IS NULL`, so it is reachable by NO workspace-shaped
+    query; `owner_user_id` is always derived from the authenticated caller by the
+    service layer, never accepted from the client."""
+    stmt = select(ChatThread).where(
+        ChatThread.owner_user_id == owner_user_id,
+        ChatThread.scope == ThreadScope.PERSONAL_PRIVATE,
+        ChatThread.archived_at.is_(None),
+    )
+    result = await db.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def get_thread_for_owner(
+    db: AsyncSession, *, thread_id: uuid.UUID, owner_user_id: uuid.UUID
+) -> ChatThread | None:
+    """IDOR gate for every per-thread personal route: `thread_id` AND
+    `owner_user_id` AND `scope=PERSONAL_PRIVATE` together -- never `thread_id`
+    alone (module docstring). A foreign, nonexistent or workspace-bound id
+    therefore yields `None` and the caller raises a plain 404. Deliberately does
+    NOT filter `archived_at` -- mirroring `get_thread_for_workspace`, an archived
+    thread stays readable/gettable with its `archived_at` set; only the get-or-create
+    lookup (`get_personal_thread_for_owner`) filters it, so archiving frees the slot
+    for a fresh thread."""
+    stmt = select(ChatThread).where(
+        ChatThread.id == thread_id,
+        ChatThread.owner_user_id == owner_user_id,
+        ChatThread.scope == ThreadScope.PERSONAL_PRIVATE,
+    )
+    result = await db.execute(stmt)
+    return result.scalar_one_or_none()
+
+
 async def create_thread(db: AsyncSession, **fields: Any) -> ChatThread:
     thread = ChatThread(**fields)
     db.add(thread)
@@ -179,8 +216,10 @@ __all__ = [
     "create_message",
     "create_thread",
     "get_latest_checkin_analysis_for_workspace",
+    "get_personal_thread_for_owner",
     "get_private_thread_for_owner",
     "get_shared_thread_for_workspace",
+    "get_thread_for_owner",
     "get_thread_for_workspace",
     "list_messages_for_thread",
     "list_prior_messages_for_thread",

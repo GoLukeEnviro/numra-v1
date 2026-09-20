@@ -3424,6 +3424,24 @@
         "title": "PersonalTaskStatus",
         "type": "string"
       },
+      "PersonalThreadCreateRequest": {
+        "description": "`POST /v1/me/copilot/threads` body. The scope of a personal thread is not a\nclient choice -- it is always `PERSONAL_PRIVATE`, server-derived (specs/v2/\ncopilot-grounding-spec.md: which builder runs is decided from the persisted\n`ChatThread.scope`, never from a request field). The field exists only so a\nclient that sends one explicitly gets a clear 422 instead of a silent ignore,\nand an omitted (or `null`) body stays accepted.",
+        "properties": {
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ThreadScope"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional. Must be PERSONAL_PRIVATE when sent -- any other scope is rejected (422); it is never honoured as a thread scope."
+          }
+        },
+        "title": "PersonalThreadCreateRequest",
+        "type": "object"
+      },
       "PrivateNoteCreateRequest": {
         "properties": {
           "content": {
@@ -4933,7 +4951,7 @@
         "properties": {
           "scope": {
             "$ref": "#/components/schemas/ThreadScope",
-            "description": "RELATIONSHIP_SHARED or RELATIONSHIP_PRIVATE only -- PERSONAL_PRIVATE is rejected (PR-V2-09b, not implemented in this PR)."
+            "description": "RELATIONSHIP_SHARED or RELATIONSHIP_PRIVATE only -- PERSONAL_PRIVATE is not creatable on a workspace path; personal threads are created via POST /v1/me/copilot/threads."
           }
         },
         "required": [
@@ -4943,7 +4961,7 @@
         "type": "object"
       },
       "ThreadScope": {
-        "description": "PR-V2-09 -- specs/v2/copilot-grounding-spec.md Thread model. Only\n`RELATIONSHIP_SHARED`/`RELATIONSHIP_PRIVATE` are ever created by a route in this\nPR -- `PERSONAL_PRIVATE`'s column shape (workspace_id NULL, owner_user_id set) is\nreserved on `ChatThread`/its CHECK constraint so PR-V2-09b can reuse this table\nwithout a migration, but no route/service in this PR creates that scope.",
+        "description": "PR-V2-09 -- specs/v2/copilot-grounding-spec.md Thread model.\n`RELATIONSHIP_SHARED`/`RELATIONSHIP_PRIVATE` are created via\n`routes/copilot_threads.py` (workspace-bound); `PERSONAL_PRIVATE` via\n`routes/personal_copilot.py` (`workspace_id IS NULL`, `owner_user_id` = the\nauthenticated caller). The column shape of every scope is DB-enforced by\n`ChatThread`'s CHECK constraint, the one-thread-per-owner uniqueness of each by\nits own partial unique index.",
         "enum": [
           "PERSONAL_PRIVATE",
           "RELATIONSHIP_PRIVATE",
@@ -8513,6 +8531,491 @@
         "summary": "Patch Life Tracking Entry Route",
         "tags": [
           "life-tracking"
+        ]
+      }
+    },
+    "/v1/me/copilot/threads": {
+      "get": {
+        "operationId": "list_personal_threads_route_v1_me_copilot_threads_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ChatThreadOut"
+                  },
+                  "title": "Response List Personal Threads Route V1 Me Copilot Threads Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Personal Threads Route",
+        "tags": [
+          "personal-copilot"
+        ]
+      },
+      "post": {
+        "description": "Get-or-create the caller's own personal thread -- idempotent, at most one\nnon-archived personal thread per owner (DB-enforced by\n`uq_chat_threads_one_personal_per_owner`). No workspace and no membership are\ninvolved: the personal Copilot works for a user with no connection at all.",
+        "operationId": "create_personal_thread_route_v1_me_copilot_threads_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-csrf-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_csrf",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Csrf"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/PersonalThreadCreateRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatThreadOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Personal Thread Route",
+        "tags": [
+          "personal-copilot"
+        ]
+      }
+    },
+    "/v1/me/copilot/threads/{thread_id}": {
+      "get": {
+        "operationId": "get_personal_thread_route_v1_me_copilot_threads__thread_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Thread Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatThreadOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Personal Thread Route",
+        "tags": [
+          "personal-copilot"
+        ]
+      }
+    },
+    "/v1/me/copilot/threads/{thread_id}/archive": {
+      "post": {
+        "operationId": "archive_personal_thread_route_handler_v1_me_copilot_threads__thread_id__archive_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Thread Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-csrf-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_csrf",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Csrf"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatThreadOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Archive Personal Thread Route Handler",
+        "tags": [
+          "personal-copilot"
+        ]
+      }
+    },
+    "/v1/me/copilot/threads/{thread_id}/messages": {
+      "get": {
+        "operationId": "list_personal_messages_route_v1_me_copilot_threads__thread_id__messages_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Thread Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ChatMessageOut"
+                  },
+                  "title": "Response List Personal Messages Route V1 Me Copilot Threads  Thread Id  Messages Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Personal Messages Route",
+        "tags": [
+          "personal-copilot"
+        ]
+      },
+      "post": {
+        "operationId": "post_personal_message_route_v1_me_copilot_threads__thread_id__messages_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Thread Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-csrf-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_csrf",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Csrf"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagePairOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Personal Message Route",
+        "tags": [
+          "personal-copilot"
         ]
       }
     },
