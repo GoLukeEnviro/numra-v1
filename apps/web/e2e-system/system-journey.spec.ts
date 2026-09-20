@@ -27,11 +27,11 @@ function uniqueEmail(): string {
 
 const PASSWORD = "correct-horse-battery-staple-2026";
 
-// Generous enough to cover both generous per-step waits (report generation up to
-// 60s, PDF export up to 150s -- see the matching comment at the Download-link wait
-// below) landing back-to-back in a worst case, plus every other step, with real
-// headroom left over.
-test.setTimeout(300_000);
+// Generous enough to cover both generous per-step waits (real-provider report
+// generation measured at ~5-6 min for a Quick report, PDF export up to 150s --
+// see the matching comments below) landing back-to-back in a worst case, plus
+// every other step, with real headroom left over.
+test.setTimeout(900_000);
 
 test("real system journey: login through delete-all against the live stack", async ({ page }) => {
   const email = uniqueEmail();
@@ -106,7 +106,11 @@ test("real system journey: login through delete-all against the live stack", asy
   });
 
   // 4. Generate a real long-form report: real job enqueued, real worker claims and
-  // processes it (NUMRA_LLM_PROVIDER=mock), real polling from the browser.
+  // processes it against the configured provider. The wait below must cover real
+  // provider latency: with NUMRA_LLM_PROVIDER=ollama a Quick report measured
+  // ~5-6 minutes of section generation (the audit stack runs the real provider;
+  // a mock provider would answer in seconds -- the 600s wait is sized for the
+  // real case and still fails on a genuinely stuck job).
   await page.goto(`/analysis/${calculationIdA}`);
   await page.getByLabel("Quick", { exact: false }).first().check();
   await page.getByRole("button", { name: "Bericht erzeugen" }).click();
@@ -117,7 +121,7 @@ test("real system journey: login through delete-all against the live stack", asy
   // The report reader only renders once the job is COMPLETE — this wait is the real
   // proof the worker actually claimed and finished the job against a live database,
   // not an instantaneous mocked response.
-  await expect(page.getByRole("heading", { name: "Export" })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole("heading", { name: "Export" })).toBeVisible({ timeout: 600_000 });
 
   // 5. Export a real PDF: POST /v1/exports is synchronous and blocks on a genuine
   // Playwright/Chromium render in the internal PDF service, which lazily launches
