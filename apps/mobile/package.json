@@ -13,11 +13,11 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.25.0",
-    "expo": "~57.0.22",
+    "expo": "~57.0.23",
     "expo-secure-store": "~57.0.4",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
-    "react-native": "0.86.3"
+    "react-native": "0.87.1"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
@@ -26,6 +26,6 @@
     "eslint": "^9.0.0",
     "typescript": "^5.3.3",
     "typescript-eslint": "^8.0.0",
-    "vitest": "^5.0.0"
+    "vitest": "^5.0.1"
   }
 }
