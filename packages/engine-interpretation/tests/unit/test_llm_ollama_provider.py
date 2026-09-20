@@ -159,6 +159,27 @@ def test_generate_retries_then_raises_after_max_attempts(monkeypatch) -> None:
     assert attempts["count"] == 3
 
 
+def test_generate_with_zero_max_retries_tries_once_and_raises_typed_error(monkeypatch) -> None:
+    """A configured 0 still makes one attempt and fails typed. Before this fix the
+    retry loop made zero attempts and tripped an assert, so callers saw an
+    AssertionError instead of an OllamaProviderError (found by the audit-stack
+    outage probe with NUMRA_LLM_MAX_RETRIES=0)."""
+    monkeypatch.setenv("OLLAMA_BASE_URL", "https://ollama.example.invalid")
+    monkeypatch.setenv("OLLAMA_API_KEY", "test-key")
+
+    attempts = {"count": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        attempts["count"] += 1
+        return httpx.Response(503)
+
+    provider = OllamaCloudProvider(client=_client_with_transport(handler), max_retries=0)
+
+    with pytest.raises(OllamaProviderError, match=r"failed after 1 attempts \(server error\)"):
+        asyncio.run(provider.generate(GenerationRequest(system_instructions="x")))
+    assert attempts["count"] == 1
+
+
 def test_generate_maps_http_timeout_to_provider_timeout(monkeypatch) -> None:
     monkeypatch.setenv("OLLAMA_BASE_URL", "https://ollama.example.invalid")
     monkeypatch.setenv("OLLAMA_API_KEY", "test-key")
