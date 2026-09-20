@@ -26,7 +26,7 @@ from numra_interpretation.llm.types import (
     StructuredGenerationRequest,
 )
 from numra_interpretation.report import build_manifest, generate_report
-from numra_interpretation.report.pipeline import _mock_seed_phrases
+from numra_interpretation.report.pipeline import _mock_sentences, _summary_from_text
 from numra_numerology.engine import calculate_profile
 from numra_numerology.models.person import PersonInput
 
@@ -190,13 +190,22 @@ async def test_report_mock_sections_have_no_internal_instruction_text(
             )
 
 
-async def test_mock_seed_phrases_exclude_instruction_supplements() -> None:
-    """The unit-level counterpart: whatever the seed helper receives, an
-    `instruction_supplement` block never contributes a seed phrase. Its content is an
-    instruction to the model, never a grounding fact about the profile."""
+async def test_mock_sentences_are_prose_only(sample_profile, knowledge_base) -> None:
+    """Der Vertrag der Mock-Textquelle: nur fertige Prosa.
+
+    Frueher zog der Mock seine Saetze aus *jedem* Kontextblock -- inklusive der
+    `instruction_supplement`-Bloecke (Prompt-Anweisungen), der
+    `untrusted_user_content`-Bloecke (der fremde Tagebucheintrag) und der
+    `profile_fact`-Bloecke, die in interner Notation stehen (``Hidden Passion:
+    values=[5], frequency=4``, ``Pinnacle 1=8``). Alle drei sind keine Aussagen ueber
+    das Profil, und die dritte wurde als Produkttext lesbar wie ein Debug-Dump.
+
+    Der Test prueft deshalb beides: die ausgeschlossenen Rollen kommen nicht vor, UND
+    die interne Notation verschwindet (ihre Fakten liefert der Composer als Prosa).
+    """
     blocks = (
         ContextBlock(role="profile_fact", label="life_path", content="life_path = 22/4"),
-        ContextBlock(role="knowledge", label="life_path", content="knowledge prose"),
+        ContextBlock(role="knowledge", label="life_path", content="Lebenszahl 22/4: Prosa."),
         ContextBlock(
             role="instruction_supplement",
             label="valid_placeholder_ids",
@@ -209,17 +218,71 @@ async def test_mock_seed_phrases_exclude_instruction_supplements() -> None:
         ),
         ContextBlock(role="untrusted_user_content", label="journal", content="user entry text"),
     )
+    spec = build_manifest(report_type="QUICK", calculation_id="calc-1").sections[1]
 
-    seeds = _mock_seed_phrases(section_id="life_path", title="Life Path", blocks=blocks)
+    sentences = _mock_sentences(
+        profile=sample_profile, knowledge=knowledge_base, spec=spec, blocks=blocks
+    )
 
-    assert seeds[0] == "life_path"
-    assert seeds[1] == "Life Path"
-    assert "life_path = 22/4" in seeds
-    assert "knowledge prose" in seeds
-    # The actual defect: instruction text must never be a seed phrase.
-    for seed in seeds:
-        assert "The only valid ids" not in seed, seeds
-        assert "Target length for this section" not in seed, seeds
+    assert sentences, "der Abschnitt braucht Saetze"
+    assert "Lebenszahl 22/4: Prosa." in sentences
+    for sentence in sentences:
+        assert "The only valid ids" not in sentence, sentences
+        assert "Target length for this section" not in sentence, sentences
+        assert "user entry text" not in sentence, sentences
+        # Interne Notation ist kein Produkttext mehr.
+        assert "life_path = 22/4" not in sentence, sentences
+        assert "=" not in sentence.split("(")[0], sentence
+
+
+async def test_mock_report_text_carries_no_machine_notation(sample_profile, knowledge_base) -> None:
+    """Die vom Audit gefundenen Dump-Muster duerfen in keiner Sektion mehr stehen:
+    die `section_id` als erstes Wort, Python-Container-Reprs aus den
+    `profile_fact`-Bloecken und die internen Beschriftungen der Zyklus-Bloecke."""
+    manifest = build_manifest(report_type="QUICK", calculation_id="calc-1")
+
+    report = await generate_report(
+        profile=sample_profile,
+        knowledge=knowledge_base,
+        manifest=manifest,
+        llm=MockLLMProvider(),
+    )
+
+    for section in report.sections:
+        assert not section.text.startswith(section.section_id), section.text[:120]
+        for machine_notation in ("values=[", "frequency=", "Pinnacle 1=", "Challenge 1="):
+            assert machine_notation not in section.text, (
+                f"Sektion {section.section_id!r} enthaelt interne Notation "
+                f"{machine_notation!r}: {section.text[:160]!r}"
+            )
+        # Jeder Absatz beginnt mit einem lesbaren Satz, nicht mit einem Bezeichner.
+        for paragraph in section.text.split("\n\n"):
+            assert paragraph[:1].isupper(), paragraph[:80]
+            assert len(paragraph.split()) >= 12, paragraph[:80]
+
+
+async def test_mock_report_summary_is_product_prose(sample_profile, knowledge_base) -> None:
+    """Die Zusammenfassung wird ueber dem Abschnitt gerendert. Sie darf keine interne
+    Buchhaltung sein ("<Titel>: 136 words generated.") und keine Platzhalter tragen."""
+    manifest = build_manifest(report_type="QUICK", calculation_id="calc-1")
+
+    report = await generate_report(
+        profile=sample_profile,
+        knowledge=knowledge_base,
+        manifest=manifest,
+        llm=MockLLMProvider(),
+    )
+
+    assert report.sections
+    for section in report.sections:
+        assert section.summary.strip(), section.section_id
+        assert "words generated" not in section.summary, section.summary
+        assert "words targeted" not in section.summary, section.summary
+        assert "{{" not in section.summary, section.summary
+        assert section.summary == _summary_from_text(section.text), (
+            f"Sektion {section.section_id!r}: Zusammenfassung ist nicht der erste Satz "
+            f"des Abschnitts"
+        )
 
 
 async def test_report_fails_closed_on_provider_scaffolding(sample_profile, knowledge_base) -> None:
