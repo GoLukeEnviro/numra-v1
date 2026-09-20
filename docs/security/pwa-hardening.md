@@ -29,10 +29,10 @@ verbleibende, bewusst dokumentierte Ausnahme; Skripte sind davon nicht betroffen
 
 ## 3 — SAST
 
-Neuer CI-Job `sast`: `bandit` **gepinnt** (`1.8.6`) über `apps/api/src` und `packages`,
-Schwelle `-ll` (MEDIUM+). Lokale Messung vor der Einführung:
+`bandit` **gepinnt** (`1.8.6`) über `apps/api/src` und `packages`, Schwelle `-ll`
+(MEDIUM+). Messung vor der Einführung:
 
-```
+```text
 447 Findings, alle SEVERITY.LOW, 0 MEDIUM, 0 HIGH
 loc: 24574
 ```
@@ -41,6 +41,18 @@ Das Gate ist damit heute grün **und** aussagekräftig: es schlägt bei einem ne
 medium/high-Fund fehl, statt eine lange Low-Liste zu verwalten. Bewusst kein
 `--baseline`-File — eine Baseline friert den Ist-Stand ein und macht neue Funde in
 alten Dateien unsichtbar.
+
+Der Lauf ist Teil von `scripts/verify.py` (`sast (bandit, medium+)`), also der
+Verifikationsrezeptur des Repos.
+
+**Offen und blockiert:** derselbe Befehl als eigener CI-Job
+(`sast` in `.github/workflows/ci.yml`) ist vorbereitet, aber nicht ausrollbar — das
+OAuth-Token dieses Hosts hat die Scopes `gist, read:org, repo`, und GitHub lehnt jeden
+Push auf `.github/workflows/**` ohne `workflow`-Scope ab
+(`refusing to allow an OAuth App to create or update workflow ...`). Der Job selbst ist
+in #140 hinterlegt; die Freigabe ist ein einmaliger, interaktiver Schritt des Betreibers
+(`gh auth refresh -h github.com -s workflow`). Bis dahin läuft die Prüfung lokal über
+`scripts/verify.py`.
 
 ## 4 — Frontend-Coverage
 
