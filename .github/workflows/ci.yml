@@ -128,6 +128,22 @@ jobs:
       - name: pip-audit (Python dependencies)
         run: uvx pip-audit
 
+  sast:
+    # PWA-08 hardening: static analysis for the Python surface. `-ll` keeps the gate
+    # at MEDIUM+ so it is a real signal -- the current tree is clean at that level
+    # (447 LOW, 0 MEDIUM/HIGH), and a new medium/high issue fails the build.
+    # Pinned so a bandit release cannot change the ruleset under a green build.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ env.UV_VERSION }}
+      - run: uv python install ${{ env.PYTHON_VERSION }}
+      - run: uv sync --all-packages --all-groups
+      - name: bandit (pinned, medium and above)
+        run: uv run --with bandit==1.8.6 bandit -q -r apps/api/src packages -ll
+
   schema-and-openapi-drift:
     runs-on: ubuntu-latest
     steps:
