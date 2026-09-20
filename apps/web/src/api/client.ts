@@ -115,6 +115,7 @@ export type AnalysisType = components["schemas"]["AnalysisType"];
 
 export type ChatThreadOut = components["schemas"]["ChatThreadOut"];
 export type ThreadCreateRequest = components["schemas"]["ThreadCreateRequest"];
+export type PersonalThreadCreateRequest = components["schemas"]["PersonalThreadCreateRequest"];
 export type ChatMessageOut = components["schemas"]["ChatMessageOut"];
 export type MessageCreateRequest = components["schemas"]["MessageCreateRequest"];
 export type MessagePairOut = components["schemas"]["MessagePairOut"];
@@ -895,6 +896,43 @@ export const api = {
               `/v1/workspaces/${workspaceId}/copilot/threads/${threadId}/messages`,
               { method: "POST", body },
             ),
+        },
+      },
+    },
+  },
+  /** /v1/me/copilot/** -- the personal (workspace-free) Copilot surface (#123).
+   *  A personal thread is `scope=PERSONAL_PRIVATE` with `workspace_id = null`, so it
+   *  is never reachable through `api.workspaces.copilot` and vice versa. The owner is
+   *  the server-side caller: no user/workspace id is ever sent from the client.
+   *  A thread id that does not exist or belongs to someone else yields 404 (never
+   *  403) -- the API is the arbiter, the UI just renders what it returns. */
+  me: {
+    copilot: {
+      threads: {
+        list: () => request<ChatThreadOut[]>("/v1/me/copilot/threads"),
+        create: () =>
+          request<ChatThreadOut>("/v1/me/copilot/threads", {
+            method: "POST",
+            body: { scope: "PERSONAL_PRIVATE" } satisfies PersonalThreadCreateRequest,
+          }),
+        get: (threadId: string) => request<ChatThreadOut>(`/v1/me/copilot/threads/${threadId}`),
+        archive: (threadId: string) =>
+          request<ChatThreadOut>(`/v1/me/copilot/threads/${threadId}/archive`, {
+            method: "POST",
+          }),
+        messages: {
+          list: (threadId: string, params: { limit?: number; offset?: number } = {}) =>
+            request<ChatMessageOut[]>(`/v1/me/copilot/threads/${threadId}/messages`, {
+              query: {
+                limit: params.limit === undefined ? undefined : String(params.limit),
+                offset: params.offset === undefined ? undefined : String(params.offset),
+              },
+            }),
+          post: (threadId: string, body: MessageCreateRequest) =>
+            request<MessagePairOut>(`/v1/me/copilot/threads/${threadId}/messages`, {
+              method: "POST",
+              body,
+            }),
         },
       },
     },
