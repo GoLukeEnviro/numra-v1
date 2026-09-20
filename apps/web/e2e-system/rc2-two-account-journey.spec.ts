@@ -50,6 +50,15 @@ const EVIDENCE_NOTE = `${AUDIT_PREFIX}Ruhiger Fokus nach dem Spaziergang.`;
 const SAFE_MOCK_REPLY =
   "Für diese Frage gibt es in den freigegebenen Daten noch keine ausreichende Grundlage.";
 
+// Which provider the stack under test runs decides what a Copilot answer can be
+// asserted as. `scripts/rc2-e2e.sh` (the local/CI stack) runs the deterministic mock
+// and sets RC2_EXPECT_MOCK=1 -- there the exact fixed reply above is itself the
+// regression guard. The audit acceptance runs a REAL provider (PWA-06): its wording
+// is not predictable, so the assertion becomes "a substantive answer that is not an
+// echo of the question". Both variants keep the same hard check where it matters --
+// no internal prompt scaffolding on any LLM-rendered surface.
+const EXPECT_MOCK_REPLY = process.env.RC2_EXPECT_MOCK === "1";
+
 const DEFAULT_SCOPE_LABELS = ["Kernzahlen", "Beziehungs-Einblicke", "Aktuelles Timing"];
 const EXTENDED_SCOPE_LABELS = [
   "Privates Journal",
@@ -118,6 +127,28 @@ async function assertNoPromptScaffolding(scope: Locator, label: string) {
       `${label} must not render internal prompt scaffolding (${marker})`,
     ).toHaveCount(0);
   }
+}
+
+async function assertCopilotReply(
+  page: Page,
+  { question, label, timeoutMs }: { question: string; label: string; timeoutMs: number },
+) {
+  // The assistant turn is the second article in the thread (user turn first, both
+  // ordered by creation time) -- provider-independent, unlike the reply text.
+  const reply = page.locator("main article").nth(1);
+  await expect(reply, `${label}: an answer must appear`).toBeVisible({ timeout: timeoutMs });
+  const text = (await reply.innerText()).trim();
+  if (EXPECT_MOCK_REPLY) {
+    expect(text, `${label}: the deterministic mock reply is the PR #98 guard`).toContain(
+      SAFE_MOCK_REPLY,
+    );
+  } else {
+    expect(text.length, `${label}: the answer must be substantive`).toBeGreaterThan(40);
+    expect(text, `${label}: the answer must not echo the question`).not.toContain(question);
+  }
+  // The check that must hold for every provider: an answer is product prose, never
+  // the request framing of the provider that produced it.
+  await assertNoPromptScaffolding(page.locator("main"), label);
 }
 
 async function assertMeasuredViewport(page: Page, expected: Vp) {
@@ -538,11 +569,11 @@ test("RC2 two-account journey: connections/consent/dual-profile/type/dissolve ov
     await expect(A.getByRole("button", { name: "Gemeinsam" })).toHaveAttribute("aria-pressed", "true");
     await A.getByLabel("Nachricht").fill(SHARED_COPILOT_MSG);
     await A.getByRole("button", { name: "Senden", exact: true }).click();
-    await expect(A.getByText(SAFE_MOCK_REPLY)).toBeVisible({ timeout: 60_000 });
-    // The mock provider must never echo internal prompt text (PR #98 regression),
-    // on any LLM-rendered surface -- checked with the same marker list the engine
-    // side enforces before persisting.
-    await assertNoPromptScaffolding(A.locator("main"), "copilot thread");
+    await assertCopilotReply(A, {
+      question: SHARED_COPILOT_MSG,
+      label: "copilot thread (shared)",
+      timeoutMs: 240_000,
+    });
     await shoot(A, "12-copilot-shared-a");
 
     // B sees A's shared message in the same thread.
@@ -558,6 +589,11 @@ test("RC2 two-account journey: connections/consent/dual-profile/type/dissolve ov
     await A.getByLabel("Nachricht").fill(PRIVATE_COPILOT_MSG);
     await A.getByRole("button", { name: "Senden", exact: true }).click();
     await expect(A.getByText(PRIVATE_COPILOT_MSG)).toBeVisible({ timeout: 60_000 });
+    await assertCopilotReply(A, {
+      question: PRIVATE_COPILOT_MSG,
+      label: "copilot thread (private)",
+      timeoutMs: 240_000,
+    });
     await shoot(A, "13-copilot-private-a");
 
     await B.reload();
