@@ -11,7 +11,12 @@ from __future__ import annotations
 
 import re
 
-from numra_interpretation.composer import CORE_METRIC_IDS, TIMING_METRIC_IDS, compose_section
+from numra_interpretation.composer import (
+    CORE_METRIC_IDS,
+    TIMING_METRIC_IDS,
+    compose_interpretation,
+    compose_section,
+)
 from numra_interpretation.errors import InvalidReportSection
 from numra_interpretation.knowledge_loader import KnowledgeBase
 from numra_interpretation.llm.rendering_guard import contains_prompt_scaffolding
@@ -28,7 +33,7 @@ from numra_interpretation.llm.validator import (
     normalize_numeric_claims,
     validate_metric_ref_coverage,
 )
-from numra_interpretation.report.content_padding import deterministic_elaboration
+from numra_interpretation.report.content_padding import deterministic_prose
 from numra_interpretation.report.linter import lint_report
 from numra_interpretation.report.manifest import ReportManifest, ReportSectionSpec
 from numra_interpretation.report.schemas import (
@@ -322,18 +327,17 @@ async def _generate_section(
     if is_mock_provider:
         # `MockLLMProvider` ignores the target length and echoes the whole request
         # back (system instructions + every grounding block), so the mock path
-        # composes its deterministic text here instead: same grounding phrases, no
-        # request framing, and aimed at the section's full target length so the
-        # word-count lint sees a realistic section.
-        #
-        # Always lead with the section's own id/title so sections whose grounding
-        # facts happen to overlap (e.g. executive_profile/development/
-        # calculation_appendix all cite the same core metrics) still produce distinct
-        # text — otherwise the global lint's DuplicateParagraphDetection would
-        # (correctly) flag genuinely identical output.
-        mock_text = deterministic_elaboration(
-            _mock_seed_phrases(section_id=spec.section_id, title=spec.title, blocks=context_blocks),
-            spec.target_word_count,
+        # composes its deterministic text here instead: German prose taken from the
+        # composer, no request framing, aimed at the section's full target length so
+        # the word-count lint sees a realistic section.
+        mock_text = deterministic_prose(
+            sentences=_mock_sentences(
+                profile=profile, knowledge=knowledge, spec=spec, blocks=context_blocks
+            ),
+            target_word_count=spec.target_word_count,
+            paragraph_prefixes=tuple(
+                refrain.format(title=spec.title) for refrain in _PARAGRAPH_REFRAINS
+            ),
         )
 
     request = StructuredGenerationRequest(
@@ -358,11 +362,16 @@ async def _generate_section(
 
     if is_mock_provider:
         assert mock_text is not None  # set in the is_mock_provider branch above
-        # Deterministic, scaffolding-free mock rendering (see that branch).
-        # Numeric facts stay as {{metric:ID}}/{{special:ID}} placeholders for
-        # `_resolve_placeholders`.
+        # Deterministic, scaffolding-free mock rendering (see that branch): fertige
+        # Composer-Prosa, keine Platzhalter-Syntax -- `_resolve_placeholders` findet
+        # hier nichts mehr zu ersetzen, und die Zahlen im Text stammen alle aus dem
+        # Canonical Profile (der Mock ist von der Literal-Pruefung ausgenommen, siehe
+        # unten).
         text = mock_text
-        summary = ""  # filled from the measured word count below
+        # Kein Provider-Vorschlag: die Zusammenfassung wird unten aus dem
+        # fertig aufgeloesten Abschnittstext gebildet (`_summary_from_text`), damit
+        # dort keine Platzhalter-Syntax und keine Worthaeufigkeits-Buchhaltung steht.
+        summary = ""
         section_claims = normalize_numeric_claims(numeric_claims, profile)
     else:
         # A provider that echoed its own request back has rendered nothing.
@@ -383,7 +392,7 @@ async def _generate_section(
         # exist) still raises. See `normalize_numeric_claims`'s docstring.
         section_claims = normalize_numeric_claims(result.numeric_claims, profile)
         text = result.text
-        summary = result.summary or f"{spec.title}: {spec.target_word_count} words targeted."
+        summary = result.summary
 
     validate_metric_ref_coverage(
         section_claims,
@@ -415,36 +424,108 @@ async def _generate_section(
         order_index=spec.order_index,
         text=resolved_text,
         word_count=word_count,
-        summary=summary or f"{spec.title}: {word_count} words generated.",
+        summary=summary or _summary_from_text(resolved_text),
         metric_refs=spec.metric_refs,
         knowledge_refs=spec.knowledge_refs,
     )
 
 
-def _mock_seed_phrases(
-    *, section_id: str, title: str, blocks: list[ContextBlock] | tuple[ContextBlock, ...]
-) -> tuple[str, ...]:
-    """The seed phrases the mock report text is composed from: the section's own
-    id/title (so sections whose grounding facts overlap still produce distinct text
-    for the global lint's DuplicateParagraphDetection) plus every block's content
-    that is a GROUNDING FACT about the profile.
+#: Wissensgruppen im Manifest (`ReportSectionSpec.knowledge_refs`), die keine eigene
+#: Composer-Sektion mit dieser id haben: `pinnacle`/`challenge` stehen dort als Gruppe,
+#: der Composer kennt die vier einzelnen Sektionen.
+_KNOWLEDGE_GROUPS: dict[str, tuple[str, ...]] = {
+    "pinnacle": ("pinnacle_1", "pinnacle_2", "pinnacle_3", "pinnacle_4"),
+    "challenge": ("challenge_1", "challenge_2", "challenge_3", "challenge_4"),
+}
 
-    `instruction_supplement` blocks are deliberately excluded. Their content is an
-    instruction addressed to the model ("The only valid ids …", "Target length for
-    this section: …", "numeric_claims must include …"), not a fact about the
-    person. Seeding the filler from them re-published those sentences as product
-    text — through `content_json`, into the report reader — and they carry no
-    bracket prefix, so `contains_prompt_scaffolding` cannot catch them: it detects
-    the request FRAMING (`[system]`, `[role:label]`), not instruction prose.
 
-    `untrusted_user_content` is excluded for the same class of reason — it is the
-    other person's journal entry, and the mock has no business republishing it as
-    the reader's own section prose.
+def _composed_prose_index(profile: CanonicalProfile, knowledge: KnowledgeBase) -> dict[str, str]:
+    """`metric_id` -> fertiger deutscher Prosa-Text aus dem Composer.
+
+    Der Mock speist sich hieraus und **nicht** mehr aus den Rohbloecken: die
+    `profile_fact`-Bloecke liegen in interner Notation vor (``Hidden Passion:
+    values=[5], frequency=4``, ``Pinnacle 1=8``), die als Produkttext gelesen wie ein
+    Debug-Dump wirkt. Der Composer formuliert dieselben Fakten bereits als Prosa --
+    genau das ist der Text, den der Mock verwenden soll.
     """
-    excluded_roles = {"instruction_supplement", "untrusted_user_content"}
-    return (section_id, title) + tuple(
-        block.content for block in blocks if block.role not in excluded_roles
-    )
+    interpretation = compose_interpretation(profile, knowledge)
+    index: dict[str, str] = {}
+    for section in (
+        *interpretation.sections,
+        *interpretation.timing_sections,
+        *interpretation.extended_sections,
+    ):
+        index.setdefault(section.metric_id, section.text_de)
+    return index
+
+
+def _mock_sentences(
+    *,
+    profile: CanonicalProfile,
+    knowledge: KnowledgeBase,
+    spec: ReportSectionSpec,
+    blocks: list[ContextBlock] | tuple[ContextBlock, ...],
+) -> tuple[str, ...]:
+    """Die Saetze, aus denen der Mock den Abschnitt zusammensetzt.
+
+    Quelle ist ausschliesslich die fertige deutsche Prosa: die Composer-Sektionen der
+    Metriken, auf die der Abschnitt verweist (plus die Wissensgruppen `pinnacle`/
+    `challenge`), ergaenzt um `knowledge`-Kontextbloecke, die noch nicht vorkommen.
+    `instruction_supplement`- und `untrusted_user_content`-Bloecke sind ausgeschlossen
+    -- das eine ist eine Anweisung an das Modell, das andere der fremde Tagebucheintrag,
+    und beides ist keine Aussage ueber das Profil. `profile_fact`-Bloecke werden nicht
+    uebernommen: ihre Notation ist Maschinensyntax, ihre Fakten stehen bereits in der
+    Composer-Prosa.
+
+    Abschnitte ohne eigene Referenzen (`development`, `calculation_appendix`) leiten
+    ihre Saetze aus denselben Kernmetriken ab, mit denen sie auch gegroundet werden.
+    """
+    index = _composed_prose_index(profile, knowledge)
+    identifiers = (*spec.metric_refs, *spec.knowledge_refs) or CORE_METRIC_IDS
+
+    sentences: list[str] = []
+    for identifier in identifiers:
+        for key in _KNOWLEDGE_GROUPS.get(identifier, (identifier,)):
+            text = index.get(key)
+            if text and text not in sentences:
+                sentences.append(text)
+    for block in blocks:
+        if block.role == "knowledge" and block.content not in sentences:
+            sentences.append(block.content)
+    return tuple(sentences)
+
+
+def _summary_from_text(text: str) -> str:
+    """Die Zusammenfassung ist Produkttext (die Weboberflaeche rendert sie ueber dem
+    Abschnitt), deshalb ist sie der erste inhaltliche Satz des Abschnitts -- nicht die
+    Absatz-Einleitung davor und keine interne Buchhaltung wie "12 words generated"."""
+    first_paragraph = text.split("\n\n", 1)[0].strip()
+    _, separator, remainder = first_paragraph.partition(": ")
+    body = remainder if separator and len(remainder.split()) >= 6 else first_paragraph
+    head, dot, _ = body.partition(". ")
+    sentence = head + "." if dot else body
+    return sentence[:280]
+
+
+#: Einleitungen je Absatz. Sie tragen den Abschnittstitel, wodurch ein Absatz aus zwei
+#: verschiedenen Reportabschnitten nie identisch sein kann -- die Bedingung, die der
+#: globale Linter (`DuplicateParagraphDetection`) stellt. Zwoelf Varianten, kombiniert
+#: mit dem Satzmuster in `content_padding`, ergeben ein Wiederholungsintervall von
+#: mindestens 60 Absaetzen; ein ULTIMATE-Abschnitt hat rund 20.
+_PARAGRAPH_REFRAINS: tuple[str, ...] = (
+    "Im Abschnitt {title} zeigt sich Folgendes:",
+    "Für {title} lässt sich festhalten:",
+    "Was {title} betrifft, ist besonders relevant:",
+    "Aus Sicht von {title} gilt:",
+    "Ein weiterer Aspekt von {title}:",
+    "Im Zusammenhang mit {title} steht:",
+    "Für die Einordnung von {title} hilft:",
+    "Im Kontext von {title} bedeutet das:",
+    "Ergänzend zu {title} ist zu beachten:",
+    "Der Abschnitt {title} macht deutlich:",
+    "Bezogen auf {title} zeigt sich:",
+    "Zum Themenfeld {title} gehört:",
+)
 
 
 async def _generate_outline(
