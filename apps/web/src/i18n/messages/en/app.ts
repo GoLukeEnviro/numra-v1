@@ -988,6 +988,8 @@ export const enApp: Record<keyof typeof deApp, string> = {
   "app.copilot.personalTitle": "Personal conversation",
   "app.copilot.personalIntro": "Ask about your own profile — no relationship context, no workspace.",
   "app.copilot.personalNotice": "This conversation is yours alone. It is bound to no relationship workspace and is shown to nobody else.",
+  "app.copilot.failedTurn": "The answer could not be verified — please send again.",
+  "app.copilot.failedTurnBasis": "No answer",
   "app.copilot.indexWorkspacesTitle": "Relationship copilots",
   "app.personDetail.evidenceButton": "Evidence",
   "app.evidence.eyebrow": "Observe before claiming",
