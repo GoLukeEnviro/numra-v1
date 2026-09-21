@@ -11,6 +11,22 @@ class FutureBirthDateNotAllowed(ApplicationError):
     status_code = 422
 
 
+class NormalizationFailed(ApplicationError):
+    """An input value the normalisation pipeline cannot map to a calculation string.
+
+    A birth name containing digits or unsupported symbols is a user-input condition
+    (the engine's refusal is correct — a name is not a number), so it must surface as
+    4xx with an actionable message rather than escaping as an HTTP 500 that monitors
+    would read as an outage. The engine's own error code is preserved verbatim.
+    """
+
+    status_code = 422
+
+    def __init__(self, *, code: str, message: str) -> None:
+        self.code = code
+        super().__init__(message)
+
+
 class NotFoundError(ApplicationError):
     code = "NOT_FOUND"
     status_code = 404
