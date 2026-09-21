@@ -21,10 +21,12 @@ from numra_api.services.calculation_service import (
     person_input_from_row,
     run_and_persist_calculation,
 )
+from numra_api.services.engine_errors import map_engine_error
 from numra_api.services.errors import NotFoundError
 from numra_interpretation.daily_brief import compose_daily_brief
 from numra_interpretation.knowledge_loader import load_knowledge_base
 from numra_numerology.engine import calculate_profile
+from numra_numerology.models.errors import NormalizationUnsupportedScript
 
 router = APIRouter(prefix="/v1", tags=["calculations"])
 
@@ -118,7 +120,10 @@ async def get_timing_route(
     if person is None:
         raise NotFoundError(f"person {person_id} not found")
     person_input = person_input_from_row(person)
-    profile = calculate_profile(person_input, as_of_date=as_of_date)
+    try:
+        profile = calculate_profile(person_input, as_of_date=as_of_date)
+    except NormalizationUnsupportedScript as exc:
+        raise map_engine_error(exc) from exc
     timing: dict[str, Any] = profile.model_dump(mode="json")["timing"]
     return timing
 
