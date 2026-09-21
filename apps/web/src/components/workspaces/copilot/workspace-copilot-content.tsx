@@ -173,8 +173,14 @@ export function WorkspaceCopilotContent({ workspaceId, overview, onPhaseDisabled
         {loading ? <p className="py-8 text-center text-sm text-muted">{t("app.copilot.loading")}</p> : null}
         {!loading && messages.length === 0 ? <p className="py-8 text-center text-sm text-muted">{t("app.copilot.empty")}</p> : null}
         {messages.map((message) => <article key={message.id} className={cn("max-w-[90%] rounded-xl border p-4 text-sm leading-6 sm:max-w-[80%]", message.role === "USER" ? "ml-auto border-gold/20 bg-gold/10 text-ivory" : "border-white/10 bg-surface-2 text-text")}>
-          <p>{message.content}</p>
-          {message.role === "ASSISTANT" && message.basis_type ? <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-bronze">{t(BASIS_KEYS[message.basis_type] ?? "app.copilot.basisUnknown")}</p> : null}
+          {message.role === "ASSISTANT" && message.status === "FAILED" ? <>
+            {message.content ? <p>{message.content}</p> : null}
+            <p role="alert" className="text-sm text-danger">{t("app.copilot.failedTurn")}</p>
+            <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-bronze">{t("app.copilot.failedTurnBasis")}</p>
+          </> : <>
+            <p>{message.content}</p>
+            {message.role === "ASSISTANT" && message.basis_type ? <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-bronze">{t(BASIS_KEYS[message.basis_type] ?? "app.copilot.basisUnknown")}</p> : null}
+          </>}
         </article>)}
       </div>
       {dissolved ? <p className="text-sm text-muted">{t("app.copilot.dissolved")}</p> : <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); void sendMessage(); }}>
