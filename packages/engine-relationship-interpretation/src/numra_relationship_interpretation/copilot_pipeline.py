@@ -30,9 +30,13 @@ from pydantic import BaseModel, ConfigDict
 
 from numra_interpretation.errors import InvalidReportSection
 from numra_interpretation.llm.rendering_guard import contains_prompt_scaffolding
+from numra_interpretation.llm.types import ContextBlock, NumericClaim, StructuredGenerationRequest
 from numra_interpretation.llm.types import LLMProvider as LLMProviderProtocol
-from numra_interpretation.llm.types import NumericClaim, StructuredGenerationRequest
-from numra_interpretation.llm.validator import validate_numeric_claims
+from numra_interpretation.llm.validator import (
+    build_metric_display_value_index,
+    build_special_claim_index,
+    validate_numeric_claims,
+)
 from numra_interpretation.report.evidence_linter import lint_free_text_for_causal_language
 from numra_numerology.models.profile import CanonicalProfile
 from numra_relationship_interpretation.errors import AnalysisGenerationError
@@ -136,6 +140,61 @@ async def _generate_once(
     return result
 
 
+def _metric_index(profile: CanonicalProfile) -> dict[str, str]:
+    """Scalar and special metric ids merged, exactly as the validator sees them."""
+    return {**build_metric_display_value_index(profile), **build_special_claim_index(profile)}
+
+
+def _flagged_canonical_values(
+    *, reply: _CopilotGeneratedReply, grounding_profiles: tuple[CanonicalProfile, ...]
+) -> tuple[tuple[str, str, str], ...]:
+    """(metric_id, claimed, canonical) for every numeric claim the guard rejects.
+
+    A claim is flagged only when it matches *no* grounding profile — the same rule the
+    validator applies — so a claim that is correct for some profile is never reported.
+    """
+    indexes = [_metric_index(profile) for profile in grounding_profiles]
+    flagged: list[tuple[str, str, str]] = []
+    for claim in reply.numeric_claims:
+        if any(index.get(claim.metric_id) == claim.display_value for index in indexes):
+            continue
+        canonical = next(
+            (index[claim.metric_id] for index in indexes if claim.metric_id in index), None
+        )
+        if canonical is not None:
+            flagged.append((claim.metric_id, claim.display_value, canonical))
+    return tuple(flagged)
+
+
+def _corrective_request(
+    *,
+    request: StructuredGenerationRequest,
+    flagged: tuple[tuple[str, str, str], ...],
+) -> StructuredGenerationRequest:
+    """A `request` whose *next* attempt is told which canonical values it must use.
+
+    This is the difference between a repair attempt and a coin flip: the measured
+    defect (#174) was that the retry repeated the byte-identical prompt, so a
+    deterministic hallucination burned both attempts and the turn ended FAILED.
+
+    The correction is added as its own `instruction_supplement` block — never merged
+    into `system_instructions`, which would give model output a trust level it must
+    not have — and it never restates the rejected value as acceptable.
+    """
+    lines = [
+        "Your previous answer was rejected because it cited a number that does not "
+        "match the canonical values. Use exactly these values:",
+    ]
+    lines.extend(f"- {metric_id}: {canonical}" for metric_id, _claimed, canonical in flagged)
+    lines.append("Do not cite any other value for these metrics.")
+    correction = ContextBlock(
+        role="instruction_supplement",
+        label="canonical_value_correction",
+        content="\n".join(lines),
+    )
+    return request.model_copy(update={"context_blocks": (*request.context_blocks, correction)})
+
+
 async def generate_copilot_reply(
     *,
     request: StructuredGenerationRequest,
@@ -160,8 +219,18 @@ async def generate_copilot_reply(
             reply, grounding_profiles=grounding_profiles, is_mock_provider=is_mock_provider
         )
     except (AnalysisGenerationError, InvalidReportSection) as exc:
+        # Ein echter Reparaturversuch: der zweite Aufruf bekommt die kanonischen Werte
+        # der beanstandeten Metriken mit (#174). Der gemessene Defekt war, dass der
+        # Retry den byte-identischen Prompt wiederholte und eine deterministische
+        # Halluzination damit beide Versuche verbrannte. Wurde nichts Konkretes
+        # beanstandet (z. B. Scaffolding-Fund ohne Zahlenbezug), bleibt der Prompt
+        # unveraendert -- dann gibt es nichts zu korrigieren.
+        flagged = _flagged_canonical_values(reply=reply, grounding_profiles=grounding_profiles)
+        retry_request = (
+            _corrective_request(request=request, flagged=flagged) if flagged else request
+        )
         try:
-            reply = await _generate_once(request=request, llm=llm)
+            reply = await _generate_once(request=retry_request, llm=llm)
             _validate_reply(
                 reply, grounding_profiles=grounding_profiles, is_mock_provider=is_mock_provider
             )
