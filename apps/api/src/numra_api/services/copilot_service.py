@@ -1,12 +1,20 @@
 """PR-V2-09 -- thread get-or-create, message persistence, and the synchronous
 generation orchestration (context builder -> pipeline -> validation -> persisted
-ASSISTANT `ChatMessage`) for `routes/copilot_threads.py`.
+ASSISTANT `ChatMessage`) for `routes/copilot_threads.py` (workspace-bound scopes) and
+`routes/personal_copilot.py` (PERSONAL_PRIVATE, no workspace).
 
 Route-layer discipline (specs/v2/copilot-grounding-spec.md): which of
-`copilot_context_builder.build_shared_context`/`build_private_context` runs is
-decided here from `thread.scope` read fresh from the DB via a literal, exhaustive
-match -- never from a client-supplied scope parameter. IDOR gates (404, never 403)
-happen before any context is ever assembled.
+`copilot_context_builder.build_shared_context`/`build_private_context`/
+`build_personal_context` runs is decided here from `thread.scope` read fresh from the
+DB via a literal, exhaustive match -- never from a client-supplied scope parameter.
+IDOR gates (404, never 403) happen before any context is ever assembled.
+
+Two disjoint gate families -- the personal scope must never borrow the workspace one:
+a workspace-bound thread is gated by `get_workspace_member` + `get_thread_for_workspace`,
+a personal thread by `get_thread_for_owner` (`thread_id` AND `owner_user_id` AND
+`scope=PERSONAL_PRIVATE`). A personal thread has `workspace_id IS NULL`, so the
+workspace-shaped gate can never match it, and the owner-scoped gate can never match a
+relationship thread.
 """
 
 from __future__ import annotations
@@ -25,8 +33,10 @@ from numra_api.repositories.copilot import (
     create_context_snapshot,
     create_message,
     create_thread,
+    get_personal_thread_for_owner,
     get_private_thread_for_owner,
     get_shared_thread_for_workspace,
+    get_thread_for_owner,
     get_thread_for_workspace,
     list_messages_for_thread,
     update_message,
@@ -35,6 +45,7 @@ from numra_api.repositories.workspaces import get_workspace_member
 from numra_api.services.copilot_context_builder import (
     BuiltCopilotContext,
     assert_shared_consent_precondition,
+    build_personal_context,
     build_private_context,
     build_shared_context,
 )
@@ -51,13 +62,19 @@ from numra_relationship_interpretation.errors import AnalysisGenerationError
 logger = logging.getLogger("numra_api.copilot_service")
 
 __all__ = [
+    "archive_personal_thread_route",
     "archive_thread_route",
+    "get_or_create_personal_thread",
     "get_or_create_shared_thread",
     "get_or_create_private_thread",
+    "get_personal_thread_for_caller",
     "get_thread_for_caller",
+    "list_personal_thread_messages",
+    "list_personal_threads_for_caller",
     "list_thread_messages",
     "list_threads_for_caller",
     "post_message",
+    "post_personal_message",
 ]
 
 
@@ -207,19 +224,132 @@ async def archive_thread_route(
     return await archive_thread(db, thread=thread, now=dt.datetime.now(dt.UTC))
 
 
+# ---------------------------------------------------------------------------
+# PERSONAL_PRIVATE (no workspace, no membership, no consent) -- the owner-scoped
+# family. Every gate here is derived from the authenticated caller
+# (`requester_user_id`), never from the client, and yields 404 (never 403) for a
+# foreign, nonexistent or workspace-bound thread id.
+# ---------------------------------------------------------------------------
+
+
+async def get_or_create_personal_thread(
+    db: AsyncSession, *, requester_user_id: uuid.UUID
+) -> ChatThread:
+    """Idempotent get-or-create of the caller's own personal thread.
+
+    Deliberately has **no** workspace/membership check and **no**
+    `assert_workspace_active_by_id`: a PERSONAL_PRIVATE thread has `workspace_id IS
+    NULL` and therefore no workspace precondition at all -- a dissolved connection
+    must not disable the personal copilot. `uq_chat_threads_one_personal_per_owner`
+    (partial, `archived_at IS NULL`) is the DB-level backstop for a concurrent
+    double-create, same translate-and-retry pattern as the private/shared variants.
+    """
+    existing = await get_personal_thread_for_owner(db, owner_user_id=requester_user_id)
+    if existing is not None:
+        return existing
+    try:
+        return await create_thread(
+            db,
+            workspace_id=None,
+            owner_user_id=requester_user_id,
+            scope=ThreadScope.PERSONAL_PRIVATE,
+        )
+    except IntegrityError:
+        await db.rollback()
+        winner = await get_personal_thread_for_owner(db, owner_user_id=requester_user_id)
+        if winner is None:  # pragma: no cover -- should be unreachable
+            raise
+        return winner
+
+
+async def list_personal_threads_for_caller(
+    db: AsyncSession, *, requester_user_id: uuid.UUID
+) -> list[ChatThread]:
+    """The caller's own personal threads -- built by a targeted owner-scoped query,
+    never by fetching every thread and post-filtering, so another user's personal
+    thread (or any relationship thread) is never even transiently in the result."""
+    thread = await get_personal_thread_for_owner(db, owner_user_id=requester_user_id)
+    return [thread] if thread is not None else []
+
+
+async def get_personal_thread_for_caller(
+    db: AsyncSession, *, thread_id: uuid.UUID, requester_user_id: uuid.UUID
+) -> ChatThread:
+    """IDOR gate of every per-thread personal route: `thread_id` AND the caller's own
+    `owner_user_id` AND `scope=PERSONAL_PRIVATE`, else 404 (never 403) -- a leaked id
+    of another user's personal thread is indistinguishable from one that never
+    existed."""
+    thread = await get_thread_for_owner(db, thread_id=thread_id, owner_user_id=requester_user_id)
+    if thread is None:
+        raise NotFoundError(f"thread {thread_id} not found")
+    return thread
+
+
+async def list_personal_thread_messages(
+    db: AsyncSession,
+    *,
+    thread_id: uuid.UUID,
+    requester_user_id: uuid.UUID,
+    limit: int,
+    offset: int,
+) -> list[ChatMessage]:
+    thread = await get_personal_thread_for_caller(
+        db, thread_id=thread_id, requester_user_id=requester_user_id
+    )
+    return await list_messages_for_thread(db, thread_id=thread.id, limit=limit, offset=offset)
+
+
+async def archive_personal_thread_route(
+    db: AsyncSession, *, thread_id: uuid.UUID, requester_user_id: uuid.UUID
+) -> ChatThread:
+    thread = await get_personal_thread_for_caller(
+        db, thread_id=thread_id, requester_user_id=requester_user_id
+    )
+    return await archive_thread(db, thread=thread, now=dt.datetime.now(dt.UTC))
+
+
+async def post_personal_message(
+    db: AsyncSession,
+    *,
+    thread_id: uuid.UUID,
+    requester_user_id: uuid.UUID,
+    content: str,
+    llm: LLMProvider,
+) -> tuple[ChatMessage, ChatMessage]:
+    """Personal-scope counterpart of `post_message`: the owner-scoped IDOR gate, then
+    the shared generation tail. Skips both workspace-only preconditions on purpose --
+    `assert_workspace_active_by_id` (there is no workspace to be dissolved) and the
+    SHARED mutual-consent gate (a personal thread reads no relationship consent)."""
+    thread = await get_personal_thread_for_caller(
+        db, thread_id=thread_id, requester_user_id=requester_user_id
+    )
+    return await _persist_message_pair(
+        db,
+        thread=thread,
+        workspace_id=None,
+        requester_user_id=requester_user_id,
+        content=content,
+        llm=llm,
+    )
+
+
 async def _build_context(
     db: AsyncSession,
     *,
     thread: ChatThread,
-    workspace_id: uuid.UUID,
+    workspace_id: uuid.UUID | None,
     requester_user_id: uuid.UUID,
     user_query: str,
 ) -> BuiltCopilotContext:
     """The one place `thread.scope` (read from the DB) decides which structurally
     separate builder function runs -- a literal, exhaustive match, never a
-    client-supplied scope."""
+    client-supplied scope. `workspace_id` is `None` exactly for PERSONAL_PRIVATE
+    threads; the workspace-bound arms fail closed (`NotFoundError`) if it is ever
+    missing, instead of calling a builder that cannot work without it."""
     match thread.scope:
         case ThreadScope.RELATIONSHIP_SHARED:
+            if workspace_id is None:  # pragma: no cover -- cannot happen via any route
+                raise NotFoundError(f"thread {thread.id} not found")
             return await build_shared_context(
                 db,
                 workspace_id=workspace_id,
@@ -228,6 +358,8 @@ async def _build_context(
                 user_query=user_query,
             )
         case ThreadScope.RELATIONSHIP_PRIVATE:
+            if workspace_id is None:  # pragma: no cover -- cannot happen via any route
+                raise NotFoundError(f"thread {thread.id} not found")
             return await build_private_context(
                 db,
                 workspace_id=workspace_id,
@@ -236,53 +368,31 @@ async def _build_context(
                 user_query=user_query,
             )
         case ThreadScope.PERSONAL_PRIVATE:
-            # PR-V2-09b, not implemented in this PR -- table/CHECK-constraint shape
-            # exists (models/tables.py::ChatThread), but no route ever creates such
-            # a thread here, so this branch should be unreachable in practice.
-            raise NotFoundError(f"thread {thread.id} not found")
+            # No workspace, no membership, no consent -- the personal thread's own
+            # owner-scoped gate already ran before this point.
+            return await build_personal_context(
+                db,
+                requester_user_id=requester_user_id,
+                thread=thread,
+                user_query=user_query,
+            )
 
 
-async def post_message(
+async def _persist_message_pair(
     db: AsyncSession,
     *,
-    workspace_id: uuid.UUID,
-    thread_id: uuid.UUID,
+    thread: ChatThread,
+    workspace_id: uuid.UUID | None,
     requester_user_id: uuid.UUID,
     content: str,
     llm: LLMProvider,
 ) -> tuple[ChatMessage, ChatMessage]:
-    """Persists the USER `ChatMessage` synchronously, then SYNCHRONOUSLY (no job/
-    worker -- interactive chat latency) runs context-build -> pipeline -> validate
-    and persists the ASSISTANT reply. On `LLMProviderError`/`AnalysisGenerationError`
-    the ASSISTANT row is persisted as FAILED with an `error_code` -- this function
-    still returns normally (the route returns 201): the USER message is saved and
-    retry is possible, a transient/validation failure is never a 500."""
-    thread = await get_thread_for_caller(
-        db, workspace_id=workspace_id, thread_id=thread_id, requester_user_id=requester_user_id
-    )
-
-    # PR-V2-10 -- Dissolved-Gate NACH dem IDOR-Gate von `get_thread_for_caller` und
-    # VOR dem Consent-Gate: nach einem Dissolve sind alle Grants revoked, ein
-    # Consent-Check zuerst würde die eigentliche Ursache als 403 verschleiern statt
-    # als 409. Bewusst außerhalb des try-Blocks unten -- ein dissolvter Workspace ist
-    # eine harte Vorbedingung (409), keine Generierungs-Störung, die als FAILED-
-    # ASSISTANT-Row mit 201 endet.
-    await assert_workspace_active_by_id(db, workspace_id=workspace_id)
-
-    # Consent-Gate, checked as an upfront precondition (same tier as the
-    # ownership/scope gate above) for RELATIONSHIP_SHARED -- a missing mutual grant
-    # raises ConsentNotGranted here and NOTHING is persisted (blueprint: "Gleiches
-    # Ownership/Scope-Gate wie GET. Consent-Gate: SHARED->mutual..."). This is
-    # deliberately distinct from the try/except below, which only covers failures
-    # *during generation* (LLMProviderError et al.) that still persist a FAILED
-    # ASSISTANT row and return 201 -- a missing consent precondition never gets that
-    # far. RELATIONSHIP_PRIVATE has no equivalent upfront gate: every partner block
-    # is gated individually, soft-fail, inside build_private_context.
-    if thread.scope == ThreadScope.RELATIONSHIP_SHARED:
-        await assert_shared_consent_precondition(
-            db, workspace_id=workspace_id, requester_user_id=requester_user_id
-        )
-
+    """The shared generation tail of `post_message`/`post_personal_message`: persist
+    the USER row, persist the ASSISTANT row as GENERATING, build the context from
+    `thread.scope`, snapshot it, run the pipeline, and persist the outcome. All gates
+    (IDOR, workspace-active, consent) have already run in the caller -- this function
+    never widens scope, it only assembles and persists for a thread that was already
+    proven to belong to `requester_user_id`."""
     user_message = await create_message(
         db,
         thread_id=thread.id,
@@ -365,3 +475,54 @@ async def post_message(
         )
 
     return user_message, assistant_message
+
+
+async def post_message(
+    db: AsyncSession,
+    *,
+    workspace_id: uuid.UUID,
+    thread_id: uuid.UUID,
+    requester_user_id: uuid.UUID,
+    content: str,
+    llm: LLMProvider,
+) -> tuple[ChatMessage, ChatMessage]:
+    """Persists the USER `ChatMessage` synchronously, then SYNCHRONOUSLY (no job/
+    worker -- interactive chat latency) runs context-build -> pipeline -> validate
+    and persists the ASSISTANT reply. On `LLMProviderError`/`AnalysisGenerationError`
+    the ASSISTANT row is persisted as FAILED with an `error_code` -- this function
+    still returns normally (the route returns 201): the USER message is saved and
+    retry is possible, a transient/validation failure is never a 500."""
+    thread = await get_thread_for_caller(
+        db, workspace_id=workspace_id, thread_id=thread_id, requester_user_id=requester_user_id
+    )
+
+    # PR-V2-10 -- Dissolved-Gate NACH dem IDOR-Gate von `get_thread_for_caller` und
+    # VOR dem Consent-Gate: nach einem Dissolve sind alle Grants revoked, ein
+    # Consent-Check zuerst würde die eigentliche Ursache als 403 verschleiern statt
+    # als 409. Bewusst außerhalb des try-Blocks unten -- ein dissolvter Workspace ist
+    # eine harte Vorbedingung (409), keine Generierungs-Störung, die als FAILED-
+    # ASSISTANT-Row mit 201 endet.
+    await assert_workspace_active_by_id(db, workspace_id=workspace_id)
+
+    # Consent-Gate, checked as an upfront precondition (same tier as the
+    # ownership/scope gate above) for RELATIONSHIP_SHARED -- a missing mutual grant
+    # raises ConsentNotGranted here and NOTHING is persisted (blueprint: "Gleiches
+    # Ownership/Scope-Gate wie GET. Consent-Gate: SHARED->mutual..."). This is
+    # deliberately distinct from the try/except below, which only covers failures
+    # *during generation* (LLMProviderError et al.) that still persist a FAILED
+    # ASSISTANT row and return 201 -- a missing consent precondition never gets that
+    # far. RELATIONSHIP_PRIVATE has no equivalent upfront gate: every partner block
+    # is gated individually, soft-fail, inside build_private_context.
+    if thread.scope == ThreadScope.RELATIONSHIP_SHARED:
+        await assert_shared_consent_precondition(
+            db, workspace_id=workspace_id, requester_user_id=requester_user_id
+        )
+
+    return await _persist_message_pair(
+        db,
+        thread=thread,
+        workspace_id=workspace_id,
+        requester_user_id=requester_user_id,
+        content=content,
+        llm=llm,
+    )

@@ -11,6 +11,8 @@ from pathlib import Path
 
 import asyncpg
 import pytest
+from alembic.config import Config
+from alembic.script import ScriptDirectory
 from sqlalchemy.engine import make_url
 
 from numra_api.db import build_engine, build_sessionmaker
@@ -18,10 +20,24 @@ from numra_api.services.checkin_service import get_checkin, submit_checkin
 
 API_DIR = Path(__file__).resolve().parents[2]
 OLD = "d4e5f6a7b8c9"
+#: The migration under test (checkin rounds). Deliberately NOT "the head": any later
+#: additive migration moves the head, so the end state of `upgrade head` is read from
+#: Alembic itself (`_chain_head()`), never from a frozen literal.
 NEW = "e6a1b2c3d4e5"
 BASE_URL = os.environ.get(
     "TEST_DATABASE_URL", "postgresql+asyncpg://numra:numra_dev_password@127.0.0.1:5432/numra_test"
 )
+
+
+def _migration_script() -> ScriptDirectory:
+    return ScriptDirectory.from_config(Config(str(API_DIR / "alembic.ini")))
+
+
+def _chain_head() -> str:
+    """The single current head of the migration chain, resolved by Alembic."""
+    heads = _migration_script().get_heads()
+    assert len(heads) == 1, f"expected exactly one alembic head, got {heads}"
+    return heads[0]
 
 
 @pytest.fixture
@@ -203,7 +219,14 @@ def test_legacy_migration_and_atomic_rejection(migration_url, case):
         try:
             assert await _retained(conn) == original
             version = await conn.fetchval("SELECT version_num FROM alembic_version")
-            assert version == (NEW if compatible else OLD)
+            assert version == (_chain_head() if compatible else OLD)
+            if compatible:
+                # The migration under test must be part of the applied chain: a later
+                # additive migration advances the head, it never drops this revision.
+                assert any(
+                    revision.revision == NEW
+                    for revision in _migration_script().iterate_revisions(_chain_head(), "base")
+                )
             if not compatible:
                 assert "CHECKIN_MIGRATION_INCOMPATIBLE" in log
                 assert await conn.fetchval("SELECT to_regclass('checkin_round_dimensions')") is None

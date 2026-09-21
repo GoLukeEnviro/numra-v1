@@ -719,6 +719,82 @@ export interface paths {
         patch: operations["patch_life_tracking_entry_route_v1_life_tracking_entries__entry_id__patch"];
         trace?: never;
     };
+    "/v1/me/copilot/threads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Personal Threads Route */
+        get: operations["list_personal_threads_route_v1_me_copilot_threads_get"];
+        put?: never;
+        /**
+         * Create Personal Thread Route
+         * @description Get-or-create the caller's own personal thread -- idempotent, at most one
+         *     non-archived personal thread per owner (DB-enforced by
+         *     `uq_chat_threads_one_personal_per_owner`). No workspace and no membership are
+         *     involved: the personal Copilot works for a user with no connection at all.
+         */
+        post: operations["create_personal_thread_route_v1_me_copilot_threads_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/copilot/threads/{thread_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Personal Thread Route */
+        get: operations["get_personal_thread_route_v1_me_copilot_threads__thread_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/copilot/threads/{thread_id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Archive Personal Thread Route Handler */
+        post: operations["archive_personal_thread_route_handler_v1_me_copilot_threads__thread_id__archive_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/copilot/threads/{thread_id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Personal Messages Route */
+        get: operations["list_personal_messages_route_v1_me_copilot_threads__thread_id__messages_get"];
+        put?: never;
+        /** Post Personal Message Route */
+        post: operations["post_personal_message_route_v1_me_copilot_threads__thread_id__messages_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me/entitlements": {
         parameters: {
             query?: never;
@@ -3180,6 +3256,19 @@ export interface components {
          * @enum {string}
          */
         PersonalTaskStatus: "ACTIVE" | "COMPLETED" | "ARCHIVED";
+        /**
+         * PersonalThreadCreateRequest
+         * @description `POST /v1/me/copilot/threads` body. The scope of a personal thread is not a
+         *     client choice -- it is always `PERSONAL_PRIVATE`, server-derived (specs/v2/
+         *     copilot-grounding-spec.md: which builder runs is decided from the persisted
+         *     `ChatThread.scope`, never from a request field). The field exists only so a
+         *     client that sends one explicitly gets a clear 422 instead of a silent ignore,
+         *     and an omitted (or `null`) body stays accepted.
+         */
+        PersonalThreadCreateRequest: {
+            /** @description Optional. Must be PERSONAL_PRIVATE when sent -- any other scope is rejected (422); it is never honoured as a thread scope. */
+            scope?: components["schemas"]["ThreadScope"] | null;
+        };
         /** PrivateNoteCreateRequest */
         PrivateNoteCreateRequest: {
             /** Content */
@@ -3862,16 +3951,18 @@ export interface components {
         TaskType: "FOR_PARTNER_PROPOSED" | "JOINT_SHARED" | "AVENYTH_SUGGESTED";
         /** ThreadCreateRequest */
         ThreadCreateRequest: {
-            /** @description RELATIONSHIP_SHARED or RELATIONSHIP_PRIVATE only -- PERSONAL_PRIVATE is rejected (PR-V2-09b, not implemented in this PR). */
+            /** @description RELATIONSHIP_SHARED or RELATIONSHIP_PRIVATE only -- PERSONAL_PRIVATE is not creatable on a workspace path; personal threads are created via POST /v1/me/copilot/threads. */
             scope: components["schemas"]["ThreadScope"];
         };
         /**
          * ThreadScope
-         * @description PR-V2-09 -- specs/v2/copilot-grounding-spec.md Thread model. Only
-         *     `RELATIONSHIP_SHARED`/`RELATIONSHIP_PRIVATE` are ever created by a route in this
-         *     PR -- `PERSONAL_PRIVATE`'s column shape (workspace_id NULL, owner_user_id set) is
-         *     reserved on `ChatThread`/its CHECK constraint so PR-V2-09b can reuse this table
-         *     without a migration, but no route/service in this PR creates that scope.
+         * @description PR-V2-09 -- specs/v2/copilot-grounding-spec.md Thread model.
+         *     `RELATIONSHIP_SHARED`/`RELATIONSHIP_PRIVATE` are created via
+         *     `routes/copilot_threads.py` (workspace-bound); `PERSONAL_PRIVATE` via
+         *     `routes/personal_copilot.py` (`workspace_id IS NULL`, `owner_user_id` = the
+         *     authenticated caller). The column shape of every scope is DB-enforced by
+         *     `ChatThread`'s CHECK constraint, the one-thread-per-owner uniqueness of each by
+         *     its own partial unique index.
          * @enum {string}
          */
         ThreadScope: "PERSONAL_PRIVATE" | "RELATIONSHIP_PRIVATE" | "RELATIONSHIP_SHARED";
@@ -5537,6 +5628,220 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LifeTrackingEntryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_personal_threads_route_v1_me_copilot_threads_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatThreadOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_personal_thread_route_v1_me_copilot_threads_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PersonalThreadCreateRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatThreadOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_personal_thread_route_v1_me_copilot_threads__thread_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                thread_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatThreadOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    archive_personal_thread_route_handler_v1_me_copilot_threads__thread_id__archive_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                thread_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatThreadOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_personal_messages_route_v1_me_copilot_threads__thread_id__messages_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                thread_id: string;
+            };
+            cookie?: {
+                numra_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatMessageOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_personal_message_route_v1_me_copilot_threads__thread_id__messages_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                thread_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+                numra_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MessageCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessagePairOut"];
                 };
             };
             /** @description Validation Error */

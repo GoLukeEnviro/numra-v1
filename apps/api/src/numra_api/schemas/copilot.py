@@ -15,7 +15,23 @@ from numra_api.models.enums import ChatMessageRole, ChatMessageStatus, ThreadSco
 class ThreadCreateRequest(BaseModel):
     scope: ThreadScope = Field(
         description="RELATIONSHIP_SHARED or RELATIONSHIP_PRIVATE only -- "
-        "PERSONAL_PRIVATE is rejected (PR-V2-09b, not implemented in this PR)."
+        "PERSONAL_PRIVATE is not creatable on a workspace path; personal threads "
+        "are created via POST /v1/me/copilot/threads."
+    )
+
+
+class PersonalThreadCreateRequest(BaseModel):
+    """`POST /v1/me/copilot/threads` body. The scope of a personal thread is not a
+    client choice -- it is always `PERSONAL_PRIVATE`, server-derived (specs/v2/
+    copilot-grounding-spec.md: which builder runs is decided from the persisted
+    `ChatThread.scope`, never from a request field). The field exists only so a
+    client that sends one explicitly gets a clear 422 instead of a silent ignore,
+    and an omitted (or `null`) body stays accepted."""
+
+    scope: ThreadScope | None = Field(
+        default=None,
+        description="Optional. Must be PERSONAL_PRIVATE when sent -- any other "
+        "scope is rejected (422); it is never honoured as a thread scope.",
     )
 
 
@@ -64,5 +80,6 @@ __all__ = [
     "ChatThreadOut",
     "MessageCreateRequest",
     "MessagePairOut",
+    "PersonalThreadCreateRequest",
     "ThreadCreateRequest",
 ]

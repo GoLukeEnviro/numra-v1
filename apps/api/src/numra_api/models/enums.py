@@ -253,11 +253,13 @@ class MilestoneStatus(StrEnum):
 
 
 class ThreadScope(StrEnum):
-    """PR-V2-09 -- specs/v2/copilot-grounding-spec.md Thread model. Only
-    `RELATIONSHIP_SHARED`/`RELATIONSHIP_PRIVATE` are ever created by a route in this
-    PR -- `PERSONAL_PRIVATE`'s column shape (workspace_id NULL, owner_user_id set) is
-    reserved on `ChatThread`/its CHECK constraint so PR-V2-09b can reuse this table
-    without a migration, but no route/service in this PR creates that scope."""
+    """PR-V2-09 -- specs/v2/copilot-grounding-spec.md Thread model.
+    `RELATIONSHIP_SHARED`/`RELATIONSHIP_PRIVATE` are created via
+    `routes/copilot_threads.py` (workspace-bound); `PERSONAL_PRIVATE` via
+    `routes/personal_copilot.py` (`workspace_id IS NULL`, `owner_user_id` = the
+    authenticated caller). The column shape of every scope is DB-enforced by
+    `ChatThread`'s CHECK constraint, the one-thread-per-owner uniqueness of each by
+    its own partial unique index."""
 
     PERSONAL_PRIVATE = "PERSONAL_PRIVATE"
     RELATIONSHIP_PRIVATE = "RELATIONSHIP_PRIVATE"
