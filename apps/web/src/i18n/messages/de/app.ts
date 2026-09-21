@@ -988,6 +988,8 @@ export const deApp = {
   "app.copilot.personalTitle": "Persönliches Gespräch",
   "app.copilot.personalIntro": "Frage zu deinem eigenen Profil — ohne Beziehungskontext und ohne Workspace.",
   "app.copilot.personalNotice": "Dieses Gespräch gehört nur dir. Es ist an keinen Beziehungs-Workspace gebunden und wird niemandem angezeigt.",
+  "app.copilot.failedTurn": "Die Antwort konnte nicht geprüft werden — bitte erneut senden.",
+  "app.copilot.failedTurnBasis": "Keine Antwort",
   "app.copilot.indexWorkspacesTitle": "Beziehungs-Copiloten",
   "app.personDetail.evidenceButton": "Evidenz",
   "app.evidence.eyebrow": "Beobachten statt behaupten",
