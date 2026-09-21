@@ -183,7 +183,7 @@ function VerifyEmailGate() {
 export default function VerifyEmailPage() {
   const { t } = useLocale();
   return (
-    <div className="sacred-wheel-bg relative flex min-h-screen items-center justify-center overflow-hidden bg-background p-6">
+    <main className="sacred-wheel-bg relative flex min-h-screen items-center justify-center overflow-hidden bg-background p-6">
       <NumericWheel className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 opacity-40" />
       <NumericWheel className="pointer-events-none absolute -bottom-32 -left-32 h-96 w-96 opacity-20" />
 
@@ -200,6 +200,6 @@ export default function VerifyEmailPage() {
           </Suspense>
         </CardContent>
       </Card>
-    </div>
+    </main>
   );
 }
