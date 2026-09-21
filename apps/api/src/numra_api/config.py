@@ -12,7 +12,12 @@ EmailBackend = Literal["logging", "disabled", "smtp"]
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    #: `env_ignore_empty` is what makes the compose passthrough pattern safe: the
+    #: stack forwards optional transport settings with empty defaults
+    #: (`SMTP_PORT: ${SMTP_PORT:-}`), and an empty env value must mean "unset"
+    #: (fall back to the field default) instead of failing int/bool parsing for
+    #: deployments that do not configure SMTP at all.
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore", env_ignore_empty=True)
 
     database_url: str = "postgresql+asyncpg://numra:numra_dev_password@127.0.0.1:5432/numra_dev"
     environment: str = "development"

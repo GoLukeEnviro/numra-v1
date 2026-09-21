@@ -52,6 +52,19 @@ services:
       ALLOW_SELF_SIGNUP: ${ALLOW_SELF_SIGNUP:-false}
       ENVIRONMENT: ${ENVIRONMENT:-production}
       EMAIL_BACKEND: ${EMAIL_BACKEND:-disabled}
+      # SMTP transport — only meaningful with EMAIL_BACKEND=smtp. The empty
+      # defaults are deliberate: Settings ignores empty env values
+      # (env_ignore_empty), so an unset SMTP_PORT etc. stays None instead of
+      # failing int parsing, and the disabled/logging defaults keep working.
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-false}
+      SMTP_TIMEOUT_SECONDS: ${SMTP_TIMEOUT_SECONDS:-10.0}
       NUMRA_LLM_PROVIDER: ${NUMRA_LLM_PROVIDER:-disabled}
       NUMRA_LLM_MAX_RETRIES: ${NUMRA_LLM_MAX_RETRIES:-3}
       NUMRA_LLM_TEMPERATURE: ${NUMRA_LLM_TEMPERATURE:-1.0}
@@ -97,6 +110,19 @@ services:
       APP_TIMEZONE: ${APP_TIMEZONE:-Europe/Berlin}
       SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
       EMAIL_BACKEND: ${EMAIL_BACKEND:-disabled}
+      # SMTP transport — only meaningful with EMAIL_BACKEND=smtp. The empty
+      # defaults are deliberate: Settings ignores empty env values
+      # (env_ignore_empty), so an unset SMTP_PORT etc. stays None instead of
+      # failing int parsing, and the disabled/logging defaults keep working.
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-false}
+      SMTP_TIMEOUT_SECONDS: ${SMTP_TIMEOUT_SECONDS:-10.0}
       NUMRA_LLM_PROVIDER: ${NUMRA_LLM_PROVIDER:-disabled}
       NUMRA_LLM_MAX_RETRIES: ${NUMRA_LLM_MAX_RETRIES:-3}
       NUMRA_LLM_TEMPERATURE: ${NUMRA_LLM_TEMPERATURE:-1.0}
@@ -131,6 +157,19 @@ services:
       APP_TIMEZONE: ${APP_TIMEZONE:-Europe/Berlin}
       SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
       EMAIL_BACKEND: ${EMAIL_BACKEND:-disabled}
+      # SMTP transport — only meaningful with EMAIL_BACKEND=smtp. The empty
+      # defaults are deliberate: Settings ignores empty env values
+      # (env_ignore_empty), so an unset SMTP_PORT etc. stays None instead of
+      # failing int parsing, and the disabled/logging defaults keep working.
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-false}
+      SMTP_TIMEOUT_SECONDS: ${SMTP_TIMEOUT_SECONDS:-10.0}
       NUMRA_LLM_PROVIDER: ${NUMRA_LLM_PROVIDER:-disabled}
       NUMRA_LLM_MAX_RETRIES: ${NUMRA_LLM_MAX_RETRIES:-3}
       NUMRA_LLM_TEMPERATURE: ${NUMRA_LLM_TEMPERATURE:-1.0}
