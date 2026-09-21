@@ -21,7 +21,6 @@ def test_mock_llm_provider_allowed_outside_production() -> None:
 
 def test_llm_sampling_defaults_to_deepseek_recommended_values() -> None:
     settings = Settings(database_url=_DB_URL, environment="test")
-
     assert settings.numra_llm_model_fast == "deepseek-v4.1-flash"
     assert settings.numra_llm_model_premium == "deepseek-v4-pro:0813"
     assert settings.numra_llm_temperature == 1.0
@@ -177,3 +176,42 @@ def test_disabled_email_backend_allowed_in_production() -> None:
         rate_limit_backend="redis",
         redis_url="redis://redis:6379/0",
     )  # must not raise
+
+
+def test_empty_smtp_env_values_are_ignored(monkeypatch) -> None:
+    """Compose forwards SMTP_* with empty defaults (`${SMTP_PORT:-}`); an empty
+    value must mean "unset" (field default), not an int/bool parse error for
+    deployments that never configure SMTP."""
+    monkeypatch.setenv("SMTP_HOST", "")
+    monkeypatch.setenv("SMTP_PORT", "")
+    monkeypatch.setenv("SMTP_FROM_EMAIL", "")
+    monkeypatch.setenv("SMTP_STARTTLS", "")
+    monkeypatch.setenv("SMTP_TIMEOUT_SECONDS", "")
+
+    settings = Settings(database_url=_DB_URL, environment="test")
+
+    assert settings.smtp_host is None
+    assert settings.smtp_port is None
+    assert settings.smtp_from_email is None
+    assert settings.smtp_starttls is True  # falls back to the field default
+    assert settings.smtp_timeout_seconds == 10.0
+
+
+def test_smtp_env_values_are_read_when_set(monkeypatch) -> None:
+    monkeypatch.setenv("SMTP_HOST", "smtp.provider.invalid")
+    monkeypatch.setenv("SMTP_PORT", "587")
+    monkeypatch.setenv("SMTP_USERNAME", "apikey")
+    monkeypatch.setenv("SMTP_FROM_EMAIL", "no-reply@your-domain.invalid")
+    monkeypatch.setenv("SMTP_FROM_NAME", "AVENYTH")
+    monkeypatch.setenv("SMTP_USE_TLS", "true")
+    monkeypatch.setenv("SMTP_STARTTLS", "false")
+
+    settings = Settings(database_url=_DB_URL, environment="test")
+
+    assert settings.smtp_host == "smtp.provider.invalid"
+    assert settings.smtp_port == 587
+    assert settings.smtp_username == "apikey"
+    assert settings.smtp_from_email == "no-reply@your-domain.invalid"
+    assert settings.smtp_from_name == "AVENYTH"
+    assert settings.smtp_use_tls is True
+    assert settings.smtp_starttls is False
