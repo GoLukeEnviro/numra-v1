@@ -6,7 +6,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from numra_api.models import Calculation, Person
 from numra_api.repositories.calculations import create_calculation
+from numra_api.services.engine_errors import map_engine_error
 from numra_numerology.engine import calculate_profile
+from numra_numerology.models.errors import NormalizationUnsupportedScript
 from numra_numerology.models.person import BirthPlace, BirthTime, PersonInput
 
 
@@ -29,7 +31,10 @@ async def run_and_persist_calculation(
     db: AsyncSession, *, person: Person, as_of_date: dt.date
 ) -> Calculation:
     person_input = person_input_from_row(person)
-    profile = calculate_profile(person_input, as_of_date=as_of_date)
+    try:
+        profile = calculate_profile(person_input, as_of_date=as_of_date)
+    except NormalizationUnsupportedScript as exc:
+        raise map_engine_error(exc) from exc
 
     return await create_calculation(
         db,
