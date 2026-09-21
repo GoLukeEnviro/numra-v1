@@ -114,4 +114,15 @@ describe("Register page", () => {
     expect(await screen.findByText("Die Passwörter stimmen nicht überein.")).toBeInTheDocument();
     expect(registerFn).not.toHaveBeenCalled();
   });
+
+  it("exposes exactly one main landmark (PWA-10 a11y gate)", async () => {
+    vi.mocked(api.publicConfig.get).mockResolvedValue(openConfig);
+    mockAuth();
+    const { container } = renderPage();
+
+    // Public pages are not rendered inside the authenticated app shell, which is
+    // the only other place a <main> comes from -- each public page must carry its
+    // own single landmark (found missing on login/register/forgot/reset/verify).
+    await waitFor(() => expect(container.querySelectorAll("main")).toHaveLength(1));
+  });
 });
