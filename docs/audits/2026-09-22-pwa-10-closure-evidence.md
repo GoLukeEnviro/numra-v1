@@ -1,13 +1,15 @@
 # PWA-10 — Abschluss-Nachweis (sanitisiert, versioniert)
 
 - **Datum:** 2026-09-22
-- **Audit-SHA:** `4b0926cdc9899cf652279d5ba909b05da68b3835` (Stack `numra-audit`, Parität
-  datei-hashweise belegt: Python 10/10 identisch, Frontend-Build enthält die
-  eingeführten Strings)
-- **Rohbelege (Host, nicht im Repo):** `/home/hermes/nightrun/evidence/pwa06-reacceptance/`
-  — `PWA10-CHECKS-*.json`, `PWA-06-REACCEPTANCE-20260921.md`,
-  `PWA-10-GO-NOGO-20260921.md`; Rohdaten der Abnahme
-  `pwa06-reaccept-20260921T172101Z.json/log`
+- **Finaler Closure-SHA:** `d7ebf36bbd6a7150739920f2f048d1e4015dfed9` (PR #189 a11y + PR #190
+  Offline-Entscheidung/State/Kriterien), nach dem Abnahme-Lauf
+  `pwa10-closure-20260922T144716Z` (`VERDICT=PASS`, `findings: []`)
+- **Vorheriger Audit-SHA:** `4b0926cdc9899cf652279d5ba909b05da68b3835` (Stack `numra-audit`,
+  Parität datei-hashweise belegt; die späteren Merges änderten nur Web- und Doku-Dateien,
+  der Python-Code ist identisch — nachgemessen: 7/7 verglichene API-/Engine-Dateien
+  hashgleich mit dem finalen SHA)
+- **Rohbelege (Host, nicht im Repo):** `/home/hermes/nightrun/evidence/pwa10-closure/`
+  (`pwa10-closure-*.json`/`.log`) und `/home/hermes/nightrun/evidence/pwa06-reacceptance/`
 - **Betriebsgrenzen:** nur synthetische `@example.com`-Konten; Produktion wurde nicht
   verändert (kein Deploy, keine Nutzerdaten)
 
@@ -71,7 +73,41 @@ Gepinnt durch `apps/web/src/components/pwa/__tests__/sw-navigation-strategy.test
 | Umgebung | Ergebnis |
 |---|---|
 | Produktion (`:8443`, read-only) | Web 200, API `/v1/health/ready` `healthy` |
-| Audit (`:8444`/`:17301`) | Web 200, API `healthy` |
+| Audit (`:8444`/`:17301`) | Web 200, API `healthy` (database, numerologie_engine, llm, pdf) |
+
+## 5a. Abschluss-Abnahme auf dem finalen SHA
+
+Lauf `20260922T144716Z` gegen `http://127.0.0.1:17801` + Web-Proxy `:17301`, über den
+**echten Browser-Pfad** (Origin-Header gesetzt, wie ihn ein Browser sendet):
+
+```text
+health ......................... 200  {"status":"healthy", ...}
+/login ......................... 200  <main> vorhanden, lang="de"
+Origin-Guard fremd ............. 403  ORIGIN_NOT_ALLOWED
+Origin-Guard eigene Origin ..... 401  (Guard passiert, Auth greift)
+register ....................... 201
+SELF-Person .................... 201
+Calculation .................... 201
+Copilot-Thread (PERSONAL_PRIVATE) 201
+Nachricht / Liste .............. 201 / 200
+Assistant-Turn ................. COMPLETE, 870 Zeichen, model_provider=ollama_cloud
+```
+
+Der Provider-Beleg kommt direkt aus der Datenbank (`chat_messages`), nicht aus einer
+Antwortkopie:
+
+```text
+status  | model_provider | model_name   | chars | error_code
+COMPLETE| ollama_cloud   | ollama_cloud |   870 |
+```
+
+In derselben Tabelle stehen drei `FAILED`-Zeilen mit `error_code =
+SELF_PROFILE_REQUIRED` — Reste von Sonden, die ohne SELF-Profil liefen. Sie sind
+versehentlich aussagekräftig: sie zeigen, dass der FAILED-Zustand persistiert wird
+und die Oberfläche dafür den Hinweis aus #183 rendert, statt eine leere Blase zu
+zeigen.
+
+`findings: []`.
 
 ## 6. Origin-Allowlist (#187)
 
