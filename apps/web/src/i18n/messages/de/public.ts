@@ -53,6 +53,7 @@ export const dePublic = {
   "public.login.promise1": "Jede Zahl trägt die Herleitung, die sie erzeugt hat.",
   "public.login.promise2": "Gleiche Eingaben reproduzieren immer denselben Hash.",
   "public.login.promise3": "Kein Kompatibilitäts-Score wird jemals erfunden.",
+  "public.login.title": "Anmelden",
   "public.login.subtitle": "Mit deinem Konto anmelden",
   "public.login.email": "E-Mail",
   "public.login.password": "Passwort",

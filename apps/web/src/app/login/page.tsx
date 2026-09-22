@@ -65,11 +65,18 @@ function LoginForm() {
       <NumericWheel className="pointer-events-none absolute -bottom-32 -left-32 h-96 w-96 opacity-20" />
 
       <div className="relative flex w-full max-w-4xl flex-col items-center gap-12 lg:flex-row lg:items-center lg:justify-between">
+        {/* Page heading. Deliberately NOT inside the brand panel below: that panel is
+            `hidden lg:block`, so an h1 living there is display:none below the lg
+            breakpoint and drops out of the accessibility tree on mobile (#185). The
+            heading is visually hidden here because the brand mark already carries the
+            name visually; it exists for the document outline and screen readers. */}
+        <h1 className="sr-only">{t("public.login.title")}</h1>
+
         {/* Brand panel — hidden on small screens so the form stays the whole viewport. */}
         <div className="hidden max-w-sm animate-rise-in lg:block">
-          <h1 className="mt-0">
+          <div className="mt-0">
             <Logo markClassName="h-14 w-14" textClassName="text-4xl" />
-          </h1>
+          </div>
           <p className="mt-6 text-sm leading-relaxed text-muted">{t("public.login.brandIntro")}</p>
           <ul className="mt-8 flex flex-col gap-3">
             {PROMISE_KEYS.map((key) => (
