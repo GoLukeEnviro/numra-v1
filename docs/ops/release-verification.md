@@ -131,7 +131,32 @@ Existiert ein regulärer USER-Account?
          registrierten USER.
 ```
 
-### 7. Abschluss-Gate
+### 7. CORS-/Origin-Allowlist gegen den echten Web-Proxy prüfen (#187)
+
+Der Web-Proxy reicht den `Origin`-Header des Browsers an die API durch.
+`OriginValidationMiddleware` prüft ihn für state-ändernde Requests gegen
+`CORS_ALLOWED_ORIGINS`. Steht die Origin, unter der das Deployment tatsächlich
+erreichbar ist, dort nicht, schlägt **nur** der Weg über die Oberfläche fehl (403
+`ORIGIN_NOT_ALLOWED`), während der Direktaufruf der API weiter funktioniert.
+
+```bash
+BASE="https://<produktions-host>:8443"
+# Erwartet: 401 INVALID_CREDENTIALS (Guard passiert, Auth greift) -- NICHT 403.
+curl -s -o /dev/null -w '%{http_code}\n' -X POST "$BASE/api/v1/auth/login" \
+  -H 'Content-Type: application/json' \
+  -H "Origin: $BASE" \
+  -d '{"email":"origin-probe@example.com","password":"Not-A-Real-Password-123"}'
+# Erwartet: 403 ORIGIN_NOT_ALLOWED -- der Guard muss auch abweisen.
+curl -s -o /dev/null -w '%{http_code}\n' -X POST "$BASE/api/v1/auth/login" \
+  -H 'Content-Type: application/json' \
+  -H 'Origin: https://evil.example.org' \
+  -d '{"email":"origin-probe@example.com","password":"Not-A-Real-Password-123"}'
+```
+
+Beide Zeilen gehören ins Abschluss-Gate. Ein 403 auf der ersten Zeile ist ein
+Release-Blocker: die Oberfläche wäre für jeden Nutzer unbenutzbar.
+
+### 8. Abschluss-Gate
 
 Erst wenn jede Zeile PASS/erwarteter Wert zeigt, gilt `<RELEASE>_PRODUCTION_VERIFIED`:
 
