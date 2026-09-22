@@ -46,10 +46,10 @@ export default function ForgotPasswordPage() {
       <NumericWheel className="pointer-events-none absolute -bottom-32 -left-32 h-96 w-96 opacity-20" />
 
       <Card className="relative w-full max-w-sm animate-rise-in shadow-elevated">
+        <h1 className="sr-only">{t("public.forgotPassword.title")}</h1>
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">
             <Logo className="justify-center" markClassName="h-10 w-10" textClassName="text-2xl" />
-            <span className="sr-only">{t("public.forgotPassword.title")}</span>
           </CardTitle>
           <CardDescription>{t("public.forgotPassword.subtitle")}</CardDescription>
         </CardHeader>

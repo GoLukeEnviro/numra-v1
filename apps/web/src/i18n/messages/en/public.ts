@@ -55,6 +55,7 @@ export const enPublic: Record<keyof typeof dePublic, string> = {
   "public.login.promise1": "Every number carries the trace that produced it.",
   "public.login.promise2": "The same inputs always reproduce the same hash.",
   "public.login.promise3": "No compatibility score is ever invented.",
+  "public.login.title": "Sign in",
   "public.login.subtitle": "Sign in to your account",
   "public.login.email": "Email",
   "public.login.password": "Password",
