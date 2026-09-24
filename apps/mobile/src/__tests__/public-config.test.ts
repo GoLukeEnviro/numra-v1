@@ -20,14 +20,18 @@ describe("loadPublicConfig", () => {
   it("loads and validates the existing public configuration endpoint", async () => {
     const fetcher = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ brand_name: "AVENYTH", allow_self_signup: true }),
+      json: async () => ({
+        app_name: "AVENYTH",
+        self_signup_enabled: true,
+        supported_ui_locales: ["de", "en"],
+      }),
     });
 
     await expect(loadPublicConfig("https://api.example.com", fetcher)).resolves.toEqual({
       brandName: "AVENYTH",
       allowSelfSignup: true,
     });
-    expect(fetcher).toHaveBeenCalledWith("https://api.example.com/v1/config/public", {
+    expect(fetcher).toHaveBeenCalledWith("https://api.example.com/v1/public/config", {
       headers: { Accept: "application/json" },
     });
   });
@@ -40,7 +44,7 @@ describe("loadPublicConfig", () => {
 
     const malformed = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ brand_name: "" }),
+      json: async () => ({ app_name: "" }),
     });
     await expect(loadPublicConfig("https://api.example.com", malformed)).rejects.toThrow(
       "invalid public configuration",

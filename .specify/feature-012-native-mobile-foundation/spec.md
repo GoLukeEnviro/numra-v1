@@ -18,7 +18,11 @@ so that installation and environment errors are actionable before sign-in is add
 - [x] The app has loading, ready, misconfigured and unavailable states.
 - [x] The API origin comes from `EXPO_PUBLIC_API_URL`, without an embedded production URL.
 - [x] Non-local origins must use HTTPS; local development may use HTTP.
-- [x] The readiness request uses `GET /v1/config/public` and validates its minimum shape.
+- [x] The readiness request uses `GET /v1/public/config` and validates its minimum shape.
+  (Corrected 2026-09-24: this criterion, and the code it described, named the
+  reversed path `/v1/config/public` — the actual API route has always been
+  `/v1/public/config` (see `apps/api/src/numra_api/routes/public.py`); the mobile
+  client called the wrong endpoint with the wrong field names until now.)
 - [x] The mobile package has unit tests, type checking and linting.
 - [x] Existing web, API and schema behavior remains unchanged.
 
