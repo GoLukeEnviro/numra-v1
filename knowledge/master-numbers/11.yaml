@@ -7,15 +7,15 @@ core_themes:
 - Sensibilität
 - Vision
 - Vermittlung
+strengths:
+- Ausgeprägte Intuition und Vorstellungskraft
+- Fähigkeit, andere zu inspirieren
+- Feine Wahrnehmung für Zwischentöne
 shadows:
 - Überreizung
 - innere Spannung
 - Überforderung
 - unpraktischer Idealismus
-strengths:
-- Ausgeprägte Intuition und Vorstellungskraft
-- Fähigkeit, andere zu inspirieren
-- Feine Wahrnehmung für Zwischentöne
 relationships:
 - Tiefe, oft intensive emotionale Verbindungen
 - Sensibel für die Stimmung des Gegenübers
@@ -32,3 +32,39 @@ cautions:
 - Überreizung im Blick behalten
 - Innere Spannung braucht bewusste Entlastung
 - Unpraktischer Idealismus kann Umsetzung erschweren
+stable_id: de.pythagorean.v3.master.11
+classification: master
+result_contexts:
+- life_path_primary
+- life_path_secondary
+- birthday
+- attitude
+- expression
+- soul_urge
+- personality
+- maturity
+- personal_year
+- personal_month
+- personal_day
+constructive_expression: Die Symbolik der 11 kann zu gesteigerter Intuition, schöpferischer
+  Vision und einem feinen Gespür für Zusammenhänge einladen.
+shadow_expression: Die hohe Empfänglichkeit kann in Nervosität, innerer Überforderung
+  und Flucht vor dem eigenen Potenzial kippen.
+development_theme: Vision und Bodenhaftung
+practical_suggestions:
+- Halte intuitive Eingebungen schriftlich fest und prüfe sie später nüchtern.
+counter_hypotheses:
+- Intuition kann durch Erfahrungswissen und unbewusste Mustererkennung ebenso erklärt
+  werden.
+reflection_prompts:
+- Wann hast du einen intuitiven Impuls wahrgenommen und ihm vertraut?
+claim_class: traditional_claim
+source_refs:
+- numra-method-v2
+- numra-boundary-v1
+- numra-tradition-v1
+uncertainty: Meisterzahlen sind ein traditionelles Konzept ohne empirische Validierung.
+authoring_provenance:
+  authored_at: '2026-08-05'
+  author: Numra Knowledge Team
+  review_status: draft
