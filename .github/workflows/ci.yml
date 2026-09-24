@@ -18,6 +18,7 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.UV_VERSION }}
+          enable-cache: true
       - run: uv python install ${{ env.PYTHON_VERSION }}
       - run: uv sync --all-packages --all-groups
       - run: uv run ruff format --check .
@@ -30,6 +31,7 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.UV_VERSION }}
+          enable-cache: true
       - run: uv python install ${{ env.PYTHON_VERSION }}
       - run: uv sync --all-packages --all-groups
       - run: |
@@ -37,7 +39,31 @@ jobs:
             packages/engine-interpretation/src packages/engine-relationship-interpretation/src \
             packages/engine-astrology/src
 
-  unit-and-property-tests:
+  engine-unit-property:
+    # Pure-Python engine packages -- no DB, no Redis, no PDF service, no pnpm/Playwright.
+    # Kept separate from api-integration below so this path stays fast: it's what
+    # "unit and property tests" means for the engines, and it should never pay for the
+    # PDF/Postgres/Redis setup that only apps/api/tests needs.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+      - run: uv python install ${{ env.PYTHON_VERSION }}
+      - run: uv sync --all-packages --all-groups
+      - name: Engine + interpretation tests, incl. Hypothesis property tests, with coverage gate (>=90%)
+        run: |
+          uv run pytest packages/engine-numerology/tests packages/engine-interpretation/tests \
+            packages/engine-relationship-interpretation/tests -q \
+            --cov=packages/engine-numerology/src/numra_numerology \
+            --cov-report=term-missing --cov-report=xml
+          uv run coverage report \
+            --include="packages/engine-numerology/src/numra_numerology/*" \
+            --fail-under=90
+
+  api-integration:
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -65,6 +91,7 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.UV_VERSION }}
+          enable-cache: true
       - run: uv python install ${{ env.PYTHON_VERSION }}
       - run: uv sync --all-packages --all-groups
       # apps/api/tests exercises a REAL apps/pdf instance (export creation, health
@@ -75,7 +102,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile --filter @numra/pdf...
       - run: pnpm --filter @numra/pdf exec playwright install --with-deps chromium
       - name: Start apps/pdf in the background
         run: |
@@ -86,12 +113,8 @@ jobs:
             sleep 1
           done
           curl -sf http://127.0.0.1:4300/health/ready || (cat /tmp/pdf-service.log && exit 1)
-      - name: Engine coverage gate (>=90%)
-        run: |
-          uv run pytest packages/engine-numerology/tests -q \
-            --cov=packages/engine-numerology/src/numra_numerology --cov-fail-under=90
-      - name: Full suite (engine + interpretation + api, incl. Hypothesis property tests)
-        run: uv run pytest packages apps/api/tests -q
+      - name: API integration suite
+        run: uv run pytest apps/api/tests -q
 
   no-golden-leakage:
     runs-on: ubuntu-latest
@@ -100,6 +123,7 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.UV_VERSION }}
+          enable-cache: true
       - run: uv python install ${{ env.PYTHON_VERSION }}
       - run: uv sync --all-packages --all-groups
       - run: uv run pytest packages/engine-numerology/tests/unit/test_no_golden_leakage.py -q
@@ -124,6 +148,7 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.UV_VERSION }}
+          enable-cache: true
       - run: uv python install ${{ env.PYTHON_VERSION }}
       - name: pip-audit (Python dependencies)
         run: uvx pip-audit
@@ -144,6 +169,7 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.UV_VERSION }}
+          enable-cache: true
       - run: uv python install ${{ env.PYTHON_VERSION }}
       - run: uv sync --all-packages --all-groups
       - name: bandit (pinned 1.8.6, MEDIUM and above)
@@ -156,6 +182,7 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.UV_VERSION }}
+          enable-cache: true
       - run: uv python install ${{ env.PYTHON_VERSION }}
       - run: uv sync --all-packages --all-groups
       - name: profile.schema.json validates the golden fixture
@@ -272,6 +299,7 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.UV_VERSION }}
+          enable-cache: true
       - run: uv python install ${{ env.PYTHON_VERSION }}
       - run: uv sync --all-packages --all-groups
       - uses: pnpm/action-setup@v4
