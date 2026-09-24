@@ -5777,22 +5777,6 @@
               ],
               "title": "Numra Csrf"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "requestBody": {
@@ -5830,24 +5814,6 @@
       "get": {
         "description": "Der eigene, strukturierte Kontodatenexport (PWA-07, #125).\n\n`StreamingResponse`, weil das Dokument Kategorie fuer Kategorie erzeugt wird: der\nSpeicherbedarf haengt an der groessten Einzelkategorie statt an der Kontogroesse\n(siehe `services/account_export_service.py`).\n\nDie Session holt der Generator sich selbst aus dem `sessionmaker` -- bewusst\n*nicht* ueber `Depends(get_db, scope=\"function\")`: FastAPI schliesst\nfunktionsgebundene Dependencies vor dem Streaming des Bodys, eine dort geliehene\nSession waere also schon zu, bevor die erste Kategorie geschrieben ist (Details im\nModul-Docstring des Services).\n\nBewusst ein reines `GET`: die Anfrage veraendert nichts, und der Browser soll den\nDownload direkt ausloesen koennen. Es gibt deshalb auch keine CSRF-Pruefung --\ndieselbe Begruendung wie bei `GET /v1/exports`.",
         "operationId": "export_account_route_v1_account_export_get",
-        "parameters": [
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "content": {
@@ -5856,16 +5822,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Export Account Route",
@@ -5933,22 +5889,6 @@
               "title": "Page Size",
               "type": "integer"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "responses": {
@@ -5982,24 +5922,6 @@
     "/v1/admin/stats": {
       "get": {
         "operationId": "get_stats_v1_admin_stats_get",
-        "parameters": [
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "content": {
@@ -6010,16 +5932,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Get Stats",
@@ -6102,22 +6014,6 @@
               "title": "Page Size",
               "type": "integer"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "responses": {
@@ -6160,22 +6056,6 @@
               "format": "uuid",
               "title": "User Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -6235,22 +6115,6 @@
                 }
               ],
               "title": "X-Csrf-Token"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           },
           {
@@ -6323,22 +6187,6 @@
           },
           {
             "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
-          },
-          {
-            "in": "cookie",
             "name": "numra_csrf",
             "required": false,
             "schema": {
@@ -6407,22 +6255,6 @@
           },
           {
             "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
-          },
-          {
-            "in": "cookie",
             "name": "numra_csrf",
             "required": false,
             "schema": {
@@ -6471,22 +6303,6 @@
               "format": "uuid",
               "title": "Job Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -6553,22 +6369,6 @@
                 }
               ],
               "title": "Numra Csrf"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -6745,24 +6545,6 @@
     "/v1/auth/me": {
       "get": {
         "operationId": "me_v1_auth_me_get",
-        "parameters": [
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "content": {
@@ -6773,16 +6555,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Me",
@@ -7001,22 +6773,6 @@
               ],
               "title": "Numra Csrf"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "responses": {
@@ -7079,24 +6835,6 @@
       "get": {
         "description": "V1.5 Epic N: every device/browser currently signed in as this user. No IP\naddress or device identifier is stored anywhere (see models.tables.Session), so\nthere is nothing to redact here beyond simply not having it.",
         "operationId": "list_sessions_v1_auth_sessions_get",
-        "parameters": [
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "content": {
@@ -7111,16 +6849,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "List Sessions",
@@ -7164,22 +6892,6 @@
                 }
               ],
               "title": "Numra Csrf"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -7252,22 +6964,6 @@
               "title": "Calculation Id",
               "type": "string"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "responses": {
@@ -7323,22 +7019,6 @@
               "minimum": 0,
               "title": "Offset",
               "type": "integer"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -7399,22 +7079,6 @@
               "minimum": 0,
               "title": "Offset",
               "type": "integer"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -7482,22 +7146,6 @@
                 }
               ],
               "title": "Numra Csrf"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -7573,22 +7221,6 @@
                 }
               ],
               "title": "Numra Csrf"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -7717,22 +7349,6 @@
               ],
               "title": "Numra Csrf"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "responses": {
@@ -7808,22 +7424,6 @@
               ],
               "title": "Numra Csrf"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "responses": {
@@ -7898,22 +7498,6 @@
                 }
               ],
               "title": "Numra Csrf"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -7991,22 +7575,6 @@
               ],
               "title": "Numra Csrf"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "requestBody": {
@@ -8050,24 +7618,6 @@
     "/v1/exports": {
       "get": {
         "operationId": "list_exports_route_v1_exports_get",
-        "parameters": [
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "content": {
@@ -8082,16 +7632,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "List Exports Route",
@@ -8132,22 +7672,6 @@
                 }
               ],
               "title": "Numra Csrf"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -8201,22 +7725,6 @@
               "format": "uuid",
               "title": "Export Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -8339,22 +7847,6 @@
               ],
               "title": "Numra Csrf"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "responses": {
@@ -8388,22 +7880,6 @@
               "format": "uuid",
               "title": "Entry Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -8478,22 +7954,6 @@
               ],
               "title": "Numra Csrf"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "requestBody": {
@@ -8537,24 +7997,6 @@
     "/v1/me/copilot/threads": {
       "get": {
         "operationId": "list_personal_threads_route_v1_me_copilot_threads_get",
-        "parameters": [
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "content": {
@@ -8569,16 +8011,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "List Personal Threads Route",
@@ -8620,22 +8052,6 @@
                 }
               ],
               "title": "Numra Csrf"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -8696,22 +8112,6 @@
               "format": "uuid",
               "title": "Thread Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -8788,22 +8188,6 @@
               ],
               "title": "Numra Csrf"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "responses": {
@@ -8869,22 +8253,6 @@
               "minimum": 0,
               "title": "Offset",
               "type": "integer"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -8963,22 +8331,6 @@
               ],
               "title": "Numra Csrf"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "requestBody": {
@@ -9023,24 +8375,6 @@
       "get": {
         "description": "The signed-in user's effective feature/limit bundle: their explicit\n`EntitlementAssignment` if one exists, otherwise the seeded \"beta_default\"\n`EntitlementSet` (see repositories/entitlements.py). A missing default set is a\nseed/migration inconsistency, not a normal runtime state -- surfaced as 404 rather\nthan silently defaulting to some hardcoded shape.",
         "operationId": "get_my_entitlements_v1_me_entitlements_get",
-        "parameters": [
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "content": {
@@ -9051,16 +8385,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Get My Entitlements",
@@ -9082,22 +8406,6 @@
               "format": "uuid",
               "title": "Person Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -9174,22 +8482,6 @@
               ],
               "title": "Numra Csrf"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "responses": {
@@ -9223,22 +8515,6 @@
               "format": "uuid",
               "title": "Analysis Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -9288,22 +8564,6 @@
                 }
               ],
               "title": "Authorization"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -9371,22 +8631,6 @@
                 }
               ],
               "title": "Numra Csrf"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -9473,22 +8717,6 @@
               ],
               "title": "Numra Csrf"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "responses": {
@@ -9522,22 +8750,6 @@
               "format": "uuid",
               "title": "Person Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -9611,22 +8823,6 @@
                 }
               ],
               "title": "Numra Csrf"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -9703,22 +8899,6 @@
               "minimum": 0,
               "title": "Offset",
               "type": "integer"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -9797,22 +8977,6 @@
               ],
               "title": "Numra Csrf"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "requestBody": {
@@ -9865,22 +9029,6 @@
               "format": "uuid",
               "title": "Person Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -9958,22 +9106,6 @@
                 }
               ],
               "title": "Numra Csrf"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -10055,22 +9187,6 @@
               ],
               "title": "Authorization"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "responses": {
@@ -10144,22 +9260,6 @@
               "title": "Correlation Target Value",
               "type": "integer"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "responses": {
@@ -10202,22 +9302,6 @@
               "format": "uuid",
               "title": "Person Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -10323,22 +9407,6 @@
               "title": "Offset",
               "type": "integer"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "responses": {
@@ -10416,22 +9484,6 @@
               ],
               "title": "Numra Csrf"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "requestBody": {
@@ -10507,22 +9559,6 @@
               "minimum": 0,
               "title": "Offset",
               "type": "integer"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -10600,22 +9636,6 @@
                 }
               ],
               "title": "Numra Csrf"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -10709,22 +9729,6 @@
               "title": "Offset",
               "type": "integer"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "responses": {
@@ -10802,22 +9806,6 @@
               ],
               "title": "Numra Csrf"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "requestBody": {
@@ -10893,22 +9881,6 @@
               "minimum": 0,
               "title": "Offset",
               "type": "integer"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -10987,22 +9959,6 @@
               ],
               "title": "Numra Csrf"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "requestBody": {
@@ -11078,22 +10034,6 @@
               "minimum": 0,
               "title": "Offset",
               "type": "integer"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -11171,22 +10111,6 @@
                 }
               ],
               "title": "Numra Csrf"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -11268,22 +10192,6 @@
               ],
               "title": "Authorization"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "responses": {
@@ -11361,22 +10269,6 @@
               ],
               "title": "Numra Csrf"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "responses": {
@@ -11410,22 +10302,6 @@
               "format": "uuid",
               "title": "Task Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -11499,22 +10375,6 @@
                 }
               ],
               "title": "Numra Csrf"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -11601,22 +10461,6 @@
               ],
               "title": "Numra Csrf"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "responses": {
@@ -11650,22 +10494,6 @@
               "format": "uuid",
               "title": "Note Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -11739,22 +10567,6 @@
                 }
               ],
               "title": "Numra Csrf"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -11841,22 +10653,6 @@
               ],
               "title": "Numra Csrf"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "responses": {
@@ -11890,22 +10686,6 @@
               "format": "uuid",
               "title": "Reflection Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -11979,22 +10759,6 @@
                 }
               ],
               "title": "Numra Csrf"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -12080,22 +10844,6 @@
                 }
               ],
               "title": "Numra Csrf"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -12185,22 +10933,6 @@
               "title": "Offset",
               "type": "integer"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "responses": {
@@ -12268,22 +11000,6 @@
               ],
               "title": "Numra Csrf"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "requestBody": {
@@ -12337,22 +11053,6 @@
               "title": "Relationship Id",
               "type": "string"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "responses": {
@@ -12395,22 +11095,6 @@
               "format": "uuid",
               "title": "Job Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -12518,22 +11202,6 @@
               "title": "Offset",
               "type": "integer"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "responses": {
@@ -12617,22 +11285,6 @@
               ],
               "title": "Numra Csrf"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "requestBody": {
@@ -12686,22 +11338,6 @@
               "title": "Report Id",
               "type": "string"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "responses": {
@@ -12736,24 +11372,6 @@
       "get": {
         "description": "V1.5 Epic N: sanitized system info for the Settings page. Auth-required (not\na public endpoint) but still deliberately excludes every secret -- see\nSystemInfoOut's own docstring for exactly what is and isn't included.",
         "operationId": "get_system_info_v1_system_info_get",
-        "parameters": [
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "content": {
@@ -12764,16 +11382,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Get System Info",
@@ -12785,24 +11393,6 @@
     "/v1/workspaces": {
       "get": {
         "operationId": "list_workspaces_route_v1_workspaces_get",
-        "parameters": [
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "content": {
@@ -12817,16 +11407,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "List Workspaces Route",
@@ -12847,22 +11427,6 @@
               "format": "uuid",
               "title": "Workspace Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -12936,22 +11500,6 @@
                 }
               ],
               "title": "Numra Csrf"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -13037,22 +11585,6 @@
                 }
               ],
               "title": "Numra Csrf"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -13169,22 +11701,6 @@
               ],
               "title": "Numra Csrf"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "requestBody": {
@@ -13275,22 +11791,6 @@
               ],
               "title": "Version"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "responses": {
@@ -13376,22 +11876,6 @@
               "minimum": 0,
               "title": "Offset",
               "type": "integer"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -13501,22 +11985,6 @@
               ],
               "title": "Numra Csrf"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "requestBody": {
@@ -13590,22 +12058,6 @@
               "format": "uuid",
               "title": "Workspace Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -13722,22 +12174,6 @@
               ],
               "title": "Numra Csrf"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "requestBody": {
@@ -13828,22 +12264,6 @@
               "title": "Checkin Id",
               "type": "string"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "responses": {
@@ -13906,22 +12326,6 @@
               "format": "uuid",
               "title": "Workspace Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -13997,22 +12401,6 @@
                 }
               ],
               "title": "Numra Csrf"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -14099,22 +12487,6 @@
               ],
               "title": "Numra Csrf"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "requestBody": {
@@ -14167,22 +12539,6 @@
               "format": "uuid",
               "title": "Workspace Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -14261,22 +12617,6 @@
               ],
               "title": "Numra Csrf"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "requestBody": {
@@ -14339,22 +12679,6 @@
               "format": "uuid",
               "title": "Thread Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -14441,22 +12765,6 @@
               ],
               "title": "Numra Csrf"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "responses": {
@@ -14532,22 +12840,6 @@
               "minimum": 0,
               "title": "Offset",
               "type": "integer"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -14636,22 +12928,6 @@
               ],
               "title": "Numra Csrf"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "requestBody": {
@@ -14704,22 +12980,6 @@
               "format": "uuid",
               "title": "Workspace Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -14810,22 +13070,6 @@
               ],
               "title": "Numra Csrf"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "responses": {
@@ -14878,22 +13122,6 @@
               "format": "uuid",
               "title": "Analysis Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -14960,22 +13188,6 @@
               "minimum": 0,
               "title": "Offset",
               "type": "integer"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -15053,22 +13265,6 @@
                 }
               ],
               "title": "Numra Csrf"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -15165,22 +13361,6 @@
               ],
               "title": "Numra Csrf"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "responses": {
@@ -15224,22 +13404,6 @@
               "format": "uuid",
               "title": "Roadmap Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -15324,22 +13488,6 @@
               ],
               "title": "Numra Csrf"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "requestBody": {
@@ -15418,22 +13566,6 @@
                 }
               ],
               "title": "Milestone Type"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -15521,22 +13653,6 @@
                 }
               ],
               "title": "Numra Csrf"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -15643,22 +13759,6 @@
               ],
               "title": "Numra Csrf"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "responses": {
@@ -15712,22 +13812,6 @@
               "format": "uuid",
               "title": "Milestone Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -15822,22 +13906,6 @@
               ],
               "title": "Numra Csrf"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "requestBody": {
@@ -15890,22 +13958,6 @@
               "format": "uuid",
               "title": "Workspace Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -15996,22 +14048,6 @@
               ],
               "title": "Numra Csrf"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "responses": {
@@ -16064,22 +14100,6 @@
               "format": "uuid",
               "title": "Analysis Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -16146,22 +14166,6 @@
               "minimum": 0,
               "title": "Offset",
               "type": "integer"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -16252,22 +14256,6 @@
               ],
               "title": "Numra Csrf"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "responses": {
@@ -16311,22 +14299,6 @@
               "format": "uuid",
               "title": "Reflection Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -16426,22 +14398,6 @@
               "title": "Offset",
               "type": "integer"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "responses": {
@@ -16518,22 +14474,6 @@
                 }
               ],
               "title": "Numra Csrf"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -16630,22 +14570,6 @@
               ],
               "title": "Numra Csrf"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "responses": {
@@ -16689,22 +14613,6 @@
               "format": "uuid",
               "title": "Task Id",
               "type": "string"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -16788,22 +14696,6 @@
                 }
               ],
               "title": "Numra Csrf"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
@@ -16900,22 +14792,6 @@
               ],
               "title": "Numra Csrf"
             }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
-            }
           }
         ],
         "responses": {
@@ -17000,22 +14876,6 @@
                 }
               ],
               "title": "Numra Csrf"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "numra_session",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Numra Session"
             }
           }
         ],
