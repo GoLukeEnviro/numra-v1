@@ -192,3 +192,25 @@ Kein Golden-Canon/Calculation-Code angefasst YES
   "cli"`) aus der ursprünglichen Promotion — der erneute (No-op-)Aufruf erzeugte
   erwartungsgemäß keinen weiteren Eintrag. Kein Redeploy ausgelöst, kein Passwort
   geändert.
+
+## Betriebsentscheidung: `GET /v1/health/ready` bleibt DB-hart (2026-09-24)
+
+`_overall_status()` in `apps/api/src/numra_api/routes/health.py` entscheidet
+Readiness ausschließlich über den Datenbank-Check; `numerology_engine`, `llm` und
+`pdf` werden weiterhin einzeln geprüft und im Payload zurückgegeben, fließen aber
+**nicht** in `status` ein.
+
+Diese Entscheidung ist bewusst (nicht nur für `llm`/`pdf`, sondern ausdrücklich
+auch für `numerology_engine`):
+
+- Der Engine-Check ist ein reiner In-Process-Funktionsaufruf (`calculate_profile`
+  gegen ein festes Probe-Profil) ohne externe Abhängigkeit. Fällt er, ist der
+  Python-Prozess selbst in einem inkonsistenten Zustand — ein Readiness-Flip würde
+  den Pod aus dem Traffic nehmen, aber das eigentliche Problem (ein kaputter
+  Prozess) nicht beheben; ein Neustart des Pods hilft hier mehr als ein
+  NotReady-Zustand.
+  Verhaltensänderung: keine — dies ist eine reine Klarstellung, kein Code-Fix.
+- Sollte Readiness später bewusst als "Canon-Engine ist importierbar und
+  rechenfähig" neu definiert werden (z. B. weil ein separater Health-Check-Prozess
+  ohne die Engine denkbar wird), gehört das in einen eigenen PR mit eigenem Eintrag
+  hier — nicht rückwirkend in diesen.
