@@ -24,7 +24,7 @@ def test_knowledge_root_resolves_from_repo_root() -> None:
     assert KNOWLEDGE_ROOT.is_dir(), f"expected {KNOWLEDGE_ROOT} to exist"
     kb = load_knowledge_base(KNOWLEDGE_ROOT)
     assert kb.manifest.knowledge_system == "numra"
-    assert kb.manifest.version == "1.1.0"
+    assert kb.manifest.version == "1.2.0"
     assert kb.manifest.language == "de"
 
 
@@ -212,12 +212,13 @@ def test_non_mapping_yaml_top_level_raises_clear_error(tmp_path: Path) -> None:
 
 
 def test_real_knowledge_tree_defaults_long_form_fields_to_absent() -> None:
-    """Every existing knowledge/numbers, master-numbers and karmic-debts file has none
-    of the Wave 3 long-form/governance fields yet — they must default cleanly rather
-    than fail validation."""
+    """Every knowledge/numbers, master-numbers and karmic-debts file except the
+    Wave 3 Schritt 2 pilot (master-numbers/22.yaml) still has none of the long-form/
+    governance fields — they must keep defaulting cleanly rather than fail
+    validation."""
     kb = load_knowledge_base(KNOWLEDGE_ROOT)
 
-    for value in list(range(1, 10)) + [11, 22, 33]:
+    for value in list(range(1, 10)) + [11, 33]:
         knowledge = kb.number(value)
         assert knowledge.constructive_expression is None
         assert knowledge.shadow_expression is None
@@ -241,7 +242,29 @@ def test_real_knowledge_tree_defaults_long_form_fields_to_absent() -> None:
         assert debt.constructive_expression is None
         assert debt.authoring_provenance is None
 
-    assert kb.manifest.scientific_position is None
+
+def test_master_22_carries_the_wave3_development_pilot_content() -> None:
+    """knowledge/master-numbers/22.yaml is the Wave 3 Schritt 2 pilot card (chosen
+    because Lukas Springer's golden-case Life Path is 22/4) — the one entry in the
+    real tree that must carry populated long-form content, not just pass schema
+    validation with defaults."""
+    kb = load_knowledge_base(KNOWLEDGE_ROOT)
+    knowledge = kb.number(22)
+
+    assert knowledge.stable_id == "de.pythagorean.v3.master.22"
+    assert knowledge.classification == "master"
+    assert knowledge.development_theme == "Vision in Struktur überführen"
+    assert len(knowledge.practical_suggestions) == 1
+    assert knowledge.constructive_expression is not None
+    assert knowledge.shadow_expression is not None
+    assert knowledge.claim_class == "traditional_claim"
+    assert "numra-tradition-v1" in knowledge.source_refs
+    assert knowledge.authoring_provenance is not None
+    assert knowledge.authoring_provenance.review_status == "draft"
+
+    assert kb.manifest.version == "1.2.0"
+    assert kb.manifest.scientific_position is not None
+    assert "nicht validiert" in kb.manifest.scientific_position
 
 
 def test_number_knowledge_accepts_populated_long_form_fields(tmp_path: Path) -> None:
