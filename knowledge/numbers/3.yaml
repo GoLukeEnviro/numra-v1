@@ -7,15 +7,15 @@ core_themes:
 - Kreativität
 - Lebensfreude
 - soziale Vermittlung
+strengths:
+- Lebendiger, kreativer Ausdruck
+- Kommunikative Leichtigkeit
+- Ansteckende Lebensfreude
 shadows:
 - Zerstreuung
 - Oberflächlichkeit
 - Unbeständigkeit
 - Stimmungsabhängigkeit
-strengths:
-- Lebendiger, kreativer Ausdruck
-- Kommunikative Leichtigkeit
-- Ansteckende Lebensfreude
 relationships:
 - Bringt Leichtigkeit und Humor in Beziehungen
 - Offener, geselliger Umgang
@@ -32,3 +32,39 @@ cautions:
 - Zerstreuung bei zu vielen Projekten beachten
 - Oberflächlichkeit kann Substanz vermissen lassen
 - Stimmungsabhängigkeit kann Verlässlichkeit schwächen
+stable_id: de.pythagorean.v3.single.3
+classification: single
+result_contexts:
+- life_path_primary
+- life_path_secondary
+- birthday
+- attitude
+- expression
+- soul_urge
+- personality
+- maturity
+- personal_year
+- personal_month
+- personal_day
+- pinnacle
+- challenge
+constructive_expression: Die Symbolik kann zu kreativem Selbstausdruck und kommunikativer
+  Lebendigkeit anregen.
+shadow_expression: Überbetonung des Ausdrucks kann zu Zerstreuung und oberflächlicher
+  Breite führen.
+development_theme: Kreativer Selbstausdruck
+practical_suggestions:
+- Wähle ein kreatives Vorhaben und gib ihm regelmäßig einen festen Rahmen.
+counter_hypotheses:
+- Kommunikationsstärke kann ebenso durch Übung und Umfeld geformt sein.
+reflection_prompts:
+- Welche Form des Ausdrucks erfüllt dich, ohne dich zu verausgaben?
+claim_class: traditional_claim
+source_refs:
+- numra-method-v2
+- numra-boundary-v1
+- numra-tradition-v1
+authoring_provenance:
+  authored_at: '2026-08-05'
+  author: Numra Knowledge Team
+  review_status: draft

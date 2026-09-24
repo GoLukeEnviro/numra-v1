@@ -7,16 +7,16 @@ core_themes:
 - Individualität
 - Führung
 - Beginn
-shadows:
-- Dominanz
-- Ungeduld
-- Isolation
-- übermäßige Ich-Bezogenheit
 strengths:
 - Mut, eigene Wege zu gehen
 - Klare Entscheidungsfreude
 - Impulsgeber für Neues
 - Selbstständiges Handeln
+shadows:
+- Dominanz
+- Ungeduld
+- Isolation
+- übermäßige Ich-Bezogenheit
 relationships:
 - Bevorzugt eigenständige Partner auf Augenhöhe
 - Kann Führung übernehmen, sollte Raum für andere lassen
@@ -33,3 +33,40 @@ cautions:
 - Neigung zu Alleingängen im Blick behalten
 - Ungeduld kann Beziehungen belasten
 - Übermäßige Ich-Bezogenheit kann Nähe erschweren
+stable_id: de.pythagorean.v3.single.1
+classification: single
+result_contexts:
+- life_path_primary
+- life_path_secondary
+- birthday
+- attitude
+- expression
+- soul_urge
+- personality
+- maturity
+- personal_year
+- personal_month
+- personal_day
+- pinnacle
+- challenge
+constructive_expression: Die Symbolik kann Initiative und selbstbestimmtes Handeln
+  anregen, wo eigene Schritte tragfähig sind.
+shadow_expression: Betontes Selbstständigkeitsstreben kann in Isolation oder Überlastung
+  kippen, wenn Mitwirkung abgewehrt wird.
+development_theme: Eigenverantwortung
+practical_suggestions:
+- Formuliere einen nächsten Schritt, den du eigenverantwortlich prüfen kannst.
+counter_hypotheses:
+- Erlebte Eigenständigkeit kann ebenso durch Situation, Rolle und Lernerfahrung erklärt
+  werden.
+reflection_prompts:
+- Die Symbolik kann zu der Frage einladen, wo selbstbestimmtes Handeln hilfreich ist.
+claim_class: traditional_claim
+source_refs:
+- numra-method-v2
+- numra-boundary-v1
+- numra-tradition-v1
+authoring_provenance:
+  authored_at: '2026-08-05'
+  author: Numra Knowledge Team
+  review_status: draft

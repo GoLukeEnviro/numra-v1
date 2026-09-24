@@ -7,15 +7,15 @@ core_themes:
 - Anpassungsfähigkeit
 - Erfahrung
 - Bewegung
+strengths:
+- Große Anpassungsfähigkeit
+- Offenheit für neue Erfahrungen
+- Beweglicher, vielseitiger Geist
 shadows:
 - Rastlosigkeit
 - Exzess
 - Impulsivität
 - mangelnde Kontinuität
-strengths:
-- Große Anpassungsfähigkeit
-- Offenheit für neue Erfahrungen
-- Beweglicher, vielseitiger Geist
 relationships:
 - Braucht Freiraum innerhalb von Nähe
 - Bringt Abwechslung und Spontaneität ein
@@ -32,3 +32,39 @@ cautions:
 - Rastlosigkeit kann Vorhaben unvollendet lassen
 - Neigung zu Exzess im Blick behalten
 - Impulsivität kann Verlässlichkeit schwächen
+stable_id: de.pythagorean.v3.single.5
+classification: single
+result_contexts:
+- life_path_primary
+- life_path_secondary
+- birthday
+- attitude
+- expression
+- soul_urge
+- personality
+- maturity
+- personal_year
+- personal_month
+- personal_day
+- pinnacle
+- challenge
+constructive_expression: Die Symbolik kann zu Flexibilität, Wandel und sinnlicher
+  Weltzugewandtheit ermutigen.
+shadow_expression: Überbetonte Freiheit kann in Rastlosigkeit und Bindungsangst umschlagen.
+development_theme: Wandel und Flexibilität
+practical_suggestions:
+- Plane regelmäßige neue Erfahrungen in einem stabilen Rahmen ein.
+counter_hypotheses:
+- Veränderungsbereitschaft kann durch Lebensumstände und Berufsfeld ebenso erlernt
+  sein.
+reflection_prompts:
+- Wo brauchst du Freiheit, und wo gibt dir Verbindlichkeit Halt?
+claim_class: traditional_claim
+source_refs:
+- numra-method-v2
+- numra-boundary-v1
+- numra-tradition-v1
+authoring_provenance:
+  authored_at: '2026-08-05'
+  author: Numra Knowledge Team
+  review_status: draft
