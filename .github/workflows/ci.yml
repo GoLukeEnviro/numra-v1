@@ -10,6 +10,10 @@ env:
   PYTHON_VERSION: "3.11"
   NODE_VERSION: "20"
 
+permissions:
+  contents: read
+  actions: write
+
 jobs:
   lint-python:
     runs-on: ubuntu-latest
