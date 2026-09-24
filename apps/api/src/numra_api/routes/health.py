@@ -95,6 +95,16 @@ def _overall_status(states: dict[str, HealthState]) -> Literal["healthy", "unhea
     # without it. LLM/PDF are optional/degradable subsystems — "disabled" or
     # "degraded" there does not make the whole service unready, matching
     # NUMRA_LLM_PROVIDER=disabled being a supported, healthy-by-design configuration.
+    #
+    # numerology_engine is deliberately excluded too, though for a different reason:
+    # unlike LLM/PDF it is not optional, but _check_engine() is a pure in-process call
+    # (no network, no I/O) against a fixed probe profile — if it ever raises, the
+    # Python process itself is in a broken state that a readiness flip cannot fix; a
+    # restart does more good than routing traffic away from an otherwise-healthy pod.
+    # engine_status is still computed and returned in the payload below so this is
+    # observable, just not gating. See docs/ops/release-verification.md
+    # ("Betriebsentscheidung: GET /v1/health/ready bleibt DB-hart") if this needs to
+    # change — that's a deliberate, documented decision to revisit, not an oversight.
     return "healthy" if states["database"] == "healthy" else "unhealthy"
 
 

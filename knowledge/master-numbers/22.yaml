@@ -8,16 +8,16 @@ core_themes:
 - Verantwortung
 - Skalierung
 - Umsetzung
+strengths:
+- Fähigkeit, große Visionen in konkrete Form zu bringen
+- Ausgeprägtes Organisationsvermögen im großen Maßstab
+- Verbindung von Weitblick und Umsetzungskraft
 shadows:
 - enormer innerer Druck
 - Kontrolle
 - Versagensangst
 - Überarbeitung
 - überdimensionierte Verantwortung
-strengths:
-- Fähigkeit, große Visionen in konkrete Form zu bringen
-- Ausgeprägtes Organisationsvermögen im großen Maßstab
-- Verbindung von Weitblick und Umsetzungskraft
 relationships:
 - Engagement zeigt sich oft über gemeinsame große Vorhaben
 - Kann durch hohe Ansprüche Druck erzeugen — auch an sich selbst
@@ -34,3 +34,39 @@ cautions:
 - Überarbeitung im Blick behalten
 - Überdimensionierte Verantwortung kann erschöpfen
 - Kontrolle über alle Details kann hinderlich sein
+stable_id: de.pythagorean.v3.master.22
+classification: master
+result_contexts:
+- life_path_primary
+- life_path_secondary
+- birthday
+- attitude
+- expression
+- soul_urge
+- personality
+- maturity
+- personal_year
+- personal_month
+- personal_day
+constructive_expression: Die Symbolik der 22 kann zu großer praktischer Gestaltungskraft
+  und der Fähigkeit einladen, Visionen in tragfähige Strukturen zu überführen.
+shadow_expression: Das hohe Potenzial kann in Überforderung, Perfektionismus und der
+  Angst zu scheitern kippen.
+development_theme: Vision in Struktur überführen
+practical_suggestions:
+- Zerlege ein großes Vorhaben in einen nächsten, überschaubaren Schritt.
+counter_hypotheses:
+- Praktische Gestaltungskraft kann durch handwerkliche Übung, Projektmethodik und
+  Disziplin ebenso erworben werden.
+reflection_prompts:
+- Welche Vision möchtest du in eine konkrete, tragfähige Form bringen?
+claim_class: traditional_claim
+source_refs:
+- numra-method-v2
+- numra-boundary-v1
+- numra-tradition-v1
+uncertainty: Meisterzahlen sind ein traditionelles Konzept ohne empirische Validierung.
+authoring_provenance:
+  authored_at: '2026-08-05'
+  author: Numra Knowledge Team
+  review_status: draft

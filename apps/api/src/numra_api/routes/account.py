@@ -8,10 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from numra_api.auth.csrf import CSRF_COOKIE_NAME
 from numra_api.auth.passwords import verify_password
+from numra_api.config import Settings
 from numra_api.deps import (
     get_current_user,
     get_db,
     get_export_storage,
+    get_settings_dep,
     rate_limit_by_user,
     require_csrf,
 )
@@ -71,9 +73,10 @@ async def delete_all_route(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db, scope="function"),
     storage: ExportStorage = Depends(get_export_storage),
+    settings: Settings = Depends(get_settings_dep),
 ) -> None:
     if not verify_password(user.password_hash, body.password):
         raise InvalidCredentials("password confirmation did not match")
     await delete_own_account(db, user=user, storage=storage)
-    response.delete_cookie("numra_session", path="/")
+    response.delete_cookie(settings.session_cookie_name, path="/")
     response.delete_cookie(CSRF_COOKIE_NAME, path="/")

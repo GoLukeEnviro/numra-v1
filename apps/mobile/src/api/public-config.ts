@@ -43,7 +43,11 @@ export async function loadPublicConfig(
   apiOrigin: string,
   fetcher: Fetcher = fetch as Fetcher,
 ): Promise<MobilePublicConfig> {
-  const response = await fetcher(`${apiOrigin}/v1/config/public`, {
+  // Contract: apps/api/src/numra_api/routes/public.py + PublicConfigOut. The web
+  // client (apps/web/src/api/client.ts) already consumes this same endpoint/shape
+  // via the generated OpenAPI type -- this must stay in sync with that, not with a
+  // shape of its own.
+  const response = await fetcher(`${apiOrigin}/v1/public/config`, {
     headers: { Accept: "application/json" },
   });
   if (!response.ok) {
@@ -54,17 +58,17 @@ export async function loadPublicConfig(
   if (
     typeof body !== "object" ||
     body === null ||
-    !("brand_name" in body) ||
-    typeof body.brand_name !== "string" ||
-    body.brand_name.trim().length === 0 ||
-    !("allow_self_signup" in body) ||
-    typeof body.allow_self_signup !== "boolean"
+    !("app_name" in body) ||
+    typeof body.app_name !== "string" ||
+    body.app_name.trim().length === 0 ||
+    !("self_signup_enabled" in body) ||
+    typeof body.self_signup_enabled !== "boolean"
   ) {
     throw new Error("invalid public configuration response");
   }
 
   return {
-    brandName: body.brand_name,
-    allowSelfSignup: body.allow_self_signup,
+    brandName: body.app_name,
+    allowSelfSignup: body.self_signup_enabled,
   };
 }

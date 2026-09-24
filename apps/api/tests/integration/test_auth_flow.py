@@ -1,8 +1,12 @@
 from __future__ import annotations
 
 import pytest
+from httpx import ASGITransport, AsyncClient
 
+from numra_api.app import create_app
 from numra_api.auth.passwords import hash_password
+from numra_api.config import Settings
+from numra_api.db import build_sessionmaker
 from numra_api.repositories.users import create_user
 
 pytestmark = pytest.mark.integration
@@ -37,6 +41,65 @@ async def test_login_logout_me_flow(client, sessionmaker) -> None:
     me_after_logout = await client.get("/v1/auth/me")
     assert me_after_logout.status_code == 401
     assert me_after_logout.json()["code"] == "NOT_AUTHENTICATED"
+
+
+async def test_session_cookie_name_is_configurable(settings: Settings, db_engine) -> None:
+    """`session_cookie_name` must actually be read from Settings, not the hardcoded
+    literal "numra_session" — regression test for the dead config finding: the name
+    used to set/read/delete the cookie has to follow an env override end to end
+    (login, /me, logout), not just exist on the Settings model."""
+    custom_settings = settings.model_copy(update={"session_cookie_name": "numra_custom_session"})
+    application = create_app(settings=custom_settings)
+    application.state.engine = db_engine
+    application.state.sessionmaker = build_sessionmaker(db_engine)
+
+    transport = ASGITransport(app=application)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as custom_client:
+        await _seed_user(
+            application.state.sessionmaker,
+            "custom-cookie@example.com",
+            "correct horse battery staple",
+        )
+
+        login_response = await custom_client.post(
+            "/v1/auth/login",
+            json={"email": "custom-cookie@example.com", "password": "correct horse battery staple"},
+        )
+        assert login_response.status_code == 200
+        assert "numra_custom_session" in login_response.cookies
+        assert "numra_session" not in login_response.cookies
+
+        me_response = await custom_client.get("/v1/auth/me")
+        assert me_response.status_code == 200
+        assert me_response.json()["email"] == "custom-cookie@example.com"
+
+        logout_response = await custom_client.post(
+            "/v1/auth/logout", headers={"x-csrf-token": custom_client.cookies["numra_csrf"]}
+        )
+        assert logout_response.status_code == 204
+
+        me_after_logout = await custom_client.get("/v1/auth/me")
+        assert me_after_logout.status_code == 401
+        assert me_after_logout.json()["code"] == "NOT_AUTHENTICATED"
+
+        # Fourth call site: account deletion also has to clear the configured cookie
+        # name, not the hardcoded literal.
+        relogin_response = await custom_client.post(
+            "/v1/auth/login",
+            json={"email": "custom-cookie@example.com", "password": "correct horse battery staple"},
+        )
+        assert relogin_response.status_code == 200
+        assert "numra_custom_session" in relogin_response.cookies
+
+        delete_response = await custom_client.post(
+            "/v1/account/delete-all",
+            json={"password": "correct horse battery staple"},
+            headers={"x-csrf-token": custom_client.cookies["numra_csrf"]},
+        )
+        assert delete_response.status_code == 204
+
+        me_after_delete = await custom_client.get("/v1/auth/me")
+        assert me_after_delete.status_code == 401
 
 
 async def test_login_wrong_password_rejected(client, sessionmaker) -> None:

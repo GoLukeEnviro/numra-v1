@@ -4255,7 +4255,6 @@ export interface operations {
             path?: never;
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody: {
@@ -4287,9 +4286,7 @@ export interface operations {
             query?: never;
             header?: never;
             path?: never;
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -4300,15 +4297,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -4323,9 +4311,7 @@ export interface operations {
             };
             header?: never;
             path?: never;
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -4354,9 +4340,7 @@ export interface operations {
             query?: never;
             header?: never;
             path?: never;
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -4367,15 +4351,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminStatsOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -4391,9 +4366,7 @@ export interface operations {
             };
             header?: never;
             path?: never;
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -4424,9 +4397,7 @@ export interface operations {
             path: {
                 user_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -4460,7 +4431,6 @@ export interface operations {
                 user_id: string;
             };
             cookie?: {
-                numra_session?: string | null;
                 numra_csrf?: string | null;
             };
         };
@@ -4494,7 +4464,6 @@ export interface operations {
                 user_id: string;
             };
             cookie?: {
-                numra_session?: string | null;
                 numra_csrf?: string | null;
             };
         };
@@ -4528,7 +4497,6 @@ export interface operations {
                 user_id: string;
             };
             cookie?: {
-                numra_session?: string | null;
                 numra_csrf?: string | null;
             };
         };
@@ -4559,9 +4527,7 @@ export interface operations {
             path: {
                 job_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -4594,7 +4560,6 @@ export interface operations {
             path?: never;
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody: {
@@ -4723,9 +4688,7 @@ export interface operations {
             query?: never;
             header?: never;
             path?: never;
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -4736,15 +4699,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -4884,7 +4838,6 @@ export interface operations {
             path?: never;
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody?: never;
@@ -4943,9 +4896,7 @@ export interface operations {
             query?: never;
             header?: never;
             path?: never;
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -4956,15 +4907,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SessionOut"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -4978,7 +4920,6 @@ export interface operations {
             path?: never;
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody?: never;
@@ -5039,9 +4980,7 @@ export interface operations {
             path: {
                 calculation_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -5073,9 +5012,7 @@ export interface operations {
             };
             header?: never;
             path?: never;
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -5107,9 +5044,7 @@ export interface operations {
             };
             header?: never;
             path?: never;
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -5142,7 +5077,6 @@ export interface operations {
             path?: never;
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody: {
@@ -5180,7 +5114,6 @@ export interface operations {
             path?: never;
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody: {
@@ -5251,7 +5184,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody?: never;
@@ -5287,7 +5219,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody?: never;
@@ -5323,7 +5254,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody?: never;
@@ -5359,7 +5289,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody: {
@@ -5393,9 +5322,7 @@ export interface operations {
             query?: never;
             header?: never;
             path?: never;
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -5406,15 +5333,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ExportOut"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -5428,7 +5346,6 @@ export interface operations {
             path?: never;
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody: {
@@ -5464,9 +5381,7 @@ export interface operations {
             path: {
                 export_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -5541,9 +5456,7 @@ export interface operations {
             path: {
                 entry_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -5578,7 +5491,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody?: never;
@@ -5612,7 +5524,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody: {
@@ -5646,9 +5557,7 @@ export interface operations {
             query?: never;
             header?: never;
             path?: never;
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -5659,15 +5568,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ChatThreadOut"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -5681,7 +5581,6 @@ export interface operations {
             path?: never;
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody?: {
@@ -5717,9 +5616,7 @@ export interface operations {
             path: {
                 thread_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -5754,7 +5651,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody?: never;
@@ -5789,9 +5685,7 @@ export interface operations {
             path: {
                 thread_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -5826,7 +5720,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody: {
@@ -5860,9 +5753,7 @@ export interface operations {
             query?: never;
             header?: never;
             path?: never;
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -5875,15 +5766,6 @@ export interface operations {
                     "application/json": components["schemas"]["EntitlementSetOut"];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
         };
     };
     get_my_workspace_route_v1_me_workspace_get: {
@@ -5893,9 +5775,7 @@ export interface operations {
             };
             header?: never;
             path?: never;
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -5926,9 +5806,7 @@ export interface operations {
             path: {
                 analysis_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -5963,7 +5841,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody?: never;
@@ -5993,9 +5870,7 @@ export interface operations {
                 Authorization?: string | null;
             };
             path?: never;
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -6028,7 +5903,6 @@ export interface operations {
             path?: never;
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody: {
@@ -6064,9 +5938,7 @@ export interface operations {
             path: {
                 person_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -6101,7 +5973,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody?: never;
@@ -6135,7 +6006,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody: {
@@ -6174,9 +6044,7 @@ export interface operations {
             path: {
                 person_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -6211,7 +6079,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody: {
@@ -6247,9 +6114,7 @@ export interface operations {
             path: {
                 person_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -6284,7 +6149,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody: {
@@ -6324,9 +6188,7 @@ export interface operations {
             path: {
                 person_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -6361,9 +6223,7 @@ export interface operations {
             path: {
                 person_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -6394,9 +6254,7 @@ export interface operations {
             path: {
                 person_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -6432,9 +6290,7 @@ export interface operations {
             path: {
                 person_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -6469,7 +6325,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody: {
@@ -6508,9 +6363,7 @@ export interface operations {
             path: {
                 person_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -6545,7 +6398,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody: {
@@ -6585,9 +6437,7 @@ export interface operations {
             path: {
                 person_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -6622,7 +6472,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody: {
@@ -6661,9 +6510,7 @@ export interface operations {
             path: {
                 person_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -6698,7 +6545,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody: {
@@ -6737,9 +6583,7 @@ export interface operations {
             path: {
                 person_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -6774,7 +6618,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody: {
@@ -6814,9 +6657,7 @@ export interface operations {
             path: {
                 person_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -6849,9 +6690,7 @@ export interface operations {
             path: {
                 task_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -6886,7 +6725,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody?: never;
@@ -6920,7 +6758,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody: {
@@ -6956,9 +6793,7 @@ export interface operations {
             path: {
                 note_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -6993,7 +6828,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody?: never;
@@ -7027,7 +6861,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody: {
@@ -7063,9 +6896,7 @@ export interface operations {
             path: {
                 reflection_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -7100,7 +6931,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody?: never;
@@ -7134,7 +6964,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody: {
@@ -7174,7 +7003,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody: {
@@ -7231,9 +7059,7 @@ export interface operations {
             };
             header?: never;
             path?: never;
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -7266,7 +7092,6 @@ export interface operations {
             path?: never;
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody: {
@@ -7302,9 +7127,7 @@ export interface operations {
             path: {
                 relationship_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -7335,9 +7158,7 @@ export interface operations {
             path: {
                 job_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -7372,9 +7193,7 @@ export interface operations {
             };
             header?: never;
             path?: never;
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -7408,7 +7227,6 @@ export interface operations {
             path?: never;
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody: {
@@ -7444,9 +7262,7 @@ export interface operations {
             path: {
                 report_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -7475,9 +7291,7 @@ export interface operations {
             query?: never;
             header?: never;
             path?: never;
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -7490,15 +7304,6 @@ export interface operations {
                     "application/json": components["schemas"]["SystemInfoOut"];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
         };
     };
     list_workspaces_route_v1_workspaces_get: {
@@ -7506,9 +7311,7 @@ export interface operations {
             query?: never;
             header?: never;
             path?: never;
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -7521,15 +7324,6 @@ export interface operations {
                     "application/json": components["schemas"]["WorkspaceSummaryOut"][];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
         };
     };
     get_workspace_overview_route_v1_workspaces__workspace_id__get: {
@@ -7539,9 +7333,7 @@ export interface operations {
             path: {
                 workspace_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -7576,7 +7368,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody: {
@@ -7616,7 +7407,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody: {
@@ -7675,7 +7465,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody: {
@@ -7731,9 +7520,7 @@ export interface operations {
             path: {
                 workspace_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -7785,9 +7572,7 @@ export interface operations {
             path: {
                 workspace_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -7841,7 +7626,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody: {
@@ -7895,9 +7679,7 @@ export interface operations {
             path: {
                 workspace_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -7951,7 +7733,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody?: {
@@ -8006,9 +7787,7 @@ export interface operations {
                 workspace_id: string;
                 checkin_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -8057,9 +7836,7 @@ export interface operations {
             path: {
                 workspace_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -8094,7 +7871,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody: {
@@ -8134,7 +7910,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody: {
@@ -8170,9 +7945,7 @@ export interface operations {
             path: {
                 workspace_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -8207,7 +7980,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody: {
@@ -8244,9 +8016,7 @@ export interface operations {
                 workspace_id: string;
                 thread_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -8282,7 +8052,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody?: never;
@@ -8318,9 +8087,7 @@ export interface operations {
                 workspace_id: string;
                 thread_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -8356,7 +8123,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody: {
@@ -8392,9 +8158,7 @@ export interface operations {
             path: {
                 workspace_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -8430,7 +8194,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody?: never;
@@ -8463,9 +8226,7 @@ export interface operations {
                 workspace_id: string;
                 analysis_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -8499,9 +8260,7 @@ export interface operations {
             path: {
                 workspace_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -8536,7 +8295,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody: {
@@ -8573,9 +8331,7 @@ export interface operations {
                 workspace_id: string;
                 roadmap_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -8611,7 +8367,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody?: never;
@@ -8646,7 +8401,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody: {
@@ -8685,9 +8439,7 @@ export interface operations {
                 workspace_id: string;
                 roadmap_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -8723,7 +8475,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody: {
@@ -8761,9 +8512,7 @@ export interface operations {
                 roadmap_id: string;
                 milestone_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -8800,7 +8549,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody?: never;
@@ -8836,7 +8584,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody: {
@@ -8872,9 +8619,7 @@ export interface operations {
             path: {
                 workspace_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -8910,7 +8655,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody?: never;
@@ -8943,9 +8687,7 @@ export interface operations {
                 workspace_id: string;
                 analysis_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -8979,9 +8721,7 @@ export interface operations {
             path: {
                 workspace_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -9013,9 +8753,7 @@ export interface operations {
                 workspace_id: string;
                 reflection_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -9051,7 +8789,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody?: never;
@@ -9086,9 +8823,7 @@ export interface operations {
             path: {
                 workspace_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -9123,7 +8858,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody: {
@@ -9160,9 +8894,7 @@ export interface operations {
                 workspace_id: string;
                 task_id: string;
             };
-            cookie?: {
-                numra_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
@@ -9198,7 +8930,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody?: never;
@@ -9233,7 +8964,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody: {
@@ -9274,7 +9004,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody?: never;
@@ -9311,7 +9040,6 @@ export interface operations {
             };
             cookie?: {
                 numra_csrf?: string | null;
-                numra_session?: string | null;
             };
         };
         requestBody?: never;
