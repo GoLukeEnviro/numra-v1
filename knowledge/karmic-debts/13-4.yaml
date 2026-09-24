@@ -4,3 +4,38 @@ themes:
 - Aufbau
 - Beständigkeit
 - Verantwortung für Arbeit und Struktur
+raw_value: 13
+reduced_value: 4
+stable_id: de.pythagorean.v3.karmic.13
+classification: karmic_debt
+result_contexts:
+- life_path_primary
+- life_path_secondary
+- birthday
+- attitude
+- expression
+- soul_urge
+- personality
+- maturity
+constructive_expression: Die Symbolik der 13/4 kann zu tiefgreifender Transformation
+  durch fokussierte, disziplinierte Arbeit einladen.
+shadow_expression: Das Muster kann in Arbeitsvermeidung, mangelnder Konzentration
+  und dem Gefühl festzustecken erlebt werden.
+development_theme: Disziplin als Weg zur Transformation
+practical_suggestions:
+- Finde eine praktische Tätigkeit, die dir Freude macht, und übe sie regelmäßig aus.
+counter_hypotheses:
+- Das Erleben von Arbeitsvermeidung oder Disziplinlosigkeit kann durch viele biografische
+  Faktoren erklärt werden.
+reflection_prompts:
+- Wo erlebst du deine Arbeit als transformierend — und wo als reine Pflicht?
+claim_class: traditional_claim
+source_refs:
+- numra-method-v2
+- numra-boundary-v1
+- numra-tradition-v1
+uncertainty: Karmische Schuld ist ein traditionelles Konzept ohne empirische Validierung.
+authoring_provenance:
+  authored_at: '2026-08-05'
+  author: Numra Knowledge Team
+  review_status: draft

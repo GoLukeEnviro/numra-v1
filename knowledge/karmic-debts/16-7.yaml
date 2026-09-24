@@ -4,3 +4,40 @@ themes:
 - Demut
 - Korrektur überhöhter Selbstbilder
 - innere Entwicklung
+raw_value: 16
+reduced_value: 7
+stable_id: de.pythagorean.v3.karmic.16
+classification: karmic_debt
+result_contexts:
+- life_path_primary
+- life_path_secondary
+- birthday
+- attitude
+- expression
+- soul_urge
+- personality
+- maturity
+constructive_expression: Die Symbolik der 16/7 kann zu tiefgreifender Selbsterkenntnis
+  durch das Loslassen überholter Strukturen und die Annahme innerer Wahrheit einladen.
+shadow_expression: Das Muster kann in wiederholten Zusammenbrüchen von Lebenskonstrukten,
+  Stolz und Verleugnung erlebt werden.
+development_theme: Einsicht und Neubeginn
+practical_suggestions:
+- Notiere ein Muster, das sich wiederholt zeigt, und frage dich ehrlich, was es dich
+  lehren könnte.
+counter_hypotheses:
+- Wiederkehrende Lebenskrisen können durch strukturelle, psychologische und soziale
+  Faktoren erklärt werden.
+reflection_prompts:
+- Welche wiederkehrenden Muster in deinem Leben könnten eine Einladung zur tieferen
+  Einsicht sein?
+claim_class: traditional_claim
+source_refs:
+- numra-method-v2
+- numra-boundary-v1
+- numra-tradition-v1
+uncertainty: Karmische Schuld ist ein traditionelles Konzept ohne empirische Validierung.
+authoring_provenance:
+  authored_at: '2026-08-05'
+  author: Numra Knowledge Team
+  review_status: draft

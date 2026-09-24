@@ -7,15 +7,15 @@ core_themes:
 - Fürsorge
 - Mitgefühl
 - Verantwortung
+strengths:
+- Ausgeprägte Fähigkeit, zu lehren und zu begleiten
+- Tiefes Mitgefühl kombiniert mit Verantwortungsbewusstsein
+- Hingabe an das Wohl anderer
 shadows:
 - Märtyrerrolle
 - Perfektionismus
 - Selbstüberforderung
 - übermäßige Verantwortungsübernahme
-strengths:
-- Ausgeprägte Fähigkeit, zu lehren und zu begleiten
-- Tiefes Mitgefühl kombiniert mit Verantwortungsbewusstsein
-- Hingabe an das Wohl anderer
 relationships:
 - Gibt sich oft sehr fürsorglich und hingebungsvoll
 - Kann eigene Bedürfnisse stark zurückstellen
@@ -32,3 +32,39 @@ cautions:
 - Märtyrerrolle im Blick behalten
 - Selbstüberforderung kann zu Erschöpfung führen
 - Übermäßige Verantwortungsübernahme reflektieren
+stable_id: de.pythagorean.v3.master.33
+classification: master
+result_contexts:
+- life_path_primary
+- life_path_secondary
+- birthday
+- attitude
+- expression
+- soul_urge
+- personality
+- maturity
+- personal_year
+- personal_month
+- personal_day
+constructive_expression: Die Symbolik der 33 kann zu selbstloser Hingabe, heilender
+  Präsenz und tiefem Mitgefühl einladen.
+shadow_expression: Überbetonte Hingabe kann in Selbstaufgabe und ungesundem Märtyrertum
+  münden.
+development_theme: Hingabe mit Selbstfürsorge
+practical_suggestions:
+- Übe bewusst, "Nein" zu sagen, wo deine eigenen Grenzen überschritten werden.
+counter_hypotheses:
+- Altruistisches Verhalten kann durch soziale Normen und persönliche Werte ebenso
+  motiviert sein.
+reflection_prompts:
+- Wo hast du das Gefühl, wirklich etwas bewirken zu können — ohne dich zu verlieren?
+claim_class: traditional_claim
+source_refs:
+- numra-method-v2
+- numra-boundary-v1
+- numra-tradition-v1
+uncertainty: Meisterzahlen sind ein traditionelles Konzept ohne empirische Validierung.
+authoring_provenance:
+  authored_at: '2026-08-05'
+  author: Numra Knowledge Team
+  review_status: draft

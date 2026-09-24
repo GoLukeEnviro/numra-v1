@@ -138,6 +138,40 @@ def _resolve_karmic_debt(
     return None
 
 
+def _core_shadow_sentences(number_knowledge: NumberKnowledge) -> list[str]:
+    """Wave 3 long-form preference: `constructive_expression`/`shadow_expression` are
+    the migrated canonical deutungstexte and take priority when present; a number not
+    yet migrated (no long-form content) falls back to the original short label
+    sentences unchanged, so nothing regresses to less grounding than before."""
+    if number_knowledge.constructive_expression:
+        constructive_sentence = number_knowledge.constructive_expression
+    else:
+        themes = ", ".join(number_knowledge.core_themes)
+        constructive_sentence = f"Kernthemen der Zahl {number_knowledge.value}: {themes}."
+
+    if number_knowledge.shadow_expression:
+        shadow_sentence = number_knowledge.shadow_expression
+    else:
+        shadows = ", ".join(number_knowledge.shadows)
+        shadow_sentence = f"Mögliche Schattenseiten: {shadows}."
+
+    return [constructive_sentence, shadow_sentence]
+
+
+def _karmic_sentence(karmic: KarmicDebtKnowledge) -> str:
+    """Same long-form-first rule as `_core_shadow_sentences`, applied to the karmic
+    debt's own `development_theme`/`constructive_expression` (not yet-migrated
+    entries fall back to the short `themes` list)."""
+    long_form = karmic.development_theme or karmic.constructive_expression
+    if long_form:
+        return f"Zusätzlich zeigt sich hier die karmische Zahl {karmic.compound}: {long_form}"
+    karmic_themes = ", ".join(karmic.themes)
+    return (
+        f"Zusätzlich zeigt sich hier die karmische Zahl {karmic.compound} mit den "
+        f"symbolischen Themen {karmic_themes}."
+    )
+
+
 def _compose_text(
     *,
     metric: CalculationMetric,
@@ -146,19 +180,12 @@ def _compose_text(
     number_knowledge: NumberKnowledge,
     karmic: KarmicDebtKnowledge | None,
 ) -> str:
-    themes = ", ".join(number_knowledge.core_themes)
-    shadows = ", ".join(number_knowledge.shadows)
     sentences = [
         f"{display_name_de} ({metric.display_value}): {semantic_context_de}",
-        f"Kernthemen der Zahl {number_knowledge.value}: {themes}.",
-        f"Mögliche Schattenseiten: {shadows}.",
+        *_core_shadow_sentences(number_knowledge),
     ]
     if karmic is not None:
-        karmic_themes = ", ".join(karmic.themes)
-        sentences.append(
-            f"Zusätzlich zeigt sich hier die karmische Zahl {karmic.compound} mit den "
-            f"symbolischen Themen {karmic_themes}."
-        )
+        sentences.append(_karmic_sentence(karmic))
     return " ".join(sentences)
 
 

@@ -7,16 +7,16 @@ core_themes:
 - materielle Verantwortung
 - Umsetzungskraft
 - Macht
+strengths:
+- Starke Umsetzungs- und Organisationskraft
+- Ausgeprägter unternehmerischer Weitblick
+- Fähigkeit, Verantwortung zu übernehmen
 shadows:
 - Kontrolle
 - Statusfixierung
 - Härte
 - Überarbeitung
 - Machtkonflikte
-strengths:
-- Starke Umsetzungs- und Organisationskraft
-- Ausgeprägter unternehmerischer Weitblick
-- Fähigkeit, Verantwortung zu übernehmen
 relationships:
 - Zeigt Engagement durch Einsatz und Leistung
 - Kann dominante Dynamiken entwickeln
@@ -33,3 +33,40 @@ cautions:
 - Statusfixierung im Blick behalten
 - Machtkonflikte können Beziehungen belasten
 - Kontrolle kann Vertrauen einschränken
+stable_id: de.pythagorean.v3.single.8
+classification: single
+result_contexts:
+- life_path_primary
+- life_path_secondary
+- birthday
+- attitude
+- expression
+- soul_urge
+- personality
+- maturity
+- personal_year
+- personal_month
+- personal_day
+- pinnacle
+- challenge
+constructive_expression: Die Symbolik kann zu Zielstrebigkeit, Durchsetzungskraft
+  und gestaltender Wirksamkeit ermutigen.
+shadow_expression: Überbetonte Macht kann in Dominanz und reine Ergebnisorientierung
+  kippen.
+development_theme: Wirksamkeit und Balance
+practical_suggestions:
+- 'Prüfe ein aktuelles Ziel: Dient es deinem Wachstum oder nur äußerer Anerkennung?'
+counter_hypotheses:
+- Erfolgsstreben kann durch gesellschaftliche Prägungen und wirtschaftliche Notwendigkeiten
+  ebenso motiviert sein.
+reflection_prompts:
+- Wofür setzt du deine Energie ein — und wofür möchtest du sie einsetzen?
+claim_class: traditional_claim
+source_refs:
+- numra-method-v2
+- numra-boundary-v1
+- numra-tradition-v1
+authoring_provenance:
+  authored_at: '2026-08-05'
+  author: Numra Knowledge Team
+  review_status: draft

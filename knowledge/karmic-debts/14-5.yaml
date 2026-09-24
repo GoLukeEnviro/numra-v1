@@ -4,3 +4,39 @@ themes:
 - Selbststeuerung
 - Maß
 - Verantwortung im Umgang mit Veränderung
+raw_value: 14
+reduced_value: 5
+stable_id: de.pythagorean.v3.karmic.14
+classification: karmic_debt
+result_contexts:
+- life_path_primary
+- life_path_secondary
+- birthday
+- attitude
+- expression
+- soul_urge
+- personality
+- maturity
+constructive_expression: Die Symbolik der 14/5 kann zu einer reifen, bewusst gewählten
+  Freiheit einladen, die innere Disziplin mit äußerer Flexibilität verbindet.
+shadow_expression: Das Muster kann in Suchtverhalten, übermäßigem Freiheitsdrang und
+  mangelnder Selbstbindung erlebt werden.
+development_theme: Freiheit durch Maß
+practical_suggestions:
+- Setze dir für eine Woche eine freiwillige, bewusste Einschränkung und beobachte
+  die Wirkung.
+counter_hypotheses:
+- Freiheitsdrang und Bindungsmuster können durch familiäre Prägung und Lebensereignisse
+  ebenso erklärt werden.
+reflection_prompts:
+- Wo fühlst du dich frei — und wo sind deine Freiheiten gewohnheitsmäßig geworden?
+claim_class: traditional_claim
+source_refs:
+- numra-method-v2
+- numra-boundary-v1
+- numra-tradition-v1
+uncertainty: Karmische Schuld ist ein traditionelles Konzept ohne empirische Validierung.
+authoring_provenance:
+  authored_at: '2026-08-05'
+  author: Numra Knowledge Team
+  review_status: draft
