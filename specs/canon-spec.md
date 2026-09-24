@@ -9,7 +9,7 @@ calculation_system = "numra-canonical"
 calculation_version = "1.0.0"
 schema_version = "1.0.0"
 knowledge_system = "numra"
-knowledge_version = "1.0.0"
+knowledge_version = "see knowledge/manifest.yaml"  # living value, not duplicated here (Amendment 2026-09-24)
 language = "de"
 ```
 
@@ -25,10 +25,14 @@ canon. Vowels: `A E I O U` only — `Y` is always a consonant, no contextual exc
 - All time-dependent calculations (Universal/Personal Year/Month/Day, Pinnacle/Challenge age
   windows) take an explicit `as_of_date: date` parameter.
 - Integer arithmetic only. No floats anywhere in the reduction or metric pipeline.
-- Same input + same `MethodPolicy` ⇒ byte-identical `CanonicalProfile` JSON
-  (`sort_keys=True` serialization) and identical `deterministic_hash` (SHA-256 over a
-  `CalculationHashEnvelope`: schema version, calculation version, normalized inputs, policy,
-  results, trace).
+- Same input ⇒ byte-identical `CanonicalProfile` JSON (`sort_keys=True` serialization) and
+  identical `deterministic_hash` (SHA-256 over `CanonicalProfile.to_canonical_json()` —
+  schema version, calculation version, normalized inputs, results and trace are all already
+  part of that canonical JSON, so no separate envelope structure is built or needed).
+  (Amendment 2026-09-24: this replaces an earlier description of a separate
+  `CalculationHashEnvelope`/`MethodPolicy` object, which was never implemented. The hash
+  value itself is unchanged — `to_canonical_json()` already carries the same content a
+  hand-built envelope would have.)
 
 ---
 
@@ -289,9 +293,11 @@ does not change output given fixed values; edge cases for each segment individua
 
 ## 9. Life Path Direct Diagnostic (non-canonical)
 
-`method="direct_digit_sum"`. Concatenate all digits of the ISO birth date and sum them
-directly (no per-segment reduction), then `reduce_compound`. Stored under
+`method="direct_digit_sum"`. Concatenate all digits of the birth date in `DDMMYYYY` order and
+sum them directly (no per-segment reduction), then `reduce_compound`. Stored under
 `diagnostics.life_path.alternative_methods` — **never** presented as a second Life Path.
+(Amendment 2026-09-24: corrected from "ISO birth date" — the worked example below was always
+`DDMMYYYY` and the code matches it; digit-sum is order-invariant so no numeric output changes.)
 
 Example: `1+8+0+7+1+9+8+6=40` → `40/4`.
 

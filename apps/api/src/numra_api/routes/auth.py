@@ -54,11 +54,16 @@ router = APIRouter(prefix="/v1/auth", tags=["auth"])
 
 
 def _set_auth_cookies(
-    response: Response, *, session_token: str, secure: bool, ttl_hours: int
+    response: Response,
+    *,
+    session_token: str,
+    secure: bool,
+    ttl_hours: int,
+    cookie_name: str,
 ) -> None:
     max_age = ttl_hours * 3600
     response.set_cookie(
-        "numra_session",
+        cookie_name,
         session_token,
         max_age=max_age,
         httponly=True,
@@ -92,6 +97,7 @@ async def _issue_authenticated_session(
         session_token=token,
         secure=settings.cookies_secure,
         ttl_hours=settings.session_ttl_hours,
+        cookie_name=settings.session_cookie_name,
     )
 
 
@@ -221,11 +227,12 @@ async def logout(
     request: Request,
     response: Response,
     db: AsyncSession = Depends(get_db, scope="function"),
+    settings: Settings = Depends(get_settings_dep),
 ) -> None:
-    token = request.cookies.get("numra_session")
+    token = request.cookies.get(settings.session_cookie_name)
     if token:
         await revoke_session(db, token_hash=hash_session_token(token), now=dt.datetime.now(dt.UTC))
-    response.delete_cookie("numra_session", path="/")
+    response.delete_cookie(settings.session_cookie_name, path="/")
     response.delete_cookie(CSRF_COOKIE_NAME, path="/")
 
 

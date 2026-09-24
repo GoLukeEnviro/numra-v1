@@ -30,6 +30,7 @@ from numra_interpretation.knowledge_loader import (
     load_knowledge_base,
 )
 from numra_interpretation.knowledge_models import (
+    AuthoringProvenance,
     KarmicDebtKnowledge,
     KnowledgeManifest,
     MetricKnowledge,
@@ -38,6 +39,7 @@ from numra_interpretation.knowledge_models import (
 
 __all__ = [
     "CORE_METRIC_IDS",
+    "AuthoringProvenance",
     "Interpretation",
     "InterpretationSection",
     "InvalidReportSection",

@@ -85,7 +85,7 @@
       "properties": {
         "source_value": { "type": ["integer", "string", "null"] },
         "raw_value": { "type": "integer", "minimum": 0 },
-        "root_value": { "type": "integer", "minimum": 0, "maximum": 33 },
+        "root_value": { "type": "integer", "minimum": 0, "maximum": 9 },
         "master_number": { "enum": [null, 11, 22, 33] },
         "effective_value": { "type": "integer", "minimum": 0 },
         "display_value": { "type": "string" },
@@ -116,7 +116,7 @@
         "method": { "type": "string" },
         "source_value": { "type": ["integer", "string", "null"] },
         "raw_value": { "type": "integer" },
-        "root_value": { "type": "integer" },
+        "root_value": { "type": "integer", "minimum": 0, "maximum": 9 },
         "master_number": { "enum": [null, 11, 22, 33] },
         "effective_value": { "type": "integer" },
         "display_value": { "type": "string" },

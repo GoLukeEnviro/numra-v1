@@ -184,6 +184,43 @@ def _cycles_blocks(profile: CanonicalProfile) -> tuple[ContextBlock, ...]:
     )
 
 
+def _development_blocks(
+    profile: CanonicalProfile, knowledge: KnowledgeBase
+) -> tuple[ContextBlock, ...]:
+    """Ground the Development report section in the Life Path number's own
+    knowledge entry (Wave 3 content-migration pilot) instead of leaving it with only
+    the bare numeric facts `_gather_context_blocks` already adds for every metric --
+    see specs/evidence/phase-4.md and the 2026-09-24 audits, both of which flag this
+    section as the one with no metric_refs/knowledge_refs of its own.
+
+    Prefers the long-form `development_theme` (+ `practical_suggestions`) migrated
+    from the predecessor project's knowledge cards; falls back to the existing short
+    `development` label list for any number that doesn't have long-form content yet,
+    so this never grounds the section in *less* than before Wave 3."""
+    life_path = profile.core_numbers.life_path
+    try:
+        number_knowledge = knowledge.number(life_path.effective_value)
+    except KeyError:
+        return ()
+
+    if number_knowledge.development_theme:
+        content = number_knowledge.development_theme
+        if number_knowledge.practical_suggestions:
+            content = f"{content} {' '.join(number_knowledge.practical_suggestions)}"
+    elif number_knowledge.development:
+        content = "; ".join(number_knowledge.development)
+    else:
+        return ()
+
+    return (
+        ContextBlock(
+            role="knowledge",
+            label="development_theme",
+            content=f"Life Path {life_path.display_value}: {content}",
+        ),
+    )
+
+
 def _gather_context_blocks(
     profile: CanonicalProfile, knowledge: KnowledgeBase, spec: ReportSectionSpec
 ) -> tuple[ContextBlock, ...]:
@@ -206,6 +243,8 @@ def _gather_context_blocks(
             generic = _generic_metric_block(profile, metric_id)
             if generic is not None:
                 blocks.append(generic)
+        if spec.section_id == "development":
+            blocks.extend(_development_blocks(profile, knowledge))
 
     return tuple(blocks)
 

@@ -666,6 +666,62 @@ async def test_generate_report_timing_section_gets_knowledge_grounding(
     assert knowledge_labels == {"personal_year", "personal_month", "personal_day"}
 
 
+async def test_generate_report_development_section_gets_pilot_grounding(
+    knowledge_base,
+) -> None:
+    """Wave 3 Schritt 2 end-to-end proof: the `development` report section used to
+    carry only bare numeric facts (`_generic_metric_block` per core metric), per both
+    2026-09-24 audits' "ungrounded Development section" finding. Lukas Springer's
+    golden-case Life Path is 22/4 — knowledge/master-numbers/22.yaml is the migrated
+    Wave 3 pilot card — so this must now show up as a `role="knowledge"` block whose
+    content is the migrated `development_theme`, not just a `life_path = 22/4` fact."""
+    lukas = PersonInput(
+        birth_first_names="Lukas",
+        birth_last_name="Springer",
+        birth_date=dt.date(1986, 7, 18),
+    )
+    lukas_profile = calculate_profile(lukas, as_of_date=dt.date(2026, 8, 19))
+    assert lukas_profile.core_numbers.life_path.effective_value == 22
+
+    manifest = build_manifest(report_type="QUICK", calculation_id="calc-lukas")
+    development_blocks: list = []
+
+    class TrackingProvider:
+        async def health(self) -> ProviderHealth:
+            return ProviderHealth(
+                status="healthy", provider="ollama_cloud", checked_at=dt.datetime.now(dt.UTC)
+            )
+
+        async def generate(self, request: GenerationRequest) -> GenerationResult:
+            raise AssertionError("not used")
+
+        async def generate_structured(self, request: StructuredGenerationRequest, schema: type):  # type: ignore[no-untyped-def]
+            section_id = request.metadata["section_id"]
+            if section_id == "development":
+                development_blocks.extend(request.context_blocks)
+            target = int(request.metadata["target_word_count"])
+            return GeneratedSectionContent(
+                title=section_id,
+                text=_target_length_filler(section_id, target),
+                numeric_claims=request.numeric_claims,
+                summary="s",
+            )
+
+    await generate_report(
+        profile=lukas_profile,
+        knowledge=knowledge_base,
+        manifest=manifest,
+        llm=TrackingProvider(),
+    )
+
+    assert development_blocks, "expected the development section to have been generated"
+    development_theme_blocks = [b for b in development_blocks if b.label == "development_theme"]
+    assert len(development_theme_blocks) == 1
+    assert development_theme_blocks[0].role == "knowledge"
+    assert "Vision in Struktur überführen" in development_theme_blocks[0].content
+    assert "22/4" in development_theme_blocks[0].content
+
+
 async def test_generate_report_timing_section_repairs_when_coverage_missing(
     sample_profile, knowledge_base
 ) -> None:

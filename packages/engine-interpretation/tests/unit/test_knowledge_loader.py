@@ -7,6 +7,11 @@ import yaml
 
 from numra_interpretation.errors import KnowledgeLoadError
 from numra_interpretation.knowledge_loader import KnowledgeLoader, load_knowledge_base
+from numra_interpretation.knowledge_models import (
+    AuthoringProvenance,
+    KarmicDebtKnowledge,
+    NumberKnowledge,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -19,7 +24,7 @@ def test_knowledge_root_resolves_from_repo_root() -> None:
     assert KNOWLEDGE_ROOT.is_dir(), f"expected {KNOWLEDGE_ROOT} to exist"
     kb = load_knowledge_base(KNOWLEDGE_ROOT)
     assert kb.manifest.knowledge_system == "numra"
-    assert kb.manifest.version == "1.1.0"
+    assert kb.manifest.version == "1.2.0"
     assert kb.manifest.language == "de"
 
 
@@ -196,3 +201,157 @@ def test_non_mapping_yaml_top_level_raises_clear_error(tmp_path: Path) -> None:
 
     with pytest.raises(KnowledgeLoadError, match="YAML mapping"):
         KnowledgeLoader(root).load()
+
+
+# --- Wave 3 Schritt 1: optional long-form/governance fields -----------------------
+#
+# These fields are additive and absent-safe: existing knowledge/*.yaml content (no
+# such keys at all) must keep loading unchanged, and a file that *does* carry them
+# must validate and round-trip correctly. No real knowledge/ YAML is touched here —
+# that migration is Wave 3 Schritt 2+.
+
+
+def test_real_knowledge_tree_defaults_long_form_fields_to_absent() -> None:
+    """Every knowledge/numbers, master-numbers and karmic-debts file except the
+    Wave 3 Schritt 2 pilot (master-numbers/22.yaml) still has none of the long-form/
+    governance fields — they must keep defaulting cleanly rather than fail
+    validation."""
+    kb = load_knowledge_base(KNOWLEDGE_ROOT)
+
+    for value in list(range(1, 10)) + [11, 33]:
+        knowledge = kb.number(value)
+        assert knowledge.constructive_expression is None
+        assert knowledge.shadow_expression is None
+        assert knowledge.development_theme is None
+        assert knowledge.practical_suggestions == ()
+        assert knowledge.counter_hypotheses == ()
+        assert knowledge.reflection_prompts == ()
+        assert knowledge.claim_class is None
+        assert knowledge.source_refs == ()
+        assert knowledge.uncertainty is None
+        assert knowledge.authoring_provenance is None
+        assert knowledge.stable_id is None
+        assert knowledge.classification is None
+        assert knowledge.result_contexts == ()
+
+    for compound in ("13/4", "14/5", "16/7", "19/1"):
+        debt = kb.karmic_debt(compound)
+        assert debt is not None
+        assert debt.raw_value is None
+        assert debt.reduced_value is None
+        assert debt.constructive_expression is None
+        assert debt.authoring_provenance is None
+
+
+def test_master_22_carries_the_wave3_development_pilot_content() -> None:
+    """knowledge/master-numbers/22.yaml is the Wave 3 Schritt 2 pilot card (chosen
+    because Lukas Springer's golden-case Life Path is 22/4) — the one entry in the
+    real tree that must carry populated long-form content, not just pass schema
+    validation with defaults."""
+    kb = load_knowledge_base(KNOWLEDGE_ROOT)
+    knowledge = kb.number(22)
+
+    assert knowledge.stable_id == "de.pythagorean.v3.master.22"
+    assert knowledge.classification == "master"
+    assert knowledge.development_theme == "Vision in Struktur überführen"
+    assert len(knowledge.practical_suggestions) == 1
+    assert knowledge.constructive_expression is not None
+    assert knowledge.shadow_expression is not None
+    assert knowledge.claim_class == "traditional_claim"
+    assert "numra-tradition-v1" in knowledge.source_refs
+    assert knowledge.authoring_provenance is not None
+    assert knowledge.authoring_provenance.review_status == "draft"
+
+    assert kb.manifest.version == "1.2.0"
+    assert kb.manifest.scientific_position is not None
+    assert "nicht validiert" in kb.manifest.scientific_position
+
+
+def test_number_knowledge_accepts_populated_long_form_fields(tmp_path: Path) -> None:
+    root = tmp_path / "knowledge"
+    (root / "numbers").mkdir(parents=True)
+    (root / "master-numbers").mkdir()
+    (root / "karmic-debts").mkdir()
+    (root / "metrics").mkdir()
+    (root / "manifest.yaml").write_text(
+        "knowledge_system: numra\n"
+        "version: 1.1.0\n"
+        "language: de\n"
+        "scientific_position: >-\n"
+        "  Numerologie ist empirisch nicht validiert.\n",
+        encoding="utf-8",
+    )
+    payload = {
+        "value": 2,
+        "root": 2,
+        "is_master": False,
+        "core_themes": ["Kooperation"],
+        "strengths": ["Sensibilitaet"],
+        "shadows": ["Abhaengigkeit"],
+        "relationships": ["Verbindung"],
+        "work_and_creation": ["Teamarbeit"],
+        "development": ["Diplomatie"],
+        "cautions": ["Unentschlossenheit"],
+        "stable_id": "de.pythagorean.v3.single.2",
+        "classification": "single",
+        "result_contexts": ["life_path_primary", "expression"],
+        "constructive_expression": "Die Symbolik kann zu feinfuehliger Wahrnehmung einladen.",
+        "shadow_expression": "Ueberbetonte Harmonie kann zu Selbstzuruecknahme fuehren.",
+        "development_theme": "Kooperation und Abgrenzung",
+        "practical_suggestions": ["Achte auf eigene Beduerfnisse."],
+        "counter_hypotheses": ["Kooperationsbereitschaft kann anders erklaerbar sein."],
+        "reflection_prompts": ["Wo erlebst du ausgewogenes Geben und Nehmen?"],
+        "claim_class": "traditional_claim",
+        "source_refs": ["numra-method-v2", "numra-tradition-v1"],
+        "uncertainty": None,
+        "authoring_provenance": {
+            "authored_at": "2026-08-05",
+            "author": "Numra Knowledge Team",
+            "review_status": "draft",
+        },
+    }
+    (root / "numbers" / "2.yaml").write_text(yaml.safe_dump(payload), encoding="utf-8")
+
+    kb = KnowledgeLoader(root).load()
+    knowledge = kb.number(2)
+
+    assert isinstance(knowledge, NumberKnowledge)
+    assert knowledge.stable_id == "de.pythagorean.v3.single.2"
+    assert knowledge.result_contexts == ("life_path_primary", "expression")
+    assert knowledge.constructive_expression == (
+        "Die Symbolik kann zu feinfuehliger Wahrnehmung einladen."
+    )
+    assert knowledge.practical_suggestions == ("Achte auf eigene Beduerfnisse.",)
+    assert knowledge.claim_class == "traditional_claim"
+    assert isinstance(knowledge.authoring_provenance, AuthoringProvenance)
+    assert knowledge.authoring_provenance.review_status == "draft"
+    assert kb.manifest.scientific_position is not None
+    assert "nicht validiert" in kb.manifest.scientific_position
+
+
+def test_karmic_debt_knowledge_accepts_raw_and_reduced_value(tmp_path: Path) -> None:
+    root = tmp_path / "knowledge"
+    (root / "numbers").mkdir(parents=True)
+    (root / "master-numbers").mkdir()
+    (root / "karmic-debts").mkdir()
+    (root / "metrics").mkdir()
+    (root / "manifest.yaml").write_text(
+        "knowledge_system: numra\nversion: 1.1.0\nlanguage: de\n", encoding="utf-8"
+    )
+    payload = {
+        "compound": "13/4",
+        "themes": ["Disziplin"],
+        "raw_value": 13,
+        "reduced_value": 4,
+        "development_theme": "Disziplin als Weg zur Transformation",
+    }
+    (root / "karmic-debts" / "13-4.yaml").write_text(yaml.safe_dump(payload), encoding="utf-8")
+
+    kb = KnowledgeLoader(root).load()
+    debt = kb.karmic_debt("13/4")
+
+    assert debt is not None
+    assert isinstance(debt, KarmicDebtKnowledge)
+    assert debt.raw_value == 13
+    assert debt.reduced_value == 4
+    assert debt.development_theme == "Disziplin als Weg zur Transformation"
