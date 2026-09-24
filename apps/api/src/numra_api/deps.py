@@ -176,8 +176,12 @@ def rate_limit_by_user(
 async def get_current_session(
     request: Request,
     db: AsyncSession = Depends(get_db, scope="function"),
-    session_token: str | None = Cookie(default=None, alias="numra_session"),
+    settings: Settings = Depends(get_settings_dep),
 ) -> SessionModel:
+    # Read via `settings.session_cookie_name` rather than a Cookie(alias=...) default:
+    # that alias is bound at import time, so it can never reflect a per-app (e.g.
+    # per-test) Settings override the way `request.app.state.settings` can.
+    session_token = request.cookies.get(settings.session_cookie_name)
     if not session_token:
         raise NotAuthenticated("no session cookie")
     token_hash = hash_session_token(session_token)
@@ -232,8 +236,8 @@ async def get_current_bearer_user(
 async def get_current_user_any_auth(
     request: Request,
     authorization: str | None = Header(default=None, alias="Authorization"),
-    session_token: str | None = Cookie(default=None, alias="numra_session"),
     db: AsyncSession = Depends(get_db, scope="function"),
+    settings: Settings = Depends(get_settings_dep),
 ) -> User:
     """Accept either credential on a read-only route the native app shares with the
     browser (MOBILE-12C). The presence of an `Authorization` header — not its validity
@@ -246,7 +250,7 @@ async def get_current_user_any_auth(
     if authorization is not None:
         bearer_session = await get_current_bearer_session(authorization=authorization, db=db)
         return await get_current_bearer_user(db=db, session=bearer_session)
-    cookie_session = await get_current_session(request=request, db=db, session_token=session_token)
+    cookie_session = await get_current_session(request=request, db=db, settings=settings)
     return await get_current_user(db=db, session=cookie_session)
 
 
