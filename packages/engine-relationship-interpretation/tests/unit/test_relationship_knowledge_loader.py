@@ -198,6 +198,62 @@ def test_diagonal_shadow_rules_pass_the_authoring_guide_forbidden_language_check
                 )
 
 
+# --- Wave 3 Schritt 5 (Batches 2-7): the 66 off-diagonal shadow-interaction rules ---
+
+_GENERIC_OFFDIAGONAL_ESCALATION_MARKER = (
+    "solange keine Seite die eigene Neigung bewusst reflektiert"
+)
+_GENERIC_OFFDIAGONAL_DEESCALATION_MARKER = (
+    "aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klärung zu suchen"
+)
+
+
+def test_offdiagonal_shadow_rules_are_no_longer_generic_templates() -> None:
+    """The 66 off-diagonal rules (shadow_theme_a != shadow_theme_b) were rewritten with
+    theme-specific text in Wave 3 Schritt 5 Batches 2-7 -- they must no longer match the
+    generic cross-theme template every off-diagonal rule used to share verbatim, and no
+    two rules may share identical escalation or deescalation text."""
+    rules = load_shadow_interaction_rules(KNOWLEDGE_ROOT)
+    offdiagonal = [r for r in rules if r.shadow_theme_a != r.shadow_theme_b]
+    assert len(offdiagonal) == 66
+
+    for rule in offdiagonal:
+        template_id = rule.interaction_pattern_template_id
+        assert _GENERIC_OFFDIAGONAL_ESCALATION_MARKER not in rule.escalation_loop_template, (
+            template_id
+        )
+        assert _GENERIC_OFFDIAGONAL_DEESCALATION_MARKER not in rule.deescalation_template, (
+            template_id
+        )
+
+    # Every rule's text is unique across the *entire* table (not just within the
+    # off-diagonal subset) -- diagonal and off-diagonal rows must not collide either.
+    all_escalations = [r.escalation_loop_template for r in rules]
+    all_deescalations = [r.deescalation_template for r in rules]
+    assert len(all_escalations) == len(set(all_escalations))
+    assert len(all_deescalations) == len(set(all_deescalations))
+
+
+def test_offdiagonal_shadow_rules_pass_the_authoring_guide_forbidden_language_checks() -> None:
+    """knowledge/AUTHORING_GUIDE.md commits to reusing report/linter.py's and
+    evidence_linter.py's forbidden-language patterns rather than inventing new ones --
+    this actually runs both against the Batches 2-7 content instead of trusting a human
+    read."""
+    rules = load_shadow_interaction_rules(KNOWLEDGE_ROOT)
+    offdiagonal = [r for r in rules if r.shadow_theme_a != r.shadow_theme_b]
+    assert len(offdiagonal) == 66
+
+    for rule in offdiagonal:
+        for text in (rule.escalation_loop_template, rule.deescalation_template):
+            causal = lint_free_text_for_causal_language(text)
+            assert causal.is_valid, (rule.interaction_pattern_template_id, causal.errors)
+            for pattern in _UNSUPPORTED_CLAIM_PATTERNS:
+                assert not pattern.search(text), (
+                    rule.interaction_pattern_template_id,
+                    pattern.pattern,
+                )
+
+
 def test_missing_manifest_raises_load_error(tmp_path: Path) -> None:
     (tmp_path / "relationship-frames").mkdir()
     with pytest.raises(RelationshipKnowledgeLoadError):
