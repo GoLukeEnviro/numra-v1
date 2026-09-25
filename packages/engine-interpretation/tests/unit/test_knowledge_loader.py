@@ -12,6 +12,8 @@ from numra_interpretation.knowledge_models import (
     KarmicDebtKnowledge,
     NumberKnowledge,
 )
+from numra_interpretation.report.evidence_linter import lint_free_text_for_causal_language
+from numra_interpretation.report.linter import _UNSUPPORTED_CLAIM_PATTERNS
 
 pytestmark = pytest.mark.unit
 
@@ -114,6 +116,28 @@ def test_soul_urge_and_life_path_semantic_context_differ() -> None:
     life_path = kb.metric("life_path")
     assert soul_urge.semantic_context_de != life_path.semantic_context_de
     assert soul_urge.display_name_de != life_path.display_name_de
+
+
+def test_all_metric_semantic_contexts_are_globally_unique() -> None:
+    """Wave 3 Schritt 5: every metric's `semantic_context_de` is rendered verbatim as
+    the report intro sentence (composer.py's f"{display_name_de}: {semantic_context_de}")
+    for every metric that appears in a report -- real reader-facing text, not just
+    LLM-prompt grounding. No two metrics may collapse to the same wording."""
+    kb = load_knowledge_base(KNOWLEDGE_ROOT)
+    texts = [kb.metric(metric_id).semantic_context_de for metric_id in ALL_METRIC_IDS]
+    assert len(texts) == len(set(texts))
+
+
+def test_all_metric_semantic_contexts_pass_forbidden_language_checks() -> None:
+    """Same forbidden-language contract as knowledge/AUTHORING_GUIDE.md's other
+    Wave 3 Schritt 5 content (shadow-interaction, relationship-frames)."""
+    kb = load_knowledge_base(KNOWLEDGE_ROOT)
+    for metric_id in ALL_METRIC_IDS:
+        text = kb.metric(metric_id).semantic_context_de
+        causal = lint_free_text_for_causal_language(text)
+        assert causal.is_valid, (metric_id, causal.errors)
+        for pattern in _UNSUPPORTED_CLAIM_PATTERNS:
+            assert not pattern.search(text), (metric_id, pattern.pattern)
 
 
 def test_unknown_metric_raises_key_error() -> None:

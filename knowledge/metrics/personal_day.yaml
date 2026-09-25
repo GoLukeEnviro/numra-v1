@@ -1,4 +1,6 @@
 metric_id: personal_day
 display_name_de: Persönlicher Tag
-semantic_context_de: Der Persönliche Tag verfeinert den Persönlichen Monat auf einen
-  einzelnen Kalendertag und beschreibt die feinste zeitliche Auflösung der Timing-Zahlen.
+semantic_context_de: Der Persönliche Tag verfeinert den Persönlichen Monat auf einen einzelnen Kalendertag
+  und beschreibt die feinste zeitliche Auflösung der Timing-Zahlen. Er wird aus dem Persoenlichen Jahr
+  und Monat in Kombination mit dem Kalendertag gebildet und eignet sich daher besonders fuer sehr kurzfristige
+  Betrachtungen.

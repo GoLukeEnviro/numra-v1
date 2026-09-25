@@ -1,5 +1,6 @@
 metric_id: hidden_passion
 display_name_de: Verborgene Leidenschaft
-semantic_context_de: Die verborgene Leidenschaft zeigt die im Namen am häufigsten
-  wiederkehrenden Werte und beschreibt ein Talent oder eine Neigung, die besonders
-  stark ausgeprägt, aber nicht immer offensichtlich ist.
+semantic_context_de: Die verborgene Leidenschaft zeigt die im Namen am häufigsten wiederkehrenden Werte
+  und beschreibt ein Talent oder eine Neigung, die besonders stark ausgeprägt, aber nicht immer offensichtlich
+  ist. Sie ergibt sich aus der Haeufigkeitsanalyse der Buchstabenwerte im vollstaendigen Geburtsnamen
+  (siehe Intensitaetstabelle) und markiert den am staerksten vertretenen Wert.
