@@ -1,0 +1,186 @@
+# numra-prod — production composition (reconstructed from the HermesTrader
+# deployment during the agent0 migration; secrets are ${VAR} placeholders,
+# resolved from /etc/numra/numra.env which never enters git).
+#
+# Deploy convention (same on every host):
+#   docker compose -p numra-prod --env-file /etc/numra/numra.env \
+#     -f /opt/numra/compose.production.yml <command>
+#
+# Builds from the deployment checkout at /opt/numra/repo (pinned to deployed_sha).
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "4"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: numra
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: numra
+    volumes:
+      - numra_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U numra -d numra"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    logging: *default-logging
+
+  migrate:
+    build:
+      context: /opt/numra/repo
+      dockerfile: docker/api.Dockerfile
+      target: api
+    command: ["alembic", "upgrade", "head"]
+    working_dir: /app/apps/api
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging: *default-logging
+
+  api:
+    build:
+      context: /opt/numra/repo
+      dockerfile: docker/api.Dockerfile
+      target: api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      APP_TIMEZONE: ${APP_TIMEZONE:-Europe/Berlin}
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
+      ALLOW_SELF_SIGNUP: ${ALLOW_SELF_SIGNUP:-false}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      NUMRA_LLM_PROVIDER: ${NUMRA_LLM_PROVIDER:-disabled}
+      NUMRA_LLM_MAX_RETRIES: ${NUMRA_LLM_MAX_RETRIES:-3}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-}
+      OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
+      NUMRA_LLM_MODEL_PREMIUM: ${NUMRA_LLM_MODEL_PREMIUM:-deepseek-v4-pro:cloud}
+      NUMRA_LLM_MODEL_FAST: ${NUMRA_LLM_MODEL_FAST:-deepseek-v4-flash:cloud}
+      NUMRA_LLM_TEMPERATURE: ${NUMRA_LLM_TEMPERATURE:-0.2}
+      NUMRA_LLM_TIMEOUT_SECONDS: ${NUMRA_LLM_TIMEOUT_SECONDS:-120}
+      PDF_INTERNAL_URL: http://pdf:4300
+      PDF_INTERNAL_TOKEN: ${PDF_INTERNAL_TOKEN:?PDF_INTERNAL_TOKEN is required}
+      EXPORT_STORAGE_DIR: /app/data/exports
+      RATE_LIMIT_BACKEND: ${RATE_LIMIT_BACKEND:-redis}
+      REDIS_URL: redis://redis:6379/0
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS is required}
+      EMAIL_BACKEND: ${EMAIL_BACKEND:-disabled}
+      # SMTP transport — only meaningful with EMAIL_BACKEND=smtp. The empty
+      # defaults are deliberate: Settings ignores empty env values
+      # (env_ignore_empty), so an unset SMTP_PORT etc. stays None instead of
+      # failing int parsing, and the disabled/logging defaults keep working.
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-false}
+      SMTP_TIMEOUT_SECONDS: ${SMTP_TIMEOUT_SECONDS:-10.0}
+      WEB_APP_BASE_URL: ${WEB_APP_BASE_URL:-}
+    volumes:
+      - numra_exports_data:/app/data/exports
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      pdf:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${NUMRA_API_PORT:?NUMRA_API_PORT is required}:8000"
+    logging: *default-logging
+
+  worker:
+    build:
+      context: /opt/numra/repo
+      dockerfile: docker/api.Dockerfile
+      target: worker
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      APP_TIMEZONE: ${APP_TIMEZONE:-Europe/Berlin}
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      NUMRA_LLM_PROVIDER: ${NUMRA_LLM_PROVIDER:-disabled}
+      NUMRA_LLM_MAX_RETRIES: ${NUMRA_LLM_MAX_RETRIES:-3}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-}
+      OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
+      NUMRA_LLM_MODEL_PREMIUM: ${NUMRA_LLM_MODEL_PREMIUM:-deepseek-v4-pro:cloud}
+      NUMRA_LLM_MODEL_FAST: ${NUMRA_LLM_MODEL_FAST:-deepseek-v4-flash:cloud}
+      RATE_LIMIT_BACKEND: ${RATE_LIMIT_BACKEND:-redis}
+      REDIS_URL: redis://redis:6379/0
+      EMAIL_BACKEND: ${EMAIL_BACKEND:-disabled}
+      # SMTP transport — only meaningful with EMAIL_BACKEND=smtp. The empty
+      # defaults are deliberate: Settings ignores empty env values
+      # (env_ignore_empty), so an unset SMTP_PORT etc. stays None instead of
+      # failing int parsing, and the disabled/logging defaults keep working.
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-false}
+      SMTP_TIMEOUT_SECONDS: ${SMTP_TIMEOUT_SECONDS:-10.0}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    logging: *default-logging
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    logging: *default-logging
+
+  pdf:
+    build:
+      context: /opt/numra/repo
+      dockerfile: docker/pdf.Dockerfile
+    restart: unless-stopped
+    environment:
+      PDF_INTERNAL_TOKEN: ${PDF_INTERNAL_TOKEN:?PDF_INTERNAL_TOKEN is required}
+    shm_size: "1gb"
+    logging: *default-logging
+
+  web:
+    build:
+      context: /opt/numra/repo
+      dockerfile: docker/web.Dockerfile
+    restart: unless-stopped
+    environment:
+      API_INTERNAL_URL: http://api:8000
+      HOSTNAME: "0.0.0.0"
+    depends_on:
+      - api
+    ports:
+      - "127.0.0.1:${NUMRA_WEB_PORT:?NUMRA_WEB_PORT is required}:3000"
+    logging: *default-logging
+
+volumes:
+  numra_postgres_data:
+    name: numra_prod_postgres_data
+  numra_exports_data:
+    name: numra_prod_exports_data
