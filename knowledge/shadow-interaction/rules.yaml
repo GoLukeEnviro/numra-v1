@@ -7,10 +7,10 @@
 # 78 Zeilen (C(12,2) + 12 Diagonal-Fälle) statt kombinatorisch zu explodieren; die 33 Master-
 # Zeilen wenden dasselbe Template-Muster auf die kuratierten master-numbers/*.yaml-Themen an.
 #
-# Wave 3 Schritt 5 (Batch 1, siehe knowledge/AUTHORING_GUIDE.md): die 12 Diagonal-Zeilen (beide
-# Profile teilen dasselbe primäre Schattenthema, shadow_theme_a == shadow_theme_b) sind
-# themenspezifisch neu verfasst statt generisch templated -- die 66 Off-Diagonal-Zeilen bleiben
-# vorerst beim generischen Muster, folgen in späteren Batches.
+# Wave 3 Schritt 5 (siehe knowledge/AUTHORING_GUIDE.md): alle 78 Zeilen -- die 12 Diagonal-Zeilen
+# (shadow_theme_a == shadow_theme_b, Batch 1) und die 66 Off-Diagonal-Zeilen (Batches 2-7) --
+# sind themenspezifisch neu verfasst statt generisch templated. Jede Zeile hat eine eigene,
+# von allen anderen Zeilen verschiedene escalation_loop_template/deescalation_template-Formulierung.
 rules:
 - shadow_theme_a: Dominanz
   shadow_theme_b: Dominanz
@@ -23,75 +23,70 @@ rules:
 - shadow_theme_a: Dominanz
   shadow_theme_b: Unentschlossenheit
   interaction_pattern_template_id: pattern_1_2
-  escalation_loop_template: Wenn die Neigung zu Dominanz bei der einen Seite auf die Neigung zu Unentschlossenheit
-    bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Dominanz bzw. Unentschlossenheit
-    kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame
-    Klärung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Dominanz neigt und die andere zur Unentschlossenheit,
+    kann sich ein Muster einspielen, in dem die entscheidungsfreudige Seite automatisch die Führung übernimmt
+    und die zögernde Seite sich zunehmend zurückzieht, statt eigene Vorstellungen einzubringen.
+  deescalation_template: Ein bewusst geschaffener Raum, in dem die zögernde Seite zuerst gefragt wird,
+    kann verhindern, dass sich die Rollenverteilung unbemerkt verfestigt, ohne dass die entscheidungsfreudige
+    Seite ihre Klarheit aufgeben muss.
 - shadow_theme_a: Dominanz
   shadow_theme_b: Zerstreuung
   interaction_pattern_template_id: pattern_1_3
-  escalation_loop_template: Wenn die Neigung zu Dominanz bei der einen Seite auf die Neigung zu Zerstreuung
-    bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Dominanz bzw. Zerstreuung kann
-    beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klärung
-    zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Dominanz neigt und die andere zur Zerstreuung, kann
+    die bestimmende Seite zunehmend die Nachverfolgung gemeinsamer Vorhaben übernehmen, während die zerstreute
+    Seite sich stillschweigend aus der Verantwortung zieht.
+  deescalation_template: Eine klar vereinbarte, aber begrenzte Zuständigkeit für die zerstreute Seite
+    kann beiden helfen, aus dem Muster auszusteigen, in dem eine Seite alles organisiert und die andere
+    nichts mehr nachhält.
 - shadow_theme_a: Dominanz
   shadow_theme_b: Rigidität
   interaction_pattern_template_id: pattern_1_4
-  escalation_loop_template: Wenn die Neigung zu Dominanz bei der einen Seite auf die Neigung zu Rigidität
-    bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Dominanz bzw. Rigidität kann beiden
-    Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klärung zu suchen,
-    statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Dominanz neigt und die andere zur Rigidität, können
+    Machtfragen und Grundsatzfragen ineinander übergehen — ein Vorschlag der dominanten Seite kann auf
+    unbeweglichen Widerstand treffen, der sich rasch zu einem Prinzipienstreit ausweiten kann.
+  deescalation_template: Eine bewusste Trennung zwischen 'wer entscheidet' und 'wie es gemacht wird' kann
+    beiden Seiten helfen, Machtfragen von inhaltlichen Fragen zu lösen.
 - shadow_theme_a: Dominanz
   shadow_theme_b: Rastlosigkeit
   interaction_pattern_template_id: pattern_1_5
-  escalation_loop_template: Wenn die Neigung zu Dominanz bei der einen Seite auf die Neigung zu Rastlosigkeit
-    bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Dominanz bzw. Rastlosigkeit kann
-    beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klärung
-    zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Dominanz neigt und die andere zur Rastlosigkeit, kann
+    die bestimmende Seite versuchen, Stabilität durchzusetzen, während die rastlose Seite genau das als
+    Einengung erlebt — ein Muster aus Druck und Ausweichen kann entstehen.
+  deescalation_template: Ein gemeinsam vereinbarter Rahmen, der sowohl feste Punkte als auch Freiräume
+    enthält, kann beiden Seiten Sicherheit geben, ohne dass eine Seite die andere kontrollieren muss.
 - shadow_theme_a: Dominanz
   shadow_theme_b: Überverantwortung
   interaction_pattern_template_id: pattern_1_6
-  escalation_loop_template: Wenn die Neigung zu Dominanz bei der einen Seite auf die Neigung zu Überverantwortung
-    bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Dominanz bzw. Überverantwortung
-    kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame
-    Klärung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Dominanz neigt und die andere zur Überverantwortung,
+    kann sich eine Dynamik einspielen, in der die bestimmende Seite Entscheidungen trifft und die überverantwortliche
+    Seite automatisch die Folgen davon mitträgt, auch wenn sie nicht einverstanden war.
+  deescalation_template: Eine klare Kopplung von Entscheidung und Verantwortung — wer entscheidet, trägt
+    die Konsequenzen mit — kann beiden Seiten helfen, aus dieser stillschweigenden Aufgabenteilung auszusteigen.
 - shadow_theme_a: Dominanz
   shadow_theme_b: Rückzug
   interaction_pattern_template_id: pattern_1_7
-  escalation_loop_template: Wenn die Neigung zu Dominanz bei der einen Seite auf die Neigung zu Rückzug
-    bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Dominanz bzw. Rückzug kann beiden
-    Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klärung zu suchen,
-    statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Dominanz neigt und die andere zum Rückzug, kann die
+    bestimmende Seite den Rückzug der anderen als Zustimmung deuten, während die zurückgezogene Seite
+    ihre eigentliche Position gar nicht mehr äußert.
+  deescalation_template: Eine ausdrückliche Nachfrage der dominanten Seite, bevor eine Entscheidung als
+    geteilt gilt, kann der zurückgezogenen Seite Raum geben, ihre Sicht doch noch einzubringen.
 - shadow_theme_a: Dominanz
   shadow_theme_b: Kontrolle
   interaction_pattern_template_id: pattern_1_8
-  escalation_loop_template: Wenn die Neigung zu Dominanz bei der einen Seite auf die Neigung zu Kontrolle
-    bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Dominanz bzw. Kontrolle kann beiden
-    Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klärung zu suchen,
-    statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Dominanz neigt und die andere zur Kontrolle, können
+    sich Führungsanspruch und Detailkontrolle überschneiden — die eine Seite möchte die Richtung vorgeben,
+    die andere jeden Schritt bestimmen, was zu wiederkehrenden Reibungen führen kann.
+  deescalation_template: Eine klare Trennung zwischen grober Richtung und Umsetzungsdetails kann beiden
+    Seiten den jeweils eigenen Bereich lassen, ohne sich gegenseitig zu blockieren.
 - shadow_theme_a: Dominanz
   shadow_theme_b: Selbstaufgabe
   interaction_pattern_template_id: pattern_1_9
-  escalation_loop_template: Wenn die Neigung zu Dominanz bei der einen Seite auf die Neigung zu Selbstaufgabe
-    bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Dominanz bzw. Selbstaufgabe kann
-    beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klärung
-    zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Dominanz neigt und die andere zur Selbstaufgabe, kann
+    sich eine Schieflage verfestigen, in der die bestimmende Seite zunehmend mehr Raum einnimmt, weil
+    die andere Seite kaum widerspricht.
+  deescalation_template: Eine bewusste Einladung der dominanten Seite, die Meinung der anderen Seite aktiv
+    einzufordern, kann helfen, die Schieflage auszugleichen, ohne dass die zurückhaltende Seite sich aufdrängen
+    muss.
 - shadow_theme_a: Unentschlossenheit
   shadow_theme_b: Unentschlossenheit
   interaction_pattern_template_id: pattern_2_2
@@ -103,66 +98,61 @@ rules:
 - shadow_theme_a: Unentschlossenheit
   shadow_theme_b: Zerstreuung
   interaction_pattern_template_id: pattern_2_3
-  escalation_loop_template: Wenn die Neigung zu Unentschlossenheit bei der einen Seite auf die Neigung
-    zu Zerstreuung bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich
-    wechselseitig verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Unentschlossenheit bzw. Zerstreuung
-    kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame
-    Klärung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Unentschlossenheit neigt und die andere zur Zerstreuung,
+    können gemeinsame Entscheidungen gleich doppelt ins Stocken geraten — die eine Seite zögert, die andere
+    verliert parallel den Faden, sodass Themen unbeabsichtigt versanden.
+  deescalation_template: Eine kurze, verbindliche Frist für offene Entscheidungen kann beiden Seiten helfen,
+    Themen abzuschließen, bevor sie im gegenseitigen Zögern und Verlieren des Überblicks untergehen.
 - shadow_theme_a: Unentschlossenheit
   shadow_theme_b: Rigidität
   interaction_pattern_template_id: pattern_2_4
-  escalation_loop_template: Wenn die Neigung zu Unentschlossenheit bei der einen Seite auf die Neigung
-    zu Rigidität bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich
-    wechselseitig verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Unentschlossenheit bzw. Rigidität
-    kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame
-    Klärung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Unentschlossenheit neigt und die andere zur Rigidität,
+    kann die zögernde Seite eine bereits feststehende Position der anderen kaum noch infrage stellen,
+    wodurch sich Entscheidungen einseitig verfestigen können, ohne dass ein echter Austausch stattfindet.
+  deescalation_template: Eine bewusst eingeräumte Bedenkzeit vor endgültigen Festlegungen kann der zögernden
+    Seite Raum geben, die eigene Position zu finden, bevor sie sich der feststehenden Haltung der anderen
+    einfach anschließt.
 - shadow_theme_a: Unentschlossenheit
   shadow_theme_b: Rastlosigkeit
   interaction_pattern_template_id: pattern_2_5
-  escalation_loop_template: Wenn die Neigung zu Unentschlossenheit bei der einen Seite auf die Neigung
-    zu Rastlosigkeit bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen
-    sich wechselseitig verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Unentschlossenheit bzw. Rastlosigkeit
-    kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame
-    Klärung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Unentschlossenheit neigt und die andere zur Rastlosigkeit,
+    kann die rastlose Seite ungeduldig vorpreschen, während die zögernde Seite kaum hinterherkommt — Entscheidungen
+    können so getroffen werden, bevor beide Seiten wirklich einverstanden sind.
+  deescalation_template: Ein bewusst eingeplanter kurzer Moment vor jeder Entscheidung, in dem beide Seiten
+    ausdrücklich gefragt werden, kann verhindern, dass Tempo und Zögern unausgesprochen aneinander vorbeilaufen.
 - shadow_theme_a: Unentschlossenheit
   shadow_theme_b: Überverantwortung
   interaction_pattern_template_id: pattern_2_6
-  escalation_loop_template: Wenn die Neigung zu Unentschlossenheit bei der einen Seite auf die Neigung
-    zu Überverantwortung bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen
-    sich wechselseitig verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Unentschlossenheit bzw. Überverantwortung
-    kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame
-    Klärung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Unentschlossenheit neigt und die andere zur Überverantwortung,
+    kann die überverantwortliche Seite automatisch einspringen und entscheiden, sobald die andere zögert
+    — mit der Zeit kann sich so eine feste Rollenverteilung einschleifen, die niemand bewusst gewählt
+    hat.
+  deescalation_template: Eine bewusste Pause, bevor die überverantwortliche Seite die Entscheidung übernimmt,
+    kann der zögernden Seite die Chance geben, doch noch eine eigene Position zu finden.
 - shadow_theme_a: Unentschlossenheit
   shadow_theme_b: Rückzug
   interaction_pattern_template_id: pattern_2_7
-  escalation_loop_template: Wenn die Neigung zu Unentschlossenheit bei der einen Seite auf die Neigung
-    zu Rückzug bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Unentschlossenheit bzw. Rückzug
-    kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame
-    Klärung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Unentschlossenheit neigt und die andere zum Rückzug,
+    können offene Fragen doppelt unbeantwortet bleiben — keine Seite macht den ersten klaren Schritt,
+    sodass Themen über längere Zeit ungeklärt liegen bleiben können.
+  deescalation_template: Eine dritte, neutrale Gelegenheit — etwa ein fester Termin nur für offene Themen
+    — kann beiden Seiten einen Anlass geben, aus dem gemeinsamen Vermeiden auszusteigen.
 - shadow_theme_a: Unentschlossenheit
   shadow_theme_b: Kontrolle
   interaction_pattern_template_id: pattern_2_8
-  escalation_loop_template: Wenn die Neigung zu Unentschlossenheit bei der einen Seite auf die Neigung
-    zu Kontrolle bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich
-    wechselseitig verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Unentschlossenheit bzw. Kontrolle
-    kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame
-    Klärung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Unentschlossenheit neigt und die andere zur Kontrolle,
+    kann die kontrollierende Seite zunehmend jede offene Frage selbst entscheiden, weil die andere ohnehin
+    zögert — die zögernde Seite verliert dabei mit der Zeit den Anlass, eigene Vorstellungen zu entwickeln.
+  deescalation_template: Eine bewusst der zögernden Seite überlassene, klar abgegrenzte Entscheidung kann
+    beiden helfen, aus der Gewohnheit auszusteigen, dass eine Seite automatisch alles bestimmt.
 - shadow_theme_a: Unentschlossenheit
   shadow_theme_b: Selbstaufgabe
   interaction_pattern_template_id: pattern_2_9
-  escalation_loop_template: Wenn die Neigung zu Unentschlossenheit bei der einen Seite auf die Neigung
-    zu Selbstaufgabe bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen
-    sich wechselseitig verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Unentschlossenheit bzw. Selbstaufgabe
-    kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame
-    Klärung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Unentschlossenheit neigt und die andere zur Selbstaufgabe,
+    können beide Seiten dazu neigen, eigene Wünsche zurückzuhalten — eine gemeinsame Entscheidung kann
+    so zu einem Aushandeln werden, bei dem am Ende niemand wirklich sagt, was er oder sie will.
+  deescalation_template: Eine Regel, dass jede Seite mindestens einen eigenen Wunsch offen benennt, bevor
+    eine Entscheidung fällt, kann beiden helfen, aus dem gemeinsamen Zurückhalten auszusteigen.
 - shadow_theme_a: Zerstreuung
   shadow_theme_b: Zerstreuung
   interaction_pattern_template_id: pattern_3_3
@@ -175,57 +165,53 @@ rules:
 - shadow_theme_a: Zerstreuung
   shadow_theme_b: Rigidität
   interaction_pattern_template_id: pattern_3_4
-  escalation_loop_template: Wenn die Neigung zu Zerstreuung bei der einen Seite auf die Neigung zu Rigidität
-    bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Zerstreuung bzw. Rigidität kann
-    beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klärung
-    zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Zerstreuung neigt und die andere zur Rigidität, kann
+    die unstrukturierte Seite als unzuverlässig erlebt werden, während die starre Seite als einengend
+    wahrgenommen wird — beide Zuschreibungen können sich in wiederkehrenden Konflikten verfestigen.
+  deescalation_template: Eine gemeinsam vereinbarte, aber bewusst locker gehaltene Struktur kann der zerstreuten
+    Seite Halt geben, ohne die Flexibilität zu verlieren, die die starre Seite sonst einengt.
 - shadow_theme_a: Zerstreuung
   shadow_theme_b: Rastlosigkeit
   interaction_pattern_template_id: pattern_3_5
-  escalation_loop_template: Wenn die Neigung zu Zerstreuung bei der einen Seite auf die Neigung zu Rastlosigkeit
-    bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Zerstreuung bzw. Rastlosigkeit
-    kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame
-    Klärung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Zerstreuung neigt und die andere zur Rastlosigkeit,
+    können gemeinsame Vorhaben leicht ins Uferlose geraten — ständig beginnt Neues, während wenig zu einem
+    Abschluss kommt.
+  deescalation_template: Eine bewusst begrenzte Anzahl gleichzeitiger Vorhaben kann beiden Seiten helfen,
+    tatsächlich etwas abzuschließen, statt sich gegenseitig in immer neue Richtungen zu ziehen.
 - shadow_theme_a: Zerstreuung
   shadow_theme_b: Überverantwortung
   interaction_pattern_template_id: pattern_3_6
-  escalation_loop_template: Wenn die Neigung zu Zerstreuung bei der einen Seite auf die Neigung zu Überverantwortung
-    bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Zerstreuung bzw. Überverantwortung
-    kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame
-    Klärung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Zerstreuung neigt und die andere zur Überverantwortung,
+    kann die überverantwortliche Seite zunehmend das auffangen, was die zerstreute Seite liegen lässt
+    — mit der Zeit kann daraus eine stille Erschöpfung auf der einen und ein unbemerktes Ausbleiben von
+    Konsequenzen auf der anderen Seite entstehen.
+  deescalation_template: Ein offenes Gespräch darüber, was tatsächlich liegen bleibt und wer es aktuell
+    auffängt, kann beiden Seiten helfen, die Aufgabenverteilung bewusster zu gestalten.
 - shadow_theme_a: Zerstreuung
   shadow_theme_b: Rückzug
   interaction_pattern_template_id: pattern_3_7
-  escalation_loop_template: Wenn die Neigung zu Zerstreuung bei der einen Seite auf die Neigung zu Rückzug
-    bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Zerstreuung bzw. Rückzug kann beiden
-    Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klärung zu suchen,
-    statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Zerstreuung neigt und die andere zum Rückzug, können
+    gemeinsame Themen gleich doppelt aus dem Blick geraten — die eine Seite verliert den Überblick, die
+    andere zieht sich zurück, sodass am Ende niemand die Fäden zusammenhält.
+  deescalation_template: Ein einfacher, gemeinsam einsehbarer Überblick über offene Themen kann beiden
+    Seiten helfen, auch dann den Anschluss zu behalten, wenn Aufmerksamkeit und Nähe gerade schwanken.
 - shadow_theme_a: Zerstreuung
   shadow_theme_b: Kontrolle
   interaction_pattern_template_id: pattern_3_8
-  escalation_loop_template: Wenn die Neigung zu Zerstreuung bei der einen Seite auf die Neigung zu Kontrolle
-    bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Zerstreuung bzw. Kontrolle kann
-    beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klärung
-    zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Zerstreuung neigt und die andere zur Kontrolle, kann
+    die kontrollierende Seite zunehmend jedes Detail selbst übernehmen, weil sie der zerstreuten Seite
+    wenig zutraut — die zerstreute Seite verliert dabei mit der Zeit den Anlass, selbst Verantwortung
+    zu zeigen.
+  deescalation_template: Ein bewusst kleiner, klar abgegrenzter Bereich, den die zerstreute Seite eigenständig
+    verantwortet, kann beiden helfen, aus der Gewohnheit auszusteigen, dass eine Seite alles kontrolliert.
 - shadow_theme_a: Zerstreuung
   shadow_theme_b: Selbstaufgabe
   interaction_pattern_template_id: pattern_3_9
-  escalation_loop_template: Wenn die Neigung zu Zerstreuung bei der einen Seite auf die Neigung zu Selbstaufgabe
-    bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Zerstreuung bzw. Selbstaufgabe
-    kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame
-    Klärung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Zerstreuung neigt und die andere zur Selbstaufgabe,
+    kann die selbstaufopfernde Seite stillschweigend ausgleichen, was die zerstreute Seite liegen lässt,
+    ohne dass dies je offen angesprochen wird.
+  deescalation_template: Ein regelmäßiger, kurzer Austausch darüber, was gerade tatsächlich anfällt und
+    wer es übernimmt, kann beiden Seiten helfen, den stillen Ausgleich sichtbar zu machen.
 - shadow_theme_a: Rigidität
   shadow_theme_b: Rigidität
   interaction_pattern_template_id: pattern_4_4
@@ -237,48 +223,46 @@ rules:
 - shadow_theme_a: Rigidität
   shadow_theme_b: Rastlosigkeit
   interaction_pattern_template_id: pattern_4_5
-  escalation_loop_template: Wenn die Neigung zu Rigidität bei der einen Seite auf die Neigung zu Rastlosigkeit
-    bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Rigidität bzw. Rastlosigkeit kann
-    beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klärung
-    zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Rigidität neigt und die andere zur Rastlosigkeit,
+    kann der Wunsch nach Veränderung auf der einen Seite auf feste Vorstellungen der anderen treffen —
+    beide Seiten können sich dabei wechselseitig als Hindernis erleben.
+  deescalation_template: Eine bewusst vereinbarte, begrenzte Zone für Veränderung innerhalb eines ansonsten
+    stabilen Rahmens kann beiden Seiten entgegenkommen, ohne dass eine Seite ihre Grundhaltung aufgeben
+    muss.
 - shadow_theme_a: Rigidität
   shadow_theme_b: Überverantwortung
   interaction_pattern_template_id: pattern_4_6
-  escalation_loop_template: Wenn die Neigung zu Rigidität bei der einen Seite auf die Neigung zu Überverantwortung
-    bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Rigidität bzw. Überverantwortung
-    kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame
-    Klärung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Rigidität neigt und die andere zur Überverantwortung,
+    kann die überverantwortliche Seite versuchen, es der starren Seite in jedem Detail recht zu machen
+    — die starre Seite kann diese Anpassung als selbstverständlich erleben, ohne die Anstrengung dahinter
+    zu bemerken.
+  deescalation_template: Ein offenes Ansprechen, wie viel Anpassung tatsächlich gerade geleistet wird,
+    kann der starren Seite helfen, die eigenen festen Erwartungen bewusster zu hinterfragen.
 - shadow_theme_a: Rigidität
   shadow_theme_b: Rückzug
   interaction_pattern_template_id: pattern_4_7
-  escalation_loop_template: Wenn die Neigung zu Rigidität bei der einen Seite auf die Neigung zu Rückzug
-    bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Rigidität bzw. Rückzug kann beiden
-    Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klärung zu suchen,
-    statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Rigidität neigt und die andere zum Rückzug, kann feststehende
+    Erwartung auf stilles Ausweichen treffen — Konflikte werden dadurch selten offen ausgetragen, sondern
+    schwelen unter der Oberfläche weiter.
+  deescalation_template: Eine bewusst kleinere, konkrete Frage statt einer grundsätzlichen Diskussion
+    kann der zurückgezogenen Seite leichter fallen zu beantworten, ohne sich einer feststehenden Haltung
+    ausgeliefert zu fühlen.
 - shadow_theme_a: Rigidität
   shadow_theme_b: Kontrolle
   interaction_pattern_template_id: pattern_4_8
-  escalation_loop_template: Wenn die Neigung zu Rigidität bei der einen Seite auf die Neigung zu Kontrolle
-    bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Rigidität bzw. Kontrolle kann beiden
-    Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klärung zu suchen,
-    statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Rigidität neigt und die andere zur Kontrolle, können
+    feste Vorstellungen und der Wunsch, alles im Griff zu behalten, sich gegenseitig verstärken — Abweichungen
+    vom gewohnten Vorgehen können auf beiden Seiten schnell als Bedrohung erlebt werden.
+  deescalation_template: Ein bewusst verabredeter, kleiner Testraum für eine ungewohnte Vorgehensweise
+    kann beiden Seiten zeigen, dass Abweichung nicht zwangsläufig Kontrollverlust bedeutet.
 - shadow_theme_a: Rigidität
   shadow_theme_b: Selbstaufgabe
   interaction_pattern_template_id: pattern_4_9
-  escalation_loop_template: Wenn die Neigung zu Rigidität bei der einen Seite auf die Neigung zu Selbstaufgabe
-    bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Rigidität bzw. Selbstaufgabe kann
-    beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klärung
-    zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Rigidität neigt und die andere zur Selbstaufgabe,
+    kann sich die selbstaufopfernde Seite den festen Vorstellungen der anderen zunehmend anpassen, ohne
+    eigene Bedürfnisse überhaupt noch zu äußern.
+  deescalation_template: Eine bewusste, wiederkehrende Nachfrage der starren Seite nach der Meinung der
+    anderen kann helfen, dass eigene Bedürfnisse nicht dauerhaft hinter feste Erwartungen zurücktreten.
 - shadow_theme_a: Rastlosigkeit
   shadow_theme_b: Rastlosigkeit
   interaction_pattern_template_id: pattern_5_5
@@ -290,39 +274,35 @@ rules:
 - shadow_theme_a: Rastlosigkeit
   shadow_theme_b: Überverantwortung
   interaction_pattern_template_id: pattern_5_6
-  escalation_loop_template: Wenn die Neigung zu Rastlosigkeit bei der einen Seite auf die Neigung zu Überverantwortung
-    bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Rastlosigkeit bzw. Überverantwortung
-    kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame
-    Klärung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Rastlosigkeit neigt und die andere zur Überverantwortung,
+    kann die überverantwortliche Seite zunehmend die Kontinuität sichern, die der rastlosen Seite fehlt
+    — mit der Zeit kann daraus eine einseitige Last werden, die kaum noch ausgesprochen wird.
+  deescalation_template: Ein offenes Gespräch darüber, wie viel Stabilität gerade wirklich von einer Seite
+    allein getragen wird, kann beiden helfen, Verantwortung bewusster zu verteilen.
 - shadow_theme_a: Rastlosigkeit
   shadow_theme_b: Rückzug
   interaction_pattern_template_id: pattern_5_7
-  escalation_loop_template: Wenn die Neigung zu Rastlosigkeit bei der einen Seite auf die Neigung zu Rückzug
-    bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Rastlosigkeit bzw. Rückzug kann
-    beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klärung
-    zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Rastlosigkeit neigt und die andere zum Rückzug, kann
+    das Bedürfnis nach Bewegung auf der einen Seite die zurückgezogene Seite noch weiter in sich kehren
+    lassen, während die rastlose Seite sich davon unbeachtet fühlt.
+  deescalation_template: Ein fester, aber kleiner gemeinsamer Anker — ein wiederkehrender ruhiger Moment
+    — kann beiden Seiten Kontinuität geben, ohne das Bedürfnis nach Bewegung oder nach Rückzug zu verneinen.
 - shadow_theme_a: Rastlosigkeit
   shadow_theme_b: Kontrolle
   interaction_pattern_template_id: pattern_5_8
-  escalation_loop_template: Wenn die Neigung zu Rastlosigkeit bei der einen Seite auf die Neigung zu Kontrolle
-    bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Rastlosigkeit bzw. Kontrolle kann
-    beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klärung
-    zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Rastlosigkeit neigt und die andere zur Kontrolle,
+    kann der Wunsch nach Bewegung auf der einen Seite als Bedrohung der Ordnung auf der anderen Seite
+    erlebt werden, was zu wiederkehrenden Auseinandersetzungen über Verlässlichkeit führen kann.
+  deescalation_template: Ein gemeinsam vereinbarter, klar abgesteckter Rahmen für spontane Vorhaben kann
+    der rastlosen Seite Freiraum geben, ohne dass die kontrollierende Seite die Übersicht verliert.
 - shadow_theme_a: Rastlosigkeit
   shadow_theme_b: Selbstaufgabe
   interaction_pattern_template_id: pattern_5_9
-  escalation_loop_template: Wenn die Neigung zu Rastlosigkeit bei der einen Seite auf die Neigung zu Selbstaufgabe
-    bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Rastlosigkeit bzw. Selbstaufgabe
-    kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame
-    Klärung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Rastlosigkeit neigt und die andere zur Selbstaufgabe,
+    kann sich die selbstaufopfernde Seite den wechselnden Vorhaben der anderen zunehmend unterordnen,
+    ohne eigene Wünsche nach Kontinuität überhaupt zu äußern.
+  deescalation_template: Eine bewusste Frage der rastlosen Seite, was der anderen Seite eigentlich wichtig
+    ist, kann helfen, eigene Bedürfnisse nach Stabilität sichtbar zu machen.
 - shadow_theme_a: Überverantwortung
   shadow_theme_b: Überverantwortung
   interaction_pattern_template_id: pattern_6_6
@@ -334,30 +314,29 @@ rules:
 - shadow_theme_a: Überverantwortung
   shadow_theme_b: Rückzug
   interaction_pattern_template_id: pattern_6_7
-  escalation_loop_template: Wenn die Neigung zu Überverantwortung bei der einen Seite auf die Neigung
-    zu Rückzug bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Überverantwortung bzw. Rückzug
-    kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame
-    Klärung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Überverantwortung neigt und die andere zum Rückzug,
+    kann die überverantwortliche Seite versuchen, die entstehende Distanz durch noch mehr Einsatz auszugleichen,
+    während sich die zurückgezogene Seite dadurch eher noch weiter entzieht.
+  deescalation_template: Ein bewusster Verzicht der überverantwortlichen Seite auf zusätzlichen Einsatz,
+    verbunden mit einer offenen Frage nach dem Rückzug, kann der anderen Seite mehr Raum geben, sich von
+    selbst wieder anzunähern.
 - shadow_theme_a: Überverantwortung
   shadow_theme_b: Kontrolle
   interaction_pattern_template_id: pattern_6_8
-  escalation_loop_template: Wenn die Neigung zu Überverantwortung bei der einen Seite auf die Neigung
-    zu Kontrolle bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich
-    wechselseitig verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Überverantwortung bzw. Kontrolle
-    kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame
-    Klärung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Überverantwortung neigt und die andere zur Kontrolle,
+    können sich beide Seiten gegenseitig darin bestärken, immer mehr zu übernehmen — die eine aus Pflichtgefühl,
+    die andere aus dem Bedürfnis, alles im Griff zu behalten.
+  deescalation_template: Eine gemeinsam besprochene Aufteilung, bei der bewusst Aufgaben an eine dritte
+    Stelle oder gar nicht übernommen werden, kann beiden Seiten helfen, aus dem wechselseitigen Mehr-Übernehmen
+    auszusteigen.
 - shadow_theme_a: Überverantwortung
   shadow_theme_b: Selbstaufgabe
   interaction_pattern_template_id: pattern_6_9
-  escalation_loop_template: Wenn die Neigung zu Überverantwortung bei der einen Seite auf die Neigung
-    zu Selbstaufgabe bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen
-    sich wechselseitig verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Überverantwortung bzw. Selbstaufgabe
-    kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame
-    Klärung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Überverantwortung neigt und die andere zur Selbstaufgabe,
+    können beide Seiten dazu neigen, die eigenen Bedürfnisse hinter die der anderen zu stellen — eine
+    Dynamik kann so entstehen, in der niemand aktiv einfordert, was er oder sie eigentlich braucht.
+  deescalation_template: Eine wechselseitige, bewusste Nachfrage nach den Bedürfnissen der anderen Seite
+    kann beiden helfen, aus dem gemeinsamen Zurückstecken auszusteigen.
 - shadow_theme_a: Rückzug
   shadow_theme_b: Rückzug
   interaction_pattern_template_id: pattern_7_7
@@ -369,21 +348,20 @@ rules:
 - shadow_theme_a: Rückzug
   shadow_theme_b: Kontrolle
   interaction_pattern_template_id: pattern_7_8
-  escalation_loop_template: Wenn die Neigung zu Rückzug bei der einen Seite auf die Neigung zu Kontrolle
-    bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Rückzug bzw. Kontrolle kann beiden
-    Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klärung zu suchen,
-    statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zum Rückzug neigt und die andere zur Kontrolle, kann die
+    kontrollierende Seite versuchen, die entstehende Distanz durch noch engmaschigeres Nachfragen zu schließen,
+    was die zurückgezogene Seite eher noch weiter zurückweichen lässt.
+  deescalation_template: Ein bewusst vereinbarter, klar begrenzter Freiraum für die zurückgezogene Seite
+    kann der kontrollierenden Seite Sicherheit geben, ohne dass ständiges Nachfragen nötig wird.
 - shadow_theme_a: Rückzug
   shadow_theme_b: Selbstaufgabe
   interaction_pattern_template_id: pattern_7_9
-  escalation_loop_template: Wenn die Neigung zu Rückzug bei der einen Seite auf die Neigung zu Selbstaufgabe
-    bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Rückzug bzw. Selbstaufgabe kann
-    beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klärung
-    zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zum Rückzug neigt und die andere zur Selbstaufgabe, kann
+    die selbstaufopfernde Seite versuchen, durch noch mehr Nachgeben die Nähe zur zurückgezogenen Seite
+    zu erhalten, ohne dass dies die eigentliche Distanz überbrückt.
+  deescalation_template: Ein offenes Gespräch darüber, was die zurückgezogene Seite gerade wirklich braucht,
+    kann verhindern, dass die andere Seite sich in immer mehr Zugeständnissen verliert, ohne dass sich
+    etwas an der Distanz ändert.
 - shadow_theme_a: Kontrolle
   shadow_theme_b: Kontrolle
   interaction_pattern_template_id: pattern_8_8
@@ -394,12 +372,12 @@ rules:
 - shadow_theme_a: Kontrolle
   shadow_theme_b: Selbstaufgabe
   interaction_pattern_template_id: pattern_8_9
-  escalation_loop_template: Wenn die Neigung zu Kontrolle bei der einen Seite auf die Neigung zu Selbstaufgabe
-    bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Kontrolle bzw. Selbstaufgabe kann
-    beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klärung
-    zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Kontrolle neigt und die andere zur Selbstaufgabe,
+    kann sich eine Schieflage verfestigen, in der die kontrollierende Seite immer mehr bestimmt und die
+    andere Seite kaum noch widerspricht.
+  deescalation_template: Eine bewusste Einladung der kontrollierenden Seite, die Meinung der anderen aktiv
+    einzufordern, kann helfen, die Schieflage auszugleichen, ohne dass die zurückhaltende Seite sich aufdrängen
+    muss.
 - shadow_theme_a: Selbstaufgabe
   shadow_theme_b: Selbstaufgabe
   interaction_pattern_template_id: pattern_9_9
@@ -411,246 +389,228 @@ rules:
 - shadow_theme_a: Überreizung
   shadow_theme_b: Dominanz
   interaction_pattern_template_id: pattern_11_1
-  escalation_loop_template: Wenn die Neigung zu Überreizung bei der einen Seite auf die Neigung zu Dominanz
-    bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Überreizung bzw. Dominanz kann
-    beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klärung
-    zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Überreizung neigt und die andere zur Dominanz, kann
+    die bestimmende Seite versuchen, mit klaren Ansagen für Ordnung zu sorgen, was die überreizte Seite
+    jedoch eher noch zusätzlich unter Druck setzen kann.
+  deescalation_template: Ein bewusst ruhigerer, weniger bestimmender Ton in aufgeladenen Momenten kann
+    der überreizten Seite helfen, sich zu beruhigen, statt zusätzlich angespannt zu reagieren.
 - shadow_theme_a: Überreizung
   shadow_theme_b: Unentschlossenheit
   interaction_pattern_template_id: pattern_11_2
-  escalation_loop_template: Wenn die Neigung zu Überreizung bei der einen Seite auf die Neigung zu Unentschlossenheit
-    bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Überreizung bzw. Unentschlossenheit
-    kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame
-    Klärung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Überreizung neigt und die andere zur Unentschlossenheit,
+    kann die Anspannung der einen Seite die zögernde Seite noch unsicherer machen, was wiederum die Anspannung
+    der überreizten Seite verstärken kann.
+  deescalation_template: Eine bewusste Verlangsamung des Gesprächstempos kann beiden Seiten helfen, aus
+    der wechselseitigen Verstärkung von Anspannung und Zögern auszusteigen.
 - shadow_theme_a: Überreizung
   shadow_theme_b: Zerstreuung
   interaction_pattern_template_id: pattern_11_3
-  escalation_loop_template: Wenn die Neigung zu Überreizung bei der einen Seite auf die Neigung zu Zerstreuung
-    bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Überreizung bzw. Zerstreuung kann
-    beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klärung
-    zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Überreizung neigt und die andere zur Zerstreuung,
+    kann die überreizte Seite auf die fehlende Ordnung der anderen Seite besonders empfindlich reagieren,
+    während die zerstreute Seite sich davon zusätzlich überfordert fühlen kann.
+  deescalation_template: Ein gemeinsam vereinbarter, einfacher Überblick über anstehende Themen kann der
+    überreizten Seite Orientierung geben, ohne die zerstreute Seite zusätzlich unter Druck zu setzen.
 - shadow_theme_a: Überreizung
   shadow_theme_b: Rigidität
   interaction_pattern_template_id: pattern_11_4
-  escalation_loop_template: Wenn die Neigung zu Überreizung bei der einen Seite auf die Neigung zu Rigidität
-    bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Überreizung bzw. Rigidität kann
-    beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klärung
-    zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Überreizung neigt und die andere zur Rigidität, kann
+    feststehende Erwartung die überreizte Seite zusätzlich anspannen, während die starre Seite diese Anspannung
+    als unbegründet oder übertrieben werten kann.
+  deescalation_template: Ein bewusstes Anerkennen der Anspannung durch die starre Seite, ohne sie sofort
+    einordnen zu wollen, kann der überreizten Seite helfen, sich ernst genommen zu fühlen.
 - shadow_theme_a: Überreizung
   shadow_theme_b: Rastlosigkeit
   interaction_pattern_template_id: pattern_11_5
-  escalation_loop_template: Wenn die Neigung zu Überreizung bei der einen Seite auf die Neigung zu Rastlosigkeit
-    bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Überreizung bzw. Rastlosigkeit
-    kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame
-    Klärung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Überreizung neigt und die andere zur Rastlosigkeit,
+    kann das Bedürfnis nach ständiger Bewegung die überreizte Seite zusätzlich erschöpfen, ohne dass die
+    rastlose Seite dies bemerkt.
+  deescalation_template: Bewusst eingeplante gemeinsame Ruhephasen können der überreizten Seite Erholung
+    geben, ohne dass die rastlose Seite ihr Bedürfnis nach Abwechslung ganz zurückstellen muss.
 - shadow_theme_a: Überreizung
   shadow_theme_b: Überverantwortung
   interaction_pattern_template_id: pattern_11_6
-  escalation_loop_template: Wenn die Neigung zu Überreizung bei der einen Seite auf die Neigung zu Überverantwortung
-    bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Überreizung bzw. Überverantwortung
-    kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame
-    Klärung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Überreizung neigt und die andere zur Überverantwortung,
+    kann die überverantwortliche Seite versuchen, durch noch mehr Einsatz Ruhe für die überreizte Seite
+    zu schaffen, was am Ende beide Seiten erschöpfen kann.
+  deescalation_template: Ein offenes Gespräch darüber, was die überreizte Seite tatsächlich entlastet,
+    kann verhindern, dass die überverantwortliche Seite sich in gut gemeintem, aber wirkungslosem Einsatz
+    verausgabt.
 - shadow_theme_a: Überreizung
   shadow_theme_b: Rückzug
   interaction_pattern_template_id: pattern_11_7
-  escalation_loop_template: Wenn die Neigung zu Überreizung bei der einen Seite auf die Neigung zu Rückzug
-    bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Überreizung bzw. Rückzug kann beiden
-    Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klärung zu suchen,
-    statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Überreizung neigt und die andere zum Rückzug, kann
+    die überreizte Seite die Distanz der anderen als zusätzliche Belastung erleben, während die zurückgezogene
+    Seite sich von der spürbaren Anspannung eher noch weiter entfernt.
+  deescalation_template: Eine kurze, ruhige Rückmeldung von der zurückgezogenen Seite — auch ohne große
+    Nähe herzustellen — kann der überreizten Seite bereits Entlastung geben.
 - shadow_theme_a: Überreizung
   shadow_theme_b: Kontrolle
   interaction_pattern_template_id: pattern_11_8
-  escalation_loop_template: Wenn die Neigung zu Überreizung bei der einen Seite auf die Neigung zu Kontrolle
-    bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Überreizung bzw. Kontrolle kann
-    beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klärung
-    zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Überreizung neigt und die andere zur Kontrolle, kann
+    der Versuch, durch mehr Kontrolle Sicherheit herzustellen, die überreizte Seite zusätzlich einengen,
+    statt sie zu beruhigen.
+  deescalation_template: Ein bewusster Verzicht auf zusätzliche Absicherung in angespannten Momenten,
+    verbunden mit einer ruhigen Präsenz, kann der überreizten Seite mehr helfen als engere Kontrolle.
 - shadow_theme_a: Überreizung
   shadow_theme_b: Selbstaufgabe
   interaction_pattern_template_id: pattern_11_9
-  escalation_loop_template: Wenn die Neigung zu Überreizung bei der einen Seite auf die Neigung zu Selbstaufgabe
-    bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Überreizung bzw. Selbstaufgabe
-    kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame
-    Klärung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Überreizung neigt und die andere zur Selbstaufgabe,
+    kann die selbstaufopfernde Seite versuchen, durch besondere Rücksichtnahme die Anspannung der anderen
+    zu mindern, dabei aber eigene Bedürfnisse ganz zurückstellen.
+  deescalation_template: Eine bewusste Erinnerung der überreizten Seite, dass Rücksichtnahme keine Einbahnstraße
+    sein muss, kann der selbstaufopfernden Seite Raum geben, eigene Grenzen zu wahren.
 - shadow_theme_a: enormer innerer Druck
   shadow_theme_b: Dominanz
   interaction_pattern_template_id: pattern_22_1
-  escalation_loop_template: Wenn auf der einen Seite ein enormer innerer Druck entsteht und die andere
-    Seite zu Dominanz neigt, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig verstärken,
-    solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen des inneren Drucks bzw. der Neigung zu Dominanz kann beiden
-    Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klärung zu suchen,
-    statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite unter enormem innerem Druck steht und die andere zur Dominanz
+    neigt, kann die bestimmende Seite zusätzliche Erwartungen setzen, die den bereits vorhandenen Druck
+    der anderen Seite weiter erhöhen können.
+  deescalation_template: Ein bewusstes Zurücknehmen zusätzlicher Erwartungen in Phasen hoher Belastung
+    kann der unter Druck stehenden Seite Entlastung geben, ohne dass die bestimmende Seite ihre eigene
+    Klarheit aufgeben muss.
 - shadow_theme_a: enormer innerer Druck
   shadow_theme_b: Unentschlossenheit
   interaction_pattern_template_id: pattern_22_2
-  escalation_loop_template: Wenn auf der einen Seite ein enormer innerer Druck entsteht und die andere
-    Seite zu Unentschlossenheit neigt, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen des inneren Drucks bzw. der Neigung zu Unentschlossenheit
-    kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame
-    Klärung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite unter enormem innerem Druck steht und die andere zur Unentschlossenheit
+    neigt, kann das Zögern der einen Seite den Druck der anderen zusätzlich erhöhen, weil wichtige Entscheidungen
+    liegen bleiben.
+  deescalation_template: Eine bewusst übernommene, kleine Entscheidung durch die zögernde Seite kann der
+    unter Druck stehenden Seite bereits spürbar Last abnehmen.
 - shadow_theme_a: enormer innerer Druck
   shadow_theme_b: Zerstreuung
   interaction_pattern_template_id: pattern_22_3
-  escalation_loop_template: Wenn auf der einen Seite ein enormer innerer Druck entsteht und die andere
-    Seite zu Zerstreuung neigt, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen des inneren Drucks bzw. der Neigung zu Zerstreuung kann
-    beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klärung
-    zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite unter enormem innerem Druck steht und die andere zur Zerstreuung
+    neigt, kann liegen gebliebene Nachverfolgung der einen Seite den Druck der anderen zusätzlich erhöhen,
+    weil sie das Fehlende selbst ausgleichen muss.
+  deescalation_template: Ein bewusst kleiner, klar definierter Bereich, den die zerstreute Seite zuverlässig
+    übernimmt, kann der unter Druck stehenden Seite spürbar Last abnehmen.
 - shadow_theme_a: enormer innerer Druck
   shadow_theme_b: Rigidität
   interaction_pattern_template_id: pattern_22_4
-  escalation_loop_template: Wenn auf der einen Seite ein enormer innerer Druck entsteht und die andere
-    Seite zu Rigidität neigt, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig verstärken,
-    solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen des inneren Drucks bzw. der Neigung zu Rigidität kann
-    beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klärung
-    zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite unter enormem innerem Druck steht und die andere zur Rigidität
+    neigt, können feststehende Erwartungen den bereits hohen Druck der anderen Seite zusätzlich verschärfen,
+    ohne dass dies bewusst beabsichtigt ist.
+  deescalation_template: Eine bewusste Bereitschaft der starren Seite, in Phasen hoher Belastung von gewohnten
+    Erwartungen abzuweichen, kann der unter Druck stehenden Seite spürbar entgegenkommen.
 - shadow_theme_a: enormer innerer Druck
   shadow_theme_b: Rastlosigkeit
   interaction_pattern_template_id: pattern_22_5
-  escalation_loop_template: Wenn auf der einen Seite ein enormer innerer Druck entsteht und die andere
-    Seite zu Rastlosigkeit neigt, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen des inneren Drucks bzw. der Neigung zu Rastlosigkeit kann
-    beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klärung
-    zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite unter enormem innerem Druck steht und die andere zur Rastlosigkeit
+    neigt, kann der Wunsch nach ständiger Veränderung der einen Seite den Druck der anderen zusätzlich
+    erhöhen, weil Stabilität schwer zu finden ist.
+  deescalation_template: Eine bewusst gemeinsam geschützte, stabile Zeit kann der unter Druck stehenden
+    Seite Erholung geben, ohne dass die rastlose Seite ihr Bedürfnis nach Abwechslung dauerhaft aufgeben
+    muss.
 - shadow_theme_a: enormer innerer Druck
   shadow_theme_b: Überverantwortung
   interaction_pattern_template_id: pattern_22_6
-  escalation_loop_template: Wenn auf der einen Seite ein enormer innerer Druck entsteht und die andere
-    Seite zu Überverantwortung neigt, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen des inneren Drucks bzw. der Neigung zu Überverantwortung
-    kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame
-    Klärung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite unter enormem innerem Druck steht und die andere zur Überverantwortung
+    neigt, können sich beide Seiten gegenseitig darin bestärken, immer mehr zu leisten, bis beide Seiten
+    erschöpft sind.
+  deescalation_template: Ein offenes Gespräch über realistisch tragbare Ziele kann beiden Seiten helfen,
+    den gegenseitig verstärkten Druck bewusst zu reduzieren.
 - shadow_theme_a: enormer innerer Druck
   shadow_theme_b: Rückzug
   interaction_pattern_template_id: pattern_22_7
-  escalation_loop_template: Wenn auf der einen Seite ein enormer innerer Druck entsteht und die andere
-    Seite zu Rückzug neigt, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig verstärken,
-    solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen des inneren Drucks bzw. der Neigung zu Rückzug kann beiden
-    Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klärung zu suchen,
-    statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite unter enormem innerem Druck steht und die andere zum Rückzug
+    neigt, kann die Distanz der zurückgezogenen Seite den Druck der anderen zusätzlich erhöhen, weil Unterstützung
+    gerade dann fehlt, wenn sie gebraucht wird.
+  deescalation_template: Ein kleines, konkretes Signal der zurückgezogenen Seite — auch ohne volle Nähe
+    herzustellen — kann der unter Druck stehenden Seite bereits das Gefühl geben, nicht allein zu sein.
 - shadow_theme_a: enormer innerer Druck
   shadow_theme_b: Kontrolle
   interaction_pattern_template_id: pattern_22_8
-  escalation_loop_template: Wenn auf der einen Seite ein enormer innerer Druck entsteht und die andere
-    Seite zu Kontrolle neigt, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig verstärken,
-    solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen des inneren Drucks bzw. der Neigung zu Kontrolle kann
-    beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klärung
-    zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite unter enormem innerem Druck steht und die andere zur Kontrolle
+    neigt, kann der Versuch, durch mehr Kontrolle Sicherheit zu schaffen, den bereits vorhandenen Druck
+    der anderen Seite zusätzlich verstärken.
+  deescalation_template: Ein bewusstes Abgeben von Kontrolle in ausgewählten Bereichen kann der unter
+    Druck stehenden Seite Entlastung geben, ohne dass die kontrollierende Seite die Übersicht ganz verliert.
 - shadow_theme_a: enormer innerer Druck
   shadow_theme_b: Selbstaufgabe
   interaction_pattern_template_id: pattern_22_9
-  escalation_loop_template: Wenn auf der einen Seite ein enormer innerer Druck entsteht und die andere
-    Seite zu Selbstaufgabe neigt, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen des inneren Drucks bzw. der Neigung zu Selbstaufgabe kann
-    beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klärung
-    zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite unter enormem innerem Druck steht und die andere zur Selbstaufgabe
+    neigt, kann die selbstaufopfernde Seite versuchen, durch noch mehr Nachgeben zu entlasten, was den
+    eigentlichen Druck jedoch selten wirklich mindert.
+  deescalation_template: Eine offene Frage der unter Druck stehenden Seite, was die andere Seite eigentlich
+    selbst braucht, kann verhindern, dass sich die selbstaufopfernde Seite in wirkungslosem Nachgeben
+    verliert.
 - shadow_theme_a: Märtyrerrolle
   shadow_theme_b: Dominanz
   interaction_pattern_template_id: pattern_33_1
-  escalation_loop_template: Wenn die Neigung zur Märtyrerrolle bei der einen Seite auf die Neigung zu
-    Dominanz bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zur Märtyrerrolle bzw. Dominanz kann
-    beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klärung
-    zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Märtyrerrolle neigt und die andere zur Dominanz, kann
+    die bestimmende Seite die stille Aufopferung der anderen als Selbstverständlichkeit übernehmen, ohne
+    die Anstrengung dahinter zu bemerken.
+  deescalation_template: Ein bewusstes Nachfragen der dominanten Seite, was die aufopfernde Seite selbst
+    eigentlich braucht, kann helfen, die stille Einseitigkeit sichtbar zu machen.
 - shadow_theme_a: Märtyrerrolle
   shadow_theme_b: Unentschlossenheit
   interaction_pattern_template_id: pattern_33_2
-  escalation_loop_template: Wenn die Neigung zur Märtyrerrolle bei der einen Seite auf die Neigung zu
-    Unentschlossenheit bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen
-    sich wechselseitig verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zur Märtyrerrolle bzw. Unentschlossenheit
-    kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame
-    Klärung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Märtyrerrolle neigt und die andere zur Unentschlossenheit,
+    kann die aufopfernde Seite Entscheidungen stellvertretend treffen, um der zögernden Seite die Last
+    abzunehmen — dabei kann die eigene Erschöpfung unbemerkt wachsen.
+  deescalation_template: Eine bewusste Rückgabe kleinerer Entscheidungen an die zögernde Seite kann der
+    aufopfernden Seite helfen, nicht automatisch alles zu übernehmen.
 - shadow_theme_a: Märtyrerrolle
   shadow_theme_b: Zerstreuung
   interaction_pattern_template_id: pattern_33_3
-  escalation_loop_template: Wenn die Neigung zur Märtyrerrolle bei der einen Seite auf die Neigung zu
-    Zerstreuung bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich
-    wechselseitig verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zur Märtyrerrolle bzw. Zerstreuung
-    kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame
-    Klärung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Märtyrerrolle neigt und die andere zur Zerstreuung,
+    kann die aufopfernde Seite stillschweigend ausgleichen, was die zerstreute Seite liegen lässt, ohne
+    dies je anzusprechen.
+  deescalation_template: Ein regelmäßiger, offener Austausch darüber, was gerade tatsächlich anfällt,
+    kann verhindern, dass die aufopfernde Seite unbemerkt immer mehr übernimmt.
 - shadow_theme_a: Märtyrerrolle
   shadow_theme_b: Rigidität
   interaction_pattern_template_id: pattern_33_4
-  escalation_loop_template: Wenn die Neigung zur Märtyrerrolle bei der einen Seite auf die Neigung zu
-    Rigidität bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zur Märtyrerrolle bzw. Rigidität kann
-    beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klärung
-    zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Märtyrerrolle neigt und die andere zur Rigidität,
+    kann sich die aufopfernde Seite den festen Erwartungen der anderen zunehmend anpassen, ohne eigene
+    Bedürfnisse überhaupt zu äußern.
+  deescalation_template: Ein bewusster Moment, in dem die aufopfernde Seite selbst benennt, was ihr wichtig
+    wäre, kann helfen, still angepasste Bedürfnisse sichtbar zu machen, statt auf eine Nachfrage der anderen
+    Seite zu warten.
 - shadow_theme_a: Märtyrerrolle
   shadow_theme_b: Rastlosigkeit
   interaction_pattern_template_id: pattern_33_5
-  escalation_loop_template: Wenn die Neigung zur Märtyrerrolle bei der einen Seite auf die Neigung zu
-    Rastlosigkeit bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich
-    wechselseitig verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zur Märtyrerrolle bzw. Rastlosigkeit
-    kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame
-    Klärung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Märtyrerrolle neigt und die andere zur Rastlosigkeit,
+    kann sich die aufopfernde Seite den wechselnden Vorhaben der anderen zunehmend unterordnen, ohne eigene
+    Wünsche nach Kontinuität zu äußern.
+  deescalation_template: Eine bewusste Verabredung zu festen, wiederkehrenden Zeiten für Kontinuität kann
+    beiden Seiten helfen, den Wunsch nach Stabilität als gemeinsames Thema statt als einseitiges Zugeständnis
+    zu behandeln.
 - shadow_theme_a: Märtyrerrolle
   shadow_theme_b: Überverantwortung
   interaction_pattern_template_id: pattern_33_6
-  escalation_loop_template: Wenn die Neigung zur Märtyrerrolle bei der einen Seite auf die Neigung zu
-    Überverantwortung bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen
-    sich wechselseitig verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zur Märtyrerrolle bzw. Überverantwortung
-    kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame
-    Klärung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn beide Seiten zur Märtyrerrolle beziehungsweise zur Überverantwortung
+    neigen, kann ein stilles Wettrennen entstehen, wer mehr leistet — mit der Zeit kann das beide Seiten
+    erschöpfen, ohne dass jemand um Entlastung bittet.
+  deescalation_template: Eine bewusste Verabredung, Entlastung aktiv anzubieten statt auf eine Bitte zu
+    warten, kann beiden Seiten helfen, aus dem stillen Wettrennen um Leistung auszusteigen.
 - shadow_theme_a: Märtyrerrolle
   shadow_theme_b: Rückzug
   interaction_pattern_template_id: pattern_33_7
-  escalation_loop_template: Wenn die Neigung zur Märtyrerrolle bei der einen Seite auf die Neigung zu
-    Rückzug bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zur Märtyrerrolle bzw. Rückzug kann
-    beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klärung
-    zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Märtyrerrolle neigt und die andere zum Rückzug, kann
+    die aufopfernde Seite versuchen, durch noch mehr Einsatz die entstehende Distanz zu überbrücken, was
+    die zurückgezogene Seite eher noch weiter zurückweichen lässt.
+  deescalation_template: Ein bewusster Verzicht der aufopfernden Seite auf zusätzlichen Einsatz, verbunden
+    mit einer offenen Frage nach dem Rückzug, kann der anderen Seite mehr Raum geben, sich von selbst
+    wieder anzunähern.
 - shadow_theme_a: Märtyrerrolle
   shadow_theme_b: Kontrolle
   interaction_pattern_template_id: pattern_33_8
-  escalation_loop_template: Wenn die Neigung zur Märtyrerrolle bei der einen Seite auf die Neigung zu
-    Kontrolle bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zur Märtyrerrolle bzw. Kontrolle kann
-    beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klärung
-    zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Märtyrerrolle neigt und die andere zur Kontrolle,
+    kann sich eine Schieflage verfestigen, in der die kontrollierende Seite immer mehr bestimmt und die
+    aufopfernde Seite kaum noch widerspricht.
+  deescalation_template: Eine bewusste Einladung der kontrollierenden Seite, die Meinung der anderen aktiv
+    einzufordern, kann helfen, die Schieflage auszugleichen, ohne dass die aufopfernde Seite sich aufdrängen
+    muss.
 - shadow_theme_a: Märtyrerrolle
   shadow_theme_b: Selbstaufgabe
   interaction_pattern_template_id: pattern_33_9
-  escalation_loop_template: Wenn die Neigung zur Märtyrerrolle bei der einen Seite auf die Neigung zu
-    Selbstaufgabe bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich
-    wechselseitig verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zur Märtyrerrolle bzw. Selbstaufgabe
-    kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame
-    Klärung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn beide Seiten zur Märtyrerrolle beziehungsweise zur Selbstaufgabe neigen,
+    können eigene Bedürfnisse auf beiden Seiten unausgesprochen bleiben — mit der Zeit kann eine Dynamik
+    entstehen, in der niemand offen sagt, was er oder sie eigentlich braucht.
+  deescalation_template: Ein offenes Gespräch darüber, wer in dieser Situation eigentlich etwas für sich
+    selbst braucht, kann helfen, das gegenseitige Zurückstecken als gemeinsames Muster zu erkennen statt
+    es unausgesprochen zu lassen.
 - shadow_theme_a: Überreizung
   shadow_theme_b: Überreizung
   interaction_pattern_template_id: pattern_11_11
@@ -675,27 +635,24 @@ rules:
 - shadow_theme_a: Überreizung
   shadow_theme_b: enormer innerer Druck
   interaction_pattern_template_id: pattern_11_22
-  escalation_loop_template: Wenn auf der einen Seite ein enormer innerer Druck entsteht und die andere
-    Seite zu Überreizung neigt, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen des inneren Drucks bzw. der Neigung zu Überreizung kann
-    beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klärung
-    zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Überreizung neigt und die andere unter enormem innerem
+    Druck steht, können sich Anspannung und Belastung gegenseitig verstärken, besonders wenn beide Seiten
+    gleichzeitig an ihre Grenzen kommen.
+  deescalation_template: Bewusst eingeplante gemeinsame Ruhephasen können beiden Seiten helfen, die eigene
+    Anspannung zu regulieren, statt sich gegenseitig weiter aufzuladen.
 - shadow_theme_a: Überreizung
   shadow_theme_b: Märtyrerrolle
   interaction_pattern_template_id: pattern_11_33
-  escalation_loop_template: Wenn die Neigung zu Überreizung bei der einen Seite auf die Neigung zur Märtyrerrolle
-    bei der anderen Seite trifft, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen der eigenen Neigung zu Überreizung bzw. der Märtyrerrolle
-    kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame
-    Klärung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite zur Überreizung neigt und die andere zur Märtyrerrolle,
+    kann die aufopfernde Seite versuchen, durch besondere Rücksichtnahme die Anspannung der anderen zu
+    mindern, dabei aber eigene Bedürfnisse ganz zurückstellen.
+  deescalation_template: Eine bewusste Erinnerung der überreizten Seite, dass Rücksichtnahme keine Einbahnstraße
+    sein muss, kann der aufopfernden Seite Raum geben, eigene Grenzen zu wahren.
 - shadow_theme_a: enormer innerer Druck
   shadow_theme_b: Märtyrerrolle
   interaction_pattern_template_id: pattern_22_33
-  escalation_loop_template: Wenn auf der einen Seite ein enormer innerer Druck entsteht und die andere
-    Seite zur Märtyrerrolle neigt, kann ein Muster entstehen, in dem beide Reaktionen sich wechselseitig
-    verstärken, solange keine Seite die eigene Neigung bewusst reflektiert.
-  deescalation_template: Ein bewusstes Benennen des inneren Drucks bzw. der Neigung zur Märtyrerrolle
-    kann beiden Seiten helfen, aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame
-    Klärung zu suchen, statt die jeweilige Schattenseite unbewusst auszuleben.
+  escalation_loop_template: Wenn die eine Seite unter enormem innerem Druck steht und die andere zur Märtyrerrolle
+    neigt, kann die aufopfernde Seite versuchen, durch noch mehr Nachgeben zu entlasten, was den eigentlichen
+    Druck jedoch selten wirklich mindert.
+  deescalation_template: Eine offene Frage der unter Druck stehenden Seite, was die andere Seite eigentlich
+    selbst braucht, kann verhindern, dass sich die aufopfernde Seite in wirkungslosem Nachgeben verliert.
