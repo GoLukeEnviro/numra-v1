@@ -81,6 +81,42 @@ def test_load_relationship_frame_covers_all_relationship_types(relationship_type
             assert dimension.number_modifiers[life_path].strip()
 
 
+def test_relationship_frame_number_modifiers_are_globally_unique() -> None:
+    """Wave 3 Schritt 5: `number_modifiers` are deliberately short LLM-framing nudges
+    (see `DimensionKnowledge`'s docstring), not long-form essays -- but they still
+    have to be relationship-type-specific, not a phrase copy-pasted verbatim across
+    different relationship types for the same dimension/Life-Path cell. Regression
+    guard for the 230 entries deduplicated in Wave 3 Schritt 5 (relationship-frames)."""
+    all_texts: list[str] = []
+    for relationship_type in ALL_RELATIONSHIP_TYPES:
+        frame = load_relationship_frame(KNOWLEDGE_ROOT, relationship_type)
+        assert frame is not None
+        for dimension in frame.dimensions.values():
+            all_texts.extend(dimension.number_modifiers.values())
+
+    assert len(all_texts) == len(set(all_texts))
+
+
+def test_relationship_frame_number_modifiers_pass_forbidden_language_checks() -> None:
+    """Same forbidden-language contract as the shadow-interaction rules (knowledge/
+    AUTHORING_GUIDE.md) -- run against every `number_modifiers` entry and every
+    dimension's `semantic_context_de` across all relationship-frame files."""
+    for relationship_type in ALL_RELATIONSHIP_TYPES:
+        frame = load_relationship_frame(KNOWLEDGE_ROOT, relationship_type)
+        assert frame is not None
+        for dimension_id, dimension in frame.dimensions.items():
+            texts = [dimension.semantic_context_de, *dimension.number_modifiers.values()]
+            for text in texts:
+                causal = lint_free_text_for_causal_language(text)
+                assert causal.is_valid, (relationship_type, dimension_id, causal.errors)
+                for pattern in _UNSUPPORTED_CLAIM_PATTERNS:
+                    assert not pattern.search(text), (
+                        relationship_type,
+                        dimension_id,
+                        pattern.pattern,
+                    )
+
+
 def test_load_unknown_relationship_type_returns_none() -> None:
     """A relationship type with no matching frame file returns None -- expected, not
     an error. All 8 spec'd RelationshipType values now have frames (see
