@@ -1,5 +1,6 @@
 metric_id: maturity
 display_name_de: Reifezahl
-semantic_context_de: Die Reifezahl verbindet Lebensweg und Ausdruck und beschreibt
-  eine Ausrichtung, die symbolisch in der zweiten Lebenshälfte stärker in den Vordergrund
-  treten kann, wenn sich Grundausrichtung und Potential stärker verbinden.
+semantic_context_de: Die Reifezahl verbindet Lebensweg und Ausdruck und beschreibt eine Ausrichtung, die
+  symbolisch in der zweiten Lebenshälfte stärker in den Vordergrund treten kann, wenn sich Grundausrichtung
+  und Potential stärker verbinden. Sie ergibt sich rechnerisch aus der Summe von Lebenszahl und Ausdruckszahl
+  und wird deshalb erst im Zusammenspiel beider Kernzahlen sichtbar.
