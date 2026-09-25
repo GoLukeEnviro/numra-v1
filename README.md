@@ -36,6 +36,7 @@ them. See [docs/adr/003-llm-not-calculator.md](docs/adr/003-llm-not-calculator.m
 |---|---|
 | `packages/engine-numerology` | Deterministic calculation core. No I/O of any kind. |
 | `packages/engine-interpretation` | Knowledge loader, rule-based interpretation composer, LLM provider interface (Mock + Ollama Cloud), long-form report pipeline (`report/`). |
+| `packages/engine-relationship-interpretation` | Beziehungs-/Shadow-/Copilot-Interpretation (V2), getrennt von der Personen-Interpretation. |
 | `packages/engine-astrology` | Typed interface only — `FEATURE_DISABLED_NO_CANON`. |
 | `packages/schema` | Generated TypeScript client (`openapi-typescript`) from `openapi/numra-v1.json`. Do not hand-edit `src/generated/`. |
 | `apps/api` | Stateless FastAPI app: auth, people, calculations, relationships, reports, account deletion. |

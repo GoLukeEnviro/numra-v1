@@ -86,8 +86,9 @@ default branch; it is not yet triaged. No open GitHub issues were found.
 - `docs/planning/avenyth-pwa-execution-state.md` is authoritative for current execution.
 - `docs/planning/avenyth-web-execution-state.md` is retained as detailed delivery history.
 - `plans/projektueberblick.md`, `docs/analyze/gap-analyse.md`,
-  `docs/analyze/technical-debt.md`, `docs/analyze/gap-bericht-2026-09-11.md` and
-  `docs/analyze/gap-verification-2026-09-11.md` are historical snapshots.
+  `docs/analyze/technical-debt.md`, `docs/analyze/gap-bericht-2026-09-11.md`,
+  `docs/analyze/gap-verification-2026-09-11.md` and `FINAL_VERIFICATION.md` are historical
+  snapshots.
 - `specs/v2/product-vision.md` remains the frozen scope source; its “Draft — Phase 0” label
   does not represent delivery status.
 - `.specify/feature-012c-mobile-today-brief/` is completed historical acceptance evidence.
