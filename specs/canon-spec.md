@@ -543,6 +543,11 @@ Essence, Name Transits, Physical/Mental/Spiritual Transit, Planes of Expression,
 Relationship compatibility percentage, Period Cycle date boundaries, Astrology. Interface
 and/or flag only — never a fabricated formula or fake percentage.
 
+(Amendment 2026-09-25: an Element/Water system is `FEATURE_DISABLED_NO_CANON` — it is
+not `RESERVED_UNFROZEN` and has no interface, unlike the features listed above. See
+`docs/adr/015-element-water-system-open-decision.md` (Accepted, Option A): no verified
+source and no product purpose exist for it, so no interface is reserved either.)
+
 ---
 
 ## 34. Canonical Metric Model

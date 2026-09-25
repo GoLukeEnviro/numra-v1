@@ -2,11 +2,10 @@
 
 ## Status
 
-**Proposed — wartet auf Produktentscheidung.** Anders als die übrigen ADRs in diesem
-Verzeichnis dokumentiert dieses keine bereits getroffene Entscheidung, sondern legt
-die Frage bewusst einem Menschen vor, bevor irgendein Code oder Knowledge-Inhalt
-entsteht (Phase 4 des Migrationsplans "NUMRA v1 — Vertragslücken schließen +
-Deutungstiefe aus dem Vorgänger-Repo migrieren").
+**Accepted — 2026-09-25.** Entschieden durch den Produktverantwortlichen
+(GoLukeEnviro), festgehalten als Operator-Entscheidung im Zuge der Wave-3-Abschluss-
+Session. Ersetzt den vorherigen "Proposed"-Status; die Empfehlung aus diesem
+Dokument (Option A) ist die getroffene Entscheidung.
 
 ## Context
 
@@ -79,16 +78,25 @@ Richtung zu stecken, die noch niemand angefordert hat.
 
 ## Decision
 
-_Offen — wartet auf Rückmeldung des Produktverantwortlichen (A, B oder C)._
+**Option A.** Ein Element-/Wassersystem wird nicht gebaut. Es ist
+`FEATURE_DISABLED_NO_CANON` (siehe `specs/canon-spec.md` §33) — kein Interface, keine
+eigene Canon-Spec, keine Knowledge-Dateien, keine Engine-Arbeit, keine Platzhalter-UI.
+
+Diese Entscheidung gilt, bis der Produktverantwortliche sie schriftlich revidiert.
+Eine Revision braucht eine **neue** ADR mit einer verifizierten Quelle und einem
+belegten Produktzweck — nicht das Wiederbeleben dieses Dokuments als Bauplan. Eine
+vage Beobachtung aus der numerologischen Breitenliteratur ist keine Revision.
+
+Die Optionen B und C bleiben oben als dokumentierte Alternativen stehen, falls eine
+spätere Revision sie erneut abwägen will — sie sind nicht gewählt.
 
 ## Consequences
 
-- Bis zur Entscheidung entsteht **kein** Code, kein Knowledge-Content und keine
-  weitere Canon-Spec-Änderung zu diesem Thema (entspricht der expliziten
-  Migrationsplan-Vorgabe, Phase 4 nicht opportunistisch während Wave 3 mitzuziehen).
-- Wird Option A gewählt, folgt ein kleiner Canon-Spec-PR (ein neuer `FEATURE_DISABLED_
-  NO_CANON`-Abschnitt, analog zu §32), keine weiteren Schritte.
-- Wird Option B gewählt, ist der nächste Schritt eine eigene Recherche-Phase
-  (Quellenlage, Provenienz, Zuordnungslogik) vor jeglicher Implementierung.
-- Wird Option C gewählt, folgt ein kleiner Interface-PR analog zu
-  `AstrologyEngineInterface`.
+- Es entsteht **kein** Code, kein Knowledge-Content und keine weitere Canon-Spec-
+  Änderung zu diesem Thema über den einen Satz in §33 hinaus (entspricht der
+  expliziten Migrationsplan-Vorgabe, Phase 4 nicht opportunistisch mitzuziehen).
+- `specs/canon-spec.md` §33 erhält einen datierten Satz, der Element-/Wassersystem
+  explizit als `FEATURE_DISABLED_NO_CANON` listet (nicht `RESERVED_UNFROZEN`, kein
+  Interface) — siehe den begleitenden Canon-Spec-PR.
+- Eine spätere Umkehr zu Option B oder C erfordert eine neue ADR mit Quelle und
+  Produktzweck, kein Wiedereröffnen dieses Dokuments.
