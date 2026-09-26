@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>AVENYTH Redesign-Preview — Entwurf, nicht gebaut</title>
+  <style>
+    :root {
+      --noir: #0B0B0F;
+      --obsidian: #13131A;
+      --gold: #C8A96B;
+      --ivory: #F2EBDD;
+      --parchment: #E8E3D8;
+      --ash: #9E98A4;
+      --plum: #604B72;
+      --plum-light: #B39BCF;
+      --line: #6B6775;
+      --paper: #EEECF1;
+      --ink: #1C1B24;
+      --film: #ECEEE9;
+      --ultra: #2536A6;
+      --ochre: #7C5A10;
+      --graphite: #22252A;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font: 16px/1.5 ui-sans-serif, system-ui, sans-serif; background: #0B0B0F; color: #E8E3D8; }
+    header.doc { padding: 24px 20px 8px; max-width: 1200px; margin: 0 auto; }
+    header.doc h1 { font-family: ui-serif, Georgia, serif; font-weight: 400; color: #F2EBDD; margin: 0 0 8px; }
+    .meta { color: #9E98A4; font-size: 14px; }
+    .banner { margin: 16px auto; max-width: 1200px; border: 1px solid #6B6775; padding: 12px 16px; }
+    .controls { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+    button { background: #F2EBDD; color: #0B0B0F; border: 0; padding: 8px 12px; border-radius: 6px; cursor: pointer; font: inherit; }
+    button[aria-pressed="false"] { background: #191921; color: #E8E3D8; border: 1px solid #6B6775; }
+    .swatches { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 24px; }
+    .swatch { width: 120px; font-size: 12px; color: #9E98A4; }
+    .swatch i { display: block; height: 36px; border-radius: 6px; border: 1px solid #6B6775; margin-bottom: 4px; }
+    .stage { max-width: 1200px; margin: 0 auto 48px; padding: 0 20px; }
+    .stage h2 { font-family: ui-serif, Georgia, serif; font-weight: 400; color: #F2EBDD; }
+    .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 900px) { .pair { grid-template-columns: 1fr; } }
+    .frame { border: 1px solid #6B6775; border-radius: 10px; overflow: hidden; background: var(--obsidian); }
+    .frame.mobile { max-width: 390px; }
+    .frame .bar { font-size: 12px; color: #9E98A4; padding: 6px 10px; border-bottom: 1px solid #6B6775; }
+    .screen { padding: 16px; min-height: 280px; }
+    .s1 { background: #0B0B0F; color: #E8E3D8; }
+    .s2 { background: #ECEEE9; color: #22252A; }
+    .sketch-tag { display: inline-block; font-size: 11px; letter-spacing: .04em; text-transform: uppercase; border: 1px dashed #7C5A10; color: #7C5A10; padding: 2px 6px; margin-bottom: 8px; }
+    .graph { font-family: ui-monospace, Menlo, monospace; font-size: 13px; }
+    .node { display: inline-block; border: 1px solid #C8A96B; color: #C8A96B; padding: 2px 6px; border-radius: 99px; margin: 2px; }
+    .s2 .node { border-color: #2536A6; color: #2536A6; }
+    .shared { color: #B39BCF; }
+    .s2 .shared { color: #7C5A10; text-decoration: underline; text-decoration-style: double; }
+    h3.serif { font-family: ui-serif, Georgia, serif; font-weight: 400; margin: 0 0 8px; }
+    .muted { color: #9E98A4; font-size: 14px; }
+    .s2 .muted { color: #586069; }
+    .card { background: #13131A; border: 1px solid #6B6775; border-radius: 10px; padding: 12px; margin-top: 12px; }
+    .s2 .card { background: #F7F8F4; border-color: #7A8081; }
+    .btn-primary { display: inline-block; background: #F2EBDD; color: #0B0B0F; padding: 8px 14px; border-radius: 6px; margin-top: 8px; }
+    .s2 .btn-primary { background: #2536A6; color: #F7F8F4; }
+    footer { color: #9E98A4; font-size: 13px; padding: 24px 20px 48px; max-width: 1200px; margin: 0 auto; }
+  </style>
+</head>
+<body>
+  <header class="doc">
+    <h1>AVENYTH Redesign-Preview</h1>
+    <p class="meta">Statische Konzeptseite. Kein Produktpfad. Repo öffentlich — <code>noindex</code> ist kein Geheimnis. Fiktive Daten. Stand 26.09.2026, Code <code>989c502</code>.</p>
+    <div class="controls" role="group" aria-label="Richtung">
+      <button type="button" id="btn-s1" aria-pressed="true">Stufe 1 — Noir, ruhiger</button>
+      <button type="button" id="btn-s2" aria-pressed="false">Stufe 2 — Skizze, nicht gebaut</button>
+    </div>
+  </header>
+  <p class="banner" id="stage-banner">Stufe 1 ist der ausgearbeitete Vorschlag. Gold bleibt Belegfarbe. Primäraktion ist Elfenbein auf Noir, keine Goldfläche.</p>
+  <section class="stage">
+    <h2>Farbfelder (nachgerechnet)</h2>
+    <div class="swatches">
+      <div class="swatch"><i style="background:#0B0B0F"></i>Noir #0B0B0F</div>
+      <div class="swatch"><i style="background:#C8A96B"></i>Gold 8,74:1</div>
+      <div class="swatch"><i style="background:#604B72"></i>Pflaume Text 2,57:1 fail</div>
+      <div class="swatch"><i style="background:#B39BCF"></i>Pflaume hell 7,96:1</div>
+      <div class="swatch"><i style="background:#6B6775"></i>UI-Linie 3,58:1</div>
+      <div class="swatch"><i style="background:#2536A6"></i>Ultramarin nur Stufe 2</div>
+      <div class="swatch"><i style="background:#7C5A10"></i>Ocker nur Stufe 2</div>
+    </div>
+  </section>
+  <section class="stage">
+    <h2>Heute</h2>
+    <div class="pair">
+      <article class="frame">
+        <div class="bar">Desktop · fiktiv 12.06.1988 · keine Fixture</div>
+        <div class="screen s1" data-theme-screen>
+          <p class="sketch-tag" hidden data-sketch>Skizze, nicht gebaut, nicht freigegeben</p>
+          <h3 class="serif">Heute</h3>
+          <p class="muted">Berechnung sichtbar. Deutung getrennt. Keine Riesenzahl als Held.</p>
+          <p class="graph">
+            <span class="node">12 → 3</span>
+            <span class="node">6</span>
+            <span class="node">1988 → 26 → 8</span>
+            →
+            <span class="node">3+6+8=17</span>
+            →
+            <span class="node">8</span>
+          </p>
+          <p class="muted">Life Path von Hand nach Segmentlogik in date_metrics.py. display_value nicht per Engine bestätigt.</p>
+          <div class="card">Berechnung · Hash belegt Reproduzierbarkeit, nicht Wahrheit</div>
+          <div class="card">Deutung · Reflexionsangebot, kein Rat</div>
+          <div class="card">Reflexion · Eine Frage, kein Score</div>
+        </div>
+      </article>
+      <article class="frame mobile">
+        <div class="bar">390 px</div>
+        <div class="screen s1" data-theme-screen>
+          <p class="sketch-tag" hidden data-sketch>Skizze</p>
+          <h3 class="serif">Heute</h3>
+          <p class="graph"><span class="node">17 → 8</span></p>
+          <p class="muted">Kette aufklappbar.</p>
+          <span class="btn-primary">Weiter zur Deutung</span>
+        </div>
+      </article>
+    </div>
+  </section>
+  <section class="stage">
+    <h2>Bericht</h2>
+    <div class="pair">
+      <article class="frame">
+        <div class="bar">Lesemodus Tageslesung</div>
+        <div class="screen" style="background:#EEECF1;color:#1C1B24">
+          <h3 class="serif" style="color:#1C1B24">Bericht</h3>
+          <p>Die Zahl 8 ist die Reduktion der Summe 17. Das ist ein Rechenschritt, keine Diagnose.</p>
+        </div>
+      </article>
+      <article class="frame mobile">
+        <div class="bar">390 px</div>
+        <div class="screen" style="background:#EEECF1;color:#1C1B24">
+          <h3 class="serif" style="color:#1C1B24">Abschnitt 1</h3>
+          <p>Chip: life_path</p>
+        </div>
+      </article>
+    </div>
+  </section>
+  <section class="stage">
+    <h2>Beziehungs-Workspace</h2>
+    <div class="pair">
+      <article class="frame">
+        <div class="bar">Was teile ich gerade?</div>
+        <div class="screen s1" data-theme-screen>
+          <p class="sketch-tag" hidden data-sketch>Skizze</p>
+          <div class="card"><strong>A</strong> · 8 <span class="shared"> | gemeinsam | </span> <strong>B</strong> · 4</div>
+          <p class="muted">Kein Gesamtwert. Keine Nähe-Metapher.</p>
+        </div>
+      </article>
+      <article class="frame mobile">
+        <div class="bar">390 px</div>
+        <div class="screen s1" data-theme-screen>
+          <p class="sketch-tag" hidden data-sketch>Skizze</p>
+          <p>A 8</p>
+          <p class="shared">gemeinsam</p>
+          <p>B 4</p>
+        </div>
+      </article>
+    </div>
+  </section>
+  <footer>
+    Stufe 2: Ultramarin/Ocker. Kandinsky nur Grammatik. Pflaume-Konflikt A/B/C offen.
+  </footer>
+  <script>
+    const s1 = document.getElementById("btn-s1");
+    const s2 = document.getElementById("btn-s2");
+    const banner = document.getElementById("stage-banner");
+    function setStage(stage2) {
+      s1.setAttribute("aria-pressed", String(!stage2));
+      s2.setAttribute("aria-pressed", String(stage2));
+      banner.textContent = stage2
+        ? "Stufe 2 ist eine Skizze. Nicht gebaut, nicht freigegeben. Ultramarin statt Gold bricht Brand §3.2."
+        : "Stufe 1 ist der ausgearbeitete Vorschlag. Gold bleibt Belegfarbe. Primäraktion ist Elfenbein auf Noir, keine Goldfläche.";
+      document.querySelectorAll("[data-theme-screen]").forEach((el) => {
+        el.classList.toggle("s1", !stage2);
+        el.classList.toggle("s2", stage2);
+      });
+      document.querySelectorAll("[data-sketch]").forEach((el) => { el.hidden = !stage2; });
+    }
+    s1.addEventListener("click", () => setStage(false));
+    s2.addEventListener("click", () => setStage(true));
+  </script>
+</body>
+</html>
