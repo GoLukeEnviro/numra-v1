@@ -45,7 +45,11 @@ export const dePublic = {
     "AVENYTH ist ein symbolisches numerologisches Interpretationswerkzeug. Es bietet keine medizinische, rechtliche, finanzielle oder wissenschaftliche Beratung.",
   "public.landing.finalCtaTitle": "Belege statt Behauptungen.",
   "public.landing.finalCtaBody": "Erstelle ein Konto und prüfe jede Zahl selbst nach.",
-  "public.landing.footerPrivacy": "Datenschutz",
+  // Rechtliches (Footer, Rechtsseiten-Links)
+  "public.legal.navLabel": "Rechtliches",
+  "public.legal.imprint": "Impressum",
+  "public.legal.privacy": "Datenschutz",
+  "public.legal.fullPrivacyPolicy": "Vollständige Datenschutzerklärung",
 
   // Fehlerseiten (404 und Error Boundary)
   "public.notFound.eyebrow": "Fehler 404",
@@ -133,6 +137,8 @@ export const dePublic = {
   "public.register.email": "E-Mail",
   "public.register.password": "Passwort",
   "public.register.passwordConfirm": "Passwort bestätigen",
+  "public.register.privacyNoticeBefore": "Wie wir deine Daten verarbeiten, steht in der",
+  "public.register.privacyNoticeLink": "Datenschutzerklärung",
   "public.register.passwordHint": "Mindestens 12 Zeichen.",
   "public.register.submit": "Konto erstellen",
   "public.register.haveAccount": "Bereits ein Konto?",

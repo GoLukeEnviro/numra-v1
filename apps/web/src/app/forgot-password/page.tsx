@@ -1,6 +1,7 @@
 "use client";
 
 import { api, ApiError } from "@/api/client";
+import { LegalLinks } from "@/components/layout/public-footer";
 import { Logo } from "@/components/brand/logo";
 import { NumericWheel } from "@/components/layout/numeric-wheel";
 import { Button } from "@/components/ui/button";
@@ -41,7 +42,7 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <main className="sacred-wheel-bg relative flex min-h-screen items-center justify-center overflow-hidden bg-background p-6">
+    <main className="sacred-wheel-bg relative flex min-h-screen items-center justify-center overflow-hidden bg-background p-6 pb-20">
       <NumericWheel className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 opacity-40" />
       <NumericWheel className="pointer-events-none absolute -bottom-32 -left-32 h-96 w-96 opacity-20" />
 
@@ -105,6 +106,7 @@ export default function ForgotPasswordPage() {
           )}
         </CardContent>
       </Card>
+      <LegalLinks className="absolute inset-x-0 bottom-6 justify-center" />
     </main>
   );
 }

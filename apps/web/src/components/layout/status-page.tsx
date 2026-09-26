@@ -5,17 +5,23 @@ import Link from "next/link";
  * Shared frame for the 404 page and the error boundaries: the brand header and a
  * centred message block, so a dead end still looks and reads like AVENYTH rather
  * than Next's white English default.
+ *
+ * `footer` is optional so the transient error boundaries (a failed render, a
+ * retry) stay minimal; the 404 page passes `PublicFooter` because a dead end is
+ * still a public page that must keep Impressum/Datenschutz reachable (§ 5 DDG).
  */
 export function StatusPage({
   eyebrow,
   title,
   body,
   children,
+  footer,
 }: {
   eyebrow?: string;
   title: string;
   body: string;
   children: React.ReactNode;
+  footer?: React.ReactNode;
 }) {
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -32,6 +38,7 @@ export function StatusPage({
         <p className="mt-4 text-sm text-muted">{body}</p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">{children}</div>
       </main>
+      {footer}
     </div>
   );
 }
