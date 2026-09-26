@@ -125,4 +125,25 @@ describe("Register page", () => {
     // own single landmark (found missing on login/register/forgot/reset/verify).
     await waitFor(() => expect(container.querySelectorAll("main")).toHaveLength(1));
   });
+
+  it("links the privacy policy above the submit button — information, not a consent checkbox (Art. 13 DSGVO)", async () => {
+    mockAuth();
+    vi.mocked(api.publicConfig.get).mockResolvedValue(openConfig);
+    renderPage();
+
+    const link = await screen.findByRole("link", { name: "Datenschutzerklärung" });
+    expect(link).toHaveAttribute("href", "/datenschutz");
+    const submit = screen.getByRole("button", { name: "Konto erstellen" });
+    expect(link.compareDocumentPosition(submit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+  });
+
+  it("keeps Impressum and Datenschutz reachable even while signup is closed", async () => {
+    mockAuth();
+    vi.mocked(api.publicConfig.get).mockResolvedValue(closedConfig);
+    renderPage();
+
+    expect(await screen.findByRole("link", { name: "Impressum" })).toHaveAttribute("href", "/impressum");
+    expect(screen.getByRole("link", { name: "Datenschutz" })).toHaveAttribute("href", "/datenschutz");
+  });
 });

@@ -66,4 +66,13 @@ describe("Public landing page", () => {
     expect(screen.getAllByRole("link", { name: "Zur Übersicht" }).length).toBeGreaterThan(0);
     expect(screen.getByRole("heading", { level: 1, name: "Numerologie ohne Raten." })).toBeInTheDocument();
   });
+
+  it("links Impressum and Datenschutz publicly — never the login-gated settings page", () => {
+    anonymous();
+    const { container } = renderPage();
+
+    expect(screen.getByRole("link", { name: "Impressum" })).toHaveAttribute("href", "/impressum");
+    expect(screen.getByRole("link", { name: "Datenschutz" })).toHaveAttribute("href", "/datenschutz");
+    expect(container.querySelector('a[href="/settings/privacy"]')).toBeNull();
+  });
 });

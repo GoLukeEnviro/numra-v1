@@ -47,7 +47,11 @@ export const enPublic: Record<keyof typeof dePublic, string> = {
     "AVENYTH is a symbolic numerological interpretation tool. It provides no medical, legal, financial or scientific advice.",
   "public.landing.finalCtaTitle": "Evidence instead of claims.",
   "public.landing.finalCtaBody": "Create an account and verify every number yourself.",
-  "public.landing.footerPrivacy": "Privacy",
+  // Legal (footer, legal page links)
+  "public.legal.navLabel": "Legal",
+  "public.legal.imprint": "Legal notice",
+  "public.legal.privacy": "Privacy",
+  "public.legal.fullPrivacyPolicy": "Full privacy policy",
 
   // Login
   "public.login.brandIntro":
@@ -121,6 +125,8 @@ export const enPublic: Record<keyof typeof dePublic, string> = {
   "public.register.email": "Email",
   "public.register.password": "Password",
   "public.register.passwordConfirm": "Confirm password",
+  "public.register.privacyNoticeBefore": "How we process your data is described in the",
+  "public.register.privacyNoticeLink": "privacy policy",
   "public.register.passwordHint": "At least 12 characters.",
   "public.register.submit": "Create account",
   "public.register.haveAccount": "Already have an account?",
