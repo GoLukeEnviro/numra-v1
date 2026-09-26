@@ -42,5 +42,5 @@ apps/web/dist/
 apps/web/.vite/
 apps/web/coverage/
 
-# Lokaler, transienter Execution-State (nie committen)
-.claude/avenyth-execution-state.local.md
+# Claude lokale Plaene und Execution-State (nie committen)
+.claude/
