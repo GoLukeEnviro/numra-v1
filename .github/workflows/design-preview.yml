@@ -1,0 +1,72 @@
+# Optional design-preview lane. Not a required check. Not GitHub Pages.
+# Does not deploy to avenyth.de. Does not belong in ci.yml.
+#
+# On PRs that touch docs/design/**: validate the static preview HTML,
+# reject Golden-Fixture strings, run contrast_check.py if present,
+# upload an artifact. No product surface is published.
+
+name: design-preview
+
+on:
+  pull_request:
+    paths:
+      - "docs/design/**"
+      - "scripts/pack_design_preview.py"
+      - ".github/workflows/design-preview.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  pack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pack and gate preview
+        run: python3 scripts/pack_design_preview.py
+
+      - name: Upload design-preview artifact
+        if: hashFiles('dist/design-preview/**') != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: avenyth-design-preview
+          path: dist/design-preview
+          retention-days: 14
+
+      - name: Comment artifact link on pull request
+        if: github.event_name == 'pull_request' && hashFiles('dist/design-preview/**') != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = [
+              'Design-Preview-Artifact liegt an diesem Lauf:',
+              `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`,
+              '',
+              'Kein Live-Deploy. Kein GitHub Pages. `noindex` in der HTML bleibt.',
+              'Pflichtseiten und `robots.txt` sind nicht Teil dieser Spur.',
+            ].join('\n');
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const marker = 'Design-Preview-Artifact liegt an diesem Lauf:';
+            const existing = comments.find((c) => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
