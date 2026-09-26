@@ -26,7 +26,11 @@ Auto-Deploy — ein Deploy ist ein bewusster Einzelbefehl (Rezept unten).
 ## Container
 
 Produktion: `api`, `web`, `worker`, `postgres`, `redis`, `pdf`, dazu der Migrations-
-Einmaljob. Audit zusätzlich: `analysis-worker` (V2-Jobpipeline).
+Einmaljob. `analysis-worker` (V2-Jobpipeline) ist seit 2026-09-26 in
+`deploy/compose.production.yml` definiert und läuft ab Stufe 0 der V2-Aktivierung
+(`docs/ops/2026-09-26-v2-activation-connections-workspaces.md`); bis zum Host-Deploy
+läuft er nur im Audit-Stack. Die sieben `AVENYTH_*`-Flags werden ebenfalls durchgereicht
+(Default `false`).
 
 Das PDF-Rendering läuft in beiden Stacks als eigener Dienst (Chromium); die
 Readiness-Antwort des API enthält dessen Zustand als `pdf`.
