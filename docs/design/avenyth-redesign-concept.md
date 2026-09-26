@@ -1,6 +1,6 @@
 # AVENYTH Redesign-Konzept — Stufe 1 ausgearbeitet, Stufe 2 Skizze
 
-**Status:** Entwurf, nicht mergen  
+**Status:** Konzept, am 26.09.2026 nach `main` übernommen. Entscheidungen in §0, Pflaume offen (0.1). Kein App-Code freigegeben  
 **Produktmarke:** AVENYTH  
 **Namensraum:** NUMRA (technisch)  
 **Stand:** 26.09.2026  
