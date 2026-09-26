@@ -50,11 +50,14 @@ self.addEventListener("fetch", (event) => {
         (cached) =>
           cached ||
           fetch(req).then((res) => {
-            const copy = res.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
+            // Only a successful response may become the cached copy of an asset.
+            if (res.ok) {
+              const copy = res.clone();
+              caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
+            }
             return res;
           }),
-      ),
+      ).catch(() => Response.error()),
     );
     return;
   }
@@ -63,5 +66,8 @@ self.addEventListener("fetch", (event) => {
   // this branch is ever written to a cache, so there is no stale/offline copy of
   // any server-rendered page (which may embed per-user data) to accidentally serve
   // to a different visitor sharing this browser profile.
-  event.respondWith(fetch(req).catch(() => caches.match(req)));
+  // #212: when the network fails and nothing is cached, caches.match() resolves to
+  // undefined, and respondWith(undefined) throws "Failed to convert value to
+  // 'Response'". Answer with a proper network error instead.
+  event.respondWith(fetch(req).catch(() => caches.match(req).then((cached) => cached || Response.error())));
 });
