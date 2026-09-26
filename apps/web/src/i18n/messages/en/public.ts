@@ -53,6 +53,19 @@ export const enPublic: Record<keyof typeof dePublic, string> = {
   "public.legal.privacy": "Privacy",
   "public.legal.fullPrivacyPolicy": "Full privacy policy",
 
+  // Error pages (404 and error boundary)
+  "public.notFound.eyebrow": "Error 404",
+  "public.notFound.title": "This page does not exist.",
+  "public.notFound.body":
+    "The link is outdated or mistyped. Everything else is reachable from the home page.",
+  "public.notFound.cta": "To the home page",
+  "public.error.title": "This view could not be loaded.",
+  "public.error.body":
+    "An unexpected error occurred while rendering. Try again or return to the home page.",
+  "public.error.retry": "Try again",
+  "public.error.home": "To the home page",
+  "public.error.reference": "Error reference",
+
   // Login
   "public.login.brandIntro":
     "An auditable numerology platform. A deterministic engine does the arithmetic; language only ever explains what it already produced.",

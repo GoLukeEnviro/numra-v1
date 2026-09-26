@@ -51,6 +51,19 @@ export const dePublic = {
   "public.legal.privacy": "Datenschutz",
   "public.legal.fullPrivacyPolicy": "Vollständige Datenschutzerklärung",
 
+  // Fehlerseiten (404 und Error Boundary)
+  "public.notFound.eyebrow": "Fehler 404",
+  "public.notFound.title": "Diese Seite gibt es nicht.",
+  "public.notFound.body":
+    "Der Link ist veraltet oder falsch geschrieben. Von der Startseite aus findest du alles Weitere.",
+  "public.notFound.cta": "Zur Startseite",
+  "public.error.title": "Diese Ansicht konnte nicht geladen werden.",
+  "public.error.body":
+    "Beim Anzeigen ist ein unerwarteter Fehler aufgetreten. Versuche es erneut oder kehre zur Startseite zurück.",
+  "public.error.retry": "Erneut versuchen",
+  "public.error.home": "Zur Startseite",
+  "public.error.reference": "Fehlerreferenz",
+
   // Login
   "public.login.brandIntro":
     "Eine auditierbare Numerologie-Plattform. Eine deterministische Engine rechnet; Sprache erklärt nur, was sie bereits erzeugt hat.",
