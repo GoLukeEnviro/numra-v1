@@ -6,6 +6,7 @@
 **Stand:** 26.09.2026  
 **Geprüfter Code:** `GoLukeEnviro/numra-v1` `main` @ `989c502` (seither nur `67de219`: `What's Next.txt`, ohne Einfluss)  
 **Live-Stichprobe:** https://avenyth.de 26.09.2026 12:49 MESZ  
+**Nachtrag beim Merge:** `main` enthält inzwischen #216 und #217 (branded 404, Error-Boundaries, kein `x-powered-by` im Code). Befunde mit `989c502` beziehen sich auf den Stand davor; Live-Header nicht neu geprüft  
 **Folge-Review:** 26.09.2026. Offene „nicht geprüft“-Punkte belegt (grep, Tailwind-Kompilat, Engine-Lauf, CVD), Entscheidungstabelle geschlossen, CI-Lint repariert (siehe E3, E5, E8, E9)  
 **Geltung:** nur Dokumentation unter `docs/design/**`. Kein App-Code, kein Live-Write, keine Änderung an `robots.txt`, `docs/adr/` oder `docs/brand/`.
 
@@ -89,7 +90,7 @@ Das ist kein Versehen. Es ist ein Zielkonflikt zwischen Markensemantik und Kontr
 | `tailwind-merge ^3.7.0` | dieselbe Datei | eigener späterer PR, nicht dieser |
 | `force-dynamic` | `apps/web/src/app/layout.tsx:9` | geprüft |
 | `data-theme="dark"` hart | `layout.tsx` | Tailwind `darkMode: "class"` liest `.dark`, nicht `data-theme` |
-| kein `error.tsx` / `not-found.tsx` auf `main` | Codesuche | 0 Treffer; Härtung auf anderem Branch |
+| kein `error.tsx` / `not-found.tsx` auf `main` | Codesuche | Stand `989c502`: 0 Treffer. **Überholt durch #217 (`e74a17c`)**: `main` hat jetzt `error.tsx`, `global-error.tsx`, `not-found.tsx` und `poweredByHeader: false` |
 | Mobile frozen | Execution-State | nicht Teil dieses Konzepts |
 
 ### 1.2 Tokens
