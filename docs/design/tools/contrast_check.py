@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import sys
 
-
 PALETTE = {
     "noir": "0B0B0F",
     "obsidian": "13131A",
@@ -35,6 +34,8 @@ PALETTE = {
     "ochre_dark": "D6AA4E",
     "film": "ECEEE9",
     "graphite": "22252A",
+    "night": "14171D",
+    "chalk": "E3E6E8",
 }
 
 
@@ -77,8 +78,14 @@ PAIRS = [
     ("graphite on film", "graphite", "film"),
     ("ultramarine on film", "ultramarine", "film"),
     ("ochre on film", "ochre", "film"),
-    ("ultramarine_dark on noir", "ultramarine_dark", "noir"),
-    ("ochre_dark on noir", "ochre_dark", "noir"),
+    ("chalk on night", "chalk", "night"),
+    ("ultramarine_dark on night", "ultramarine_dark", "night"),
+    ("ochre_dark on night", "ochre_dark", "night"),
+    ("ivory button on obsidian", "ivory", "obsidian"),
+    ("ivory button on obsidian_plus", "ivory", "obsidian_plus"),
+    ("noir text on ivory button", "noir", "ivory"),
+    ("ui_line on obsidian", "ui_line", "obsidian"),
+    ("ui_line on obsidian_plus", "ui_line", "obsidian_plus"),
 ]
 
 
