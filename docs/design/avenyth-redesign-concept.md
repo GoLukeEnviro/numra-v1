@@ -4,7 +4,7 @@
 **Produktmarke:** AVENYTH  
 **Namensraum:** NUMRA (technisch)  
 **Stand:** 26.09.2026  
-**Geprüfter Code:** `GoLukeEnviro/numra-v1` `main` @ `989c502` (seither nur `67de219`: `What's Next.txt`, ohne Einfluss)  
+**Geprüfter Code:** `GoLukeEnviro/numra-v1` `main` @ `989c502` (seither weitere Commits auf `main`, siehe Nachtrag)  
 **Live-Stichprobe:** https://avenyth.de 26.09.2026 12:49 MESZ  
 **Nachtrag beim Merge:** `main` enthält inzwischen #216 und #217 (branded 404, Error-Boundaries, kein `x-powered-by` im Code). Befunde mit `989c502` beziehen sich auf den Stand davor; Live-Header nicht neu geprüft  
 **Folge-Review:** 26.09.2026. Offene „nicht geprüft“-Punkte belegt (grep, Tailwind-Kompilat, Engine-Lauf, CVD), Entscheidungstabelle geschlossen, CI-Lint repariert (siehe E3, E5, E8, E9)  
