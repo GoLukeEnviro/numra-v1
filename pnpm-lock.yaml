@@ -17,8 +17,8 @@ importers:
   apps/mobile:
     dependencies:
       '@babel/runtime':
-        specifier: ^7.25.0
-        version: 7.29.7
+        specifier: ^8.0.5
+        version: 8.0.5
       expo:
         specifier: ~57.0.22
         version: 57.0.22(@babel/core@8.0.6)(@expo/dom-webview@57.0.1)(react-dom@18.3.1(react@19.2.3))(react-native@0.86.3(@babel/core@8.0.6)(@types/react@18.3.31)(react@19.2.3))(react@19.2.3)(typescript@5.9.3)
@@ -553,6 +553,9 @@ packages:
   '@babel/runtime@7.29.7':
     resolution: {integrity: sha512-Nq8OhGWiZIZGV6hLHoyAKLLcJihP/xFeBMGJoUrxTX2psI8dCifzLhZISFb+VWS3wFMRDmCGw5R+dOySCqPLhw==}
     engines: {node: '>=6.9.0'}
+
+  '@babel/runtime@8.0.5':
+    resolution: {integrity: sha512-7NK+Lz3spQ52XsUGTxIEVU4jYN2/dIaX8sTxRFAUtYmttYZnVh3aehiihv+/Gb7+duMNHl2OrFcBQRyOHScxpg==}
 
   '@babel/template@7.29.7':
     resolution: {integrity: sha512-puq+Gf35oI24FeN11LkoUQFqv9uwNeWpxXZi/Ji3rRIoKAzKnxRaZ+Gkj0vKS9ZCiTESfng1N9LyOyXvo+m+Gg==}
@@ -5120,6 +5123,8 @@ snapshots:
       - supports-color
 
   '@babel/runtime@7.29.7': {}
+
+  '@babel/runtime@8.0.5': {}
 
   '@babel/template@7.29.7':
     dependencies:
