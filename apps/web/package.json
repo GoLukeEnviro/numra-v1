@@ -29,10 +29,10 @@
     "@types/node": "^20.16.0",
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.0",
-    "@typescript-eslint/eslint-plugin": "^8.70.0",
-    "@typescript-eslint/parser": "^8.70.0",
+    "@typescript-eslint/eslint-plugin": "^8.70.1",
+    "@typescript-eslint/parser": "^8.70.1",
     "@vitejs/plugin-react": "^6.1.1",
-    "@vitest/coverage-v8": "5.0.0",
+    "@vitest/coverage-v8": "5.0.1",
     "autoprefixer": "^10.6.1",
     "eslint": "^8.57.1",
     "eslint-config-next": "^15.5.21",
@@ -41,6 +41,6 @@
     "tailwindcss": "^3.4.13",
     "typescript": "^5.6.3",
     "vite": "^8.3.0",
-    "vitest": "^5.0.0"
+    "vitest": "^5.0.1"
   }
 }
