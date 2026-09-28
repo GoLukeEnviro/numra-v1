@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Don't advertise the framework in every response (`X-Powered-By: Next.js`).
+  poweredByHeader: false,
   // Minimal, self-contained runtime image for docker/web.Dockerfile.
   output: "standalone",
   eslint: {
