@@ -96,7 +96,7 @@ brand guideline.
 ## Requirements
 
 - Python 3.11+, [`uv`](https://docs.astral.sh/uv/)
-- Node.js 20+, `pnpm` (`corepack enable` or `npm i -g pnpm`)
+- Node.js 22.19+ (required by `undici`, a transitive dependency of `jsdom` 30 used in `apps/web` tests), `pnpm` (`corepack enable` or `npm i -g pnpm`)
 - PostgreSQL 16 (local install or Docker)
 - Docker + Docker Compose (optional, for the full containerized stack)
 
