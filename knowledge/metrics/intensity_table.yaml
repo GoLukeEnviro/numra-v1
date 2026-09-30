@@ -1,5 +1,6 @@
 metric_id: intensity_table
 display_name_de: Intensitätstabelle
-semantic_context_de: Die Intensitätstabelle zählt, wie oft jeder Buchstabenwert (1-9)
-  im vollständigen Geburtsnamen vorkommt, und wird als symbolischer Hinweis darauf
-  gedeutet, welche Themen im Namen besonders stark oder gar nicht vertreten sind.
+semantic_context_de: Die Intensitätstabelle zählt, wie oft jeder Buchstabenwert (1-9) im vollständigen
+  Geburtsnamen vorkommt, und wird als symbolischer Hinweis darauf gedeutet, welche Themen im Namen besonders
+  stark oder gar nicht vertreten sind. Sie bildet die rechnerische Grundlage sowohl fuer die verborgene
+  Leidenschaft (haeufigster Wert) als auch fuer die karmischen Lektionen (fehlende Werte).

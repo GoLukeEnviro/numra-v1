@@ -7,15 +7,15 @@ core_themes:
 - Diplomatie
 - Verbindung
 - Feingefühl
+strengths:
+- Feines Gespür für Stimmungen und Bedürfnisse anderer
+- Vermittelnde, ausgleichende Art
+- Verlässlicher Teamplayer
 shadows:
 - Unentschlossenheit
 - Abhängigkeit
 - Konfliktvermeidung
 - Überempfindlichkeit
-strengths:
-- Feines Gespür für Stimmungen und Bedürfnisse anderer
-- Vermittelnde, ausgleichende Art
-- Verlässlicher Teamplayer
 relationships:
 - Sucht Harmonie und tiefe Verbindung
 - Starkes Einfühlungsvermögen
@@ -32,3 +32,39 @@ cautions:
 - Konfliktvermeidung kann Themen unausgesprochen lassen
 - Überempfindlichkeit im Blick behalten
 - Abhängigkeit von Bestätigung anderer beachten
+stable_id: de.pythagorean.v3.single.2
+classification: single
+result_contexts:
+- life_path_primary
+- life_path_secondary
+- birthday
+- attitude
+- expression
+- soul_urge
+- personality
+- maturity
+- personal_year
+- personal_month
+- personal_day
+- pinnacle
+- challenge
+constructive_expression: Die Symbolik kann zu feinfühliger Wahrnehmung und kooperativem
+  Miteinander einladen.
+shadow_expression: Überbetonte Harmonie kann zu Selbstzurücknahme und Konfliktvermeidung
+  führen.
+development_theme: Kooperation und Abgrenzung
+practical_suggestions:
+- Achte darauf, eigene Bedürfnisse ebenso ernst zu nehmen wie die anderer.
+counter_hypotheses:
+- Kooperationsbereitschaft kann durch Erziehung und Umfeld ebenso geprägt sein.
+reflection_prompts:
+- In welchen Beziehungen erlebst du ein ausgewogenes Geben und Nehmen?
+claim_class: traditional_claim
+source_refs:
+- numra-method-v2
+- numra-boundary-v1
+- numra-tradition-v1
+authoring_provenance:
+  authored_at: '2026-08-05'
+  author: Numra Knowledge Team
+  review_status: draft

@@ -139,6 +139,66 @@ def test_compose_section_without_karmic_debt_flag_has_no_karmic_text(knowledge_b
     assert section.karmic_debt_compound is None
 
 
+# --- Wave 3 Schritt 3: long-form-first composer rule -------------------------------
+
+
+def test_compose_section_prefers_long_form_constructive_and_shadow_expression(
+    knowledge_base,
+) -> None:
+    """Migrated numbers (all of 1-9, 11, 22, 33 as of Wave 3 Schritt 3) must render
+    their long-form constructive_expression/shadow_expression verbatim in the
+    composed text, not the short core_themes/shadows label sentence — the
+    long-form-first rule from the migration plan."""
+    metric = _fake_metric(master_number=None, root_value=2)
+    section = compose_section("life_path", metric, knowledge_base)
+    number_knowledge = knowledge_base.number(2)
+
+    assert number_knowledge.constructive_expression in section.text_de
+    assert number_knowledge.shadow_expression in section.text_de
+    assert "Kernthemen der Zahl 2:" not in section.text_de
+
+
+def test_compose_section_falls_back_to_short_lists_for_unmigrated_numbers(
+    knowledge_base,
+) -> None:
+    """A number with no long-form content (nothing in knowledge/numbers,
+    master-numbers or karmic-debts is left unmigrated after Wave 3 Schritt 3, so this
+    is proven against a synthetic KnowledgeBase instead) must still fall back to the
+    original short-list sentences, not produce an empty/broken section."""
+    from numra_interpretation.composer import _core_shadow_sentences
+    from numra_interpretation.knowledge_models import NumberKnowledge
+
+    bare_knowledge = NumberKnowledge(
+        value=4,
+        root=4,
+        is_master=False,
+        core_themes=("Struktur", "Disziplin"),
+        strengths=(),
+        shadows=("Rigidität",),
+        relationships=(),
+        work_and_creation=(),
+        development=(),
+        cautions=(),
+    )
+    sentences = _core_shadow_sentences(bare_knowledge)
+    assert sentences == [
+        "Kernthemen der Zahl 4: Struktur, Disziplin.",
+        "Mögliche Schattenseiten: Rigidität.",
+    ]
+
+
+def test_compose_section_karmic_text_prefers_development_theme(knowledge_base) -> None:
+    flags = (MetricFlag(code="KARMIC_DEBT", value="16/7", source_raw_value=16),)
+    metric = _fake_metric(master_number=None, root_value=7, flags=flags)
+    section = compose_section("life_path", metric, knowledge_base)
+    karmic = knowledge_base.karmic_debt("16/7")
+
+    assert karmic is not None
+    assert karmic.development_theme is not None
+    assert karmic.development_theme in section.text_de
+    assert "symbolischen Themen" not in section.text_de
+
+
 # --- V1.5 Epic J: timing + extended sections -------------------------------------
 
 EXTENDED_METRIC_IDS = (

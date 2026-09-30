@@ -1,0 +1,559 @@
+================================================================================
+AVENYTH (Repo: numra-v1) — HAND-OFF-DOKUMENT
+Automatisch generierte, faktenbasierte Projekt-Bestandsaufnahme
+Stand: 2026-09-26
+================================================================================
+
+Dieses Dokument fasst den aktuellen Zustand des Projekts AVENYTH zusammen und
+soll einem neuen Entwicklerteam ermoeglichen, ohne Vorkenntnisse sofort
+produktiv weiterzuarbeiten. Alle Datei- und Modulpfade sind vollstaendig ab
+dem Repository-Root angegeben (e:\VS-code-Projekte-5.2025\numra-v1).
+
+WICHTIGSTER HINWEIS VORAB: Die aktuelle "Single Source of Truth" fuer den
+Projektstatus ist docs\planning\avenyth-pwa-execution-state.md. FINAL_VERIFICATION.md
+und docs\analyze\technical-debt.md sind ausdruecklich als historische Snapshots
+markiert und koennen veraltete Aussagen enthalten (siehe Abschnitt 6).
+
+
+--------------------------------------------------------------------------------
+1. PROJEKTZUSTAND UND ARCHITEKTUR
+--------------------------------------------------------------------------------
+
+1.1 Was ist AVENYTH?
+
+AVENYTH (Produktname; technischer Namespace im Code bleibt durchgaengig
+"numra" — Pakete, DB-Bezeichner, interne Infrastruktur) ist ein
+Numerologie-Produkt. Kernprinzip laut Architecture Decision Record
+docs\adr\003-llm-not-calculator.md: Berechnungen werden ausschliesslich von
+einer deterministischen Engine durchgefuehrt, ein LLM interpretiert nur die
+bereits berechneten Werte — niemals umgekehrt.
+
+Verarbeitungspipeline (aus README.md):
+
+  Personendaten (Input)
+    -> Normalisierung
+    -> deterministische Engine
+    -> Canonical Profile (+ Hash)
+    -> Knowledge-Resolution (versionierte YAML-Inhalte)
+    -> Interpretation / Relationship-Interpretation (regelbasierter Composer + LLM)
+    -> Safety-/Claim-Validation
+    -> Ausgabe ueber CLI / API / Long-Form-Report-Pipeline / Web / PDF
+
+1.2 Architekturtyp
+
+Modularer Monolith mit mehreren unabhaengig deploybaren Prozessen (kein
+Microservice-Mesh, aber getrennte Deployables). Frontend und Backend sind
+getrennte Anwendungen, die ueber HTTP kommunizieren.
+
+1.3 Top-Level-Struktur
+
+  apps\api                                Backend: stateless FastAPI-App (Python)
+  apps\web                                Frontend: Next.js/React/TypeScript PWA, kanonischer Client
+  apps\pdf                                Interner PDF-Rendering-Dienst (Node.js/Playwright/Chromium, kein oeffentlicher Zugriff)
+  apps\mobile                             Expo/React-Native-App — EINGEFROREN, keine aktive Weiterentwicklung
+  packages\engine-numerology              Deterministischer Berechnungskern (Python), keinerlei I/O
+  packages\engine-interpretation          Knowledge-Loader, regelbasierter Interpretations-Composer, LLM-Provider-Interface, Long-Form-Report-Pipeline (report\)
+  packages\engine-relationship-interpretation   V2-Beziehungs-/Schatten-Dynamik-Interpretation (zwei Profile -> strukturierte Analyse, kein Kompatibilitaets-Score)
+  packages\engine-astrology               Nur typisiertes Interface, FEATURE_DISABLED_NO_CANON (siehe Abschnitt 4)
+  packages\schema                         Generierter TypeScript-Client (openapi-typescript) aus openapi\numra-v1.json — src\generated\ nicht von Hand editieren
+  knowledge                               Versionierte deutsche Interpretationsinhalte (YAML), Version in knowledge\manifest.yaml
+  specs                                   canon-spec.md (formale Berechnungsspezifikation), profile.schema.json, V2-Spec-Suite (specs\v2), Phasen-Evidenz (specs\evidence)
+  openapi\numra-v1.json                   OpenAPI-Spezifikation, Quelle fuer packages\schema
+  fixtures\canonical\lukas-springer.v1.json   Golden-Reference-Profil fuer Tests — darf in Produktionscode NIE hart-kodiert behandelt werden
+  docker                                  Dockerfiles: api.Dockerfile, pdf.Dockerfile, web.Dockerfile
+  deploy\compose.production.yml           Produktions-Compose-Datei (VPS-Deployment)
+  docs                                    ADRs (docs\adr), Betriebsdoku (docs\ops), Planung (docs\planning), Releases, Runbooks, Security, Brand-Guideline
+  scripts                                 Verifikations-/Ops-Skripte (verify.py, rc2-e2e.sh, export_openapi.py, check_testcircle_readiness.py)
+  .github\workflows                       CI-Pipelines: ci.yml, rc2-journey.yml
+
+1.4 Tech-Stack
+
+Backend (Python) — Quelle: pyproject.toml, apps\api\pyproject.toml
+  - Python >= 3.11, Paketmanager "uv" (uv-Workspace mit 5 Mitgliedern)
+  - FastAPI >= 0.115, Uvicorn >= 0.30, Pydantic >= 2.6 / pydantic-settings >= 2.4
+  - SQLAlchemy[asyncio] >= 2.0, asyncpg >= 0.29, Alembic >= 1.13
+  - Argon2-cffi (Passwort-Hashing), httpx, redis >= 5.0, aiosmtplib >= 3.0
+  - Dev/Test: ruff >= 0.16.7, mypy >= 2.3.1 (strict), pytest, pytest-cov, hypothesis
+
+Frontend (Web) — Quelle: apps\web\package.json
+  - Next.js ^15.5.24, React ^18.3.1, TypeScript ^5.6.3
+  - Tailwind CSS ^3.4.13, class-variance-authority, clsx, tailwind-merge, lucide-react
+  - Vitest ^5.0.0 + Testing Library, Playwright ^1.63.0 (E2E), ESLint 8
+
+Mobile — Expo 57 / React Native 0.86 (apps\mobile), eingefroren
+PDF-Service — Node.js, Playwright/Chromium (apps\pdf\src\server.js)
+
+Monorepo-Tooling
+  - pnpm-Workspace (pnpm-workspace.yaml): apps\mobile, apps\web, apps\pdf, packages\schema;
+    packageManager pnpm@9.15.0, Node >= 20 (siehe package.json)
+  - uv-Workspace fuer alle Python-Pakete (root pyproject.toml)
+
+Datenbank: PostgreSQL 16 (Docker-Image postgres:16-alpine), Cache/Rate-Limit: Redis 7
+
+1.5 Zentrale Einstiegspunkte
+
+  API-Bootstrap:        apps\api\src\numra_api\app.py (Factory create_app(), Modul-Instanz app)
+                         Start: uv run uvicorn numra_api.app:app --reload --port 8000 --app-dir apps/api/src
+  Report-Job-Worker:    apps\api\src\numra_api\worker.py (python -m numra_api.worker)
+  Analysis-Worker:      apps\api\src\numra_api\analysis_worker.py
+  CLI:                  apps\api\src\numra_api\cli.py
+  Settings/Konfig:      apps\api\src\numra_api\config.py
+  DB-Setup:             apps\api\src\numra_api\db.py
+  Frontend-Einstieg:    apps\web\src\app (Next.js App-Router)
+  PDF-Service:          apps\pdf\src\server.js
+
+Backend-Modulstruktur (apps\api\src\numra_api\):
+  routes\      28 Router (auth, people, calculations, relationships, reports, admin,
+               relationship_workspaces, relationship_roadmaps, shared_reflections,
+               copilot_threads, checkins, evidence, account, consent, ...)
+  services\    27 Service-Module (calculation_service, report_service,
+               relationship_analysis_service, relationship_workspace_service,
+               llm_factory, email_factory, pdf_client, account_deletion_service,
+               feature_flags, errors, ...)
+  models\      tables.py, enums.py — SQLAlchemy-ORM-Modelle
+  middleware\  security.py — CORS/Origin-Validation, Security-Headers, Access-Log,
+               Request-Body-Limit, Correlation-ID
+  rate_limit\  In-Memory- und Redis-basierter Rate-Limiter
+  auth\, email\, repositories\, schemas\, storage\
+  alembic\     20 Migrationsrevisionen (apps\api\alembic\versions)
+
+Frontend-Modulstruktur (apps\web\src\):
+  app\         Next.js-Routen: dashboard, people, calculations, relationships,
+               workspaces, connections, reports, copilot, analysis, today, settings,
+               admin, onboarding, login/register/forgot-password/reset-password/verify-email
+  components\  nach Domaene gruppiert (admin, analysis, copilot, people, relationships,
+               reports, settings, today, workspace(s), ui, pwa, consent, brand)
+  api\, lib\, i18n\ (deutsch/englisch, i18n\messages)
+
+1.6 Konfiguration & Environment
+
+  - .env.example im Root als Vorlage; lokale .env nicht versioniert. Inhalt selbst
+    pruefen — Datei war fuer die Analyse-Agenten aus Policy-Gruenden nicht lesbar.
+  - Zentrale Settings-Klasse: apps\api\src\numra_api\config.py (Pydantic Settings).
+    Validiert u.a.: NUMRA_LLM_PROVIDER=mock ist ausserhalb ENVIRONMENT=production
+    verboten; RATE_LIMIT_BACKEND=memory ist in Produktion nicht erlaubt.
+  - Relevante Env-Variablen (aus Compose-Dateien abgeleitet): DATABASE_URL,
+    SESSION_SECRET, ALLOW_SELF_SIGNUP, ENVIRONMENT, EMAIL_BACKEND, SMTP_*,
+    NUMRA_LLM_PROVIDER, NUMRA_LLM_MODEL_PREMIUM/_FAST, OLLAMA_BASE_URL/OLLAMA_API_KEY,
+    PDF_INTERNAL_URL/PDF_INTERNAL_TOKEN, EXPORT_STORAGE_DIR, WEB_APP_BASE_URL,
+    RATE_LIMIT_BACKEND, REDIS_URL, LOG_LEVEL, CORS_ALLOWED_ORIGINS (Pflicht in
+    Produktion), POSTGRES_PASSWORD
+  - Dev-Compose: docker-compose.yml — Services postgres, migrate (One-Shot-Alembic),
+    api, worker, analysis-worker, redis, pdf, web; Ports lokal offen
+    (5432, 6379, 8000, 4300, 3000)
+  - Produktions-Compose: deploy\compose.production.yml — dokumentiert als
+    "reconstructed from the HermesTrader deployment during the agent0 migration".
+    Deploy-Konvention:
+      docker compose -p numra-prod --env-file /etc/numra/numra.env \
+        -f /opt/numra/compose.production.yml <command>
+    Build-Kontext /opt/numra/repo, gepinnt auf deployed_sha. Ports nur auf
+    127.0.0.1 gebunden (Reverse-Proxy vorgelagert). Secrets ausschliesslich via
+    ${VAR:?required} erzwungen (DATABASE_URL, SESSION_SECRET, PDF_INTERNAL_TOKEN,
+    CORS_ALLOWED_ORIGINS, NUMRA_API_PORT, NUMRA_WEB_PORT).
+  - RC2-Variante: docker-compose.rc2.yml (Release-Candidate-2-Testkonfiguration)
+  - Ops-Dokumentation: docs\ops (Betriebsrunbooks), docs\planning\avenyth-pwa-execution-state.md
+    (Single Source of Truth fuer Delivery-Status)
+
+1.7 Datenbank / Persistenz
+
+  - PostgreSQL 16 (postgres:16-alpine), Connection-String postgresql+asyncpg://...
+  - ORM: SQLAlchemy 2.x async, Modelle in apps\api\src\numra_api\models\tables.py
+    und models\enums.py
+  - Migrations: Alembic (apps\api\alembic.ini, 20 Revisionen in
+    apps\api\alembic\versions). Workflow: uv run alembic upgrade head /
+    uv run alembic revision --autogenerate -m "..."
+  - Kaskadierendes Loeschen (Privacy): POST /v1/account/delete-all loescht die
+    User-Zeile plus alle abhaengigen Tabellen (people, name_identities,
+    calculations, relationships, reports, report_sections, report_jobs,
+    llm_generations, exports, sessions) via ondelete="CASCADE" — Test:
+    apps\api\tests\integration\test_delete_all.py
+  - Redis dient als Rate-Limit-Backend (RedisRateLimiter,
+    apps\api\src\numra_api\rate_limit) und Job-Queue-Unterstuetzung, nicht als
+    primaere Persistenz
+  - Keine NoSQL-/Vektordatenbank. Exporte liegen im lokalen Dateisystem via
+    LocalExportStorage (apps\api\src\numra_api\storage\exports.py),
+    Pfad EXPORT_STORAGE_DIR / Volume numra_exports_data
+
+1.8 Projekt-Konventionen
+
+  - Kein CLAUDE.md und keine CONTRIBUTING.md im Repository vorhanden.
+  - README.md ist das zentrale Onboarding-Dokument (Installation, lokale
+    Entwicklung, Tests, Docker, LLM-Konfiguration, Security-/Privacy-Notes,
+    Troubleshooting).
+  - Architecture Decision Records als verbindliche Konventionsquelle:
+    docs\adr\001-deterministic-engine.md bis 015-element-water-system-open-decision.md
+    (z.B. 001 deterministische Engine, 003 LLM nicht als Rechner, 006 eingefrorene/
+    nicht implementierte Features, 008-014 V2-Beziehungsarchitektur).
+  - Code-Qualitaets-Gates (pyproject.toml): ruff (Line-Length 100, Regeln
+    E/F/I/UP/B/SIM), mypy strict=true, disallow_untyped_defs=true; Pytest-Marker
+    golden, integration, property, unit.
+  - CI als Konventions-Durchsetzung: .github\workflows\ci.yml mit 13
+    Pflicht-Checks (siehe Abschnitt 6).
+  - Branding technisch erzwungen: alter Produktname "Numra" ist im
+    User-Facing-Text verboten, geprueft durch
+    apps\web\src\__tests__\brand-guard.test.ts; Brand-Guideline unter
+    docs\brand\visual-identity.md.
+  - Golden-Reference-Test-Disziplin: Produktion darf fixtures\canonical\lukas-springer.v1.json
+    nicht speziell behandeln — statisch geprueft via test_no_golden_leakage.py.
+  - Knowledge-Content-Konventionen: knowledge\AUTHORING_GUIDE.md beschreibt
+    Autoren-Richtlinien fuer die YAML-Wissensinhalte, versioniert ueber
+    knowledge\manifest.yaml.
+  - Spezifikations-getriebene Entwicklung: specs\canon-spec.md als formale,
+    verbindliche Berechnungsspezifikation; specs\profile.schema.json als
+    JSON-Schema fuer Canonical Profiles; specs\v2 fuer die V2-Spec-Suite.
+
+
+--------------------------------------------------------------------------------
+2. ABGESCHLOSSENE FUNKTIONEN
+--------------------------------------------------------------------------------
+
+  - V1.5-Baseline (docs\v1.5-baseline.md) -> V1.6A/B (docs\releases\v1.6-b.md)
+    -> vollstaendige V2-Beziehungsarchitektur (PR-V2-00 bis PR-V2-11, laut
+    Execution-State "complete").
+  - MOBILE-12A/B/C: nativer Mobile-Client fertiggestellt, aber bewusst
+    eingefroren (siehe Abschnitt 4) — keine aktiven Ressourcen mehr einplanen.
+  - PWA-01 bis PWA-09 (Audits/Hardening-Phasen) laut
+    docs\planning\avenyth-pwa-execution-state.md vollstaendig abgeschlossen.
+    Nur PWA-10 (Audit-Teardown) ist noch offen und "operator-gated" (siehe
+    Abschnitt 5).
+  - Produktions-SMTP/CORS/Signup-Phase (Issue #193): am 2026-09-26 als
+    Release-Blocker geschlossen (Commit 6ec232f). E-Mail-Versand laeuft ueber
+    Resend als SMTP-Relay, CORS_ALLOWED_ORIGINS erweitert um
+    https://avenyth.de und https://www.avenyth.de, ALLOW_SELF_SIGNUP=true
+    aktiviert. Details: docs\ops\2026-09-25-production-smtp-cors-signup.md
+  - Wave-3-Produktions-Deploy (2026-09-26, Commit 989c502): verifizierte
+    Produktions-SHA 78c87c947f807695b20df185abc0e7cf9ec523b7, Alembic-Head
+    b9c0d1e2f3a4, Backup vor Deploy erstellt
+    (bak-pre-wave3-20260926T015448Z.dump), Smoke-Test gruen, Probe-Account
+    cors-probe@invalid.example geloescht (PROBE_DELETED, aber als "unverified"
+    markiert — siehe Abschnitt 5).
+  - Dependabot ist konfiguriert und produziert aktiv Pull Requests
+    (avenyth-pwa-execution-state.md, widerspricht dem aelteren
+    docs\analyze\technical-debt.md TD-DEP-01, das dies noch als Luecke fuehrte).
+  - SAST-Job (Bandit) ist als Required-Check in ci.yml aktiv (widerspricht dem
+    aelteren technical-debt.md TD-SEC-03).
+
+
+--------------------------------------------------------------------------------
+3. UNVOLLSTAENDIGE FUNKTIONEN — ECHTE OFFENE LUECKE
+--------------------------------------------------------------------------------
+
+Wichtig: Nicht jede "fehlende" Funktion ist ein Bug. Abschnitt 4 listet
+bewusste Produktentscheidungen, die NICHT repariert werden sollen. Diese
+Sektion listet die eine tatsaechlich noch offene funktionale Luecke:
+
+  - Unauthentifizierte Impressum- und Datenschutz-Seiten fehlen im Web-Frontend.
+    Das blockiert eine vollstaendig saubere Oeffnung des Self-Signups: solange
+    diese Seiten fehlen, bleibt robots.txt bewusst auf "Disallow: /" gesetzt.
+    Blockiert auf operator-seitige Rechts-Fakten (Impressumspflicht-Daten,
+    Datenschutztext). Quelle: docs\planning\avenyth-pwa-execution-state.md
+    (CURRENT_TASK/NEXT_ACTION/OPEN_RELEASE_BLOCKERS).
+  - Offene Produktentscheidung: ob ALLOW_SELF_SIGNUP=true dauerhaft bleiben
+    soll, ist laut docs\ops\2026-09-25-production-smtp-cors-signup.md noch
+    nicht final entschieden — aktuell ist es nur eine Ops-Aktivierung, keine
+    Produktfreigabe.
+
+
+--------------------------------------------------------------------------------
+4. BEWUSST NICHT GEBAUTE FUNKTIONEN (KEINE BUGS — ADR-ENTSCHEIDUNGEN)
+--------------------------------------------------------------------------------
+
+Diese Punkte sollten von einem neuen Team NICHT versehentlich als Luecken
+"repariert" werden, ohne vorher die referenzierten ADRs zu lesen:
+
+  Feature                          | Status                          | Quelle
+  ----------------------------------|----------------------------------|------------------------------------------------
+  Astrologie                        | FEATURE_DISABLED_NO_CANON,      | docs\adr\006-unfrozen-features.md,
+                                     | reines Interface, wirft          | packages\engine-astrology\src\numra_astrology\__init__.py
+                                     | NotImplementedError               |
+  Kompatibilitaets-Prozentsatz      | Absichtlich nicht implementiert, | docs\adr\006-unfrozen-features.md
+  (Beziehungen)                     | nur match: bool je Metrikpaar    |
+  Element-/Wassersystem             | FEATURE_DISABLED_NO_CANON        | docs\adr\015-element-water-system-open-decision.md,
+                                     |                                   | specs\canon-spec.md Paragraph 33
+  Native Mobile (MOBILE-12A/B/C)    | Fertig, aber bewusst eingefroren | avenyth-pwa-execution-state.md
+                                     | — kein neues Feature-Work         | (explizit als "non-goal")
+  Offline-Navigation                | Bewusst "network-only"           | docs\adr\014-offline-navigation-network-only.md
+                                     | (kein Offline-Reload)             |
+  Feature-Flags (7 V2-Flags)        | Alle in Produktion deaktiviert   | docs\audits\2026-09-16-pwa-03-production-parity.md
+                                     | — Absicht, kein Defekt            |
+  Period-Cycle-Uebergangsalter      | Werte implementiert,             | docs\adr\006-unfrozen-features.md,
+                                     | Uebergangsalter bewusst nicht     | specs\canon-spec.md
+                                     | (RESERVED_UNFROZEN)               |
+
+Astrologie ist der aufwendigste dieser Punkte: ein alter Technical-Debt-Report
+(docs\analyze\technical-debt.md, Snapshot 2026-08-23) schaetzt 20-30
+Personentage fuer eine vollstaendige Implementierung — diese Zahl NICHT
+ungeprueft uebernehmen, sondern vor jeder Arbeit daran zuerst ADR 006 und
+specs\canon-spec.md Paragraph 32 lesen und eine neue Produktentscheidung/ADR
+einholen.
+
+
+--------------------------------------------------------------------------------
+5. PRIORISIERTE NAECHSTE SCHRITTE
+--------------------------------------------------------------------------------
+
+KURZFRISTIG (Tage bis 1-2 Wochen)
+
+  1. Impressum-/Datenschutz-Seiten bauen und robots.txt lockern.
+     Begruendung: aktuell einziger echter Release-Blocker fuer einen
+     rechtlich sauberen, offenen Self-Signup. Aufwand: gering (Content +
+     1-2 Next.js-Seiten), abhaengig von Rechts-Input des Betreibers.
+     Quelle: docs\planning\avenyth-pwa-execution-state.md
+
+  2. GitHub-Issue #212 klaeren (health_check.json 404 + zugehoeriger
+     Service-Worker-Fetch-Fehler, im Browser beobachtet).
+     Begruendung: unabhaengig von Mail-Zustellung, aber sichtbarer Fehler im
+     Betrieb. Aufwand: klein bis mittel, zunaechst Repro noetig.
+     Quelle: docs\ops\2026-09-25-production-smtp-cors-signup.md
+
+  3. Cleanup des Probe-Accounts cors-probe@invalid.example final verifizieren.
+     Begruendung: Loeschung wurde als PROBE_DELETED vermerkt, aber als
+     "unverified" markiert (SQL-Fallback nach Reauth-Anforderung der
+     Account-Delete-API) — vor weiterem produktivem Self-Signup-Traffic
+     sollte das sauber bestaetigt werden. Aufwand: sehr gering (DB-Check).
+     Quelle: Commit 989c502 (#215), avenyth-pwa-execution-state.md
+
+  4. docs\analyze\technical-debt.md als historisch kennzeichnen/archivieren
+     oder aktualisieren.
+     Begruendung: mehrere seiner Punkte (Dependabot, SAST-Job, teilweise
+     Backup-Konzept) sind laut Execution-State bereits erledigt — das
+     Dokument fuehrt sonst zu doppelter Arbeit oder falschen Annahmen bei
+     neuen Teammitgliedern. Aufwand: trivial (Kopfzeile/Vermerk ergaenzen,
+     analog zu FINAL_VERIFICATION.md).
+
+MITTELFRISTIG (Wochen)
+
+  5. CSP haerten: nonce/strict-dynamic statt unsafe-inline.
+     Begruendung: aktuell erhoehtes XSS-Risiko durch Next-14-Kompromiss;
+     kein Hinweis in neueren Docs, dass dies bereits behoben wurde.
+     Aufwand: ca. 5 Personentage laut docs\analyze\technical-debt.md
+     (TD-SEC-02) — Wert vor Umsetzung gegenpruefen, da Quelle ein Snapshot ist.
+
+  6. Frontend-Testabdeckung erhoehen, insbesondere Branch-Coverage.
+     Begruendung: aktuelle Werte (Statements 55,65% / Branches 48,64% /
+     Functions 49,34% / Lines 58,22%, siehe docs\security\pwa-hardening.md)
+     liegen deutlich unter dem 90%-Gate der Engine-Pakete. Aufwand: laufend,
+     am besten iterativ pro Feature-PR.
+
+  7. RBAC-/Admin-Dokumentation gegen tatsaechlichen Code abgleichen.
+     Begruendung: docs\releases\v1.6-b.md koennte vom aktuellen Code in
+     apps\api\src\numra_api (RBAC/require_admin) abweichen — Risiko falscher
+     Sicherheitsannahmen beim Onboarding. Aufwand: 1-2 Tage Review.
+
+  8. Draft-PR #202 (CI-Split-Rebase) entscheiden und abschliessen.
+     Begruendung: offener, unfertiger PR im Repo-Zustand, explizit kein
+     Release-Blocker, aber unklarer Schwebezustand. Aufwand: abhaengig vom
+     PR-Inhalt, zunaechst PR-Review noetig.
+
+  9. Produktentscheidung treffen: Self-Signup dauerhaft aktiv lassen oder
+     wieder einschraenken.
+     Begruendung: aktuell nur technische Ops-Aktivierung ohne endgueltige
+     Produktfreigabe. Aufwand: Entscheidung, kein Implementierungsaufwand.
+
+LANGFRISTIG (Monate / groessere Initiativen)
+
+  10. Astrologie-Feature nur nach vollstaendiger Canon-Spec-Erweiterung und
+      expliziter neuer Produktentscheidung angehen (siehe Abschnitt 4).
+      Nicht auf eigene Faust Formeln erfinden. Aufwand: 20-30 Personentage
+      laut altem Debt-Report (unverifizierter Richtwert).
+
+  11. Fehlende Standard-Repo-Dokumente nachholen: CHANGELOG.md,
+      docs\architecture.md mit Architekturdiagramm, CONTRIBUTING.md.
+      Begruendung: fuer Onboarding neuer Entwickler besonders wertvoll,
+      aktuell nicht vorhanden. Aufwand: 2-3 Personentage.
+
+  12. Code-Duplikate reduzieren: apps\web\src\components\people\person-form.tsx
+      und apps\web\src\app\people\[id]\edit\page.tsx (EditPersonForm 243
+      Zeilen, NewPersonForm 201 Zeilen) auf gemeinsame Abstraktion heben.
+      Aufwand: ca. 8 Personentage laut technical-debt.md.
+
+  13. Lange Funktionen refactoren, insbesondere
+      packages\engine-interpretation\src\numra_interpretation\report\pipeline.py
+      (_generate_section 152 Zeilen, generate_report 72 Zeilen / 8 Parameter).
+      Aufwand: mittel, am besten begleitend zu naechsten Feature-Aenderungen
+      in diesem Modul.
+
+  14. Monitoring/Alerting um externen Pager ergaenzen.
+      Begruendung: Readiness-Probe und Job-Failure-Alarm existieren bereits
+      (PWA-09), aber "an external pager for monitoring remains a documented
+      operational boundary" (avenyth-pwa-execution-state.md). Aufwand:
+      abhaengig vom gewaehlten Anbieter (z.B. PagerDuty/Opsgenie-Integration).
+
+
+--------------------------------------------------------------------------------
+6. BEKANNTE PROBLEME UND TECHNISCHE SCHULDEN
+--------------------------------------------------------------------------------
+
+WARNHINWEIS: docs\analyze\technical-debt.md ist ein Snapshot vom 2026-08-23.
+Mehrere seiner Punkte sind laut docs\planning\avenyth-pwa-execution-state.md
+inzwischen erledigt (Dependabot, SAST-Job, teilweise Backup-Konzept). Vor
+jeder Priorisierung den aktuellen Execution-State gegenpruefen.
+
+KRITISCH
+
+  - Astrologie-Engine ist reines Interface ohne Canon (siehe Abschnitt 4).
+    packages\engine-astrology\src\numra_astrology\__init__.py, Zeile 22-29.
+  - Fehlende Impressum-/Datenschutz-Seiten (siehe Abschnitt 3/5).
+  - CI-Flaky-Fix-Verifikationsstatus unklar: .planning\debug\ci-e2e-flaky-system-journey.md
+    dokumentiert einen Root-Cause-Fix (Stale Read durch verzoegerten
+    DB-Commit in numra_api.deps.get_db, Fix: Depends(get_db, scope="function")
+    an 126 Stellen, Middleware auf pure-ASGI portiert, Regressionstest
+    apps\api\tests\integration\test_yield_commit_ordering.py). Status im
+    Dokument: "awaiting_human_verify" (Stand 2026-09-10), Dokument liegt noch
+    nicht in einem "resolved"-Ordner. Vor Verlass auf CI-Stabilitaet pruefen,
+    ob >= 3 gruene docker-compose-e2e- und system-e2e-Laeufe die Fix-Wirkung
+    im echten Environment bestaetigt haben.
+  - Live-Ollama-Verifikation: alter Debt-Report (TD-SEC-01, 2026-08-23) nennt
+    dies als kritisch (kein API-Key zum Snapshot-Zeitpunkt). Laut PWA-06
+    (avenyth-pwa-execution-state.md) ist der Provider inzwischen real
+    (ollama_cloud) und akzeptiert — VOR Uebernahme pruefen, ob dieser Punkt
+    tatsaechlich noch offen ist.
+
+HOCH
+
+  - Monitoring/Alerting: kein externer Pager (siehe Punkt 14, Abschnitt 5).
+  - Frontend-Testabdeckung ca. 50-58%, insbesondere Branch-Coverage duenn
+    (siehe Punkt 6, Abschnitt 5).
+  - CSP nutzt unsafe-inline statt nonce/strict-dynamic (siehe Punkt 5,
+    Abschnitt 5).
+  - RBAC-/Admin-Doku koennte vom Code abweichen (siehe Punkt 7, Abschnitt 5).
+  - GitHub-Issue #212 (health_check.json/Service-Worker-Fehler), siehe Punkt
+    2, Abschnitt 5.
+  - Probe-Account-Cleanup nicht vollstaendig verifiziert (siehe Punkt 3,
+    Abschnitt 5).
+
+MITTEL
+
+  - Code-Duplikate in Person-Formularen (siehe Punkt 12, Abschnitt 5).
+  - Lange Funktionen in der Interpretation-Pipeline (siehe Punkt 13,
+    Abschnitt 5).
+  - print() statt strukturiertem Logging in scripts\verify.py, cli.py,
+    export_openapi.py (17 Fundstellen, geringe Prioritaet).
+  - Fehlende Standard-Repo-Dokumente: CHANGELOG.md, docs\architecture.md mit
+    Diagramm, CONTRIBUTING.md (siehe Punkt 11, Abschnitt 5).
+  - Draft-PR #202 (CI-Split-Rebase), siehe Punkt 8, Abschnitt 5.
+
+NIEDRIG
+
+  - 14 Testkonfigurationen mit Muster "geheim_url_zugangsdaten" in
+    CI-/Test-/Dev-Configs (ci.yml, config.py-Default, conftest, compose) —
+    verifiziert als Haertungsbedarf, kein realer Leak.
+  - Playwright-Version-Drift-Risiko bei PDF-Rendering war zum
+    Snapshot-Zeitpunkt bereits gefixt/gepinnt (mcr.microsoft.com/playwright:v1.63.0-jammy,
+    docker\pdf.Dockerfile) — nur als Beispiel fuer Drift-Rueckfallrisiko
+    dokumentiert, Pin bei Playwright-Updates konsistent mitziehen.
+  - Ein GitHub-Dependency-Alert zu "uuid" ist als offen sichtbar, aber laut
+    Triage (#128, geschlossen 2026-09-20) unreachable (nur ueber
+    xcode@3.0.1 unter @expo/cli, nicht in Produktions-Images) — keine
+    Zeit investieren.
+
+HINWEIS ZU PLATZHALTER-KOMMENTAREN: Mehrere Code-Kommentare mit dem Wort
+"Platzhalter" markieren KEIN offenes TODO, sondern dokumentieren bewusst,
+dass KEIN Platzhalter im tatsaechlichen Output vorkommen darf
+(Anti-Leak-Tests). Betroffen u.a.:
+  packages\engine-interpretation\src\numra_interpretation\report\pipeline.py (Zeile 406-414)
+  packages\engine-interpretation\tests\unit\test_llm_validator.py
+  packages\engine-interpretation\tests\unit\test_report_pipeline.py
+  packages\engine-interpretation\tests\unit\test_report_prompt_leak_regression.py
+Diese beim Codelesen nicht mit offenen Baustellen verwechseln. Eine Ausnahme:
+apps\web\src\i18n\messages\de\app.ts (Zeile 429-430) enthaelt einen Kommentar
+zu einem V2-Platzhalter fuer den Relationship-Workspace-Bereich ("Zielseiten
+existieren, aber noch ohne eigenes Datenmodell") — laut Execution-State
+sind die V2-Phasen inzwischen complete, dieser Kommentar sollte im Code
+gegengeprueft werden, ob er noch aktuell ist.
+
+
+--------------------------------------------------------------------------------
+7. HINWEISE FUER DAS UEBERNEHMENDE TEAM
+--------------------------------------------------------------------------------
+
+7.1 Setup
+
+  1. Node >= 20 und pnpm 9.15.0 installieren (siehe package.json,
+     "packageManager": "pnpm@9.15.0"). Python >= 3.11 und "uv" installieren.
+  2. .env.example im Root nach .env kopieren und alle Werte befuellen (Inhalt
+     der Datei bewusst nicht in diesem Dokument wiedergegeben — bitte selbst
+     pruefen). Mindestens SESSION_SECRET und PDF_INTERNAL_TOKEN sind fuer
+     lokales Docker noetig.
+  3. Python-Abhaengigkeiten ueber "uv sync" installieren (Workspace-weit),
+     JS-Abhaengigkeiten ueber "pnpm install".
+  4. Fuer den vollen lokalen Stack: docker-compose.yml verwendet (Postgres,
+     Redis, api, worker, analysis-worker, pdf, web). Fuer eine
+     RC2-Testumgebung existiert zusaetzlich docker-compose.rc2.yml und
+     scripts\rc2-e2e.sh (up/test/down).
+  5. Datenbank-Migrationen: uv run alembic upgrade head (im Kontext von
+     apps\api). Neue Migration: uv run alembic revision --autogenerate -m "...".
+  6. API lokal ohne Docker starten:
+     uv run uvicorn numra_api.app:app --reload --port 8000 --app-dir apps/api/src
+  7. Frontend lokal starten: pnpm --filter @numra/web dev (bzw. root-Skript
+     "web:dev" aus package.json).
+
+7.2 Empfohlener erster Lesepfad
+
+  1. docs\planning\avenyth-pwa-execution-state.md   (aktueller Gesamtstatus, Stand 2026-09-26)
+  2. README.md                                       (Architektur-/Security-/Privacy-Ueberblick)
+  3. docs\adr\ komplett, besonders 003, 006, 015      (Kernprinzipien und bewusste Nicht-Features)
+  4. specs\canon-spec.md Paragraph 32/33              (formale Feature-Grenzen)
+  5. docs\analyze\technical-debt.md NUR MIT VORBEHALT (Snapshot 2026-08-23,
+     siehe Warnhinweis in Abschnitt 6) plus
+     docs\analyze\product-closure-overview-2026-09-16.md als aktuellerer Gegencheck
+  6. .planning\debug\ci-e2e-flaky-system-journey.md   (offener CI-Verifikationsstatus)
+  7. GitHub-Issues #193 (geschlossen), #212 (offen), #202 (Draft-PR) fuer
+     Live-Status pruefen — das Repo hat keinen durchsuchbaren lokalen
+     Issue-Cache.
+
+  AUSDRUECKLICH NICHT als primaere Statusquelle verwenden: FINAL_VERIFICATION.md
+  (Root) — seit Commit 78c87c9 (#210) offiziell als historischer Snapshot
+  markiert, verweist selbst auf avenyth-pwa-execution-state.md als aktuellen
+  Stand.
+
+7.3 Projektkonventionen (Zusammenfassung, Details in Abschnitt 1.8)
+
+  - Kein CLAUDE.md/CONTRIBUTING.md im Repo — README.md ist zentrales
+    Onboarding-Dokument.
+  - ADRs (docs\adr) sind verbindliche Entscheidungsquelle, nicht optionale
+    Hintergrundlektuere.
+  - Code-Qualitaets-Gates: ruff (Line-Length 100), mypy strict, Pytest-Marker
+    golden/integration/property/unit — alle vier Marker vor grossen PRs
+    lokal laufen lassen.
+  - Branding: "AVENYTH" ist der einzig zulaessige User-Facing-Produktname,
+    "Numra" im UI-Text ist technisch verboten und wird durch
+    apps\web\src\__tests__\brand-guard.test.ts erzwungen.
+  - Golden-Reference-Test-Disziplin: fixtures\canonical\lukas-springer.v1.json
+    niemals in Produktionscode speziell behandeln oder hart-kodieren
+    (test_no_golden_leakage.py als CI-Gate).
+
+7.4 Stolpersteine
+
+  - apps\mobile ist bewusst eingefroren. Keine Entwicklungsressourcen dafuer
+    einplanen, ausser es gibt eine explizite neue Produktentscheidung.
+  - Produktions-Secrets liegen ausschliesslich auf dem Host in
+    /etc/numra/numra.env (Modus 600) — NIEMALS in Git, auch nicht temporaer.
+    Aenderungen erfolgen ueber dokumentierte Runbooks
+    (z.B. /opt/numra/scripts/write-smtp-secret.sh, non-echoing Prompt),
+    niemals per Chat- oder Agent-Tool-Aufruf.
+  - Es gibt KEIN Auto-Deploy. Produktion wird ausschliesslich durch einen
+    expliziten Deploy-Vorgang aktualisiert (siehe
+    docs\planning\avenyth-pwa-execution-state.md, "No auto-deploy").
+  - CI (.github\workflows\ci.yml) hat 13 Pflicht-Checks: lint-python,
+    python-typecheck, unit-and-property-tests (Coverage-Gate >= 90% fuer
+    Engine-Pakete), no-golden-leakage, dependency-security, sast (Bandit
+    1.8.6, MEDIUM+), schema-and-openapi-drift, web-lint-typecheck-build-test,
+    pdf-service-tests, docker-build, docker-compose-e2e, playwright,
+    system-e2e. .github\workflows\rc2-journey.yml laeuft separat (woechentlich
+    montags 05:00 UTC oder manuell per workflow_dispatch), NICHT bei jedem
+    Push/PR.
+  - LLM-Provider-Konfiguration: NUMRA_LLM_PROVIDER=mock ist ausserhalb von
+    ENVIRONMENT=production zwingend vorgeschrieben (dieser Wert ist in
+    Produktion verboten); Standardwert ist "disabled"; Produktion nutzt
+    "ollama" (Ollama Cloud) mit echten OLLAMA_BASE_URL/OLLAMA_API_KEY.
+  - Die Dateien .env, .env.example (Volltext) und scripts\verify.py
+    (Volltext) waren fuer die automatisierten Analyse-Agenten aus
+    Berechtigungsgruenden nicht einsehbar — bitte vom Team direkt pruefen,
+    um alle konfigurierbaren Variablen und lokalen Verifikationsbefehle
+    vollstaendig zu erfassen.
+
+
+================================================================================
+ENDE DES DOKUMENTS
+================================================================================

@@ -1,4 +1,5 @@
 metric_id: personal_month
 display_name_de: Persönlicher Monat
-semantic_context_de: Der Persönliche Monat verfeinert das Persönliche Jahr auf einen
-  konkreten Kalendermonat und beschreibt kurzfristigere thematische Akzente.
+semantic_context_de: Der Persönliche Monat verfeinert das Persönliche Jahr auf einen konkreten Kalendermonat
+  und beschreibt kurzfristigere thematische Akzente. Er wird aus dem Persoenlichen Jahr in Kombination
+  mit dem Kalendermonat gebildet.

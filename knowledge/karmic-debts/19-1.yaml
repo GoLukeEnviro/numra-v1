@@ -4,3 +4,39 @@ themes:
 - Selbstverantwortung
 - Führung ohne Isolation
 - Kooperation trotz Unabhängigkeit
+raw_value: 19
+reduced_value: 1
+stable_id: de.pythagorean.v3.karmic.19
+classification: karmic_debt
+result_contexts:
+- life_path_primary
+- life_path_secondary
+- birthday
+- attitude
+- expression
+- soul_urge
+- personality
+- maturity
+constructive_expression: Die Symbolik der 19/1 kann zu einer gereiften Eigenständigkeit
+  einladen, die nicht auf Abgrenzung, sondern auf echter innerer Unabhängigkeit beruht.
+shadow_expression: Das Muster kann in übermäßigem Selbstbezug, Abhängigkeit von Anerkennung
+  und Schwierigkeiten mit Kooperation erlebt werden.
+development_theme: Reife Eigenständigkeit
+practical_suggestions:
+- Triff eine kleine Entscheidung ganz für dich allein und beobachte, wie sie sich
+  anfühlt.
+counter_hypotheses:
+- Selbstbezug und Anerkennungsbedürfnis können durch frühkindliche Prägung und soziale
+  Verstärkung ebenso entstehen.
+reflection_prompts:
+- Wo handelst du wirklich selbstbestimmt — und wo suchst du vor allem Bestätigung?
+claim_class: traditional_claim
+source_refs:
+- numra-method-v2
+- numra-boundary-v1
+- numra-tradition-v1
+uncertainty: Karmische Schuld ist ein traditionelles Konzept ohne empirische Validierung.
+authoring_provenance:
+  authored_at: '2026-08-05'
+  author: Numra Knowledge Team
+  review_status: draft

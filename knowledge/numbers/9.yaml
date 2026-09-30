@@ -7,15 +7,15 @@ core_themes:
 - Vollendung
 - Weitblick
 - Humanität
+strengths:
+- Ausgeprägtes Mitgefühl und Weitblick
+- Streben nach Sinn und größerem Zusammenhang
+- Großzügigkeit gegenüber anderen
 shadows:
 - Selbstaufgabe
 - Enttäuschung
 - fehlende Grenzen
 - Überidealismus
-strengths:
-- Ausgeprägtes Mitgefühl und Weitblick
-- Streben nach Sinn und größerem Zusammenhang
-- Großzügigkeit gegenüber anderen
 relationships:
 - Gibt viel, manchmal auf eigene Kosten
 - Sucht Verbindung auf einer größeren, sinnstiftenden Ebene
@@ -32,3 +32,39 @@ cautions:
 - Selbstaufgabe im Blick behalten
 - Fehlende Grenzen können Erschöpfung begünstigen
 - Überidealismus kann zu wiederkehrender Enttäuschung führen
+stable_id: de.pythagorean.v3.single.9
+classification: single
+result_contexts:
+- life_path_primary
+- life_path_secondary
+- birthday
+- attitude
+- expression
+- soul_urge
+- personality
+- maturity
+- personal_year
+- personal_month
+- personal_day
+- pinnacle
+- challenge
+constructive_expression: Die Symbolik kann zu Mitgefühl, Weitblick und einem engagierten
+  Beitrag für ein größeres Ganzes einladen.
+shadow_expression: Überhöhter Idealismus kann in Enttäuschung und Selbstopferung kippen.
+development_theme: Mitgefühl und Weitblick
+practical_suggestions:
+- Engagiere dich für ein konkretes Anliegen, ohne dich darin zu verlieren.
+counter_hypotheses:
+- Humanitäres Engagement kann durch biografische Erfahrungen und Wertvermittlung ebenso
+  motiviert sein.
+reflection_prompts:
+- Welcher Beitrag ist dir wirklich wichtig — und wo lässt du los?
+claim_class: traditional_claim
+source_refs:
+- numra-method-v2
+- numra-boundary-v1
+- numra-tradition-v1
+authoring_provenance:
+  authored_at: '2026-08-05'
+  author: Numra Knowledge Team
+  review_status: draft

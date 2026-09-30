@@ -1,5 +1,10 @@
 # NUMRA V1 — Final Verification Report
 
+> **Historical snapshot:** This report documents the original V1.0 build and the
+> production-hardening pass (PR #3). It is retained as build/verification evidence and is
+> not the current project status. For the current status see
+> [`docs/planning/avenyth-pwa-execution-state.md`](docs/planning/avenyth-pwa-execution-state.md).
+
 Every result below reflects a command that was actually executed and observed — in
 this build session or the production-hardening follow-up session on top of it — not
 an assumption. Per-phase detail and raw command transcripts live in

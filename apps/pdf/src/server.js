@@ -4,6 +4,7 @@ import express from "express";
 import { chromium } from "playwright";
 
 import { resolveLaunchOptions } from "./chromium-path.js";
+import { NOT_READY_BODY, RENDER_FAILED_BODY, sendFailure } from "./errors.js";
 import { renderReportHtml } from "./template.js";
 
 const PORT = process.env.PORT || 4300;
@@ -37,7 +38,7 @@ app.get("/health/ready", async (_req, res) => {
     await getBrowser();
     res.json({ status: "healthy", chromium: "healthy" });
   } catch (error) {
-    res.status(503).json({ status: "unhealthy", chromium: "unhealthy", error: String(error) });
+    sendFailure(res, 503, NOT_READY_BODY, "readiness check failed", error);
   }
 });
 
@@ -100,7 +101,7 @@ app.post("/render/report", requireInternalAuth, async (req, res) => {
     if (page) {
       await page.context().close().catch(() => {});
     }
-    res.status(500).json({ code: "PDF_RENDER_FAILED", message: String(error) });
+    sendFailure(res, 500, RENDER_FAILED_BODY, "report render failed", error);
   }
 });
 

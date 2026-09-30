@@ -7,7 +7,7 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "test": "node --test src/__tests__/render.test.js"
+    "test": "node --test src/__tests__/render.test.js src/__tests__/errors.test.js"
   },
   "dependencies": {
     "express": "^4.19.2",

@@ -7,15 +7,15 @@ core_themes:
 - Harmonie
 - Familie
 - Dienst
+strengths:
+- Ausgeprägter Sinn für Fürsorge und Verantwortung
+- Streben nach Harmonie und Ausgleich
+- Verlässlichkeit im nahen Umfeld
 shadows:
 - Überverantwortung
 - Perfektionismus
 - Retterrolle
 - Grenzprobleme
-strengths:
-- Ausgeprägter Sinn für Fürsorge und Verantwortung
-- Streben nach Harmonie und Ausgleich
-- Verlässlichkeit im nahen Umfeld
 relationships:
 - Kümmert sich intensiv um nahestehende Menschen
 - Schafft ein warmes, verbindliches Umfeld
@@ -32,3 +32,39 @@ cautions:
 - Retterrolle kann eigene Bedürfnisse verdrängen
 - Überverantwortung im Blick behalten
 - Grenzprobleme können zu Erschöpfung führen
+stable_id: de.pythagorean.v3.single.6
+classification: single
+result_contexts:
+- life_path_primary
+- life_path_secondary
+- birthday
+- attitude
+- expression
+- soul_urge
+- personality
+- maturity
+- personal_year
+- personal_month
+- personal_day
+- pinnacle
+- challenge
+constructive_expression: Die Symbolik kann zu Verantwortung, Fürsorge und gestaltendem
+  Gemeinsinn anregen.
+shadow_expression: Überbetonte Fürsorge kann in Überverantwortlichkeit und Selbstvernachlässigung
+  kippen.
+development_theme: Fürsorge und Selbstfürsorge
+practical_suggestions:
+- Setze bewusst eine Grenze bei übernommener Verantwortung und beobachte die Wirkung.
+counter_hypotheses:
+- Fürsorgebereitschaft kann durch Rollenerwartungen und Erziehung ebenso geformt sein.
+reflection_prompts:
+- Wo findest du die Balance zwischen Für-andere-da-sein und Für-dich-selbst-sorgen?
+claim_class: traditional_claim
+source_refs:
+- numra-method-v2
+- numra-boundary-v1
+- numra-tradition-v1
+authoring_provenance:
+  authored_at: '2026-08-05'
+  author: Numra Knowledge Team
+  review_status: draft

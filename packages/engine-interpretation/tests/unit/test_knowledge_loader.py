@@ -12,6 +12,8 @@ from numra_interpretation.knowledge_models import (
     KarmicDebtKnowledge,
     NumberKnowledge,
 )
+from numra_interpretation.report.evidence_linter import lint_free_text_for_causal_language
+from numra_interpretation.report.linter import _UNSUPPORTED_CLAIM_PATTERNS
 
 pytestmark = pytest.mark.unit
 
@@ -116,6 +118,28 @@ def test_soul_urge_and_life_path_semantic_context_differ() -> None:
     assert soul_urge.display_name_de != life_path.display_name_de
 
 
+def test_all_metric_semantic_contexts_are_globally_unique() -> None:
+    """Wave 3 Schritt 5: every metric's `semantic_context_de` is rendered verbatim as
+    the report intro sentence (composer.py's f"{display_name_de}: {semantic_context_de}")
+    for every metric that appears in a report -- real reader-facing text, not just
+    LLM-prompt grounding. No two metrics may collapse to the same wording."""
+    kb = load_knowledge_base(KNOWLEDGE_ROOT)
+    texts = [kb.metric(metric_id).semantic_context_de for metric_id in ALL_METRIC_IDS]
+    assert len(texts) == len(set(texts))
+
+
+def test_all_metric_semantic_contexts_pass_forbidden_language_checks() -> None:
+    """Same forbidden-language contract as knowledge/AUTHORING_GUIDE.md's other
+    Wave 3 Schritt 5 content (shadow-interaction, relationship-frames)."""
+    kb = load_knowledge_base(KNOWLEDGE_ROOT)
+    for metric_id in ALL_METRIC_IDS:
+        text = kb.metric(metric_id).semantic_context_de
+        causal = lint_free_text_for_causal_language(text)
+        assert causal.is_valid, (metric_id, causal.errors)
+        for pattern in _UNSUPPORTED_CLAIM_PATTERNS:
+            assert not pattern.search(text), (metric_id, pattern.pattern)
+
+
 def test_unknown_metric_raises_key_error() -> None:
     kb = load_knowledge_base(KNOWLEDGE_ROOT)
     with pytest.raises(KeyError):
@@ -211,60 +235,69 @@ def test_non_mapping_yaml_top_level_raises_clear_error(tmp_path: Path) -> None:
 # that migration is Wave 3 Schritt 2+.
 
 
-def test_real_knowledge_tree_defaults_long_form_fields_to_absent() -> None:
-    """Every knowledge/numbers, master-numbers and karmic-debts file except the
-    Wave 3 Schritt 2 pilot (master-numbers/22.yaml) still has none of the long-form/
-    governance fields — they must keep defaulting cleanly rather than fail
-    validation."""
+def test_all_numbers_and_karmic_debts_carry_wave3_long_form_content() -> None:
+    """Wave 3 Schritt 3: after the Schritt 2 pilot (master-numbers/22.yaml), all
+    remaining numbers 1-9, the other two master numbers (11, 33), and all four karmic
+    debts (13/4, 14/5, 16/7, 19/1) are migrated from numerology-analyst-agent's
+    de-v3.json — every one of them must now carry real long-form content, not just
+    pass schema validation with absent defaults."""
     kb = load_knowledge_base(KNOWLEDGE_ROOT)
 
-    for value in list(range(1, 10)) + [11, 33]:
+    for value in list(range(1, 10)) + [11, 22, 33]:
         knowledge = kb.number(value)
-        assert knowledge.constructive_expression is None
-        assert knowledge.shadow_expression is None
-        assert knowledge.development_theme is None
-        assert knowledge.practical_suggestions == ()
-        assert knowledge.counter_hypotheses == ()
-        assert knowledge.reflection_prompts == ()
-        assert knowledge.claim_class is None
-        assert knowledge.source_refs == ()
-        assert knowledge.uncertainty is None
-        assert knowledge.authoring_provenance is None
-        assert knowledge.stable_id is None
-        assert knowledge.classification is None
-        assert knowledge.result_contexts == ()
+        assert knowledge.constructive_expression, f"number {value} missing constructive_expression"
+        assert knowledge.shadow_expression, f"number {value} missing shadow_expression"
+        assert knowledge.development_theme, f"number {value} missing development_theme"
+        assert len(knowledge.practical_suggestions) >= 1
+        assert len(knowledge.counter_hypotheses) >= 1
+        assert len(knowledge.reflection_prompts) >= 1
+        assert knowledge.claim_class == "traditional_claim"
+        assert "numra-tradition-v1" in knowledge.source_refs
+        assert knowledge.authoring_provenance is not None
+        assert knowledge.authoring_provenance.review_status == "draft"
+        assert knowledge.stable_id is not None
+        assert knowledge.classification in ("single", "master")
+        assert len(knowledge.result_contexts) > 0
+        # Greenfield fields (no source in the predecessor repo) are untouched by this
+        # migration — still only the original short lists, per Wave 3 Schritt 3/4/5.
+        assert len(knowledge.relationships) > 0
+        assert len(knowledge.work_and_creation) > 0
 
-    for compound in ("13/4", "14/5", "16/7", "19/1"):
+    for value in (11, 33):
+        assert kb.number(value).uncertainty == (
+            "Meisterzahlen sind ein traditionelles Konzept ohne empirische Validierung."
+        )
+
+    for compound, (raw, reduced) in {
+        "13/4": (13, 4),
+        "14/5": (14, 5),
+        "16/7": (16, 7),
+        "19/1": (19, 1),
+    }.items():
         debt = kb.karmic_debt(compound)
         assert debt is not None
-        assert debt.raw_value is None
-        assert debt.reduced_value is None
-        assert debt.constructive_expression is None
-        assert debt.authoring_provenance is None
-
-
-def test_master_22_carries_the_wave3_development_pilot_content() -> None:
-    """knowledge/master-numbers/22.yaml is the Wave 3 Schritt 2 pilot card (chosen
-    because Lukas Springer's golden-case Life Path is 22/4) — the one entry in the
-    real tree that must carry populated long-form content, not just pass schema
-    validation with defaults."""
-    kb = load_knowledge_base(KNOWLEDGE_ROOT)
-    knowledge = kb.number(22)
-
-    assert knowledge.stable_id == "de.pythagorean.v3.master.22"
-    assert knowledge.classification == "master"
-    assert knowledge.development_theme == "Vision in Struktur überführen"
-    assert len(knowledge.practical_suggestions) == 1
-    assert knowledge.constructive_expression is not None
-    assert knowledge.shadow_expression is not None
-    assert knowledge.claim_class == "traditional_claim"
-    assert "numra-tradition-v1" in knowledge.source_refs
-    assert knowledge.authoring_provenance is not None
-    assert knowledge.authoring_provenance.review_status == "draft"
+        assert debt.raw_value == raw
+        assert debt.reduced_value == reduced
+        assert debt.constructive_expression, f"{compound} missing constructive_expression"
+        assert debt.development_theme, f"{compound} missing development_theme"
+        assert debt.claim_class == "traditional_claim"
+        assert debt.uncertainty == (
+            "Karmische Schuld ist ein traditionelles Konzept ohne empirische Validierung."
+        )
+        assert debt.authoring_provenance is not None
 
     assert kb.manifest.version == "1.2.0"
     assert kb.manifest.scientific_position is not None
     assert "nicht validiert" in kb.manifest.scientific_position
+
+
+def test_master_22_pilot_content_unchanged_by_schritt3() -> None:
+    """Regression guard for the Wave 3 Schritt 2 pilot card specifically — Schritt 3
+    must not have (re)touched it."""
+    kb = load_knowledge_base(KNOWLEDGE_ROOT)
+    knowledge = kb.number(22)
+    assert knowledge.stable_id == "de.pythagorean.v3.master.22"
+    assert knowledge.development_theme == "Vision in Struktur überführen"
 
 
 def test_number_knowledge_accepts_populated_long_form_fields(tmp_path: Path) -> None:

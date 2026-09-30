@@ -7,15 +7,15 @@ core_themes:
 - Wissen
 - Tiefe
 - Spiritualität
+strengths:
+- Tiefes analytisches Denkvermögen
+- Ausgeprägter Sinn für Innenschau
+- Interesse an Wissen und Zusammenhängen
 shadows:
 - Rückzug
 - Distanz
 - Überanalyse
 - Skepsis
-strengths:
-- Tiefes analytisches Denkvermögen
-- Ausgeprägter Sinn für Innenschau
-- Interesse an Wissen und Zusammenhängen
 relationships:
 - Braucht Rückzugsräume innerhalb von Nähe
 - Schätzt tiefgründigen, ehrlichen Austausch
@@ -32,3 +32,40 @@ cautions:
 - Rückzug kann Isolation begünstigen
 - Überanalyse kann Handeln verzögern
 - Skepsis kann Nähe erschweren
+stable_id: de.pythagorean.v3.single.7
+classification: single
+result_contexts:
+- life_path_primary
+- life_path_secondary
+- birthday
+- attitude
+- expression
+- soul_urge
+- personality
+- maturity
+- personal_year
+- personal_month
+- personal_day
+- pinnacle
+- challenge
+constructive_expression: Die Symbolik kann zu Reflexion, innerer Tiefe und eigenständigem
+  Denken einladen.
+shadow_expression: Überbetonte Innenschau kann in Rückzug, Skepsis und Abgrenzung
+  kippen.
+development_theme: Reflexion und Wissensdrang
+practical_suggestions:
+- Reserviere regelmäßige Zeit für ungestörte Reflexion.
+counter_hypotheses:
+- Analytisches Denken kann durch Ausbildung und kognitive Gewohnheiten ebenso geschult
+  sein.
+reflection_prompts:
+- Wann hast du zuletzt eine stille Einsicht als wertvoll erlebt?
+claim_class: traditional_claim
+source_refs:
+- numra-method-v2
+- numra-boundary-v1
+- numra-tradition-v1
+authoring_provenance:
+  authored_at: '2026-08-05'
+  author: Numra Knowledge Team
+  review_status: draft

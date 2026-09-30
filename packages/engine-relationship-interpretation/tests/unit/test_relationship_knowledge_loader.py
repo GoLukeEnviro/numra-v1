@@ -6,6 +6,8 @@ from pathlib import Path
 import pytest
 
 from numra_interpretation.knowledge_loader import load_knowledge_base
+from numra_interpretation.report.evidence_linter import lint_free_text_for_causal_language
+from numra_interpretation.report.linter import _UNSUPPORTED_CLAIM_PATTERNS
 from numra_relationship_interpretation.errors import RelationshipKnowledgeLoadError
 from numra_relationship_interpretation.knowledge_loader import (
     load_relationship_frame,
@@ -79,6 +81,42 @@ def test_load_relationship_frame_covers_all_relationship_types(relationship_type
             assert dimension.number_modifiers[life_path].strip()
 
 
+def test_relationship_frame_number_modifiers_are_globally_unique() -> None:
+    """Wave 3 Schritt 5: `number_modifiers` are deliberately short LLM-framing nudges
+    (see `DimensionKnowledge`'s docstring), not long-form essays -- but they still
+    have to be relationship-type-specific, not a phrase copy-pasted verbatim across
+    different relationship types for the same dimension/Life-Path cell. Regression
+    guard for the 230 entries deduplicated in Wave 3 Schritt 5 (relationship-frames)."""
+    all_texts: list[str] = []
+    for relationship_type in ALL_RELATIONSHIP_TYPES:
+        frame = load_relationship_frame(KNOWLEDGE_ROOT, relationship_type)
+        assert frame is not None
+        for dimension in frame.dimensions.values():
+            all_texts.extend(dimension.number_modifiers.values())
+
+    assert len(all_texts) == len(set(all_texts))
+
+
+def test_relationship_frame_number_modifiers_pass_forbidden_language_checks() -> None:
+    """Same forbidden-language contract as the shadow-interaction rules (knowledge/
+    AUTHORING_GUIDE.md) -- run against every `number_modifiers` entry and every
+    dimension's `semantic_context_de` across all relationship-frame files."""
+    for relationship_type in ALL_RELATIONSHIP_TYPES:
+        frame = load_relationship_frame(KNOWLEDGE_ROOT, relationship_type)
+        assert frame is not None
+        for dimension_id, dimension in frame.dimensions.items():
+            texts = [dimension.semantic_context_de, *dimension.number_modifiers.values()]
+            for text in texts:
+                causal = lint_free_text_for_causal_language(text)
+                assert causal.is_valid, (relationship_type, dimension_id, causal.errors)
+                for pattern in _UNSUPPORTED_CLAIM_PATTERNS:
+                    assert not pattern.search(text), (
+                        relationship_type,
+                        dimension_id,
+                        pattern.pattern,
+                    )
+
+
 def test_load_unknown_relationship_type_returns_none() -> None:
     """A relationship type with no matching frame file returns None -- expected, not
     an error. All 8 spec'd RelationshipType values now have frames (see
@@ -132,6 +170,124 @@ def test_shadow_interaction_rules_cover_all_supported_life_path_pairs() -> None:
             f"expected exactly one shadow-interaction rule for theme pair "
             f"{tuple(pair)!r}, found {len(matches)}"
         )
+
+
+# --- Wave 3 Schritt 5 (Batch 1): the 12 diagonal shadow-interaction rules ----------
+
+_DIAGONAL_TEMPLATE_IDS = (
+    "pattern_1_1",
+    "pattern_2_2",
+    "pattern_3_3",
+    "pattern_4_4",
+    "pattern_5_5",
+    "pattern_6_6",
+    "pattern_7_7",
+    "pattern_8_8",
+    "pattern_9_9",
+    "pattern_11_11",
+    "pattern_22_22",
+    "pattern_33_33",
+)
+
+_GENERIC_ESCALATION_MARKER = "wodurch sich die Dynamik unbemerkt vertiefen kann"
+_GENERIC_DEESCALATION_MARKER = "statt sich gegenseitig darin zu bestärken"
+
+
+def test_diagonal_shadow_rules_are_no_longer_generic_templates() -> None:
+    """The 12 diagonal rules (shadow_theme_a == shadow_theme_b, one per Life Path
+    1-9/11/22/33) were rewritten with theme-specific text in Wave 3 Schritt 5 Batch 1
+    -- they must no longer match the generic same-theme template every diagonal rule
+    used to share verbatim."""
+    rules = load_shadow_interaction_rules(KNOWLEDGE_ROOT)
+    diagonal = {
+        r.interaction_pattern_template_id: r for r in rules if r.shadow_theme_a == r.shadow_theme_b
+    }
+
+    assert set(diagonal) == set(_DIAGONAL_TEMPLATE_IDS)
+    for template_id, rule in diagonal.items():
+        assert _GENERIC_ESCALATION_MARKER not in rule.escalation_loop_template, template_id
+        assert _GENERIC_DEESCALATION_MARKER not in rule.deescalation_template, template_id
+        # Every rewritten rule is its own text, not a copy of another diagonal rule's.
+        other_escalations = {r.escalation_loop_template for r in diagonal.values()} - {
+            rule.escalation_loop_template
+        }
+        assert rule.escalation_loop_template not in other_escalations, template_id
+
+
+def test_diagonal_shadow_rules_pass_the_authoring_guide_forbidden_language_checks() -> None:
+    """knowledge/AUTHORING_GUIDE.md commits to reusing report/linter.py's and
+    evidence_linter.py's forbidden-language patterns rather than inventing new ones
+    -- this actually runs both against the Batch 1 content instead of trusting a
+    human read."""
+    rules = load_shadow_interaction_rules(KNOWLEDGE_ROOT)
+    diagonal = [r for r in rules if r.shadow_theme_a == r.shadow_theme_b]
+    assert len(diagonal) == 12
+
+    for rule in diagonal:
+        for text in (rule.escalation_loop_template, rule.deescalation_template):
+            causal = lint_free_text_for_causal_language(text)
+            assert causal.is_valid, (rule.interaction_pattern_template_id, causal.errors)
+            for pattern in _UNSUPPORTED_CLAIM_PATTERNS:
+                assert not pattern.search(text), (
+                    rule.interaction_pattern_template_id,
+                    pattern.pattern,
+                )
+
+
+# --- Wave 3 Schritt 5 (Batches 2-7): the 66 off-diagonal shadow-interaction rules ---
+
+_GENERIC_OFFDIAGONAL_ESCALATION_MARKER = (
+    "solange keine Seite die eigene Neigung bewusst reflektiert"
+)
+_GENERIC_OFFDIAGONAL_DEESCALATION_MARKER = (
+    "aus dem automatischen Reaktionsmuster auszusteigen und eine gemeinsame Klärung zu suchen"
+)
+
+
+def test_offdiagonal_shadow_rules_are_no_longer_generic_templates() -> None:
+    """The 66 off-diagonal rules (shadow_theme_a != shadow_theme_b) were rewritten with
+    theme-specific text in Wave 3 Schritt 5 Batches 2-7 -- they must no longer match the
+    generic cross-theme template every off-diagonal rule used to share verbatim, and no
+    two rules may share identical escalation or deescalation text."""
+    rules = load_shadow_interaction_rules(KNOWLEDGE_ROOT)
+    offdiagonal = [r for r in rules if r.shadow_theme_a != r.shadow_theme_b]
+    assert len(offdiagonal) == 66
+
+    for rule in offdiagonal:
+        template_id = rule.interaction_pattern_template_id
+        assert _GENERIC_OFFDIAGONAL_ESCALATION_MARKER not in rule.escalation_loop_template, (
+            template_id
+        )
+        assert _GENERIC_OFFDIAGONAL_DEESCALATION_MARKER not in rule.deescalation_template, (
+            template_id
+        )
+
+    # Every rule's text is unique across the *entire* table (not just within the
+    # off-diagonal subset) -- diagonal and off-diagonal rows must not collide either.
+    all_escalations = [r.escalation_loop_template for r in rules]
+    all_deescalations = [r.deescalation_template for r in rules]
+    assert len(all_escalations) == len(set(all_escalations))
+    assert len(all_deescalations) == len(set(all_deescalations))
+
+
+def test_offdiagonal_shadow_rules_pass_the_authoring_guide_forbidden_language_checks() -> None:
+    """knowledge/AUTHORING_GUIDE.md commits to reusing report/linter.py's and
+    evidence_linter.py's forbidden-language patterns rather than inventing new ones --
+    this actually runs both against the Batches 2-7 content instead of trusting a human
+    read."""
+    rules = load_shadow_interaction_rules(KNOWLEDGE_ROOT)
+    offdiagonal = [r for r in rules if r.shadow_theme_a != r.shadow_theme_b]
+    assert len(offdiagonal) == 66
+
+    for rule in offdiagonal:
+        for text in (rule.escalation_loop_template, rule.deescalation_template):
+            causal = lint_free_text_for_causal_language(text)
+            assert causal.is_valid, (rule.interaction_pattern_template_id, causal.errors)
+            for pattern in _UNSUPPORTED_CLAIM_PATTERNS:
+                assert not pattern.search(text), (
+                    rule.interaction_pattern_template_id,
+                    pattern.pattern,
+                )
 
 
 def test_missing_manifest_raises_load_error(tmp_path: Path) -> None:
