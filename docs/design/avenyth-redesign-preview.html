@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>AVENYTH Redesign-Preview — Entwurf, nicht gebaut</title>
+  <style>
+    :root {
+      /* Stufe 1 "Noir, ruhiger" */
+      --noir: #0B0B0F;
+      --obsidian: #13131A;
+      --obsidian-plus: #191921;
+      --gold: #C8A96B;
+      --ivory: #F2EBDD;
+      --parchment: #E8E3D8;
+      --ash: #9E98A4;
+      --plum: #604B72;
+      --plum-light: #B39BCF;
+      --line: #6B6775;
+      /* Lesemodus "Tageslesung" */
+      --paper: #EEECF1;
+      --sheet: #F8F7FA;
+      --ink: #1C1B24;
+      --old-gold: #7A5B1F;
+      --line-light: #827D8C;
+      /* Skizze Stufe 2 "Punkt und Linie" */
+      --film: #ECEEE9;
+      --blatt: #F7F8F4;
+      --graphite: #22252A;
+      --blei: #586069;
+      --line-film: #7A8081;
+      --ultra: #2536A6;
+      --ochre: #7C5A10;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font: 16px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--noir); color: var(--parchment); }
+    code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 0 16px; }
+    header.doc { padding: 24px 0 8px; }
+    header.doc h1 { font-family: ui-serif, Georgia, serif; font-weight: 400; color: var(--ivory); margin: 0 0 8px; font-size: 36px; line-height: 1.15; }
+    .meta { color: var(--ash); font-size: 14px; max-width: 72ch; }
+    .controls { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+    .controls button { font: inherit; font-size: 14px; padding: 8px 14px; border-radius: 6px; cursor: pointer; min-height: 40px; }
+    .controls button[aria-pressed="true"] { background: var(--ivory); color: var(--noir); border: 1px solid var(--ivory); font-weight: 600; }
+    .controls button[aria-pressed="false"] { background: var(--obsidian-plus); color: var(--parchment); border: 1px solid var(--line); }
+    :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+    .banner { border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; margin: 0 0 24px; }
+    section.stage { margin: 0 0 48px; }
+    section.stage > h2 { font-family: ui-serif, Georgia, serif; font-weight: 400; color: var(--ivory); font-size: 24px; margin: 0 0 4px; }
+    section.stage > p.lede { color: var(--ash); font-size: 14px; margin: 0 0 16px; max-width: 72ch; }
+    .swatches { display: flex; flex-wrap: wrap; gap: 12px; }
+    .swatch { width: 136px; font-size: 13px; color: var(--ash); }
+    .swatch i { display: block; height: 36px; border-radius: 6px; border: 1px solid var(--line); margin-bottom: 4px; }
+    .pair { display: grid; grid-template-columns: minmax(0, 1fr) 390px; gap: 16px; align-items: start; }
+    @media (max-width: 960px) { .pair { grid-template-columns: minmax(0, 1fr); } }
+    .frame { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+    .frame .bar { font-size: 13px; color: var(--ash); padding: 6px 12px; border-bottom: 1px solid var(--line); background: var(--obsidian); }
+    .screen { padding: 24px; }
+    .frame.mobile .screen { padding: 16px; }
+    .screen h3 { font-family: ui-serif, Georgia, serif; font-weight: 400; font-size: 21px; margin: 0 0 4px; }
+    .screen p { margin: 0 0 12px; }
+    .source { font-size: 13px; }
+    .sketch-tag { display: inline-block; font-size: 13px; border: 1px dashed var(--ochre); color: var(--ochre); padding: 2px 8px; border-radius: 6px; margin-bottom: 12px; }
+
+    /* Stufe 1 */
+    .s1 { background: var(--noir); color: var(--parchment); }
+    .s1 h3 { color: var(--ivory); }
+    .s1 .muted, .s1 .source { color: var(--ash); }
+    .s1 .panel { background: var(--obsidian); border: 1px solid var(--line); }
+    /* Skizze Stufe 2 */
+    .s2 { background: var(--film); color: var(--graphite); }
+    .s2 h3 { color: var(--graphite); font-family: ui-sans-serif, system-ui, sans-serif; font-weight: 500; }
+    .s2 .muted, .s2 .source { color: var(--blei); }
+    .s2 .panel { background: var(--blatt); border: 1px solid var(--line-film); }
+
+    .panel { border-radius: 10px; padding: 16px; margin-top: 12px; }
+    .panel h4 { margin: 0 0 6px; font-size: 14px; font-weight: 600; }
+    .panel p:last-child { margin-bottom: 0; }
+
+    /* Herleitungskette: Punkte = Werte, Linien = Operationen */
+    ol.chain { list-style: none; margin: 16px 0; padding: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0; }
+    ol.chain li { display: flex; align-items: center; }
+    ol.chain li + li::before { content: ""; display: block; width: 28px; height: 1px; margin: 0 4px; }
+    .s1 ol.chain li + li::before { background: var(--gold); }
+    .s2 ol.chain li + li::before { background: var(--ultra); }
+    .node { display: inline-flex; flex-direction: column; align-items: center; padding: 6px 12px; border-radius: 10px; border: 1px solid; min-width: 72px; }
+    .node small { font-size: 12px; line-height: 1.3; }
+    .node b { font-family: ui-serif, Georgia, serif; font-weight: 400; font-size: 24px; line-height: 1.2; }
+    .node.final b { font-size: 36px; }
+    .s1 .node { border-color: var(--gold); color: var(--gold); }
+    .s1 .node small { color: var(--ash); }
+    .s2 .node { border-color: var(--ultra); color: var(--ultra); }
+    .s2 .node b { font-family: ui-sans-serif, system-ui, sans-serif; font-weight: 300; }
+    .s2 .node small { color: var(--blei); }
+    .frame.mobile ol.chain { flex-direction: column; align-items: flex-start; }
+    .frame.mobile ol.chain li { flex-direction: column; align-items: flex-start; }
+    .frame.mobile ol.chain li + li::before { width: 1px; height: 16px; margin: 4px 0 4px 36px; }
+    .trace { font-size: 13px; margin: 0; padding-left: 20px; }
+
+    /* Aktionen */
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .btn { display: inline-flex; align-items: center; min-height: 40px; padding: 8px 16px; border-radius: 6px; font-weight: 600; font-size: 15px; text-decoration: none; }
+    .s1 .btn-primary { background: var(--ivory); color: var(--noir); }
+    .s1 .btn-secondary { background: transparent; color: var(--ivory); border: 1px solid var(--line); }
+    .s2 .btn-primary { background: var(--ultra); color: var(--blatt); }
+    .s2 .btn-secondary { background: transparent; color: var(--graphite); border: 1px solid var(--line-film); }
+
+    /* Freigabestatus und Gemeinsames */
+    .consent { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 0; padding: 0; list-style: none; }
+    .consent li { font-size: 13px; padding: 4px 10px; border-radius: 999px; border: 1px solid; }
+    .s1 .consent li { border-color: var(--line); color: var(--parchment); }
+    .s2 .consent li { border-color: var(--line-film); color: var(--graphite); }
+    .consent li.never { border-style: dashed; }
+    .ledger { width: 100%; border-collapse: collapse; font-size: 15px; margin-top: 12px; }
+    .ledger th, .ledger td { text-align: left; padding: 8px 6px; border-bottom: 1px solid; }
+    .s1 .ledger th, .s1 .ledger td { border-color: var(--line); }
+    .s2 .ledger th, .s2 .ledger td { border-color: var(--line-film); }
+    .ledger th { font-weight: 600; font-size: 13px; }
+    .shared { text-decoration-line: underline; text-decoration-style: double; text-underline-offset: 4px; }
+    .s1 .shared { color: var(--plum-light); }
+    .s2 .shared { color: var(--ochre); }
+
+    /* Lesemodus */
+    .reading { background: var(--paper); color: var(--ink); }
+    .reading h3 { color: var(--ink); }
+    .reading .prose { font-family: ui-serif, Georgia, serif; font-size: 18px; line-height: 1.65; max-width: 66ch; }
+    .reading .chip { display: inline-block; font-size: 13px; border: 1px solid var(--line-light); color: var(--ink); border-radius: 999px; padding: 2px 10px; margin: 0 6px 12px 0; }
+    .reading .chip b { color: var(--old-gold); font-weight: 600; }
+    .reading .muted { color: #5C5766; font-size: 14px; }
+
+    footer { color: var(--ash); font-size: 14px; padding: 24px 0 48px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="doc">
+      <h1>AVENYTH Redesign-Preview</h1>
+      <p class="meta">Statische Konzeptseite ohne Produktpfad. Das Repo ist öffentlich, <code>noindex</code> macht die Seite nicht geheim. Alle Personen und Daten sind fiktiv. Die Zahlen der Beispielperson (geb. 12.06.1988) sind per Engine gerechnet (Quellen von <code>989c502</code>). Die Werte von „Sam“ sind Platzhalter, die Deutungstexte Beispieltexte und nicht aus <code>knowledge/</code>. Stand 26.09.2026.</p>
+      <div class="controls" role="group" aria-label="Richtung wählen">
+        <button type="button" id="btn-s1" aria-pressed="true">Stufe 1: Noir, ruhiger</button>
+        <button type="button" id="btn-s2" aria-pressed="false">Stufe 2: Skizze, nicht gebaut</button>
+      </div>
+    </header>
+
+    <p class="banner" id="stage-banner" role="status">Stufe 1 ist freigegeben (Konzept). Gold bleibt Belegfarbe. Die Primäraktion ist Elfenbein, keine Goldfläche.</p>
+
+    <section class="stage" aria-labelledby="h-swatches">
+      <h2 id="h-swatches">Farbfelder</h2>
+      <p class="lede">Kontraste aus <code>tools/contrast_check.py</code>.</p>
+      <div class="swatches">
+        <div class="swatch"><i style="background:#0B0B0F"></i>Noir</div>
+        <div class="swatch"><i style="background:#C8A96B"></i>Gold 8,74:1</div>
+        <div class="swatch"><i style="background:#F2EBDD"></i>Elfenbein-Button 15,59:1 auf Obsidian</div>
+        <div class="swatch"><i style="background:#604B72"></i>Pflaume als Text 2,57:1, fail</div>
+        <div class="swatch"><i style="background:#B39BCF"></i>Pflaume hell 7,96:1</div>
+        <div class="swatch"><i style="background:#6B6775"></i>UI-Linie 3,37:1 auf Obsidian</div>
+        <div class="swatch"><i style="background:#2536A6"></i>Ultramarin, nur Skizze</div>
+        <div class="swatch"><i style="background:#7C5A10"></i>Ocker, nur Skizze</div>
+      </div>
+    </section>
+
+    <section class="stage" aria-labelledby="h-today">
+      <h2 id="h-today">Heute</h2>
+      <p class="lede">Eine Herleitungskette statt großer Zahl mit Nebenkacheln. Der Endknoten ist immer der <code>display_value</code> der Engine.</p>
+      <div class="pair">
+        <article class="frame" aria-label="Heute, Desktop">
+          <div class="bar">Desktop</div>
+          <div class="screen s1" data-theme-screen>
+            <p class="sketch-tag" hidden data-sketch>Skizze, nicht gebaut, nicht freigegeben</p>
+            <h3>Heute, 26. September 2026</h3>
+            <p class="source">Fiktive Person, geb. 12.06.1988. Engine: Canon §27–29.</p>
+            <ol class="chain" aria-label="Herleitung des persönlichen Tages">
+              <li><span class="node"><small>Universaljahr</small><b>10/1</b></span></li>
+              <li><span class="node"><small>Persönliches Jahr</small><b>10/1</b></span></li>
+              <li><span class="node"><small>Persönlicher Monat</small><b>10/1</b></span></li>
+              <li><span class="node final"><small>Persönlicher Tag</small><b>9</b></span></li>
+            </ol>
+            <div class="panel">
+              <h4>Berechnung</h4>
+              <ol class="trace mono">
+                <li>2+0+2+6 = 10 → 10/1</li>
+                <li>Monat 6 + Tag 3 + Universaljahr 1 = 10 → 10/1</li>
+                <li>1 + Kalendermonat 9 = 10 → 10/1</li>
+                <li>1 + Kalendertag 26 → 8 = 9</li>
+              </ol>
+              <p class="muted">Der Hash belegt, dass dieselben Eingaben dasselbe Ergebnis liefern. Er belegt nicht, dass eine Deutung zutrifft.</p>
+            </div>
+            <div class="panel">
+              <h4>Deutung</h4>
+              <p>Die Symbolik der 9 kann einladen, Begonnenes abzuschließen. Das ist ein Reflexionsangebot, keine Vorhersage.</p>
+            </div>
+            <div class="panel">
+              <h4>Reflexion</h4>
+              <p>Was darfst du heute bewusst beenden?</p>
+            </div>
+          </div>
+        </article>
+        <article class="frame mobile" aria-label="Heute, 390 px">
+          <div class="bar">390 px</div>
+          <div class="screen s1" data-theme-screen>
+            <p class="sketch-tag" hidden data-sketch>Skizze</p>
+            <h3>Heute</h3>
+            <ol class="chain" aria-label="Herleitung des persönlichen Tages">
+              <li><span class="node"><small>Jahr</small><b>10/1</b></span></li>
+              <li><span class="node"><small>Monat</small><b>10/1</b></span></li>
+              <li><span class="node final"><small>Tag</small><b>9</b></span></li>
+            </ol>
+            <p class="muted">Rechenweg aufklappbar, Deutung darunter.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="stage" aria-labelledby="h-profile">
+      <h2 id="h-profile">Profil: Lebenszahl</h2>
+      <p class="lede">Die Allowlist-Operationen <code>segment_reduce</code>, <code>sum</code>, <code>reduce</code> als Punkte und Linien. Der Endknoten zeigt 17/8, nicht die im Frontend reduzierte 8.</p>
+      <div class="pair">
+        <article class="frame" aria-label="Lebenszahl, Desktop">
+          <div class="bar">Desktop</div>
+          <div class="screen s1" data-theme-screen>
+            <p class="sketch-tag" hidden data-sketch>Skizze, nicht gebaut, nicht freigegeben</p>
+            <h3>Lebenszahl</h3>
+            <ol class="chain" aria-label="Herleitung der Lebenszahl">
+              <li><span class="node"><small>Tag 12</small><b>3</b></span></li>
+              <li><span class="node"><small>Monat 6</small><b>6</b></span></li>
+              <li><span class="node"><small>Jahr 1988 → 26</small><b>8</b></span></li>
+              <li><span class="node"><small>Summe</small><b>17</b></span></li>
+              <li><span class="node final"><small>display_value</small><b>17/8</b></span></li>
+            </ol>
+            <div class="panel">
+              <h4>Aktionen auf einer Fläche</h4>
+              <p class="muted">Elfenbein-Button auf Obsidian 15,59:1, Noir-Text darauf 16,56:1. Die Sekundäraktion ist eine Kontur und kein zweiter Farbblock.</p>
+              <div class="actions">
+                <a class="btn btn-primary" href="#h-profile">Bericht erstellen</a>
+                <a class="btn btn-secondary" href="#h-profile">Rechenweg ansehen</a>
+              </div>
+            </div>
+          </div>
+        </article>
+        <article class="frame mobile" aria-label="Lebenszahl, 390 px">
+          <div class="bar">390 px</div>
+          <div class="screen s1" data-theme-screen>
+            <p class="sketch-tag" hidden data-sketch>Skizze</p>
+            <h3>Lebenszahl</h3>
+            <ol class="chain" aria-label="Herleitung der Lebenszahl">
+              <li><span class="node"><small>3 + 6 + 8</small><b>17</b></span></li>
+              <li><span class="node final"><small>display_value</small><b>17/8</b></span></li>
+            </ol>
+            <div class="panel">
+              <div class="actions">
+                <a class="btn btn-primary" href="#h-profile">Bericht erstellen</a>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="stage" aria-labelledby="h-report">
+      <h2 id="h-report">Bericht</h2>
+      <p class="lede">Heller Lesemodus „Tageslesung“, nur für Reader, PDF und Onboarding. Er gilt in beiden Richtungen gleich.</p>
+      <div class="pair">
+        <article class="frame" aria-label="Bericht, Desktop">
+          <div class="bar">Lesemodus</div>
+          <div class="screen reading">
+            <h3>Lebenszahl</h3>
+            <span class="chip">Bezug: Lebenszahl <b>17/8</b></span><span class="chip">Wissensstand v1.2.0</span>
+            <p class="prose">Die 8 ist die Reduktion der Summe 17. Das ist ein Rechenschritt, keine Diagnose. Die Symbolik der 8 kann dazu anregen, Verantwortung und eigene Maßstäbe zu prüfen.</p>
+            <p class="muted">Reflexionsangebot ohne wissenschaftliche Beweiskraft.</p>
+          </div>
+        </article>
+        <article class="frame mobile" aria-label="Bericht, 390 px">
+          <div class="bar">390 px</div>
+          <div class="screen reading">
+            <h3>Lebenszahl</h3>
+            <span class="chip">Bezug: <b>17/8</b></span>
+            <p class="prose">Die 8 ist die Reduktion der Summe 17.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="stage" aria-labelledby="h-workspace">
+      <h2 id="h-workspace">Beziehungs-Workspace</h2>
+      <p class="lede">Der Freigabestatus steht immer im Header. Gemeinsames erscheint in Pflaume hell mit Doppellinie: <strong>Option A, nicht entschieden</strong> (siehe Konzept 0.1). Kein Gesamtwert, keine Nähe-Metapher, keine Rohantworten der anderen Person.</p>
+      <div class="pair">
+        <article class="frame" aria-label="Workspace, Desktop">
+          <div class="bar">Desktop</div>
+          <div class="screen s1" data-theme-screen>
+            <p class="sketch-tag" hidden data-sketch>Skizze, nicht gebaut, nicht freigegeben</p>
+            <h3>Alex und Sam</h3>
+            <p class="muted">Was teile ich gerade?</p>
+            <ul class="consent" aria-label="Meine Freigaben">
+              <li>Kernzahlen: geteilt</li>
+              <li>Aktuelles Timing: geteilt</li>
+              <li class="never">Check-in-Antworten: nie sichtbar</li>
+            </ul>
+            <table class="ledger">
+              <caption class="muted" style="text-align:left">Vergleich je Kennzahl, ohne Summenzeile</caption>
+              <thead><tr><th scope="col">Kennzahl</th><th scope="col">Alex</th><th scope="col"><span class="shared">Gemeinsam</span></th><th scope="col">Sam</th></tr></thead>
+              <tbody>
+                <tr><td>Lebenszahl</td><td>17/8</td><td><span class="shared">Thema: Verantwortung</span></td><td>4</td></tr>
+                <tr><td>Persönliches Jahr</td><td>10/1</td><td><span class="shared">kein gemeinsamer Wert</span></td><td>6</td></tr>
+              </tbody>
+            </table>
+            <div class="panel">
+              <h4>Check-in, Dimension Alltag</h4>
+              <p>Abstand in dieser Runde: 2. Über drei Runden nähern sich die Angaben an.</p>
+              <p class="muted">Eure einzelnen Antworten bleiben privat. Aus dem Abstand lässt sich die andere Antwort teilweise ableiten.</p>
+            </div>
+          </div>
+        </article>
+        <article class="frame mobile" aria-label="Workspace, 390 px">
+          <div class="bar">390 px</div>
+          <div class="screen s1" data-theme-screen>
+            <p class="sketch-tag" hidden data-sketch>Skizze</p>
+            <h3>Alex und Sam</h3>
+            <ul class="consent" aria-label="Meine Freigaben">
+              <li>Kernzahlen: geteilt</li>
+              <li class="never">Antworten: nie sichtbar</li>
+            </ul>
+            <div class="panel">
+              <p>Lebenszahl: Alex 17/8, Sam 4</p>
+              <p class="shared">Gemeinsam: Thema Verantwortung</p>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <footer>
+      Stufe 1 ist freigegeben (Konzept, kein App-Code). Stufe 2 „Punkt und Linie“ ist eine Skizze: Ultramarin und Ocker, Kandinsky nur als Grammatik. Der Pflaume-Konflikt A/B/C ist offen und dokumentiert. Zahlen: Engine, fiktive Person, Stichtag 26.09.2026.
+    </footer>
+  </div>
+  <script>
+    const s1 = document.getElementById("btn-s1");
+    const s2 = document.getElementById("btn-s2");
+    const banner = document.getElementById("stage-banner");
+    function setStage(stage2) {
+      s1.setAttribute("aria-pressed", String(!stage2));
+      s2.setAttribute("aria-pressed", String(stage2));
+      banner.textContent = stage2
+        ? "Stufe 2 ist eine Skizze. Nicht gebaut, nicht freigegeben. Ultramarin statt Gold bricht Brand §3.2."
+        : "Stufe 1 ist freigegeben (Konzept). Gold bleibt Belegfarbe. Die Primäraktion ist Elfenbein, keine Goldfläche.";
+      document.querySelectorAll("[data-theme-screen]").forEach((el) => {
+        el.classList.toggle("s1", !stage2);
+        el.classList.toggle("s2", stage2);
+      });
+      document.querySelectorAll("[data-sketch]").forEach((el) => { el.hidden = !stage2; });
+    }
+    s1.addEventListener("click", () => setStage(false));
+    s2.addEventListener("click", () => setStage(true));
+  </script>
+</body>
+</html>
