@@ -9,9 +9,9 @@
 - **LAST_MERGED_PR:** [#207](https://github.com/GoLukeEnviro/numra-v1/pull/207)
 - **LAST_GREEN_MAIN_RUN:** post-merge run on `dfeb8cd` (#207, [run 36108195346](https://github.com/GoLukeEnviro/numra-v1/actions/runs/36108195346), conclusion `success`)
 - **CURRENT_MILESTONE:** PWA Product Closure
-- **CURRENT_TASK:** **2026-09-26, production caught Wave 3.** Host deploy of `78c87c94` completed with backup `bak-pre-wave3-20260926T015448Z.dump`, Compose build of api/worker/web/pdf/migrate, `up -d`, alembic `e6a1b2c3d4e5` → `b9c0d1e2f3a4`, smoke (ready healthy, `self_signup_enabled=true`, register form visible, Origin login 401 not 403), pdf force-recreate. Probe account `cors-probe@invalid.example` deleted (`PROBE_DELETED`, unverified, SQL fallback after account-delete API required reauth). SMTP/CORS/signup (#193) remains closed as a blocker. Wave-3 knowledge content is therefore live, not only on `main`. **Still open:** unauthenticated Impressum/Datenschutz pages (blocked on operator legal facts), `robots.txt` `Disallow: /`, #212 (`health_check.json` / sw.js), audit teardown, and draft PR #202 (CI-split rebase — process blocker).
-- **NEXT_ACTION:** **(1)** Operator supplies legal facts in `apps/web/src/content/legal/operator.ts` (name/legal form, address, e-mail, hosting provider; hosting DPA only once confirmed) on draft PR [#218](https://github.com/GoLukeEnviro/numra-v1/pull/218), which already carries unauthenticated `/impressum` + `/datenschutz` and legal links on every surface; its guard test stays red until then. Before merge: switch off Cloudflare Web Analytics (the policy states no reach measurement). Deploy of the legal pages is a separate host step after merge — until then the live 404 is expected. Hardening PRs [#216](https://github.com/GoLukeEnviro/numra-v1/pull/216) (PDF generic errors) and [#217](https://github.com/GoLukeEnviro/numra-v1/pull/217) (branded 404, error boundaries, sw.js #212, no `x-powered-by`) are independent and mergeable now. **(2)** Keep `robots.txt` `Disallow: /` until those pages exist and the public conversion path is honest. **(3)** #202 rebase remains a process item, not a release blocker. Audit teardown stays operator-gated.
-- **OPEN_RELEASE_BLOCKERS:** Production SMTP (#193) closed. Production deploy smoke for Wave 3 closed 2026-09-26 (`78c87c94`). Remaining product-facing gap: missing unauthenticated legal pages while self-signup is open (decided 2026-09-26: signup stays open, legal pages follow via #218). Carried forward: operator-gated audit teardown. **Not a release blocker:** draft PR #202 (CI-split rebase).
+- **CURRENT_TASK:** **2026-09-26, production caught Wave 3.** Host deploy of `78c87c94` completed with backup `bak-pre-wave3-20260926T015448Z.dump`, Compose build of api/worker/web/pdf/migrate, `up -d`, alembic `e6a1b2c3d4e5` → `b9c0d1e2f3a4`, smoke (ready healthy, `self_signup_enabled=true`, register form visible, Origin login 401 not 403), pdf force-recreate. Probe account `cors-probe@invalid.example` deleted (`PROBE_DELETED`, unverified, SQL fallback after account-delete API required reauth). SMTP/CORS/signup (#193) remains closed as a blocker. Wave-3 knowledge content is therefore live, not only on `main`. **Still open:** unauthenticated Impressum/Datenschutz pages (blocked on operator legal facts), `robots.txt` `Disallow: /`, audit teardown, and draft PR #202 (CI-split rebase — process blocker).
+- **NEXT_ACTION:** **(1)** Operator supplies legal facts in `apps/web/src/content/legal/operator.ts` (name/legal form, address, e-mail, hosting provider; hosting DPA only once confirmed) on draft PR [#218](https://github.com/GoLukeEnviro/numra-v1/pull/218), which already carries unauthenticated `/impressum` + `/datenschutz` and legal links on every surface; its guard test stays red until then. Before merge: switch off Cloudflare Web Analytics (the policy states no reach measurement). Deploy of the legal pages is a separate host step after merge — until then the live 404 is expected. Hardening PRs [#216](https://github.com/GoLukeEnviro/numra-v1/pull/216) (PDF generic errors) and [#217](https://github.com/GoLukeEnviro/numra-v1/pull/217) (branded 404, error boundaries, no `x-powered-by`) are merged (2026-09-26, 11:42 and 12:04 UTC); #217 also closed #212 (`health_check.json` / sw.js fetch handling). **(2)** Keep `robots.txt` `Disallow: /` until #218 is merged, deployed, and the public conversion path is honest — no CTA promising a result the product doesn't deliver before `/register`. **(3)** #202 rebase remains a process item, not a release blocker. Audit teardown stays operator-gated. **(4)** PR [#224](https://github.com/GoLukeEnviro/numra-v1/pull/224) (landing-page CRO audit) is accepted as input, not an approved implementation order — see "Landing-page audit sequencing" below for the wave order that supersedes its Gate-0/QW-numbered roadmap. Its three measured bugs (mobile header CTA clipping/horizontal scroll, two WCAG 1.4.3 contrast failures on the hero eyebrow and step numbers) are hygiene-only fixes and may proceed independently of #218; a local branch `fix/landing-header-overflow-register-retry` exists for this (not pushed to `origin`, no commits yet as of 2026-09-26). Hero/CTA copy changes, any "V2-OS" landing narrative, and a public calculator are **not** authorized yet.
+- **OPEN_RELEASE_BLOCKERS:** Production SMTP (#193) closed. Production deploy smoke for Wave 3 closed 2026-09-26 (`78c87c94`). Remaining product-facing gap: missing unauthenticated legal pages while self-signup is open (decided 2026-09-26: signup stays open, legal pages follow via #218). Carried forward: operator-gated audit teardown. **Not a release blocker:** draft PR #202 (CI-split rebase); open PR #224 (its roadmap is gated by the wave sequencing below, not pre-approved as written).
 
 This file is the single current execution-state source. Historical plans and gap
 reports remain in the repository as evidence, but do not override this state.
@@ -156,6 +156,34 @@ stale hedges — the closure roadmap below is the authority on each phase.
 6. Dependabot PRs are a maintenance lane. Minor/patch updates may be batched only after
    their CI is green; major updates require separate migration review and are not Product
    Closure blockers unless a supported dependency is insecure or broken.
+
+## Landing-page audit sequencing (2026-09-26)
+
+Two landing-page CRO/UX audits exist: one as prior conversation content (not a repo
+doc), proposing a QW-0…QW-6 quick-win bundle including opening `robots.txt` in week 1
+and a "Meine Zahlen berechnen" CTA pointing at `/register`; the other is
+[#224](https://github.com/GoLukeEnviro/numra-v1/pull/224), a docs-only PR already
+aligned with `robots.txt` staying closed. Neither is implemented as one bundle. Instead:
+
+- **Wave 0 — legal + blockers:** #218 (operator facts → merge → deploy). #216/#217
+  already merged. `robots.txt` unchanged.
+- **Wave 1 — hygiene, no new promise:** contrast fixes and mobile header overflow (see
+  the local branch noted in `NEXT_ACTION`), CTA hierarchy (primary stays the existing
+  "Konto anlegen" string; "Anmelden" as a text link only), register-form friction
+  fixes. No hero rewrite in this wave.
+- **Wave 2 — messaging, only after Wave 0 is live:** every sentence must be true of the
+  live product; the CTA and its target route must describe the same thing; no
+  flag-off V2 feature may be advertised; a pricing line needs its own separate,
+  explicit decision.
+- **Wave 3 — public calculator, only after an explicit product/privacy decision:**
+  stateless endpoint, rate-limited, no persistence, no input logs, feature flag
+  default off, privacy text updated first; `robots.txt`/SEO changes handled
+  separately afterward.
+- Out of scope regardless of wave: scarcity language, fake social proof, a
+  "compatibility score" feature — both audits already agree these stay out.
+- Correction: PR #224's body describes the V2 relationship core as "live in
+  production". Production feature flags (PWA-03: seven of seven off) are
+  authoritative on that point, not the PR narrative.
 
 ## Explicit non-goals
 
