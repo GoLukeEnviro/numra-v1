@@ -152,10 +152,12 @@ uv run alembic downgrade base && uv run alembic upgrade head   # verify both dir
 
 ```bash
 # Python — from repo root
-uv run pytest packages/engine-numerology/tests -q \
-  --cov=packages/engine-numerology/src/numra_numerology --cov-fail-under=90
-uv run pytest packages apps/api/tests -q   # needs a running Postgres (TEST_DATABASE_URL
-                                            # or the apps/api/tests/conftest.py default)
+uv run pytest packages/engine-numerology/tests packages/engine-interpretation/tests \
+  packages/engine-relationship-interpretation/tests -q \
+  --cov=packages/engine-numerology/src/numra_numerology --cov-report=term-missing
+uv run coverage report --include="packages/engine-numerology/src/numra_numerology/*" --fail-under=90
+uv run pytest apps/api/tests -q   # needs a running Postgres (TEST_DATABASE_URL
+                                   # or the apps/api/tests/conftest.py default)
 uv run ruff format --check . && uv run ruff check .
 uv run mypy apps/api/src packages/engine-numerology/src packages/engine-interpretation/src packages/engine-relationship-interpretation/src packages/engine-astrology/src
 
