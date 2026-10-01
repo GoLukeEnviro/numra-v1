@@ -38,7 +38,7 @@ jobs:
 
       - name: Comment artifact link on pull request
         if: github.event_name == 'pull_request' && hashFiles('dist/design-preview/**') != ''
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const body = [
