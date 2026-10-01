@@ -18,7 +18,7 @@ jobs:
   lint-python:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.UV_VERSION }}
@@ -31,7 +31,7 @@ jobs:
   python-typecheck:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.UV_VERSION }}
@@ -50,7 +50,7 @@ jobs:
     # PDF/Postgres/Redis setup that only apps/api/tests needs.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.UV_VERSION }}
@@ -91,7 +91,7 @@ jobs:
       TEST_PDF_URL: http://127.0.0.1:4300
       TEST_PDF_TOKEN: ci-only-pdf-token
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.UV_VERSION }}
@@ -123,7 +123,7 @@ jobs:
   no-golden-leakage:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.UV_VERSION }}
@@ -140,7 +140,7 @@ jobs:
     # for the Next.js 14->15 migration this gate was added to guard against regressing.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v7
         with:
@@ -169,7 +169,7 @@ jobs:
     # -> job fails -> fixture removed -> green): docs/audits/2026-09-21-pwa-08-sast.md.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.UV_VERSION }}
@@ -182,7 +182,7 @@ jobs:
   schema-and-openapi-drift:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.UV_VERSION }}
@@ -214,7 +214,7 @@ jobs:
   web-lint-typecheck-build-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v7
         with:
@@ -234,7 +234,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: web-lint-typecheck-build-test
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v7
         with:
@@ -247,7 +247,7 @@ jobs:
   pdf-service-tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v7
         with:
@@ -299,7 +299,7 @@ jobs:
       CORS_ALLOWED_ORIGINS: '["http://127.0.0.1:4180"]'
       SYSTEM_E2E_WEB_PORT: "4180"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.UV_VERSION }}
@@ -381,7 +381,7 @@ jobs:
   docker-build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v4
       - run: docker compose config --quiet
         env:
@@ -411,7 +411,7 @@ jobs:
       ALLOW_SELF_SIGNUP: "true"
       RATE_LIMIT_BACKEND: redis
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v4
       - run: docker compose build
       - run: docker compose up -d
