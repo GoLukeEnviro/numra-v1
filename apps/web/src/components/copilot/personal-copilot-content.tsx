@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Archive, Send, Sparkles } from "lucide-react";
 import { api, type ChatMessageOut, type ChatThreadOut } from "@/api/client";
+import { AiDisclosure } from "@/components/ui/ai-disclosure";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -150,6 +151,7 @@ export function PersonalCopilotContent({
         <p className="mt-3 text-sm leading-6 text-muted">{t("app.copilot.personalIntro")}</p>
       </header>
       <p className="mb-5 rounded-lg border border-white/10 bg-surface-2 p-3 text-sm text-muted">{t("app.copilot.personalNotice")}</p>
+      <AiDisclosure variant="chat" className="mb-5" />
       <Card><CardContent className="space-y-5 p-4 sm:p-6">
         <div className="flex items-center justify-between gap-3">
           <h3 className="font-serif text-xl text-ivory">{t("app.copilot.conversation")}</h3>

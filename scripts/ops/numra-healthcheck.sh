@@ -19,7 +19,13 @@
 # Configuration: /etc/numra/healthcheck.env (optional, sourced if readable). Set
 # `AUDIT_READY_URL=` to an empty value to stop probing the audit instance -- that is the
 # documented switch for the PWA-10 teardown, so removing the stack cannot leave a
-# permanently failed unit behind.
+# permanently failed unit behind. `STALE_QUEUED_MINUTES` (default 15, matches the V2
+# activation runbook's abort criterion in
+# docs/ops/2026-09-26-v2-activation-connections-workspaces.md §7.7) controls how long a
+# report/analysis job may sit in QUEUED before it counts as stuck -- the V2 job pipeline
+# has exactly one consumer (analysis-worker / worker), so a growing QUEUED count almost
+# always means that process died or the LLM provider is misconfigured, never ordinary
+# load.
 #
 # Deliberately no secrets: every check reads a loopback HTTP endpoint, a directory
 # listing or a database count. The stacks' env files are never read.
@@ -39,6 +45,7 @@ PROD_READY_URL=${PROD_READY_URL-http://127.0.0.1:17800/v1/health/ready}
 PROD_DB_CONTAINER=${PROD_DB_CONTAINER-numra-prod-postgres-1}
 AUDIT_READY_URL=${AUDIT_READY_URL-http://127.0.0.1:17801/v1/health/ready}
 AUDIT_DB_CONTAINER=${AUDIT_DB_CONTAINER-numra-audit-postgres-1}
+STALE_QUEUED_MINUTES=${STALE_QUEUED_MINUTES-15}
 
 failures=()
 lines=()
@@ -68,19 +75,24 @@ probe_readiness() {
 # Job health. `previous` is the same stack's FAILED total from the last probe (-1 when
 # unknown). Returns "" and records a failure when the database cannot be read.
 probe_jobs() {
-  local name="$1" container="$2" previous="$3" counts total window delta
+  local name="$1" container="$2" previous="$3" counts total window stale delta
   counts=$(docker exec -i "$container" psql -U numra -d numra -t -A -c \
     "select (select count(*) from report_jobs where status='FAILED') || ' ' ||
             (select count(*) from analysis_jobs where status='FAILED') || ' ' ||
             (select count(*) from report_jobs where status='FAILED'
-               and updated_at > now() - interval '24 hours')" 2>/dev/null)
+               and updated_at > now() - interval '24 hours') || ' ' ||
+            ((select count(*) from report_jobs where status='QUEUED'
+               and created_at < now() - interval '${STALE_QUEUED_MINUTES} minutes') +
+             (select count(*) from analysis_jobs where status='QUEUED'
+               and created_at < now() - interval '${STALE_QUEUED_MINUTES} minutes'))" 2>/dev/null)
   if [ -z "$counts" ]; then
     failures+=("$name:jobs_unreadable")
-    lines+=("\"${name}_failed_jobs\":null,\"${name}_failed_jobs_24h\":null")
+    lines+=("\"${name}_failed_jobs\":null,\"${name}_failed_jobs_24h\":null,\"${name}_stale_queued\":null")
     return 0
   fi
   total=$(printf '%s' "$counts" | awk '{print $1+$2}')
   window=$(printf '%s' "$counts" | awk '{print $3}')
+  stale=$(printf '%s' "$counts" | awk '{print $4}')
   delta="unknown"
   if [ "$previous" -ge 0 ] 2>/dev/null; then
     delta=$((total - previous))
@@ -92,7 +104,10 @@ probe_jobs() {
     # the 24h window, which is what a delta would have covered anyway.
     failures+=("$name:${window}_failed_job(s)_in_24h")
   fi
-  lines+=("\"${name}_failed_jobs\":$total,\"${name}_failed_jobs_24h\":$window,\"${name}_new_failed_jobs\":\"$delta\"")
+  if [ "$stale" -gt 0 ] 2>/dev/null; then
+    failures+=("$name:${stale}_stale_queued_job(s)_over_${STALE_QUEUED_MINUTES}m")
+  fi
+  lines+=("\"${name}_failed_jobs\":$total,\"${name}_failed_jobs_24h\":$window,\"${name}_new_failed_jobs\":\"$delta\",\"${name}_stale_queued\":$stale")
 }
 
 previous_total() {

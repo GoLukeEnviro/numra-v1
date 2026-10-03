@@ -53,6 +53,7 @@ function RedeemRunner({ token }: { token: string }) {
   const [accepting, setAccepting] = useState(false);
   const [declining, setDeclining] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [needsEmailVerification, setNeedsEmailVerification] = useState(false);
   const previewCalledRef = useRef(false);
 
   useEffect(() => {
@@ -79,11 +80,17 @@ function RedeemRunner({ token }: { token: string }) {
     if (accepting || declining) return;
     setAccepting(true);
     setActionError(null);
+    setNeedsEmailVerification(false);
     try {
       const result = await api.connections.redeemInvitation({ token });
       router.push(`/workspaces/${result.workspace_id}/consent?justConnected=1`);
-    } catch {
-      setActionError(t("app.connectionsRedeem.acceptError"));
+    } catch (err) {
+      if (err instanceof ApiError && err.code === "EMAIL_VERIFICATION_REQUIRED") {
+        setActionError(t("app.connectionsRedeem.verifyEmailError"));
+        setNeedsEmailVerification(true);
+      } else {
+        setActionError(t("app.connectionsRedeem.acceptError"));
+      }
       setAccepting(false);
     }
   }
@@ -163,7 +170,12 @@ function RedeemRunner({ token }: { token: string }) {
           role="alert"
           className="rounded-lg border border-danger/30 bg-danger-surface p-3 text-sm text-text"
         >
-          {actionError}
+          <p>{actionError}</p>
+          {needsEmailVerification && (
+            <Link href="/settings" className="mt-1 inline-block text-gold underline-offset-4 hover:underline">
+              {t("app.connectionsRedeem.verifyEmailCta")}
+            </Link>
+          )}
         </div>
       )}
 

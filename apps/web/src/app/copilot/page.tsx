@@ -7,6 +7,7 @@ import { api } from "@/api/client";
 import { AppShell } from "@/components/layout/app-shell";
 import { PersonalCopilotContent } from "@/components/copilot/personal-copilot-content";
 import { Card, CardContent } from "@/components/ui/card";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { LinkButton } from "@/components/ui/link-button";
 import { EmptyState, ErrorState, LoadingState, PhaseDisabledState, isPhaseDisabledError, type PhaseErrorCode } from "@/components/ui/states";
 import { useLocale } from "@/i18n/context";
@@ -47,7 +48,7 @@ function CopilotContent() {
     </header>
     {personalDisabledCode
       ? <PhaseDisabledState code={personalDisabledCode} title={t("app.copilot.disabled")} description={t("app.copilot.disabledBody")} />
-      : <PersonalCopilotContent onPhaseDisabled={setPersonalDisabledCode} />}
+      : <ErrorBoundary><PersonalCopilotContent onPhaseDisabled={setPersonalDisabledCode} /></ErrorBoundary>}
     <section aria-labelledby="relationship-copilot-index-heading">
       <h2 id="relationship-copilot-index-heading" className="mb-4 font-serif text-2xl text-ivory">{t("app.copilot.indexWorkspacesTitle")}</h2>
       <RelationshipWorkspaceIndex />

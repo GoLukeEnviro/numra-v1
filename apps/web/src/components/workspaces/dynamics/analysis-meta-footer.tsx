@@ -1,10 +1,13 @@
 "use client";
 
+import { AiDisclosure } from "@/components/ui/ai-disclosure";
 import { useLocale } from "@/i18n/context";
 
 /**
  * Versions/provider footer for a completed analysis — analogous to the Report
- * Reader footer. Rendered verbatim from the result: no derivation.
+ * Reader footer. Rendered verbatim from the result: no derivation. Shared by both
+ * RelationshipAnalysisView and ShadowDynamicsView, so the AI disclosure below covers
+ * both surfaces from this one place.
  */
 export function AnalysisMetaFooter({
   result,
@@ -29,13 +32,16 @@ export function AnalysisMetaFooter({
   ];
 
   return (
-    <dl className="mt-8 grid gap-x-8 gap-y-3 border-t border-white/10 pt-6 text-xs sm:grid-cols-2 lg:grid-cols-4">
-      {rows.map((row) => (
-        <div key={row.label}>
-          <dt className="text-muted">{row.label}</dt>
-          <dd className="mt-0.5 font-mono text-text">{row.value}</dd>
-        </div>
-      ))}
-    </dl>
+    <>
+      <dl className="mt-8 grid gap-x-8 gap-y-3 border-t border-white/10 pt-6 text-xs sm:grid-cols-2 lg:grid-cols-4">
+        {rows.map((row) => (
+          <div key={row.label}>
+            <dt className="text-muted">{row.label}</dt>
+            <dd className="mt-0.5 font-mono text-text">{row.value}</dd>
+          </div>
+        ))}
+      </dl>
+      <AiDisclosure variant="generated" className="mt-6" />
+    </>
   );
 }

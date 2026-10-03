@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Archive, Lock, Send, Users } from "lucide-react";
 import { api, type ChatMessageOut, type ChatThreadOut, type WorkspaceOverviewOut } from "@/api/client";
+import { AiDisclosure } from "@/components/ui/ai-disclosure";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -164,6 +165,7 @@ export function WorkspaceCopilotContent({ workspaceId, overview, onPhaseDisabled
     <p className="mb-5 rounded-lg border border-white/10 bg-surface-2 p-3 text-sm text-muted">
       {scope === "RELATIONSHIP_SHARED" ? t("app.copilot.sharedNotice") : t("app.copilot.privateNotice")}
     </p>
+    <AiDisclosure variant="chat" className="mb-5" />
     <Card><CardContent className="space-y-5 p-4 sm:p-6">
       <div className="flex items-center justify-between gap-3">
         <h2 className="font-serif text-xl text-ivory">{t("app.copilot.conversation")}</h2>

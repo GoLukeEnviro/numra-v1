@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { LoadingState, ErrorState } from "@/components/ui/states";
 import { ReportReader } from "@/components/reports/report-reader";
 import { ReportProgressView, ReportFailedView } from "@/components/reports/report-progress-view";
@@ -121,7 +122,9 @@ function ReportContent({ reportId }: { reportId: string }) {
   return (
     <>
       <BackToAnalysis calculationId={progress.report.calculation_id} />
-      <ReportReader report={progress.report} content={content} />
+      <ErrorBoundary>
+        <ReportReader report={progress.report} content={content} />
+      </ErrorBoundary>
       <div className="mt-12 max-w-reading">
         <ExportPanel reportId={progress.report.id} />
       </div>
