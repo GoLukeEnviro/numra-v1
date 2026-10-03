@@ -1,8 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { ReportReader } from "@/components/reports/report-reader";
+import { LocaleProvider } from "@/i18n/context";
 import type { ReportOut } from "@/api/client";
 import type { StructuredReport } from "@/api/report-content";
+
+function renderReader(props: Parameters<typeof ReportReader>[0]) {
+  return render(
+    <LocaleProvider>
+      <ReportReader {...props} />
+    </LocaleProvider>,
+  );
+}
 
 const baseReport: ReportOut = {
   id: "report-1",
@@ -46,7 +55,7 @@ describe("ReportReader — V1.5 Epic M provenance", () => {
         knowledge_refs: ["life_path"],
       },
     ]);
-    render(<ReportReader report={baseReport} content={content} />);
+    renderReader({ report: baseReport, content });
 
     const toggle = screen.getByRole("button", { name: "Sources" });
     expect(toggle).toBeInTheDocument();
@@ -70,7 +79,7 @@ describe("ReportReader — V1.5 Epic M provenance", () => {
         summary: "",
       },
     ]);
-    render(<ReportReader report={baseReport} content={content} />);
+    renderReader({ report: baseReport, content });
     expect(screen.queryByRole("button", { name: "Sources" })).not.toBeInTheDocument();
   });
 });

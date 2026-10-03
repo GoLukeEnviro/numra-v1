@@ -112,6 +112,26 @@ describe("ConnectionsRedeemPage", () => {
     expect(await screen.findByText("Einladung abgelehnt")).toBeInTheDocument();
   });
 
+  it("shows the verify-email guidance and a settings link when the account's email isn't verified", async () => {
+    vi.mocked(useAuth).mockReturnValue({ status: "authenticated" } as never);
+    vi.mocked(api.connections.previewByToken).mockResolvedValue(PREVIEW_EMAIL);
+    vi.mocked(api.connections.redeemInvitation).mockRejectedValue(
+      new ApiError("forbidden", "EMAIL_VERIFICATION_REQUIRED", 403),
+    );
+    renderPage();
+
+    await screen.findByText("E-Mail");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Annehmen" }));
+    });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Bestätige zuerst deine E-Mail-Adresse");
+    expect(screen.getByRole("link", { name: "Zu den Einstellungen" })).toHaveAttribute(
+      "href",
+      "/settings",
+    );
+  });
+
   it("hides the decline button for LINK invitations", async () => {
     vi.mocked(useAuth).mockReturnValue({ status: "authenticated" } as never);
     vi.mocked(api.connections.previewByToken).mockResolvedValue(PREVIEW_LINK);

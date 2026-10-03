@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { AiDisclosure } from "@/components/ui/ai-disclosure";
 import { NumericWheel } from "@/components/layout/numeric-wheel";
 import type { ReportOut } from "@/api/client";
 import {
@@ -136,6 +137,7 @@ export function ReportReader({
               </dd>
             </div>
           </dl>
+          <AiDisclosure variant="generated" className="mt-6" />
         </div>
       </header>
 

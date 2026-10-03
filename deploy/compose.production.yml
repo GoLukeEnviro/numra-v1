@@ -87,6 +87,18 @@ services:
       SMTP_USE_TLS: ${SMTP_USE_TLS:-false}
       SMTP_TIMEOUT_SECONDS: ${SMTP_TIMEOUT_SECONDS:-10.0}
       WEB_APP_BASE_URL: ${WEB_APP_BASE_URL:-}
+      # AVENYTH V2 runtime feature flags (apps/api/src/numra_api/config.py:131-139,
+      # services/feature_flags.py). Only the api process evaluates them; every
+      # default is false, so this block changes nothing until /etc/numra/numra.env
+      # sets a value. Staged rollout + rollback:
+      # docs/ops/2026-09-26-v2-activation-connections-workspaces.md
+      AVENYTH_V2_ENABLED: ${AVENYTH_V2_ENABLED:-false}
+      AVENYTH_CONNECTIONS_ENABLED: ${AVENYTH_CONNECTIONS_ENABLED:-false}
+      AVENYTH_RELATIONSHIP_WORKSPACES_ENABLED: ${AVENYTH_RELATIONSHIP_WORKSPACES_ENABLED:-false}
+      AVENYTH_CHECKINS_ENABLED: ${AVENYTH_CHECKINS_ENABLED:-false}
+      AVENYTH_TASKS_ENABLED: ${AVENYTH_TASKS_ENABLED:-false}
+      AVENYTH_COPILOT_ENABLED: ${AVENYTH_COPILOT_ENABLED:-false}
+      AVENYTH_EVIDENCE_LAYER_ENABLED: ${AVENYTH_EVIDENCE_LAYER_ENABLED:-false}
     volumes:
       - numra_exports_data:/app/data/exports
     depends_on:
@@ -135,6 +147,43 @@ services:
       SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
       SMTP_USE_TLS: ${SMTP_USE_TLS:-false}
       SMTP_TIMEOUT_SECONDS: ${SMTP_TIMEOUT_SECONDS:-10.0}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    logging: *default-logging
+
+  # V2 job pipeline: relationship-analysis and shadow-dynamics jobs (AnalysisJob).
+  # Same image/target as docker-compose.yml:149 and the audit stack. Without it,
+  # every analysis job stays QUEUED forever once relationship workspaces are on.
+  analysis-worker:
+    build:
+      context: /opt/numra/repo
+      dockerfile: docker/api.Dockerfile
+      target: analysis-worker
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      APP_TIMEZONE: ${APP_TIMEZONE:-Europe/Berlin}
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      NUMRA_LLM_PROVIDER: ${NUMRA_LLM_PROVIDER:-disabled}
+      NUMRA_LLM_MAX_RETRIES: ${NUMRA_LLM_MAX_RETRIES:-3}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-}
+      OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
+      NUMRA_LLM_MODEL_PREMIUM: ${NUMRA_LLM_MODEL_PREMIUM:-deepseek-v4-pro:cloud}
+      NUMRA_LLM_MODEL_FAST: ${NUMRA_LLM_MODEL_FAST:-deepseek-v4-flash:cloud}
+      NUMRA_LLM_TEMPERATURE: ${NUMRA_LLM_TEMPERATURE:-0.2}
+      NUMRA_LLM_TIMEOUT_SECONDS: ${NUMRA_LLM_TIMEOUT_SECONDS:-120}
+      # Constructs the shared Settings model, whose production validator forbids
+      # RATE_LIMIT_BACKEND=memory (same rationale as the worker service).
+      RATE_LIMIT_BACKEND: ${RATE_LIMIT_BACKEND:-redis}
+      REDIS_URL: redis://redis:6379/0
+      EMAIL_BACKEND: ${EMAIL_BACKEND:-disabled}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     depends_on:
       postgres:

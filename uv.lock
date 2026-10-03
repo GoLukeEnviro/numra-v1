@@ -1216,7 +1216,7 @@ dev = [
 [package.metadata.requires-dev]
 dev = [
     { name = "httpx", specifier = ">=0.28.1" },
-    { name = "hypothesis", specifier = ">=6.168.1" },
+    { name = "hypothesis", specifier = ">=6.168.2" },
     { name = "jsonschema", specifier = ">=4.26.0" },
     { name = "mypy", specifier = ">=2.3.1" },
     { name = "pypdf", specifier = ">=6.19.0" },

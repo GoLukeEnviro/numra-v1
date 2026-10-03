@@ -595,6 +595,8 @@ export const enApp: Record<keyof typeof deApp, string> = {
   "app.connectionsRedeem.toDashboard": "To dashboard",
   "app.connectionsRedeem.acceptError": "Invitation could not be accepted",
   "app.connectionsRedeem.declineError": "Invitation could not be declined",
+  "app.connectionsRedeem.verifyEmailError": "Verify your email address before accepting this invitation.",
+  "app.connectionsRedeem.verifyEmailCta": "Go to settings",
 
   "app.consent.sharedByMeTitle": "Shared by me",
   "app.consent.sharedByMeHintPrefix": "What you share with",
@@ -1049,4 +1051,6 @@ export const enApp: Record<keyof typeof deApp, string> = {
   "app.evidence.saveAnalysis": "Save analysis",
   "app.evidence.saveAnalysisError": "The analysis could not be saved.",
   "app.evidence.savedTitle": "Saved analyses",
+  "app.ai.disclosureChat": "You're talking with an AI system (Copilot), not a human. Replies are generated automatically and may contain mistakes.",
+  "app.ai.disclosureGenerated": "This content was generated automatically by an AI system and may contain mistakes.",
 };

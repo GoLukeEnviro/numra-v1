@@ -50,6 +50,7 @@ from numra_api.services.consent_service import revoke_all_workspace_consent
 from numra_api.services.errors import (
     CannotInviteSelf,
     ConnectionAlreadyExists,
+    EmailVerificationRequired,
     InvitationExpiredOrInvalid,
     InvitationNotFound,
     NotFoundError,
@@ -158,6 +159,26 @@ async def accept_invitation(
     )
     if invitation is None:
         raise InvitationExpiredOrInvalid("invitation is expired, used, or invalid")
+
+    if invitation.method == InvitationMethod.EMAIL:
+        # Bind EMAIL invitations to the addressed account: the inviter chose *that*
+        # person, not whoever happens to hold the token. A plain string match isn't
+        # enough on its own -- it only means something once the account has proven
+        # control of the mailbox, otherwise an attacker could pre-register the
+        # invitee's address first and redeem as themselves. Raising
+        # `InvitationExpiredOrInvalid` here (never a distinct error) keeps this
+        # indistinguishable from any other dead token -- same anti-enumeration
+        # rationale as `decline_own_invitation` above. The claim above already
+        # marked the invitation ACCEPTED; raising here rolls that back (see
+        # `deps.get_db`: the session is only committed if this function returns
+        # normally), so a rejected attempt never burns the invitation.
+        if (
+            invitation.invitee_email is None
+            or invitation.invitee_email.strip().lower() != redeeming_user.email.strip().lower()
+        ):
+            raise InvitationExpiredOrInvalid("invitation is expired, used, or invalid")
+        if redeeming_user.email_verified_at is None:
+            raise EmailVerificationRequired("verify your email before accepting this invitation")
 
     if invitation.inviter_user_id == redeeming_user.id:
         raise CannotInviteSelf("cannot accept your own invitation")

@@ -226,6 +226,13 @@ export class NetworkError extends Error {
   }
 }
 
+export class TimeoutError extends Error {
+  constructor() {
+    super("Die Anfrage hat zu lange gedauert.");
+    this.name = "TimeoutError";
+  }
+}
+
 function readCookie(name: string): string | null {
   if (typeof document === "undefined") return null;
   const match = document.cookie
@@ -236,12 +243,24 @@ function readCookie(name: string): string | null {
 
 const MUTATING_METHODS = new Set(["POST", "PATCH", "DELETE", "PUT"]);
 
+/** A Copilot turn runs an LLM call synchronously inside the request — slow by
+ *  nature, but a hung connection must still resolve into a visible, cancellable
+ *  error rather than a spinner that never ends. */
+const COPILOT_REPLY_TIMEOUT_MS = 150_000;
+/** Launching an analysis/report job should return once the row is queued — if it
+ *  hangs this long the request itself is stuck, not the (async) generation. */
+const JOB_LAUNCH_TIMEOUT_MS = 60_000;
+
 interface RequestOptions {
   method?: string;
   body?: unknown;
   query?: Record<string, string | undefined>;
   /** Extra request headers (e.g. `Idempotency-Key`). CSRF is still added automatically. */
   headers?: Record<string, string>;
+  /** Aborts the request and throws `TimeoutError` after this many ms. Omit for no
+   *  client-side timeout (the default for most calls — only long-running surfaces
+   *  like Copilot replies or analysis/report launches set one explicitly). */
+  timeoutMs?: number;
 }
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -261,6 +280,11 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     if (csrf) headers["x-csrf-token"] = csrf;
   }
 
+  const controller = options.timeoutMs !== undefined ? new AbortController() : undefined;
+  const timeoutId = controller
+    ? setTimeout(() => controller.abort(), options.timeoutMs)
+    : undefined;
+
   let response: Response;
   try {
     response = await fetch(url.toString(), {
@@ -268,9 +292,13 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
       headers,
       credentials: "include",
       body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+      signal: controller?.signal,
     });
   } catch (cause) {
+    if (controller?.signal.aborted) throw new TimeoutError();
     throw new NetworkError(cause);
+  } finally {
+    if (timeoutId !== undefined) clearTimeout(timeoutId);
   }
 
   if (response.status === 204) {
@@ -535,6 +563,7 @@ export const api = {
         method: "POST",
         body,
         headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
+        timeoutMs: JOB_LAUNCH_TIMEOUT_MS,
       }),
     get: (reportId: string) => request<ReportOut>(`/v1/reports/${reportId}`),
     getJob: (jobId: string) => request<ReportJobOut>(`/v1/report-jobs/${jobId}`),
@@ -698,6 +727,7 @@ export const api = {
         request<RelationshipAnalysisOut>(`/v1/workspaces/${workspaceId}/relationship-analysis`, {
           method: "POST",
           headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
+          timeoutMs: JOB_LAUNCH_TIMEOUT_MS,
         }),
     },
     shadowDynamics: {
@@ -711,6 +741,7 @@ export const api = {
         request<ShadowDynamicsAnalysisOut>(`/v1/workspaces/${workspaceId}/shadow-dynamics`, {
           method: "POST",
           headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
+          timeoutMs: JOB_LAUNCH_TIMEOUT_MS,
         }),
     },
     checkinDimensions: {
@@ -894,7 +925,7 @@ export const api = {
           post: (workspaceId: string, threadId: string, body: MessageCreateRequest) =>
             request<MessagePairOut>(
               `/v1/workspaces/${workspaceId}/copilot/threads/${threadId}/messages`,
-              { method: "POST", body },
+              { method: "POST", body, timeoutMs: COPILOT_REPLY_TIMEOUT_MS },
             ),
         },
       },
@@ -932,6 +963,7 @@ export const api = {
             request<MessagePairOut>(`/v1/me/copilot/threads/${threadId}/messages`, {
               method: "POST",
               body,
+              timeoutMs: COPILOT_REPLY_TIMEOUT_MS,
             }),
         },
       },
