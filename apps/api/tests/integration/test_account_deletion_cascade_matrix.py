@@ -125,6 +125,9 @@ MAY_BE_RETAINED = [
     # Der Admin-Audit-Pfad wird von diesem Seed nicht ausgeloest.
     ("admin_audit_events", "actor_user_id"),
     ("admin_audit_events", "target_user_id"),
+    # Gleicher Grund: dieser Seed loest keinen Admin-Flag-Toggle aus (siehe
+    # repositories/feature_flags.py::set_flag). ON DELETE SET NULL, keine PII.
+    ("feature_flags", "updated_by_user_id"),
 ]
 
 

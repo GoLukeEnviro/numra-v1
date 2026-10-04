@@ -7,6 +7,8 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 
 from numra_api.app import create_app
+from numra_api.repositories.feature_flags import get_all_flags
+from numra_api.services.feature_flag_cache import FeatureFlagCache
 from numra_api.auth.passwords import hash_password
 from numra_api.auth.tokens import hash_token
 from numra_api.config import Settings
@@ -441,6 +443,12 @@ async def test_create_invitation_redeem_url_honors_overridden_origin_and_trailin
     app = create_app(settings=custom_settings)
     app.state.engine = db_engine
     app.state.sessionmaker = build_sessionmaker(db_engine)
+
+    async def _load_feature_flags() -> dict[str, bool]:
+        async with app.state.sessionmaker() as db:
+            return await get_all_flags(db)
+
+    app.state.feature_flag_cache = FeatureFlagCache(loader=_load_feature_flags)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as c:
         headers = await _signup(c, app.state.sessionmaker, "conn-redeem-origin@example.com")
