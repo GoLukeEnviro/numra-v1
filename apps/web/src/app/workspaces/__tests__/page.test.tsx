@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import WorkspacesPage from "@/app/workspaces/page";
 import { LocaleProvider } from "@/i18n/context";
 import { useAuth } from "@/lib/auth-context";
-import { api, type UserConnectionOut, type WorkspaceSummaryOut } from "@/api/client";
+import { api, ApiError, type UserConnectionOut, type WorkspaceSummaryOut } from "@/api/client";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
@@ -124,5 +124,23 @@ describe("WorkspacesPage", () => {
     renderPage();
 
     expect(await screen.findByText("Typ nicht gesetzt")).toBeInTheDocument();
+  });
+
+  it("renders a calm disabled state when the workspaces phase is off, not a raw error", async () => {
+    vi.mocked(api.workspaces.list).mockRejectedValue(new ApiError("disabled", "V2_PHASE_DISABLED", 503));
+    vi.mocked(api.connections.list).mockResolvedValue([]);
+    renderPage();
+
+    expect(await screen.findByRole("heading", { name: "Workspaces" })).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("renders a calm disabled state when the connections phase is off, not a raw error", async () => {
+    vi.mocked(api.workspaces.list).mockResolvedValue([workspace()]);
+    vi.mocked(api.connections.list).mockRejectedValue(new ApiError("disabled", "V2_PHASE_DISABLED", 503));
+    renderPage();
+
+    expect(await screen.findByRole("heading", { name: "Workspaces" })).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });
