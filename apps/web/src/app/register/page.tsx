@@ -1,6 +1,7 @@
 "use client";
 
 import { api, ApiError } from "@/api/client";
+import { LegalLinks } from "@/components/layout/public-footer";
 import { Logo } from "@/components/brand/logo";
 import { NumericWheel } from "@/components/layout/numeric-wheel";
 import { Button } from "@/components/ui/button";
@@ -130,6 +131,14 @@ function RegisterForm() {
         </div>
       )}
 
+      <p className="mb-4 text-xs text-muted">
+        {t("public.register.privacyNoticeBefore")}{" "}
+        <Link href="/datenschutz" className="text-gold underline-offset-4 hover:underline">
+          {t("public.register.privacyNoticeLink")}
+        </Link>
+        .
+      </p>
+
       <Button type="submit" className="w-full" loading={submitting}>
         {t("public.register.submit")}
       </Button>
@@ -164,7 +173,7 @@ export default function RegisterPage() {
   const configState = useAsync(() => api.publicConfig.get(), []);
 
   return (
-    <main className="sacred-wheel-bg relative flex min-h-screen items-center justify-center overflow-hidden bg-background p-6">
+    <main className="sacred-wheel-bg relative flex min-h-screen items-center justify-center overflow-hidden bg-background p-6 pb-20">
       <NumericWheel className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 opacity-40" />
       <NumericWheel className="pointer-events-none absolute -bottom-32 -left-32 h-96 w-96 opacity-20" />
 
@@ -187,6 +196,7 @@ export default function RegisterPage() {
             (configState.data.self_signup_enabled ? <RegisterForm /> : <SignupClosed />)}
         </CardContent>
       </Card>
+      <LegalLinks className="absolute inset-x-0 bottom-6 justify-center" />
     </main>
   );
 }
