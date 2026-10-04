@@ -5,7 +5,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LinkButton } from "@/components/ui/link-button";
-import { EmptyState, ErrorState, LoadingState } from "@/components/ui/states";
+import { EmptyState, ErrorState, LoadingState, PhaseDisabledState, isPhaseDisabledError } from "@/components/ui/states";
 import { useLocale } from "@/i18n/context";
 import { useAsync } from "@/lib/use-async";
 import { buildCounterpartNameMap } from "@/lib/identity";
@@ -57,6 +57,15 @@ function WorkspacesContent() {
     return <LoadingState label={t("app.relationshipWorkspace.listLoading")} />;
   }
   if (workspacesState.status === "error") {
+    if (isPhaseDisabledError(workspacesState.error)) {
+      return (
+        <PhaseDisabledState
+          code={workspacesState.error.code}
+          title={t("app.workspaces.title")}
+          description={t("app.workspaces.body")}
+        />
+      );
+    }
     return (
       <ErrorState
         error={workspacesState.error}
@@ -66,6 +75,15 @@ function WorkspacesContent() {
     );
   }
   if (connectionsState.status === "error") {
+    if (isPhaseDisabledError(connectionsState.error)) {
+      return (
+        <PhaseDisabledState
+          code={connectionsState.error.code}
+          title={t("app.workspaces.title")}
+          description={t("app.workspaces.body")}
+        />
+      );
+    }
     return (
       <ErrorState
         error={connectionsState.error}
