@@ -13,6 +13,7 @@ from numra_api.auth.csrf import CSRF_COOKIE_NAME, CSRF_HEADER_NAME, csrf_tokens_
 from numra_api.auth.sessions import hash_session_token
 from numra_api.config import Settings
 from numra_api.email.sender import EmailSender
+from numra_api.services.feature_flag_cache import FeatureFlagCache
 from numra_api.models import Session as SessionModel
 from numra_api.models import User
 from numra_api.models.enums import UserRole
@@ -77,6 +78,11 @@ async def get_db(request: Request) -> AsyncIterator[AsyncSession]:
 def get_settings_dep(request: Request) -> Settings:
     settings: Settings = request.app.state.settings
     return settings
+
+
+def get_feature_flag_cache(request: Request) -> FeatureFlagCache:
+    cache: FeatureFlagCache = request.app.state.feature_flag_cache
+    return cache
 
 
 def get_export_storage(request: Request) -> ExportStorage:
