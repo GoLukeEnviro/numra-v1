@@ -28,8 +28,18 @@ function RelationshipWorkspaceIndex() {
   const workspaces = useAsync(() => api.workspaces.list(), []);
   const connections = useAsync(() => api.connections.list(), []);
   if (workspaces.status === "loading" || connections.status === "loading") return <LoadingState label={t("app.copilot.indexLoading")} />;
-  if (workspaces.status === "error") return <ErrorState error={workspaces.error} onRetry={workspaces.reload} />;
-  if (connections.status === "error") return <ErrorState error={connections.error} onRetry={connections.reload} />;
+  if (workspaces.status === "error") {
+    if (isPhaseDisabledError(workspaces.error)) {
+      return <PhaseDisabledState code={workspaces.error.code} title={t("app.copilot.disabled")} description={t("app.copilot.disabledBody")} />;
+    }
+    return <ErrorState error={workspaces.error} onRetry={workspaces.reload} />;
+  }
+  if (connections.status === "error") {
+    if (isPhaseDisabledError(connections.error)) {
+      return <PhaseDisabledState code={connections.error.code} title={t("app.copilot.disabled")} description={t("app.copilot.disabledBody")} />;
+    }
+    return <ErrorState error={connections.error} onRetry={connections.reload} />;
+  }
   const active = workspaces.data.filter((workspace) => workspace.status === "ACTIVE");
   if (!active.length) return <EmptyState title={t("app.copilot.indexEmptyTitle")} description={t("app.copilot.indexEmptyBody")} action={<LinkButton variant="secondary" href="/connections">{t("app.relationshipWorkspace.listEmptyCta")}</LinkButton>} />;
   const names = buildCounterpartNameMap(connections.data, workspaces.data);

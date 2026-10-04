@@ -156,6 +156,24 @@ describe("CopilotPage", () => {
     expect(screen.getByRole("heading", { name: "Persönliches Gespräch" })).toBeInTheDocument();
   });
 
+  it("renders a calm disabled state for the relationship index when workspaces phase is off, not a raw error", async () => {
+    vi.mocked(api.workspaces.list).mockRejectedValue(new ApiError("disabled", "V2_PHASE_DISABLED", 503));
+    renderPage();
+
+    await screen.findByText("Persönliches Gespräch");
+    expect(screen.getByText("Beziehungs-Copiloten").closest("section")).toHaveTextContent("Copilot noch nicht verfügbar");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("renders a calm disabled state for the relationship index when connections phase is off, not a raw error", async () => {
+    vi.mocked(api.connections.list).mockRejectedValue(new ApiError("disabled", "V2_PHASE_DISABLED", 503));
+    renderPage();
+
+    await screen.findByText("Persönliches Gespräch");
+    expect(screen.getByText("Beziehungs-Copiloten").closest("section")).toHaveTextContent("Copilot noch nicht verfügbar");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   it("renders the calm phase-disabled state instead of an error when the copilot flag is off", async () => {
     vi.mocked(api.me.copilot.threads.list).mockRejectedValue(
       new ApiError("phase disabled", "V2_PHASE_DISABLED", 403),
