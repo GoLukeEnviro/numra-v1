@@ -12,7 +12,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-HEALTHCHECK="$SCRIPT_DIR/../numra-healthcheck.sh"
+HEALTHCHECK="${HEALTHCHECK:-$SCRIPT_DIR/../numra-healthcheck.sh}" # ueberschreibbar fuer Mutationstests
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 
@@ -37,11 +37,19 @@ rc=$(cat "$CURL_RC_FILE")
 cat "$CURL_BODY_FILE"
 printf '\n%s' "$(cat "$CURL_CODE_FILE")"
 EOF
-chmod +x "$FAKE_BIN/docker" "$FAKE_BIN/curl"
+# `mv` shim: protokolliert die Aufrufe (Atomizitaets-Beleg) und ruft das echte mv auf.
+REAL_MV=$(command -v mv)
+cat > "$FAKE_BIN/mv" <<EOF
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >> "\$MV_LOG"
+exec "$REAL_MV" "\$@"
+EOF
+chmod +x "$FAKE_BIN/docker" "$FAKE_BIN/curl" "$FAKE_BIN/mv"
 
 export PATH="$FAKE_BIN:$PATH"
 export PSQL_OUTPUT_FILE="$WORK/psql-output"
 export DOCKER_ARGS_FILE="$WORK/docker-args"
+export MV_LOG="$WORK/mv-log"
 export CURL_RC_FILE="$WORK/curl-rc"
 export CURL_BODY_FILE="$WORK/curl-body"
 export CURL_CODE_FILE="$WORK/curl-code"
@@ -105,7 +113,7 @@ check() {
 }
 st() { python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(eval(sys.argv[2]))' "$STATE" "$1"; }
 expect_st() {
-  local actual; actual=$(st "$1")
+  local actual; actual=$(st "$1" 2> /dev/null) || fail "status file is not valid JSON / key missing: $1"
   [ "$actual" = "$2" ] || fail "status $1: expected '$2', got '$actual'"
 }
 expect_err() { grep -q -- "$1" "$ERR" || fail "stderr lacks '$1'"; }
@@ -335,10 +343,52 @@ set +e; STATUS_FILE="$WORK/no-such-dir/health-status.json" bash "$HEALTHCHECK" >
 expect_err "status:file_unwritable"
 PASSED=$((PASSED + 1)); echo "ok [$LABEL]"
 
-# Atomares Schreiben: keine Temp-Reste im Statusverzeichnis.
+# Atomares Schreiben: keine Temp-Reste, Inode-Wechsel, mv mit Quelle im selben
+# Verzeichnis und Ziel STATUS_FILE (Direktschreiben in STATUS_FILE macht das rot).
 reset_state
-check "atomic write leaves no temp files" 0
+: > "$MV_LOG"
+check "atomic write: first run" 0
 [ "$(ls -A "$WORK/state" | wc -l)" -eq 1 ] || fail "unexpected files in state dir: $(ls -A "$WORK/state")"
+inode1=$(stat -c %i "$STATE")
+check "atomic write: second run" 0
+[ "$(stat -c %i "$STATE")" != "$inode1" ] || fail "status file inode did not change (not replaced by rename)"
+last_mv=$(tail -1 "$MV_LOG")
+[ -n "$last_mv" ] || fail "status file was not moved into place (mv never called)"
+read -r _ mv_src mv_dst <<< "$last_mv" # "-T <quelle> <ziel>"
+[ "$mv_dst" = "$STATE" ] || fail "mv target is '$mv_dst', expected STATUS_FILE"
+[ "$(dirname "$mv_src")" = "$(dirname "$STATE")" ] || fail "mv source '$mv_src' is not in the status directory"
+
+# trap-Cleanup: scheitert mv (STATUS_FILE ist ein nicht leeres Verzeichnis), darf keine
+# Temp-Datei zurueckbleiben.
+reset_state
+mkdir -p "$WORK/trapdir/status" && touch "$WORK/trapdir/status/keep"
+LABEL="temp file is cleaned up when the rename fails"
+set +e; STATUS_FILE="$WORK/trapdir/status" bash "$HEALTHCHECK" > "$OUT" 2> "$ERR"; RC=$?; set -e
+[ "$RC" -eq 1 ] || fail "expected exit 1"
+expect_err "status:file_unwritable"
+leftover=$(find "$WORK/trapdir" -maxdepth 1 -name '.health-status.*')
+[ -z "$leftover" ] || fail "temp file left behind: $leftover"
+PASSED=$((PASSED + 1)); echo "ok [$LABEL]"
+
+# Dateimodus 0644 unabhaengig von der umask, nie world-writable.
+for mask in 077 000; do
+  reset_state
+  LABEL="status file mode with umask $mask"
+  set +e; (umask "$mask"; bash "$HEALTHCHECK" > "$OUT" 2> "$ERR"); RC=$?; set -e
+  [ "$RC" -eq 0 ] || fail "expected exit 0"
+  mode=$(stat -c %a "$STATE")
+  [ "$mode" = 644 ] || fail "mode is $mode, expected 644"
+  PASSED=$((PASSED + 1)); echo "ok [$LABEL]"
+done
+
+# Steuerzeichen und ungueltige UTF-8-Bytes in der Konfiguration duerfen den Statusfile
+# nicht ungueltig machen (json.load liest ihn beim naechsten Lauf wieder).
+reset_state "EXPECTED_DEPENDENCIES=$'pdf=req\\x01uired'"
+check "control character in config keeps status file valid JSON" 1
+expect_st 'type(d["failures"]).__name__' list
+reset_state "EXPECTED_DEPENDENCIES=$'pdf=req\\xffuired'"
+check "invalid UTF-8 byte in config keeps status file valid JSON" 1
+expect_st 'type(d["failures"]).__name__' list
 
 # ---- Isolation: kein Zugriff auf /etc/numra oder /usr/local/bin ------------------------
 LABEL="isolation"
