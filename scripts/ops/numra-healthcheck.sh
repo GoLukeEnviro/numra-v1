@@ -84,7 +84,9 @@ declare -A prev=()
 
 # --- helpers -------------------------------------------------------------------------
 
-json_string() { printf '"%s"' "$(printf '%s' "$1" | tr -d '\000-\037' | sed 's/\\/\\\\/g; s/"/\\"/g')"; }
+# Printable ASCII only: control characters and invalid UTF-8 bytes would otherwise make
+# the status file undecodable for the next run (and for any consumer).
+json_string() { printf '"%s"' "$(printf '%s' "$1" | LC_ALL=C tr -cd '\040-\176' | sed 's/\\/\\\\/g; s/"/\\"/g')"; }
 
 json_array() {
   local item out=""
