@@ -18,7 +18,9 @@ from numra_api.models import (
     User,
     WorkspaceMember,
 )
+from numra_api.repositories.feature_flags import get_all_flags
 from numra_api.repositories.users import create_user
+from numra_api.services.feature_flag_cache import FeatureFlagCache
 
 pytestmark = pytest.mark.integration
 
@@ -441,6 +443,12 @@ async def test_create_invitation_redeem_url_honors_overridden_origin_and_trailin
     app = create_app(settings=custom_settings)
     app.state.engine = db_engine
     app.state.sessionmaker = build_sessionmaker(db_engine)
+
+    async def _load_feature_flags() -> dict[str, bool]:
+        async with app.state.sessionmaker() as db:
+            return await get_all_flags(db)
+
+    app.state.feature_flag_cache = FeatureFlagCache(loader=_load_feature_flags)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as c:
         headers = await _signup(c, app.state.sessionmaker, "conn-redeem-origin@example.com")

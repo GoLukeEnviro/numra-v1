@@ -1707,3 +1707,19 @@ class CheckinIdempotency(Base):
     checkin_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("relationship_checkins.id", ondelete="CASCADE")
     )
+
+
+class FeatureFlag(Base):
+    """AVENYTH V2 runtime feature flags, DB-backed so an admin toggle takes effect
+    without a container restart (see services/feature_flags.py). `name` is one of
+    the seven AVENYTH_*_ENABLED keys, lowercased without the prefix/suffix."""
+
+    __tablename__ = "feature_flags"
+    name: Mapped[str] = mapped_column(String(64), primary_key=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    updated_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+    updated_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )

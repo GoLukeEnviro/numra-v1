@@ -48,6 +48,8 @@ export type AdminUserListOut = components["schemas"]["AdminUserListOut"];
 export type AuditAction = components["schemas"]["AuditAction"];
 export type AuditEventOut = components["schemas"]["AuditEventOut"];
 export type AuditEventListOut = components["schemas"]["AuditEventListOut"];
+export type FeatureFlagOut = components["schemas"]["FeatureFlagOut"];
+export type FeatureFlagListOut = components["schemas"]["FeatureFlagListOut"];
 
 // V2 Web/PWA schema types (PR-WEB-00) -- see the api.connections/api.workspaces/etc.
 // block comment below for why these are typed now but unused until later PRs.
@@ -641,6 +643,11 @@ export const api = {
             page_size: params.pageSize === undefined ? undefined : String(params.pageSize),
           },
         }),
+    },
+    flags: {
+      list: () => request<FeatureFlagListOut>("/v1/admin/flags"),
+      update: (name: string, body: { enabled: boolean }) =>
+        request<void>(`/v1/admin/flags/${name}`, { method: "PATCH", body }),
     },
   },
   // V2 Web/PWA namespaces (PR-WEB-00): fully typed against @numra/schema now,

@@ -44,6 +44,7 @@ Readiness-Antwort des API enthält dessen Zustand als `pdf`.
 | `/var/lib/numra/backups` | logische Postgres-Dumps + `.sha256`-Sidecar | root, 0750 (Gruppe `hermes` darf **auflisten**, nicht lesen) |
 | `/var/lib/numra/deployed_sha` | Commit, der in Produktion ausgerollt ist | root |
 | `/var/lib/numra/health-status.json` | Ergebnis der Readiness-Probe | `hermes` |
+| DB-Tabelle `feature_flags` (`numra`-DB) | Laufzeitwert der sieben `AVENYTH_*`-Flags -- Quelle der Wahrheit seit der Admin-Flags-Erweiterung (`/admin/flags`), loest `AVENYTH_*_ENABLED` als Laufzeitquelle ab (die Env-Vars bleiben nur Seed-Default fuer die Migration) | ueber `/admin/flags` (Rolle ADMIN) oder direkt per SQL |
 
 ## Monitoring und Sicherung
 

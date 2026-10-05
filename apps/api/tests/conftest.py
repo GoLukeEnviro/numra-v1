@@ -12,8 +12,10 @@ from numra_api.app import create_app
 from numra_api.config import Settings
 from numra_api.db import build_engine, build_sessionmaker
 from numra_api.email.sender import EmailSender
-from numra_api.models import Base, EntitlementSet, EvidencePolicy
+from numra_api.models import Base, EntitlementSet, EvidencePolicy, FeatureFlag
 from numra_api.repositories.entitlements import DEFAULT_ENTITLEMENT_SET_KEY
+from numra_api.repositories.feature_flags import get_all_flags
+from numra_api.services.feature_flag_cache import FeatureFlagCache
 from numra_api.services.llm_factory import build_llm_provider
 from numra_interpretation.llm.types import LLMProvider
 
@@ -88,6 +90,22 @@ async def db_engine(settings: Settings):
                 rationale="Testfixture -- entspricht Version 1 aus der Migration.",
             )
         )
+        # Gleicher Grund wie EntitlementSet/EvidencePolicy oben: die
+        # feature_flags-Tabelle wird von alembic/versions/..._feature_flags_table.py
+        # mit den echten Produktionswerten geseedet (3 von 7 Flags aus), das hier
+        # aber nie laeuft. Die ~350 bestehenden Integrationstests kennen diese Flags
+        # nicht und muessen unveraendert gruen bleiben, daher hier (wie zuvor bei den
+        # jetzt toten AVENYTH_*_ENABLED-Settings-Feldern) alle 7 explizit True.
+        for flag_name in (
+            "v2_master",
+            "connections",
+            "relationship_workspaces",
+            "checkins",
+            "tasks",
+            "copilot",
+            "evidence_layer",
+        ):
+            db.add(FeatureFlag(name=flag_name, enabled=True))
         await db.commit()
     yield engine
     await engine.dispose()
@@ -116,6 +134,16 @@ async def app(settings: Settings, db_engine):
     # export_storage) -- this fixture overrides that state attribute afterwards,
     # purely so tests can read back what was "sent" (see FakeEmailSender above).
     application.state.email_sender = FakeEmailSender()
+
+    # lifespan() never runs under ASGITransport in this test harness (same reason
+    # engine/sessionmaker are set by hand above instead of letting lifespan do it) --
+    # without this, every V2 route (require_v2_master/require_v2_phase) would raise
+    # AttributeError instead of evaluating the (here all-True-seeded) flags.
+    async def _load_feature_flags() -> dict[str, bool]:
+        async with application.state.sessionmaker() as db:
+            return await get_all_flags(db)
+
+    application.state.feature_flag_cache = FeatureFlagCache(loader=_load_feature_flags)
     return application
 
 

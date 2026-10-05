@@ -126,10 +126,12 @@ class Settings(BaseSettings):
     smtp_use_tls: bool = False
     smtp_timeout_seconds: float = 10.0
 
-    #: AVENYTH V2 rollout flags (specs/v2/architecture.md "Feature flags"). Alle Default
-    #: False in JEDER Umgebung -- explizites Opt-in ueberall noetig, nicht nur in
-    #: Production. avenyth_v2_enabled ist der Master-Switch; die anderen 6 sind UND-
-    #: verknuepft damit, nie unabhaengig ausreichend.
+    #: DEPRECATED: nur noch Seed-Default fuer die feature_flags-Migration
+    #: (alembic/versions/..._feature_flags_table.py), nicht mehr die Laufzeit-
+    #: Wahrheit -- services/feature_flags.py liest seit der Admin-Flag-Verwaltung aus
+    #: der feature_flags-DB-Tabelle (ueber FeatureFlagCache), nicht mehr von hier.
+    #: Felder bleiben bestehen (Minimal-Touch, keine Folgeschaeden an
+    #: compose.production.yml/docs/ops/*), werden aber zur Laufzeit nicht mehr gelesen.
     avenyth_v2_enabled: bool = False
     avenyth_connections_enabled: bool = False
     avenyth_relationship_workspaces_enabled: bool = False

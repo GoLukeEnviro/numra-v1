@@ -8,6 +8,7 @@ export const enAdmin: Record<keyof typeof deAdmin, string> = {
   "admin.nav.overview": "Overview",
   "admin.nav.users": "Users",
   "admin.nav.audit": "Audit log",
+  "admin.nav.flags": "Feature flags",
   "admin.nav.backToApp": "Back to the app",
 
   // Guard
@@ -40,6 +41,12 @@ export const enAdmin: Record<keyof typeof deAdmin, string> = {
   "admin.stats.totalPeople": "Profiles",
   "admin.stats.totalCalculations": "Calculations",
   "admin.stats.totalReports": "Reports",
+  "admin.dashboard.v2Title": "V2 status",
+  "admin.stats.invitationsPending": "Pending invitations",
+  "admin.stats.connectionsActive": "Active connections",
+  "admin.stats.workspacesActive": "Active workspaces",
+  "admin.stats.analysisQueuedWarning": "Analyses queued > 15 min",
+  "admin.stats.analysisFailed24h": "Failed analyses (24h)",
 
   // User list
   "admin.users.title": "Users",
@@ -125,6 +132,29 @@ export const enAdmin: Record<keyof typeof deAdmin, string> = {
   "admin.audit.noMetadata": "None",
   "admin.audit.empty": "No events found",
   "admin.audit.emptyHint": "Nothing was recorded for these filters.",
+
+  // Feature flags
+  "admin.flags.title": "Feature flags",
+  "admin.flags.subtitle": "Toggle AVENYTH V2 feature scope live -- takes effect on the next request, no restart needed.",
+  "admin.flags.loading": "Loading flags\u2026",
+  "admin.flags.lastChanged": "Last changed",
+  "admin.flags.lastChangedBy": "by",
+  "admin.flags.never": "Never changed",
+  "admin.flags.toggleError": "The change could not be saved.",
+  "admin.flags.name.v2_master": "V2 master switch",
+  "admin.flags.desc.v2_master": "Personal workspace (private notes, reflections, tasks). Required for every other flag.",
+  "admin.flags.name.connections": "Connections",
+  "admin.flags.desc.connections": "Invitations (link/code/email), connections and consent management.",
+  "admin.flags.name.relationship_workspaces": "Relationship workspaces",
+  "admin.flags.desc.relationship_workspaces": "Shared workspace: overview, dual profile, dynamics, shared reflections.",
+  "admin.flags.name.checkins": "Check-ins",
+  "admin.flags.desc.checkins": "Configurable relationship check-ins.",
+  "admin.flags.name.tasks": "Workspace tasks",
+  "admin.flags.desc.tasks": "Shared tasks and roadmaps within a workspace.",
+  "admin.flags.name.copilot": "Copilot",
+  "admin.flags.desc.copilot": "Personal and shared AI copilot.",
+  "admin.flags.name.evidence_layer": "Evidence layer",
+  "admin.flags.desc.evidence_layer": "Life tracking / evidence-based observations.",
 
   // Shared
   "admin.common.retry": "Try again",

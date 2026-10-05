@@ -72,6 +72,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/flags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Flags */
+        get: operations["list_flags_v1_admin_flags_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/flags/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Flag */
+        patch: operations["update_flag_v1_admin_flags__name__patch"];
+        trace?: never;
+    };
     "/v1/admin/stats": {
         parameters: {
             query?: never;
@@ -1876,6 +1910,7 @@ export interface components {
             total_reports: number;
             /** Total Users */
             total_users: number;
+            v2: components["schemas"]["V2HealthOut"];
         };
         /** AdminUserListOut */
         AdminUserListOut: {
@@ -1971,7 +2006,7 @@ export interface components {
          * AuditAction
          * @enum {string}
          */
-        AuditAction: "USER_DISABLED" | "USER_ENABLED" | "USER_SESSIONS_REVOKED" | "ADMIN_PROMOTED";
+        AuditAction: "USER_DISABLED" | "USER_ENABLED" | "USER_SESSIONS_REVOKED" | "ADMIN_PROMOTED" | "FEATURE_FLAG_CHANGED";
         /** AuditEventListOut */
         AuditEventListOut: {
             /** Items */
@@ -2817,6 +2852,30 @@ export interface components {
          * @enum {string}
          */
         ExportType: "pdf";
+        /** FeatureFlagListOut */
+        FeatureFlagListOut: {
+            /** Flags */
+            flags: components["schemas"]["FeatureFlagOut"][];
+        };
+        /** FeatureFlagOut */
+        FeatureFlagOut: {
+            /** Enabled */
+            enabled: boolean;
+            /** Name */
+            name: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Updated By User Id */
+            updated_by_user_id: string | null;
+        };
+        /** FeatureFlagUpdateIn */
+        FeatureFlagUpdateIn: {
+            /** Enabled */
+            enabled: boolean;
+        };
         /** ForgotPasswordRequest */
         ForgotPasswordRequest: {
             /**
@@ -4017,6 +4076,24 @@ export interface components {
          * @enum {string}
          */
         UserRole: "USER" | "ADMIN";
+        /**
+         * V2HealthOut
+         * @description Same five counters as the manual SQL in
+         *     docs/ops/2026-09-26-v2-activation-connections-workspaces.md Sec.6, now computed
+         *     via SQLAlchemy and surfaced in the admin dashboard instead of a one-off query.
+         */
+        V2HealthOut: {
+            /** Analysis Failed 24H */
+            analysis_failed_24h: number;
+            /** Analysis Queued Gt 15Min */
+            analysis_queued_gt_15min: number;
+            /** Connections Active */
+            connections_active: number;
+            /** Invitations Pending */
+            invitations_pending: number;
+            /** Workspaces Active */
+            workspaces_active: number;
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */
@@ -4323,6 +4400,63 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AuditEventListOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_flags_v1_admin_flags_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeatureFlagListOut"];
+                };
+            };
+        };
+    };
+    update_flag_v1_admin_flags__name__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                name: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FeatureFlagUpdateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
