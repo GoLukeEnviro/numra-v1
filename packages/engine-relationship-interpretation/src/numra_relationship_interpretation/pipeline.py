@@ -113,6 +113,12 @@ _PLACEHOLDER_PATTERN = re.compile(
     r"\{\{\s*(metric|special)\s*:\s*([ab])\s*:\s*([a-zA-Z0-9_]+)\s*\}\}"
 )
 
+#: Anything that still looks like placeholder syntax after `_resolve_placeholders` has
+#: run is, by construction, malformed (e.g. ``{{a:life_path}}`` without the namespace,
+#: ``[metric:a:life_path]`` with the wrong brackets, unbalanced braces): the correct
+#: form was already substituted. Such markers must never reach persisted prose.
+_LEFTOVER_MARKER_PATTERN = re.compile(r"\{\{|\}\}|[\[{]\s*(?:metric|special)\s*:", re.IGNORECASE)
+
 
 def _resolve_placeholders(
     text: str, *, profile_a: CanonicalProfile, profile_b: CanonicalProfile
@@ -190,7 +196,8 @@ def _validate_and_resolve_text(
     `MockLLMProvider`, exactly like
     `numra_interpretation.report.pipeline._generate_section` — its deterministic
     filler echoes raw grounding facts by design, which is not "the model inventing a
-    claim"), then placeholder resolution against the real profile data. Raises
+    claim"), then placeholder resolution against the real profile data, then a check that no
+    malformed/unresolved placeholder marker is left over. Raises
     `InvalidAnalysisSection` on any of them — the caller's existing one-repair-attempt
     pattern catches it."""
     if contains_prompt_scaffolding(text):
@@ -207,7 +214,14 @@ def _validate_and_resolve_text(
                 f"UnauthorizedNumericLiteral: text contains bare digit(s) {unauthorized!r} "
                 "not referenced via a metric/special placeholder"
             )
-    return _resolve_placeholders(text, profile_a=profile_a, profile_b=profile_b)
+    resolved = _resolve_placeholders(text, profile_a=profile_a, profile_b=profile_b)
+    leftover = _LEFTOVER_MARKER_PATTERN.search(resolved)
+    if leftover:
+        raise InvalidAnalysisSection(
+            f"MalformedPlaceholder: text contains unresolved or malformed placeholder "
+            f"marker {leftover.group(0)!r} (expected {{{{metric|special:a|b:ID}}}})"
+        )
+    return resolved
 
 
 def _valid_placeholder_ids_block(
