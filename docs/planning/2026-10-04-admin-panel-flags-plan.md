@@ -63,16 +63,21 @@ Migration von Hand prüfen (autogenerate verpasst oft Defaults) und den Seed-Ins
 ```python
 def upgrade() -> None:
     op.create_table(...)
-    flags_table = sa.table("feature_flags", sa.column("name", sa.String), sa.column("enabled", sa.Boolean))
-    op.bulk_insert(flags_table, [
-        {"name": "v2_master", "enabled": True},
-        {"name": "connections", "enabled": True},
-        {"name": "relationship_workspaces", "enabled": True},
-        {"name": "checkins", "enabled": False},
-        {"name": "tasks", "enabled": False},
-        {"name": "copilot", "enabled": True},
-        {"name": "evidence_layer", "enabled": False},
-    ])
+    flags_table = sa.table(
+        "feature_flags", sa.column("name", sa.String), sa.column("enabled", sa.Boolean)
+    )
+    op.bulk_insert(
+        flags_table,
+        [
+            {"name": "v2_master", "enabled": True},
+            {"name": "connections", "enabled": True},
+            {"name": "relationship_workspaces", "enabled": True},
+            {"name": "checkins", "enabled": False},
+            {"name": "tasks", "enabled": False},
+            {"name": "copilot", "enabled": True},
+            {"name": "evidence_layer", "enabled": False},
+        ],
+    )
 ```
 
 - [ ] **Schritt 3: Lokal gegen Audit-DB testen, dann committen**
@@ -98,10 +103,12 @@ git commit -m "feat: feature_flags-Tabelle mit heutigen Produktionswerten geseed
 ```python
 async def test_cache_returns_stale_value_within_ttl_then_refetches(monkeypatch):
     calls = 0
+
     async def fake_loader():
         nonlocal calls
         calls += 1
         return {"v2_master": calls == 1}
+
     cache = FeatureFlagCache(loader=fake_loader, ttl_seconds=0.05)
     first = await cache.get_all()
     second = await cache.get_all()
@@ -124,8 +131,11 @@ import asyncio
 import time
 from collections.abc import Awaitable, Callable
 
+
 class FeatureFlagCache:
-    def __init__(self, loader: Callable[[], Awaitable[dict[str, bool]]], ttl_seconds: float = 5.0) -> None:
+    def __init__(
+        self, loader: Callable[[], Awaitable[dict[str, bool]]], ttl_seconds: float = 5.0
+    ) -> None:
         self._loader = loader
         self._ttl = ttl_seconds
         self._value: dict[str, bool] | None = None
@@ -160,6 +170,7 @@ async def get_all_flags(db: AsyncSession) -> dict[str, bool]:
     result = await db.execute(select(FeatureFlag))
     return {row.name: row.enabled for row in result.scalars()}
 
+
 async def set_flag(db: AsyncSession, *, name: str, enabled: bool, actor_user_id: uuid.UUID) -> None:
     flag = await db.get(FeatureFlag, name)
     if flag is None:
@@ -168,7 +179,9 @@ async def set_flag(db: AsyncSession, *, name: str, enabled: bool, actor_user_id:
     flag.enabled = enabled
     flag.updated_by_user_id = actor_user_id
     await record_audit_event(
-        db, action=AuditAction.FEATURE_FLAG_CHANGED, actor_user_id=actor_user_id,
+        db,
+        action=AuditAction.FEATURE_FLAG_CHANGED,
+        actor_user_id=actor_user_id,
         safe_metadata={"flag": name, "from": previous, "to": enabled},
     )
     await db.commit()
@@ -198,7 +211,9 @@ git commit -m "feat: gecachtes Feature-Flag-Repository mit Audit-Log bei Aenderu
 ```python
 async def test_require_v2_phase_reads_db_not_settings(db_session, monkeypatch):
     monkeypatch.setenv("AVENYTH_COPILOT_ENABLED", "false")  # Env sagt aus
-    await set_flag(db_session, name="copilot", enabled=True, actor_user_id=some_admin_id)  # DB sagt an
+    await set_flag(
+        db_session, name="copilot", enabled=True, actor_user_id=some_admin_id
+    )  # DB sagt an
     dependency = require_v2_phase("copilot")
     await dependency(settings=get_settings(), db=db_session)  # darf NICHT raisen
 ```
@@ -216,7 +231,9 @@ def require_v2_master() -> Callable[..., None]:
         flags = await get_cached_flags(db)
         if not flags.get("v2_master", False):
             raise V2Disabled()
+
     return _dependency
+
 
 def require_v2_phase(flag_name: Literal[...]) -> Callable[..., None]:
     async def _dependency(db: AsyncSession = Depends(get_db, scope="function")) -> None:
@@ -225,6 +242,7 @@ def require_v2_phase(flag_name: Literal[...]) -> Callable[..., None]:
             raise V2Disabled()
         if not flags.get(flag_name, False):
             raise V2PhaseDisabled(flag_name)
+
     return _dependency
 ```
 
@@ -266,6 +284,7 @@ async def test_non_admin_gets_403_on_flags_list(client, user_session):
     resp = await client.get("/v1/admin/flags", cookies=user_session)
     assert resp.status_code == 403
 
+
 async def test_admin_can_toggle_flag_and_audit_entry_is_created(client, admin_session, db_session):
     resp = await client.patch(
         "/v1/admin/flags/checkins",
@@ -295,8 +314,10 @@ class FeatureFlagOut(BaseModel):
     updated_at: datetime
     updated_by_user_id: UUID | None
 
+
 class FeatureFlagListOut(BaseModel):
     flags: list[FeatureFlagOut]
+
 
 class FeatureFlagUpdateIn(BaseModel):
     enabled: bool
@@ -309,6 +330,7 @@ class FeatureFlagUpdateIn(BaseModel):
 async def list_flags(db: AsyncSession = Depends(get_db, scope="function")) -> FeatureFlagListOut:
     rows = await get_all_flags_with_metadata(db)
     return FeatureFlagListOut(flags=rows)
+
 
 @router.patch(
     "/flags/{name}",
