@@ -5,7 +5,7 @@ import type { MessageKey } from "@/i18n/catalog";
 import { useLocale } from "@/i18n/context";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, LayoutGrid, ScrollText, Users } from "lucide-react";
+import { ArrowLeft, LayoutGrid, ScrollText, ToggleLeft, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -13,6 +13,7 @@ const ADMIN_NAV = [
   { href: "/admin", labelKey: "admin.nav.overview", icon: LayoutGrid, exact: true },
   { href: "/admin/users", labelKey: "admin.nav.users", icon: Users, exact: false },
   { href: "/admin/audit", labelKey: "admin.nav.audit", icon: ScrollText, exact: false },
+  { href: "/admin/flags", labelKey: "admin.nav.flags", icon: ToggleLeft, exact: false },
 ] as const satisfies readonly {
   href: string;
   labelKey: MessageKey;
