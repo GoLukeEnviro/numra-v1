@@ -39,6 +39,12 @@ export const deAdmin = {
   "admin.stats.totalPeople": "Profile",
   "admin.stats.totalCalculations": "Berechnungen",
   "admin.stats.totalReports": "Berichte",
+  "admin.dashboard.v2Title": "V2-Status",
+  "admin.stats.invitationsPending": "Offene Einladungen",
+  "admin.stats.connectionsActive": "Aktive Verbindungen",
+  "admin.stats.workspacesActive": "Aktive Workspaces",
+  "admin.stats.analysisQueuedWarning": "Analysen > 15 Min in Warteschlange",
+  "admin.stats.analysisFailed24h": "Fehlgeschlagene Analysen (24h)",
 
   // Benutzerliste
   "admin.users.title": "Benutzer",

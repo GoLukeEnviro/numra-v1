@@ -38,6 +38,9 @@
           "total_users": {
             "title": "Total Users",
             "type": "integer"
+          },
+          "v2": {
+            "$ref": "#/components/schemas/V2HealthOut"
           }
         },
         "required": [
@@ -49,7 +52,8 @@
           "active_sessions",
           "total_people",
           "total_calculations",
-          "total_reports"
+          "total_reports",
+          "v2"
         ],
         "title": "AdminStatsOut",
         "type": "object"
@@ -5143,6 +5147,40 @@
         ],
         "title": "UserRole",
         "type": "string"
+      },
+      "V2HealthOut": {
+        "description": "Same five counters as the manual SQL in\ndocs/ops/2026-09-26-v2-activation-connections-workspaces.md Sec.6, now computed\nvia SQLAlchemy and surfaced in the admin dashboard instead of a one-off query.",
+        "properties": {
+          "analysis_failed_24h": {
+            "title": "Analysis Failed 24H",
+            "type": "integer"
+          },
+          "analysis_queued_gt_15min": {
+            "title": "Analysis Queued Gt 15Min",
+            "type": "integer"
+          },
+          "connections_active": {
+            "title": "Connections Active",
+            "type": "integer"
+          },
+          "invitations_pending": {
+            "title": "Invitations Pending",
+            "type": "integer"
+          },
+          "workspaces_active": {
+            "title": "Workspaces Active",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "invitations_pending",
+          "connections_active",
+          "workspaces_active",
+          "analysis_queued_gt_15min",
+          "analysis_failed_24h"
+        ],
+        "title": "V2HealthOut",
+        "type": "object"
       },
       "ValidationError": {
         "properties": {

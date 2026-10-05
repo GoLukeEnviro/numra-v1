@@ -31,6 +31,18 @@ class AdminUserListOut(BaseModel):
     page_size: int
 
 
+class V2HealthOut(BaseModel):
+    """Same five counters as the manual SQL in
+    docs/ops/2026-09-26-v2-activation-connections-workspaces.md Sec.6, now computed
+    via SQLAlchemy and surfaced in the admin dashboard instead of a one-off query."""
+
+    invitations_pending: int
+    connections_active: int
+    workspaces_active: int
+    analysis_queued_gt_15min: int
+    analysis_failed_24h: int
+
+
 class AdminStatsOut(BaseModel):
     total_users: int
     active_users: int
@@ -41,6 +53,7 @@ class AdminStatsOut(BaseModel):
     total_people: int
     total_calculations: int
     total_reports: int
+    v2: V2HealthOut
 
 
 class FeatureFlagOut(BaseModel):

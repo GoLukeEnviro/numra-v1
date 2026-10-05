@@ -41,6 +41,12 @@ export const enAdmin: Record<keyof typeof deAdmin, string> = {
   "admin.stats.totalPeople": "Profiles",
   "admin.stats.totalCalculations": "Calculations",
   "admin.stats.totalReports": "Reports",
+  "admin.dashboard.v2Title": "V2 status",
+  "admin.stats.invitationsPending": "Pending invitations",
+  "admin.stats.connectionsActive": "Active connections",
+  "admin.stats.workspacesActive": "Active workspaces",
+  "admin.stats.analysisQueuedWarning": "Analyses queued > 15 min",
+  "admin.stats.analysisFailed24h": "Failed analyses (24h)",
 
   // User list
   "admin.users.title": "Users",

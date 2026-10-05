@@ -1910,6 +1910,7 @@ export interface components {
             total_reports: number;
             /** Total Users */
             total_users: number;
+            v2: components["schemas"]["V2HealthOut"];
         };
         /** AdminUserListOut */
         AdminUserListOut: {
@@ -4075,6 +4076,24 @@ export interface components {
          * @enum {string}
          */
         UserRole: "USER" | "ADMIN";
+        /**
+         * V2HealthOut
+         * @description Same five counters as the manual SQL in
+         *     docs/ops/2026-09-26-v2-activation-connections-workspaces.md Sec.6, now computed
+         *     via SQLAlchemy and surfaced in the admin dashboard instead of a one-off query.
+         */
+        V2HealthOut: {
+            /** Analysis Failed 24H */
+            analysis_failed_24h: number;
+            /** Analysis Queued Gt 15Min */
+            analysis_queued_gt_15min: number;
+            /** Connections Active */
+            connections_active: number;
+            /** Invitations Pending */
+            invitations_pending: number;
+            /** Workspaces Active */
+            workspaces_active: number;
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */
