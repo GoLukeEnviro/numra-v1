@@ -44,6 +44,8 @@ Dieses Runbook schaltet **nur** frei:
 
 ## 4. Gemeinsame Befehle
 
+**Seit der Admin-Flags-Erweiterung (siehe `docs/planning/2026-10-04-admin-panel-flags-plan.md`) ist die DB-Tabelle `feature_flags` die Laufzeit-Quelle der Wahrheit, nicht mehr `/etc/numra/numra.env`.** Flag-Änderungen laufen normalerweise über `/admin/flags` (Rolle ADMIN) im Browser -- wirkt beim nächsten Request, **kein** Container-Neustart nötig. Die folgenden Env-basierten Befehle bleiben als Fallback dokumentiert, falls die API selbst nicht erreichbar ist (z. B. um `v2_master` im Notfall ohne funktionierendes Admin-Panel abzuschalten) -- Env-Werte wirken dann erst nach einem `up -d --no-deps --force-recreate api`, und nur so lange, bis jemand den Wert über `/admin/flags` wieder überschreibt (DB gewinnt).
+
 ```bash
 # Immer explizit (release-verification.md):
 DC="docker compose -p numra-prod --env-file /etc/numra/numra.env -f /opt/numra/compose.production.yml"
@@ -59,7 +61,7 @@ sudo grep -E '^AVENYTH_' /etc/numra/numra.env || echo "keine AVENYTH_-Zeilen"
 /opt/numra/repo/scripts/ops/v2-flag-probe.sh http://127.0.0.1:17800 stageN
 ```
 
-Flags wirken nur im `api`-Prozess (`services/feature_flags.py`). Nach einer Env-Änderung reicht deshalb:
+Fallback-Pfad: Env-Werte wirken nur im `api`-Prozess und nur, bis die DB-Tabelle neu gelesen wird. Nach einer Env-Änderung reicht:
 
 ```bash
 $DC up -d --no-deps --force-recreate api
