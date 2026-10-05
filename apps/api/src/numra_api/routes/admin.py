@@ -6,7 +6,13 @@ import uuid
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from numra_api.deps import get_db, rate_limit_by_user, require_admin, require_csrf
+from numra_api.deps import (
+    get_db,
+    get_feature_flag_cache,
+    rate_limit_by_user,
+    require_admin,
+    require_csrf,
+)
 from numra_api.models import User
 from numra_api.models.enums import AuditAction, UserRole
 from numra_api.repositories.admin import (
@@ -15,6 +21,7 @@ from numra_api.repositories.admin import (
     list_users_paginated,
 )
 from numra_api.repositories.audit import list_audit_events_paginated, record_audit_event
+from numra_api.repositories.feature_flags import get_all_flags_with_metadata, set_flag
 from numra_api.repositories.sessions import revoke_all_sessions_for_user
 from numra_api.repositories.users import get_user_by_id, set_user_active
 from numra_api.schemas.admin import (
@@ -22,8 +29,12 @@ from numra_api.schemas.admin import (
     AdminUserListOut,
     AdminUserOut,
     AuditEventListOut,
+    FeatureFlagListOut,
+    FeatureFlagOut,
+    FeatureFlagUpdateIn,
 )
 from numra_api.services.errors import Forbidden, NotFoundError
+from numra_api.services.feature_flag_cache import FeatureFlagCache
 
 #: Router-level gate -- every route below is admin-only by construction, not by a
 #: per-route dependency that could be forgotten on a future addition.
@@ -150,6 +161,41 @@ async def revoke_user_sessions(
         action=AuditAction.USER_SESSIONS_REVOKED,
         target_user_id=target.id,
     )
+
+
+@router.get("/flags", response_model=FeatureFlagListOut)
+async def list_flags(db: AsyncSession = Depends(get_db, scope="function")) -> FeatureFlagListOut:
+    rows = await get_all_flags_with_metadata(db)
+    return FeatureFlagListOut(
+        flags=[
+            FeatureFlagOut(
+                name=row.name,
+                enabled=row.enabled,
+                updated_at=row.updated_at,
+                updated_by_user_id=str(row.updated_by_user_id) if row.updated_by_user_id else None,
+            )
+            for row in rows
+        ]
+    )
+
+
+@router.patch(
+    "/flags/{name}",
+    status_code=204,
+    dependencies=[
+        Depends(require_csrf),
+        Depends(rate_limit_by_user("admin:flag_update", limit=60, window_seconds=3600)),
+    ],
+)
+async def update_flag(
+    name: str,
+    body: FeatureFlagUpdateIn,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db, scope="function"),
+    cache: FeatureFlagCache = Depends(get_feature_flag_cache),
+) -> None:
+    await set_flag(db, name=name, enabled=body.enabled, actor_user_id=admin.id)
+    cache.invalidate()
 
 
 @router.get("/audit", response_model=AuditEventListOut)

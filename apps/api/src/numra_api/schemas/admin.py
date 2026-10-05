@@ -43,6 +43,21 @@ class AdminStatsOut(BaseModel):
     total_reports: int
 
 
+class FeatureFlagOut(BaseModel):
+    name: str
+    enabled: bool
+    updated_at: dt.datetime
+    updated_by_user_id: str | None
+
+
+class FeatureFlagListOut(BaseModel):
+    flags: list[FeatureFlagOut]
+
+
+class FeatureFlagUpdateIn(BaseModel):
+    enabled: bool
+
+
 class AuditEventOut(BaseModel):
     id: str
     actor_user_id: str | None

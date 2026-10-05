@@ -12,6 +12,7 @@ ADMIN_ROUTES = [
     ("GET", "/v1/admin/stats"),
     ("GET", "/v1/admin/users"),
     ("GET", "/v1/admin/audit"),
+    ("GET", "/v1/admin/flags"),
 ]
 
 
