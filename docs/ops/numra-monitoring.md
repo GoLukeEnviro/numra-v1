@@ -71,7 +71,12 @@ Jobabfrage fehl und `jobs_unreadable` alarmiert weiterhin sofort im ersten Lauf.
 **Statusfile.** Es wird atomar geschrieben (Temp-Datei im selben Verzeichnis, dann
 Umbenennen). Ist es nicht schreibbar, wird das als eigener Alarm `status:file_unwritable`
 gemeldet (Exit 1): ohne Statusfile gingen die Zähler verloren und der Schwellwert-Alarm
-könnte nie auslösen. Ein fehlendes, leeres oder korruptes vorheriges Statusfile zählt als
+könnte nie auslösen. Der Modus ist unabhängig von der umask 0644. In Meldungen und im Statusfile erscheinen nur
+druckbare ASCII-Zeichen; Steuerzeichen und ungültige UTF-8-Bytes aus der Konfiguration
+werden verworfen, damit der Statusfile immer gültiges JSON bleibt. Die Konfigurationsdatei
+wird als Shell-Code eingelesen und darf keinen `EXIT`-Trap setzen (das Skript setzt
+seinen eigenen für das Aufräumen der Temp-Datei). Ein fehlendes, leeres oder korruptes
+vorheriges Statusfile zählt als
 „keine Vorwerte“ (Zähler bei 0) und wird neu geschrieben.
 
 **Schwellwert N = 3.** Bei fünf Minuten Timer-Intervall (OnUnitActiveSec=5min) fällt der Alarm im dritten fehlgeschlagenen Lauf, also etwa 10 Minuten nach dem ersten Fehlschlag. Mit Timer-Jitter (AccuracySec=30s) und Laufzeit bleibt die maximale Erkennungszeit **≤ 15 Minuten**. Ein einzelner Aussetzer (Neustart eines Containers, kurzer Timeout) erzeugt nur eine Warnung. FAIL_THRESHOLD ist anpassbar; ein ungültiger Wert fällt auf 3 zurück.
