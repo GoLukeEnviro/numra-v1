@@ -23,6 +23,11 @@
 #     The absolute number is NOT an alarm: a historical backlog from development would
 #     otherwise alarm every five minutes forever.
 #   * newest database dump older than 26 h                         -> failure
+#   * status file cannot be written (atomically, temp + rename)     -> failure
+#     (`status:file_unwritable`; without the file the counters are lost, so a quiet
+#     fail-open here would disarm the threshold alarm)
+#   * invalid or duplicate EXPECTED_DEPENDENCIES entries            -> failure
+#     (`config:invalid_expectation_<entry>`; names match [a-z0-9_]+)
 #
 # Configuration: CONFIG_FILE (default /etc/numra/healthcheck.env, optional, sourced if
 # readable). CONFIG_FILE, STATUS_FILE, BACKUP_DIR and BACKUP_MAX_AGE_SECONDS can be
@@ -79,12 +84,11 @@ declare -A prev=()
 
 # --- helpers -------------------------------------------------------------------------
 
-json_string() { printf '"%s"' "$(printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g')"; }
+json_string() { printf '"%s"' "$(printf '%s' "$1" | tr -d '\000-\037' | sed 's/\\/\\\\/g; s/"/\\"/g')"; }
 
 json_array() {
-  if [ "$#" -eq 0 ]; then printf '[]'; return; fi
-  local out
-  out=$(printf '"%s",' "$@")
+  local item out=""
+  for item in "$@"; do out+="$(json_string "$item"),"; done
   printf '[%s]' "${out%,}"
 }
 
@@ -107,15 +111,23 @@ PY
 }
 
 parse_expectations() {
-  local entry name class
-  for entry in ${EXPECTED_DEPENDENCIES//,/ }; do
+  local entry name class entries
+  set -f # entries are data, never globs
+  # shellcheck disable=SC2206
+  entries=(${EXPECTED_DEPENDENCIES//,/ })
+  set +f
+  for entry in "${entries[@]}"; do
     name=${entry%%=*}
     class=${entry#*=}
     case "$class" in
       required | optional-disabled) ;;
       *) failures+=("config:invalid_expectation_${entry}"); continue ;;
     esac
-    case "$name" in '' | *[!a-z_]*) failures+=("config:invalid_expectation_${entry}"); continue ;; esac
+    case "$name" in '' | *[!a-z0-9_]*) failures+=("config:invalid_expectation_${entry}"); continue ;; esac
+    if [ -n "${dep_class[$name]+set}" ]; then
+      failures+=("config:invalid_expectation_duplicate_${entry}")
+      continue
+    fi
     dep_names+=("$name")
     dep_class[$name]=$class
   done
@@ -295,12 +307,24 @@ else
   [ "$age" -le "$BACKUP_MAX_AGE_SECONDS" ] || failures+=("backup:stale_${age}s")
 fi
 
-{
-  printf '{"checked_at":"%s",' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-  ( IFS=,; printf '%s' "${lines[*]}" )
-  printf ',"failures":%s,"warnings":%s,"recoveries":%s}\n' \
-    "$(json_array "${failures[@]}")" "$(json_array "${warnings[@]}")" "$(json_array "${recoveries[@]}")"
-} > "$STATUS_FILE" 2>/dev/null || true
+# Atomic write (temp file in the same directory + rename). A status file that cannot be
+# written is itself a failure: without it the persisted counters are lost and a
+# threshold alarm could never fire (fail-closed).
+status_tmp=""
+trap '[ -z "$status_tmp" ] || rm -f "$status_tmp"' EXIT
+write_status() {
+  status_tmp=$(mktemp "$(dirname "$STATUS_FILE")/.health-status.XXXXXX" 2>/dev/null) || return 1
+  {
+    printf '{"checked_at":"%s",' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    ( IFS=,; printf '%s' "${lines[*]}" )
+    printf ',"failures":%s,"warnings":%s,"recoveries":%s}\n' \
+      "$(json_array "${failures[@]}")" "$(json_array "${warnings[@]}")" "$(json_array "${recoveries[@]}")"
+  } > "$status_tmp" 2>/dev/null &&
+    chmod 0644 "$status_tmp" 2>/dev/null &&
+    mv -T "$status_tmp" "$STATUS_FILE" 2>/dev/null &&
+    status_tmp=""
+}
+write_status || failures+=("status:file_unwritable")
 
 [ "${#warnings[@]}" -eq 0 ] || echo "NUMRA healthcheck WARN: ${warnings[*]}"
 [ "${#recoveries[@]}" -eq 0 ] || echo "NUMRA healthcheck RECOVERED: ${recoveries[*]}"
