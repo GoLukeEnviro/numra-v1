@@ -7,8 +7,6 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 
 from numra_api.app import create_app
-from numra_api.repositories.feature_flags import get_all_flags
-from numra_api.services.feature_flag_cache import FeatureFlagCache
 from numra_api.auth.passwords import hash_password
 from numra_api.auth.tokens import hash_token
 from numra_api.config import Settings
@@ -20,7 +18,9 @@ from numra_api.models import (
     User,
     WorkspaceMember,
 )
+from numra_api.repositories.feature_flags import get_all_flags
 from numra_api.repositories.users import create_user
+from numra_api.services.feature_flag_cache import FeatureFlagCache
 
 pytestmark = pytest.mark.integration
 

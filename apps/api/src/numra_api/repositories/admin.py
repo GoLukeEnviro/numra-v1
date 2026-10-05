@@ -15,7 +15,12 @@ from numra_api.models.enums import (
     UserRole,
     WorkspaceStatus,
 )
-from numra_api.models.tables import AnalysisJob, ConnectionInvitation, RelationshipWorkspace, UserConnection
+from numra_api.models.tables import (
+    AnalysisJob,
+    ConnectionInvitation,
+    RelationshipWorkspace,
+    UserConnection,
+)
 from numra_api.schemas.admin import AdminStatsOut, AdminUserOut, V2HealthOut
 
 

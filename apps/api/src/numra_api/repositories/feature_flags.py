@@ -25,9 +25,7 @@ async def get_all_flags_with_metadata(db: AsyncSession) -> list[FeatureFlag]:
     return list(result.scalars())
 
 
-async def set_flag(
-    db: AsyncSession, *, name: str, enabled: bool, actor_user_id: uuid.UUID
-) -> None:
+async def set_flag(db: AsyncSession, *, name: str, enabled: bool, actor_user_id: uuid.UUID) -> None:
     flag = await db.get(FeatureFlag, name)
     if flag is None:
         raise NotFoundError(f"unknown flag: {name}")

@@ -13,7 +13,6 @@ from numra_api.auth.csrf import CSRF_COOKIE_NAME, CSRF_HEADER_NAME, csrf_tokens_
 from numra_api.auth.sessions import hash_session_token
 from numra_api.config import Settings
 from numra_api.email.sender import EmailSender
-from numra_api.services.feature_flag_cache import FeatureFlagCache
 from numra_api.models import Session as SessionModel
 from numra_api.models import User
 from numra_api.models.enums import UserRole
@@ -26,6 +25,7 @@ from numra_api.services.errors import (
     NotAuthenticated,
     RateLimitExceeded,
 )
+from numra_api.services.feature_flag_cache import FeatureFlagCache
 from numra_api.services.pdf_client import PdfServiceClient
 from numra_api.storage.exports import ExportStorage
 from numra_interpretation.llm.types import LLMProvider

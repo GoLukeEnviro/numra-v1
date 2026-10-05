@@ -58,7 +58,10 @@ async def test_admin_can_toggle_flag_and_cache_is_invalidated_immediately(
     client, sessionmaker, app
 ) -> None:
     await _seed_user(
-        sessionmaker, "admin-toggle@example.com", "correct horse battery staple", role=UserRole.ADMIN
+        sessionmaker,
+        "admin-toggle@example.com",
+        "correct horse battery staple",
+        role=UserRole.ADMIN,
     )
     await _login(client, "admin-toggle@example.com", "correct horse battery staple")
 

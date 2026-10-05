@@ -13,9 +13,9 @@ from numra_api.config import Settings
 from numra_api.db import build_engine, build_sessionmaker
 from numra_api.email.sender import EmailSender
 from numra_api.models import Base, EntitlementSet, EvidencePolicy, FeatureFlag
+from numra_api.repositories.entitlements import DEFAULT_ENTITLEMENT_SET_KEY
 from numra_api.repositories.feature_flags import get_all_flags
 from numra_api.services.feature_flag_cache import FeatureFlagCache
-from numra_api.repositories.entitlements import DEFAULT_ENTITLEMENT_SET_KEY
 from numra_api.services.llm_factory import build_llm_provider
 from numra_interpretation.llm.types import LLMProvider
 
@@ -134,6 +134,7 @@ async def app(settings: Settings, db_engine):
     # export_storage) -- this fixture overrides that state attribute afterwards,
     # purely so tests can read back what was "sent" (see FakeEmailSender above).
     application.state.email_sender = FakeEmailSender()
+
     # lifespan() never runs under ASGITransport in this test harness (same reason
     # engine/sessionmaker are set by hand above instead of letting lifespan do it) --
     # without this, every V2 route (require_v2_master/require_v2_phase) would raise
