@@ -24,12 +24,21 @@ trägt genau die Dienstdetails, die für die Bewertung nötig sind. Andere HTTP-
 
 ## Alarmsemantik pro Dienst
 
-Soll-Zustand je Dienst in `healthcheck.env`:
+Soll-Zustand je Dienst in `healthcheck.env`. **Nur ein Beispiel** — der Ist-Stand von
+Produktion und Audit (`curl -s http://127.0.0.1:17800/v1/health/ready`, `…:17801…`) muss
+vor dem Rollout geprüft werden. Meldet ein Dienst z. B. `llm=healthy`, alarmiert
+`llm=optional-disabled` sofort als Konfigurationsabweichung:
 
 ```bash
+# BEISPIEL, nicht blind übernehmen:
 EXPECTED_DEPENDENCIES="database=required numerology_engine=required llm=optional-disabled pdf=required"
 FAIL_THRESHOLD=3
 ```
+
+`EXPECTED_DEPENDENCIES` gilt **global für Produktion und Audit** gleichermaßen. Dienstnamen
+bestehen aus `[a-z0-9_]`; ein Tippfehler (`pdf=reqired`), ein unbekannter Wert oder ein
+doppelter Eintrag wird als `config:invalid_expectation_<eintrag>` gemeldet (Alarm, Exit 1)
+und nicht stillschweigend ignoriert.
 
 `required` = der Dienst muss laufen, `optional-disabled` = der Dienst ist bewusst
 abgeschaltet und muss `disabled` melden. Dienste, die nicht aufgeführt sind, werden nicht
@@ -50,8 +59,20 @@ Gesamtstatus.
 Timerläufen erhalten, steigt bei jedem Fehlschlag und fällt bei der ersten erfolgreichen
 Prüfung auf 0 zurück. Diese Rückkehr wird einmalig als Entwarnung gemeldet
 (`recoveries` im Statusfile, `RECOVERED` auf stdout/Journal). Fällt der Endpunkt aus,
-bleiben die Dienstzähler unverändert erhalten. `degraded` setzt einen Zähler weder zurück
-noch hoch.
+bleiben die Dienstzähler unverändert erhalten. „In Folge“ heißt: `degraded` setzt einen
+Zähler weder zurück noch hoch, die Folge unhealthy, unhealthy, degraded, unhealthy
+alarmiert also erst im 4. Lauf. Nur ein gesunder Lauf setzt auf 0.
+
+**Bewusste Verhaltensänderung:** Ein Datenbankausfall (`database=unhealthy` im Body,
+Gesamtstatus `unhealthy`) wird erst im dritten Lauf alarmiert, also nach etwa 10–15
+Minuten statt wie früher sofort. Fällt dagegen der Postgres-Container weg, schlägt die
+Jobabfrage fehl und `jobs_unreadable` alarmiert weiterhin sofort im ersten Lauf.
+
+**Statusfile.** Es wird atomar geschrieben (Temp-Datei im selben Verzeichnis, dann
+Umbenennen). Ist es nicht schreibbar, wird das als eigener Alarm `status:file_unwritable`
+gemeldet (Exit 1): ohne Statusfile gingen die Zähler verloren und der Schwellwert-Alarm
+könnte nie auslösen. Ein fehlendes, leeres oder korruptes vorheriges Statusfile zählt als
+„keine Vorwerte“ (Zähler bei 0) und wird neu geschrieben.
 
 **Schwellwert N = 3.** Bei fünf Minuten Timer-Intervall (OnUnitActiveSec=5min) fällt der Alarm im dritten fehlgeschlagenen Lauf, also etwa 10 Minuten nach dem ersten Fehlschlag. Mit Timer-Jitter (AccuracySec=30s) und Laufzeit bleibt die maximale Erkennungszeit **≤ 15 Minuten**. Ein einzelner Aussetzer (Neustart eines Containers, kurzer Timeout) erzeugt nur eine Warnung. FAIL_THRESHOLD ist anpassbar; ein ungültiger Wert fällt auf 3 zurück.
 
@@ -89,6 +110,7 @@ PROD_READY_URL=http://127.0.0.1:17800/v1/health/ready
 PROD_DB_CONTAINER=numra-prod-postgres-1
 AUDIT_READY_URL=http://127.0.0.1:17801/v1/health/ready
 AUDIT_DB_CONTAINER=numra-audit-postgres-1
+# Beispielwerte: Soll-Zustand vor dem Rollout gegen den Ist-Stand prüfen (gilt für Prod und Audit)
 EXPECTED_DEPENDENCIES="database=required numerology_engine=required llm=optional-disabled pdf=required"
 FAIL_THRESHOLD=3
 ```
@@ -151,6 +173,9 @@ bash scripts/ops/tests/test-numra-healthcheck.sh
   Fehlerzähler leben nur im Statusfile (Reset des Files = Zähler bei 0).
 - Keine automatische Reparatur. Der Lauf beobachtet nur — ein Neustart von Containern
   oder ein Zurückspielen von Sicherungen bleibt ein bewusster Eingriff.
+- `EXPECTED_DEPENDENCIES` und `FAIL_THRESHOLD` gelten global für Produktion und Audit;
+  eine getrennte Soll-Konfiguration je Stack gibt es nicht. Ebenso gibt es keinen eigenen
+  Schwellwert pro Dienst (z. B. für `database`).
 - Das Verhalten von `/v1/health/ready` (200 vs. 503 bei Teilausfall) ist nicht Teil des
   Monitors; er wertet beide Varianten mit Body korrekt aus.
 - `worker` und `analysis-worker` haben im Compose **keinen** Healthcheck (nur
