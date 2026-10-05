@@ -50,7 +50,9 @@ Readiness-Antwort des API enthält dessen Zustand als `pdf`.
 
 - `numra-healthcheck.timer` (alle 5 min) → `numra-healthcheck.service`. Prüft die
   Readiness beider Stacks über `127.0.0.1:17800/17801/v1/health/ready`, die Frische des
-  jüngsten Dumps (Grenze 26 h) und zählt fehlgeschlagene Report-/Analysejobs.
+  jüngsten Dumps (Grenze 26 h) und zählt fehlgeschlagene Report-/Analysejobs. Die
+  Readiness wird je Dienst gegen `EXPECTED_DEPENDENCIES` bewertet (Alarm ab 3
+  aufeinanderfolgenden Fehlschlägen, Details: `docs/ops/numra-monitoring.md`).
   Schreibt `/var/lib/numra/health-status.json`; ein Fehlschlag lässt die Unit in
   `systemctl --failed` auftauchen. Skript: `scripts/ops/numra-healthcheck.sh`.
 - `numra-backup.timer` (täglich 03:16 lokal) → `numra-backup.sh`: `pg_dump -Fc` der
