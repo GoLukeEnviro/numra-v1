@@ -238,6 +238,108 @@ write_config "EXPECTED_DEPENDENCIES="
 set_health 200 "$(body healthy healthy healthy disabled disabled)"
 check "no expectations configured: disabled deps are ignored" 0
 
+# ---- Review-Nachbesserungen ------------------------------------------------------------
+# Realistische Teilausfaelle: 503 mit database=unhealthy; 200 mit pdf=unhealthy.
+reset_state
+set_health 503 "$(body unhealthy unhealthy healthy disabled healthy)"
+check "503 database=unhealthy (1/3)" 0
+expect_st 'd["prod_fail_count_database"]' 1
+expect_st 'd["prod_fail_count_readiness"]' 0
+check "503 database=unhealthy (2/3)" 0
+check "503 database=unhealthy (3/3) alarms" 1
+expect_err "database_unhealthy_3x"
+
+reset_state
+set_health 200 "$(body healthy healthy healthy disabled unhealthy)"
+check "200 pdf=unhealthy with overall healthy (1/3)" 0
+expect_st 'd["prod_fail_count_pdf"]' 1
+check "200 pdf=unhealthy (2/3)" 0
+check "200 pdf=unhealthy (3/3) alarms" 1
+expect_err "pdf_unhealthy_3x"
+
+# Mehrere Dienste gleichzeitig mit getrennten Zaehlern.
+reset_state
+set_health 503 "$(body unhealthy unhealthy healthy disabled unhealthy)"
+check "two services fail (1/3)" 0
+check "two services fail (2/3)" 0
+set_health 503 "$(body unhealthy unhealthy healthy disabled healthy)"
+check "pdf recovers while database keeps failing" 1
+expect_st 'd["prod_fail_count_pdf"]' 0
+expect_st 'd["prod_fail_count_database"]' 3
+expect_st 'd["recoveries"]' "['prod:pdf_recovered']"
+expect_err "database_unhealthy_3x"
+
+# degraded setzt den Zaehler weder zurueck noch hoch.
+reset_state
+set_health 200 "$(body healthy healthy healthy disabled unhealthy)"
+check "unhealthy (1)" 0
+check "unhealthy (2)" 0
+set_health 200 "$(body healthy healthy healthy disabled degraded)"
+check "degraded in between keeps the counter" 0
+expect_st 'd["prod_fail_count_pdf"]' 2
+set_health 200 "$(body healthy healthy healthy disabled unhealthy)"
+check "unhealthy after degraded alarms in the 4th run" 1
+
+# Timeout = curl-Exit 28.
+reset_state
+echo 28 > "$CURL_RC_FILE"
+check "curl timeout (1/3)" 0
+check "curl timeout (2/3)" 0
+check "curl timeout (3/3) alarms" 1
+expect_err "readiness_failed_3x"
+
+# Fehlerhafte Soll-Konfiguration wird laut gemeldet.
+reset_state 'EXPECTED_DEPENDENCIES="database=required pdf=reqired"'
+check "typo in class is an invalid expectation" 1
+expect_err "config:invalid_expectation_pdf=reqired"
+
+reset_state 'EXPECTED_DEPENDENCIES="pdf=required pdf=required"'
+check "duplicate entry is reported" 1
+expect_err "invalid_expectation"
+expect_st 'type(d["failures"]).__name__' list
+
+reset_state 'EXPECTED_DEPENDENCIES="pdf=required pdf=optional-disabled"'
+check "conflicting duplicate is reported" 1
+expect_err "invalid_expectation"
+
+reset_state 'EXPECTED_DEPENDENCIES='"'"'pdf="x llm=required'"'"
+check "quotes in config keep the status file valid JSON" 1
+expect_st 'type(d["failures"]).__name__' list
+
+reset_state 'EXPECTED_DEPENDENCIES="pdf2=required"'
+check "digits in service names are allowed" 0
+expect_no_err
+
+mkdir -p "$WORK/globdir" && touch "$WORK/globdir/pdf=required"
+reset_state 'EXPECTED_DEPENDENCIES="*"'
+LABEL="glob in expectations is not expanded"
+set +e; (cd "$WORK/globdir" && bash "$HEALTHCHECK" > "$OUT" 2> "$ERR"); RC=$?; set -e
+[ "$RC" -eq 1 ] || fail "expected exit 1"
+expect_err "invalid_expectation_\*"
+PASSED=$((PASSED + 1)); echo "ok [$LABEL]"
+
+# Vorheriges Statusfile korrupt oder leer: kein Absturz, Datei wird neu geschrieben.
+reset_state
+echo '{"prod_fail_count_pdf": 2, garbage' > "$STATE"
+check "corrupt previous status file" 0
+expect_st 'd["prod_fail_count_pdf"]' 0
+: > "$STATE"
+check "empty previous status file" 0
+expect_st 'd["failures"]' "[]"
+
+# Statusfile nicht schreibbar: fail-closed (Alarm), nichts bleibt liegen.
+reset_state
+LABEL="unwritable status file"
+set +e; STATUS_FILE="$WORK/no-such-dir/health-status.json" bash "$HEALTHCHECK" > "$OUT" 2> "$ERR"; RC=$?; set -e
+[ "$RC" -eq 1 ] || fail "expected exit 1"
+expect_err "status:file_unwritable"
+PASSED=$((PASSED + 1)); echo "ok [$LABEL]"
+
+# Atomares Schreiben: keine Temp-Reste im Statusverzeichnis.
+reset_state
+check "atomic write leaves no temp files" 0
+[ "$(ls -A "$WORK/state" | wc -l)" -eq 1 ] || fail "unexpected files in state dir: $(ls -A "$WORK/state")"
+
 # ---- Isolation: kein Zugriff auf /etc/numra oder /usr/local/bin ------------------------
 LABEL="isolation"
 if command -v strace > /dev/null 2>&1 && strace -f -o /dev/null true 2> /dev/null; then
