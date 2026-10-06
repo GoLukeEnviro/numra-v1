@@ -16,6 +16,7 @@
     "expo": "~57.0.24",
     "expo-secure-store": "~57.0.4",
     "expo-status-bar": "~57.0.1",
+    "lodash": "4.17.15",
     "react": "19.2.3",
     "react-native": "0.86.3"
   },
