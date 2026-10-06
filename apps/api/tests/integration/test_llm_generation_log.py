@@ -36,6 +36,8 @@ pytestmark = pytest.mark.integration
 _EXPECTED_COLUMNS = {
     "id",
     "report_job_id",
+    "analysis_job_id",
+    "chat_message_id",
     "source",
     "provider",
     "model",
@@ -293,9 +295,8 @@ async def test_schema_has_no_prompt_or_text_columns_and_cascades_from_report_job
         assert "JSON" not in str(column["type"]).upper(), column["name"]
     for name in ("prompt_tokens", "completion_tokens", "total_tokens", "latency_ms"):
         assert next(c for c in columns if c["name"] == name)["nullable"] is True
-    (fk,) = fks
-    assert fk["referred_table"] == "report_jobs"
-    assert fk["options"].get("ondelete") == "CASCADE"
+    by_table = {fk["referred_table"]: fk["options"].get("ondelete") for fk in fks}
+    assert by_table["report_jobs"] == "CASCADE"
 
 
 async def test_check_constraints_reject_unknown_source_and_status(db_engine) -> None:

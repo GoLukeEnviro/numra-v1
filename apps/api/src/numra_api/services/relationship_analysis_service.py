@@ -53,6 +53,7 @@ from numra_api.services.errors import (
     RelationshipTypeNotSet,
     SelfProfileRequired,
 )
+from numra_api.services.llm_generation_log import RecordingLLMProvider
 from numra_api.services.workspace_guard import assert_workspace_active
 from numra_interpretation.knowledge_loader import load_knowledge_base
 from numra_interpretation.llm.errors import LLMProviderError
@@ -318,11 +319,25 @@ async def _handle_job_failure(
         await fail_analysis()
 
 
+def _recorded(db: AsyncSession, llm: LLMProvider, job: AnalysisJob) -> LLMProvider:
+    """Protokolliert die Provider-Aufrufe dieses Job-Versuchs in `llm_generations` (im
+    SAVEPOINT der Job-Transaktion, siehe `services/llm_generation_log.py`)."""
+    return RecordingLLMProvider(
+        llm,
+        db,
+        source="analysis",
+        analysis_job_id=job.id,
+        attempt=job.attempt_count,
+        max_attempts=MAX_ATTEMPTS,
+    )
+
+
 async def run_relationship_analysis_job(
     db: AsyncSession, *, job: AnalysisJob, analysis: RelationshipAnalysis, llm: LLMProvider
 ) -> None:
     """Execute one relationship-analysis job end-to-end (assumes the caller already
     claimed ``job`` via `claim_next_analysis_job`)."""
+    llm = _recorded(db, llm, job)
     await mark_job_status(db, job=job, status=AnalysisJobStatus.GENERATING, progress=10)
 
     # `calculation_a_id`/`calculation_b_id` are snapshotted onto `analysis` at job
@@ -399,6 +414,7 @@ async def run_shadow_dynamics_job(
 ) -> None:
     """Execute one shadow-dynamics job end-to-end -- same structure as
     `run_relationship_analysis_job`."""
+    llm = _recorded(db, llm, job)
     await mark_job_status(db, job=job, status=AnalysisJobStatus.GENERATING, progress=10)
 
     calc_a = await db.get(Calculation, analysis.calculation_a_id)

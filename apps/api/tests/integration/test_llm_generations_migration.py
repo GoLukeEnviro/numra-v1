@@ -141,7 +141,7 @@ def test_report_job_fk_cascades_on_delete(migration_url) -> None:
         migration_url,
         "SELECT confdeltype::text AS confdeltype FROM pg_constraint"
         " WHERE conrelid='llm_generations'::regclass"
-        " AND contype='f'",
+        " AND contype='f' AND confrelid='report_jobs'::regclass",
     )
     assert fk["confdeltype"] == "c"
 
@@ -160,6 +160,7 @@ def test_check_constraints_exist_after_upgrade_and_not_after_downgrade(migration
         "ck_llm_generations_source",
         "ck_llm_generations_status",
         "ck_llm_generations_attempt",
+        "ck_llm_generations_single_ref",
     }
     insert = (
         "INSERT INTO llm_generations (id, source, provider, model, status, attempt, prompt_hash)"
@@ -179,3 +180,82 @@ def test_check_constraints_exist_after_upgrade_and_not_after_downgrade(migration
 def test_single_new_head_on_top_of_previous_head() -> None:
     heads = _heads_after_prev()
     assert len(heads) == 1 and heads[0] != PREV
+
+
+REFS = "c5a9d3e72b16"
+
+
+def _fk_rules(url: str) -> dict[str, str]:
+    rows = _sql(
+        url,
+        "SELECT confrelid::regclass::text AS parent, confdeltype::text AS rule"
+        " FROM pg_constraint WHERE conrelid='llm_generations'::regclass AND contype='f'",
+    )
+    return {r["parent"]: r["rule"] for r in rows}
+
+
+def _check_names(url: str) -> set[str]:
+    rows = _sql(
+        url,
+        "SELECT conname FROM pg_constraint WHERE conrelid='llm_generations'::regclass"
+        " AND contype='c'",
+    )
+    return {r["conname"] for r in rows}
+
+
+def test_refs_up_down_up_keeps_legacy_rows_and_sets_cascade_rules(migration_url) -> None:
+    _alembic(migration_url, "upgrade", "9d2f6b83a1c4")
+    before_cols = _columns(migration_url)
+    assert not {"analysis_job_id", "chat_message_id"} & before_cols
+    before_checks = _check_names(migration_url)
+    _sql(
+        migration_url,
+        "INSERT INTO llm_generations (id, source, provider, model, status, attempt, prompt_hash)"
+        " VALUES (gen_random_uuid(), 'report', 'p', 'm', 'ok', 1, 'legacy')",
+    )
+
+    _alembic(migration_url, "upgrade", REFS)
+    up_cols = _columns(migration_url)
+    assert {"analysis_job_id", "chat_message_id"} <= up_cols
+    assert _fk_rules(migration_url) == {
+        "report_jobs": "c",
+        "analysis_jobs": "c",
+        "chat_messages": "c",
+    }
+    assert _check_names(migration_url) == before_checks | {"ck_llm_generations_single_ref"}
+    (legacy,) = _sql(
+        migration_url,
+        "SELECT report_job_id, analysis_job_id, chat_message_id FROM llm_generations",
+    )
+    assert set(legacy.values()) == {None}
+
+    _alembic(migration_url, "downgrade", "9d2f6b83a1c4")
+    assert _columns(migration_url) == before_cols
+    assert _check_names(migration_url) == before_checks
+    assert _fk_rules(migration_url) == {"report_jobs": "c"}
+    assert len(_sql(migration_url, "SELECT 1 FROM llm_generations")) == 1
+
+    _alembic(migration_url, "upgrade", REFS)
+    assert _columns(migration_url) == up_cols
+
+
+def test_single_ref_check_rejects_two_origins_after_upgrade(migration_url) -> None:
+    _alembic(migration_url, "upgrade", "head")
+    with pytest.raises(asyncpg.CheckViolationError):
+        _sql(
+            migration_url,
+            "INSERT INTO llm_generations (id, source, provider, model, status, attempt,"
+            " prompt_hash, analysis_job_id, chat_message_id) VALUES (gen_random_uuid(),"
+            " 'copilot', 'p', 'm', 'ok', 1, 'h', gen_random_uuid(), gen_random_uuid())",
+        )
+
+
+def test_refs_revision_is_the_single_head_on_top_of_the_report_revision() -> None:
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+
+    config = Config(str(API_DIR / "alembic.ini"))
+    config.set_main_option("script_location", str(API_DIR / "alembic"))
+    script = ScriptDirectory.from_config(config)
+    assert script.get_heads() == [REFS]
+    assert script.get_revision(REFS).down_revision == "9d2f6b83a1c4"

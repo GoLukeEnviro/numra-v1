@@ -99,7 +99,12 @@ this list so nothing is added or renamed silently.
   `LLMGeneration` discipline).
 - `LLMGeneration` stores metadata only (no prompt, answer or error text): `source`,
   `status`, `attempt >= 1`, `latency_ms`, nullable provider token counts and a keyed
-  (HMAC-SHA256) prompt hash. `report_job_id` is `ON DELETE CASCADE`.
+  (HMAC-SHA256) prompt hash. Each row names exactly one origin (CHECK `num_nonnulls(...) <= 1`),
+  all three `ON DELETE CASCADE`: `report_job_id` (report worker), `analysis_job_id`
+  (analysis worker), `chat_message_id` (the Copilot ASSISTANT message). A row therefore
+  lives exactly as long as the artefact it belongs to: private Copilot threads go with
+  account deletion, rows of retained shared artefacts (`analysis_jobs`, the SHARED
+  thread) stay.
 
 ## Row-Level Security
 
