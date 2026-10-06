@@ -195,8 +195,13 @@ jobs:
 
   python-audit:
     # Eingabe ist der Export von uv.lock (Runtime-Abhaengigkeiten aller Workspace-Pakete,
-    # mit Hashes). --disable-pip + --require-hashes: kein Resolver, nur die gelockten
-    # Versionen; --strict: nicht pruefbare Pakete lassen den Job scheitern.
+    # mit Hashes). Semantik der Flags (pip-audit 2.10.1 --help / Doku):
+    #   --disable-pip + --require-hashes: kein Resolver, nur die gelockten, gehashten Versionen.
+    #   --strict: scheitert, wenn die Abhaengigkeits-Erfassung fuer ein Paket fehlschlaegt
+    #             (Eingabe nicht auditierbar) -- KEIN Severity-Filter.
+    # pip-audit selbst beendet mit Exit 1 bei JEDEM bekannten Advisory (jede Severity, auch
+    # ohne verfuegbaren Fix); es gibt hier bewusst keine Ausnahme-Mechanik. Das ist strenger
+    # als die Node-Jobs (nur High/Critical).
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

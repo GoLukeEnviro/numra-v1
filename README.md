@@ -173,13 +173,18 @@ cd apps/pdf && node --test src/__tests__/render.test.js
 ```
 
 CI (`.github/workflows/ci.yml`) runs these required checks on every PR: `lint-python`,
-`python-typecheck`, `engine-unit-property`, `no-golden-leakage`, `security-gate`, `sast`,
-`schema-and-openapi-drift`, `web-lint-typecheck-build-test`, `pdf-service-tests`,
-`docker-build`, `docker-compose-e2e`, `playwright`, `system-e2e` (13).
+`python-typecheck`, `engine-unit-property`, `api-integration`, `no-golden-leakage`,
+`security-gate`, `sast`, `schema-and-openapi-drift`, `web-lint-typecheck-build-test`,
+`pdf-service-tests`, `docker-build`, `docker-compose-e2e`, `playwright`, `system-e2e` (14).
 `security-gate` aggregates the four audit jobs `node-audit-web`, `node-audit-pdf`,
 `node-audit-mobile` and `python-audit` and is red unless all four report `success`
-(failure, cancelled and skipped all fail it). Accepted Mobile advisories live in
-`.github/security-exceptions.yml` with an expiry date.
+(failure, cancelled and skipped all fail it). Node audits gate High/Critical production
+advisories per workspace (`apps/web`, `apps/pdf`, `apps/mobile`); a High/Critical finding
+outside these workspaces (e.g. repo root) fails as well. `python-audit` runs `pip-audit`
+on the `uv.lock` export and fails on any known advisory of any severity (`--strict` only
+fails on packages that cannot be audited). Accepted Mobile advisories live in
+`.github/security-exceptions.yml` with an expiry date. Branch protection must be updated
+separately to require `security-gate` and `api-integration`.
 
 ## Docker
 
@@ -285,7 +290,7 @@ state doc above first; the ADRs explain *why*, not *what's shipped right now*.
   data, or full prompts — only IDs, status, latency (`middleware/security.py`,
   `models/tables.py::LLMGeneration`).
 - Dependency security audit: `pnpm audit --prod` per workspace (`apps/web`, `apps/pdf`,
-  `apps/mobile`), `pip-audit` on the `uv.lock` export, and `bandit` (SAST, MEDIUM+ gate) —
+  `apps/mobile`), `pip-audit` on the `uv.lock` export (any known advisory fails), and `bandit` (SAST, MEDIUM+ gate) —
   explicit CI gates (`security-gate` aggregating `node-audit-*`/`python-audit`, and `sast`,
   `.github/workflows/ci.yml`) that fail the build on a High/Critical production advisory
   or a new MEDIUM+ finding. The only exceptions are the time-boxed Mobile entries in
