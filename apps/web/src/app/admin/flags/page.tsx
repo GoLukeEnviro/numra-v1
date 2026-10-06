@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ErrorState, LoadingState } from "@/components/ui/states";
 import { useLocale } from "@/i18n/context";
 import { useAsync } from "@/lib/use-async";
@@ -23,27 +23,37 @@ function sortFlags(flags: FeatureFlagOut[]): FeatureFlagOut[] {
   return [...flags].sort((a, b) => FLAG_ORDER.indexOf(a.name as (typeof FLAG_ORDER)[number]) - FLAG_ORDER.indexOf(b.name as (typeof FLAG_ORDER)[number]));
 }
 
-function FlagRow({ flag, onChanged }: { flag: FeatureFlagOut; onChanged: (updated: FeatureFlagOut) => void }) {
+function FlagRow({ flag, onChanged }: { flag: FeatureFlagOut; onChanged: () => Promise<void> }) {
   const { t, locale } = useLocale();
   const [pending, setPending] = useState(false);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<"save" | "refresh" | null>(null);
   const nameKey = `admin.flags.name.${flag.name}` as MessageKey;
   const descKey = `admin.flags.desc.${flag.name}` as MessageKey;
+
+  async function refresh() {
+    try {
+      await onChanged();
+      setError(null);
+    } catch {
+      setError("refresh");
+    }
+  }
 
   async function handleToggle() {
     // Kein Optimistic-Update: Zustand aendert sich erst nach der Response
     // (gleiches Muster wie app/workspaces/[id]/consent/page.tsx).
     setPending(true);
-    setError(false);
+    setError(null);
     try {
-      const next = !flag.enabled;
-      await api.admin.flags.update(flag.name, { enabled: next });
-      onChanged({ ...flag, enabled: next, updated_at: new Date().toISOString() });
+      await api.admin.flags.update(flag.name, { enabled: !flag.enabled });
     } catch {
-      setError(true);
-    } finally {
+      setError("save");
       setPending(false);
+      return;
     }
+    // PATCH liefert 204 ohne Body: Serverzustand (inkl. updated_by_user_id) neu laden.
+    await refresh();
+    setPending(false);
   }
 
   return (
@@ -79,7 +89,15 @@ function FlagRow({ flag, onChanged }: { flag: FeatureFlagOut; onChanged: (update
           />
         </button>
       </div>
-      {error && <p className="text-xs text-danger">{t("admin.flags.toggleError")}</p>}
+      {error === "save" && <p className="text-xs text-danger">{t("admin.flags.toggleError")}</p>}
+      {error === "refresh" && (
+        <p className="text-xs text-danger">
+          {t("admin.flags.refreshError")}{" "}
+          <button type="button" className="underline" onClick={refresh}>
+            {t("admin.flags.reload")}
+          </button>
+        </p>
+      )}
     </div>
   );
 }
@@ -91,11 +109,12 @@ export default function AdminFlagsPage() {
 
   const current = flags ?? (flagsState.status === "success" ? sortFlags(flagsState.data.flags) : null);
 
-  function handleChanged(updated: FeatureFlagOut) {
-    setFlags((prev) => {
-      const base = prev ?? current ?? [];
-      return base.map((f) => (f.name === updated.name ? updated : f));
-    });
+  const refetchSeq = useRef(0);
+
+  async function handleChanged() {
+    const seq = ++refetchSeq.current;
+    const { flags: fresh } = await api.admin.flags.list();
+    if (seq === refetchSeq.current) setFlags(sortFlags(fresh));
   }
 
   return (

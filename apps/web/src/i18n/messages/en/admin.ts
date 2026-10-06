@@ -141,6 +141,8 @@ export const enAdmin: Record<keyof typeof deAdmin, string> = {
   "admin.flags.lastChangedBy": "by",
   "admin.flags.never": "Never changed",
   "admin.flags.toggleError": "The change could not be saved.",
+  "admin.flags.refreshError": "Saved, but the view could not be refreshed.",
+  "admin.flags.reload": "Reload",
   "admin.flags.name.v2_master": "V2 master switch",
   "admin.flags.desc.v2_master": "Personal workspace (private notes, reflections, tasks). Required for every other flag.",
   "admin.flags.name.connections": "Connections",
