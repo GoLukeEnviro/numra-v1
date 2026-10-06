@@ -16,6 +16,7 @@
     "@numra/schema": "workspace:*",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
+    "lodash": "4.17.15",
     "lucide-react": "^1.48.0",
     "next": "^15.5.24",
     "react": "^18.3.1",
