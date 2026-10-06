@@ -35,7 +35,12 @@ def upgrade() -> None:
     op.add_column("llm_generations", sa.Column("completion_tokens", sa.Integer(), nullable=True))
     op.add_column("llm_generations", sa.Column("total_tokens", sa.Integer(), nullable=True))
     op.drop_column("llm_generations", "token_usage")
+    # Bestandswerte normalisieren; alles Unbekannte ('success', 'failed', ...) wird 'error',
+    # damit der CHECK auf einer Bestands-DB nie scheitert.
     op.execute("UPDATE llm_generations SET status = lower(status)")
+    op.execute(
+        "UPDATE llm_generations SET status = 'error' WHERE status NOT IN ('ok', 'error', 'retry')"
+    )
     op.create_check_constraint(
         "ck_llm_generations_source",
         "llm_generations",
@@ -46,10 +51,12 @@ def upgrade() -> None:
         "llm_generations",
         "status IN ('ok', 'error', 'retry')",
     )
+    op.create_check_constraint("ck_llm_generations_attempt", "llm_generations", "attempt >= 1")
 
 
 def downgrade() -> None:
     """Downgrade schema. Die Token-Zahlen gehen verloren (kein Rueckweg in das JSONB)."""
+    op.drop_constraint("ck_llm_generations_attempt", "llm_generations", type_="check")
     op.drop_constraint("ck_llm_generations_status", "llm_generations", type_="check")
     op.drop_constraint("ck_llm_generations_source", "llm_generations", type_="check")
     op.add_column(

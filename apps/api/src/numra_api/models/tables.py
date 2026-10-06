@@ -351,6 +351,7 @@ class LLMGeneration(Base):
             "source IN ('report', 'analysis', 'copilot')", name="ck_llm_generations_source"
         ),
         CheckConstraint("status IN ('ok', 'error', 'retry')", name="ck_llm_generations_status"),
+        CheckConstraint("attempt >= 1", name="ck_llm_generations_attempt"),
     )
 
     id: Mapped[uuid.UUID] = _uuid_pk()

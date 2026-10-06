@@ -7,21 +7,29 @@ Nutzerpfad (Report-Job) in keinem Fall scheitern lassen.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 import re
 import uuid
 
 import pytest
+from pydantic import BaseModel, TypeAdapter, ValidationError
 from sqlalchemy import inspect, select, text
+from sqlalchemy.exc import IntegrityError
 
 from numra_api.auth.passwords import hash_password
 from numra_api.models import LLMGeneration, ReportJob
 from numra_api.models.enums import ReportJobStatus
+from numra_api.repositories.reports import MAX_ATTEMPTS
 from numra_api.repositories.users import create_user
-from numra_api.services.llm_generation_log import record
+from numra_api.services import llm_generation_log as log_module
+from numra_api.services.llm_generation_log import RecordingLLMProvider, record
 from numra_api.worker import run_one_cycle
 from numra_interpretation.llm.errors import LLMProviderTimeout, LLMProviderUnavailable
 from numra_interpretation.llm.mock_provider import MockLLMProvider
+from numra_interpretation.llm.types import GenerationRequest, StructuredGenerationRequest
+from numra_interpretation.report.schemas import GeneratedSectionContent
 
 pytestmark = pytest.mark.integration
 
@@ -301,3 +309,130 @@ async def test_check_constraints_reject_unknown_source_and_status(db_engine) -> 
         with pytest.raises(Exception, match="ck_llm_generations"):
             async with db_engine.begin() as conn:
                 await conn.execute(insert, {"source": source, "status": status})
+    with pytest.raises(Exception, match="ck_llm_generations_attempt"):
+        async with db_engine.begin() as conn:
+            await conn.execute(
+                text(
+                    "INSERT INTO llm_generations (id, source, provider, model, status, attempt,"
+                    " prompt_hash) VALUES (gen_random_uuid(), 'report', 'p', 'm', 'ok', 0, 'h')"
+                )
+            )
+
+
+async def test_last_allowed_attempt_records_error_not_retry(
+    client, sessionmaker, lukas_payload
+) -> None:
+    """Ein retrybarer Fehler im letzten erlaubten Versuch wird nicht erneut versucht
+    (`_handle_job_failure`) -> Status `error`, nicht `retry`."""
+    job_id = await _create_report_job(client, sessionmaker, lukas_payload, email="g-last@x.de")
+    provider = _CountingProvider(fail_times=99, error=LLMProviderTimeout("boom"))
+
+    for _ in range(MAX_ATTEMPTS):
+        await run_one_cycle(sessionmaker, llm=provider)
+        await _clear_backoff(sessionmaker, job_id)
+
+    rows = await _rows(sessionmaker)
+    assert [(r.attempt, r.status) for r in rows] == [(1, "retry"), (2, "retry"), (3, "error")]
+    assert (await _job(sessionmaker, job_id)).status == ReportJobStatus.FAILED
+
+
+async def test_non_provider_exception_is_recorded_as_error(
+    client, sessionmaker, lukas_payload
+) -> None:
+    try:
+        TypeAdapter(int).validate_python("kein-int")
+    except ValidationError as exc:
+        validation_error = exc
+    await _create_report_job(client, sessionmaker, lukas_payload, email="g-val@x.de")
+
+    await run_one_cycle(sessionmaker, llm=_CountingProvider(fail_times=99, error=validation_error))
+
+    rows = await _rows(sessionmaker)
+    assert [(r.status, r.error_code) for r in rows] == [("error", "ValidationError")]
+
+
+async def test_generate_uses_fast_model_and_structured_uses_premium_model(
+    client, sessionmaker, lukas_payload
+) -> None:
+    job_id = await _create_report_job(client, sessionmaker, lukas_payload, email="g-mod@x.de")
+    async with sessionmaker() as db:
+        wrapped = RecordingLLMProvider(_CountingProvider(), db, job_id=job_id, attempt=1)
+        await wrapped.generate(GenerationRequest(system_instructions="s"))
+        await wrapped.generate_structured(
+            StructuredGenerationRequest(system_instructions="s", target_schema_name="X"),
+            GeneratedSectionContent,
+        )
+        await db.commit()
+    assert sorted(r.model for r in await _rows(sessionmaker)) == ["fake-fast", "fake-premium"]
+
+
+async def test_record_surfaces_flush_errors_of_the_callers_own_pending_work(
+    client, sessionmaker, lukas_payload
+) -> None:
+    """Der Flush steht ausserhalb des Fangnetzes: ein kaputter, ausstehender Nutzerpfad-
+    Zustand wird nicht verschluckt (und die Session nicht still vergiftet)."""
+    await _create_report_job(client, sessionmaker, lukas_payload, email="g-flush@x.de")
+    async with sessionmaker() as db:
+        db.add(ReportJob(report_id=uuid.uuid4(), user_id=uuid.uuid4()))  # FK-Verletzung
+        with pytest.raises(IntegrityError):
+            await record(
+                db,
+                source="report",
+                provider="p",
+                model="m",
+                status="ok",
+                attempt=1,
+                prompt_hash="0" * 64,
+            )
+
+
+async def test_hash_failure_never_masks_provider_result_or_exception(
+    client, sessionmaker, lukas_payload, monkeypatch
+) -> None:
+    def broken(_request):
+        raise RuntimeError("hash kaputt")
+
+    monkeypatch.setattr("numra_api.services.llm_generation_log._prompt_hash", broken)
+    job_id = await _create_report_job(client, sessionmaker, lukas_payload, email="g-hash@x.de")
+    request = StructuredGenerationRequest(system_instructions="s", target_schema_name="X")
+
+    async with sessionmaker() as db:
+        ok = RecordingLLMProvider(_CountingProvider(), db, job_id=job_id, attempt=1)
+        assert isinstance(await ok.generate_structured(request, GeneratedSectionContent), BaseModel)
+        failing = RecordingLLMProvider(
+            _CountingProvider(fail_times=1, error=LLMProviderTimeout("echt")),
+            db,
+            job_id=job_id,
+            attempt=1,
+        )
+        with pytest.raises(LLMProviderTimeout, match="echt"):
+            await failing.generate_structured(request, GeneratedSectionContent)
+        await db.commit()
+
+    rows = await _rows(sessionmaker)
+    assert sorted(r.status for r in rows) == ["ok", "retry"]
+    assert {r.prompt_hash for r in rows} == {"0" * 64}
+
+
+def test_prompt_hash_is_keyed_and_covers_the_user_instructions(monkeypatch) -> None:
+    request = GenerationRequest(system_instructions="s", user_instructions="Anna")
+    plain = hashlib.sha256(
+        json.dumps(
+            request.model_dump(mode="json", exclude={"metadata"}),
+            sort_keys=True,
+            ensure_ascii=False,
+        ).encode()
+    ).hexdigest()
+
+    class _Settings:
+        def __init__(self, secret: str) -> None:
+            self.session_secret = secret
+
+    monkeypatch.setattr(log_module, "get_settings", lambda: _Settings("secret-a"))
+    keyed_a = log_module._prompt_hash(request)
+    monkeypatch.setattr(log_module, "get_settings", lambda: _Settings("secret-b"))
+    keyed_b = log_module._prompt_hash(request)
+    changed = log_module._prompt_hash(request.model_copy(update={"user_instructions": "Berta"}))
+
+    assert len({plain, keyed_a, keyed_b, changed}) == 4
+    assert re.fullmatch(r"[0-9a-f]{64}", keyed_a)

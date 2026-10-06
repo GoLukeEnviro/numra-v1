@@ -96,11 +96,12 @@ def test_up_down_up_and_legacy_row_is_adopted(migration_url) -> None:
     _alembic(migration_url, "upgrade", PREV)
     legacy_cols = _columns(migration_url)
     assert {"token_usage"} <= legacy_cols and "source" not in legacy_cols
-    _sql(
-        migration_url,
-        "INSERT INTO llm_generations (id, provider, model, status, prompt_hash)"
-        " VALUES (gen_random_uuid(), 'ollama_cloud', 'm', 'OK', 'h')",
-    )
+    for status, tag in (("OK", "h1"), ("success", "h2"), ("failed", "h3"), ("Retry", "h4")):
+        _sql(
+            migration_url,
+            "INSERT INTO llm_generations (id, provider, model, status, prompt_hash)"
+            f" VALUES (gen_random_uuid(), 'ollama_cloud', 'm', '{status}', '{tag}')",
+        )
 
     _alembic(migration_url, "upgrade", "head")
     up_cols = _columns(migration_url)
@@ -112,20 +113,23 @@ def test_up_down_up_and_legacy_row_is_adopted(migration_url) -> None:
         "total_tokens",
     } <= up_cols
     assert "token_usage" not in up_cols
-    (row,) = _sql(
-        migration_url, "SELECT source, status, attempt, prompt_tokens FROM llm_generations"
+    rows = _sql(
+        migration_url,
+        "SELECT prompt_hash, source, status, attempt, prompt_tokens FROM llm_generations"
+        " ORDER BY prompt_hash",
     )
-    assert (row["source"], row["status"], row["attempt"], row["prompt_tokens"]) == (
-        "report",
-        "ok",
-        1,
-        None,
-    )
+    # Unbekannte Altwerte ('success'/'failed') duerfen den CHECK nie verletzen -> 'error'.
+    assert [(r["prompt_hash"], r["status"]) for r in rows] == [
+        ("h1", "ok"),
+        ("h2", "error"),
+        ("h3", "error"),
+        ("h4", "retry"),
+    ]
+    assert {(r["source"], r["attempt"], r["prompt_tokens"]) for r in rows} == {("report", 1, None)}
 
     _alembic(migration_url, "downgrade", PREV)
     assert _columns(migration_url) == legacy_cols
-    (down_row,) = _sql(migration_url, "SELECT status FROM llm_generations")
-    assert down_row["status"] == "ok"
+    assert len(_sql(migration_url, "SELECT status FROM llm_generations")) == 4
 
     _alembic(migration_url, "upgrade", "head")
     assert _columns(migration_url) == up_cols
@@ -152,14 +156,22 @@ def test_check_constraints_exist_after_upgrade_and_not_after_downgrade(migration
         return {r["conname"] for r in rows}
 
     _alembic(migration_url, "upgrade", "head")
-    assert names() == {"ck_llm_generations_source", "ck_llm_generations_status"}
+    assert names() == {
+        "ck_llm_generations_source",
+        "ck_llm_generations_status",
+        "ck_llm_generations_attempt",
+    }
     insert = (
         "INSERT INTO llm_generations (id, source, provider, model, status, attempt, prompt_hash)"
-        " VALUES (gen_random_uuid(), '{}', 'p', 'm', '{}', 1, 'h')"
+        " VALUES (gen_random_uuid(), '{}', 'p', 'm', '{}', {}, 'h')"
     )
-    for source, status in (("other", "ok"), ("report", "bogus")):
+    for source, status, attempt in (
+        ("other", "ok", 1),
+        ("report", "bogus", 1),
+        ("report", "ok", 0),
+    ):
         with pytest.raises(asyncpg.CheckViolationError):
-            _sql(migration_url, insert.format(source, status))
+            _sql(migration_url, insert.format(source, status, attempt))
     _alembic(migration_url, "downgrade", PREV)
     assert names() == set()
 
