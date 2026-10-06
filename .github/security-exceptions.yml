@@ -18,7 +18,7 @@ exceptions:
       node-forge <=1.4.0 (RSA-PKCS#1-v1.5-Signaturpruefung), kein gepatchtes Release verfuegbar.
       Nur transitiv ueber expo > @expo/cli > @expo/code-signing-certificates, d. h. Expo-CLI-
       Build-Tooling, nicht als eigene Abhaengigkeit der App.
-    expires: 2027-01-04
+    expires: 2026-10-05
   - id: GHSA-vfj7-8cjw-p6xm
     package: braces
     path: apps/mobile
