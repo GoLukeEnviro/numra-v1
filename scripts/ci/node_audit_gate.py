@@ -20,9 +20,11 @@ def load_audit(path: Path) -> dict:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
-        raise SystemExit(f"FAIL: Audit-Ausgabe nicht lesbar ({exc})")
+        raise SystemExit(f"FAIL: Audit-Ausgabe nicht lesbar ({exc})") from exc
     if not isinstance(data, dict) or "advisories" not in data or "metadata" not in data:
-        raise SystemExit("FAIL: Audit-Ausgabe ohne advisories/metadata (Audit-Endpoint nicht erreichbar?)")
+        raise SystemExit(
+            "FAIL: Audit-Ausgabe ohne advisories/metadata (Audit-Endpoint nicht erreichbar?)"
+        )
     return data
 
 
@@ -37,7 +39,9 @@ def load_exceptions(path: Path | None, workspace: str) -> list[dict]:
         if missing:
             raise SystemExit(f"FAIL: Ausnahme {entry.get('id', '?')} ohne Pflichtfelder {missing}")
         if entry["path"] != workspace:
-            raise SystemExit(f"FAIL: Ausnahme {entry['id']} gilt fuer {entry['path']}, nicht fuer {workspace}")
+            raise SystemExit(
+                f"FAIL: Ausnahme {entry['id']} gilt fuer {entry['path']}, nicht fuer {workspace}"
+            )
     return entries
 
 
@@ -67,13 +71,17 @@ def evaluate(audit: dict, workspace: str, exceptions: list[dict], today: dt.date
     expired = {e["id"] for e in exceptions if _expiry(e) < today}
     for entry in exceptions:
         if entry["id"] in expired:
-            errors.append(f"Ausnahme {entry['id']} ({entry['package']}) abgelaufen am {_expiry(entry)}")
+            errors.append(
+                f"Ausnahme {entry['id']} ({entry['package']}) abgelaufen am {_expiry(entry)}"
+            )
     allowed = {e["id"] for e in exceptions} - expired
     for advisory_id, info in sorted(workspace_findings(audit, workspace).items()):
         if advisory_id in expired:
             continue
         if advisory_id not in allowed:
-            errors.append(f"Neuer {info['severity']}-Befund {advisory_id} ({info['package']}) in {workspace}")
+            errors.append(
+                f"Neuer {info['severity']}-Befund {advisory_id} ({info['package']}) in {workspace}"
+            )
     return errors
 
 
@@ -87,7 +95,9 @@ def main() -> int:
     parser.add_argument("--audit-json", type=Path, required=True)
     parser.add_argument("--workspace", required=True, help="z. B. apps/web")
     parser.add_argument("--exceptions", type=Path)
-    parser.add_argument("--today", type=dt.date.fromisoformat, default=dt.datetime.now(dt.timezone.utc).date())
+    parser.add_argument(
+        "--today", type=dt.date.fromisoformat, default=dt.datetime.now(dt.UTC).date()
+    )
     args = parser.parse_args()
 
     audit = load_audit(args.audit_json)
@@ -97,7 +107,10 @@ def main() -> int:
         print("\n".join(f"FAIL: {e}" for e in errors))
         return 1
     covered = sorted(workspace_findings(audit, args.workspace))
-    print(f"OK: {args.workspace} ohne ungedeckte High/Critical-Befunde; gueltige Ausnahmen genutzt: {covered}")
+    print(
+        f"OK: {args.workspace} ohne ungedeckte High/Critical-Befunde; "
+        f"gueltige Ausnahmen genutzt: {covered}"
+    )
     return 0
 
 

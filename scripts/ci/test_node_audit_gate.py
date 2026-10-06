@@ -20,7 +20,13 @@ def audit(*advisories: dict) -> dict:
 
 
 def exception(ghsa: str, package: str, expires: dt.date) -> dict:
-    return {"id": ghsa, "package": package, "path": "apps/mobile", "reason": "r", "expires": expires}
+    return {
+        "id": ghsa,
+        "package": package,
+        "path": "apps/mobile",
+        "reason": "r",
+        "expires": expires,
+    }
 
 
 VALID = dt.date(2027, 1, 4)
@@ -61,7 +67,9 @@ class MissingPathsTest(unittest.TestCase):
 
 class MobileExceptionsTest(unittest.TestCase):
     def test_only_the_two_valid_exceptions_is_green(self):
-        self.assertEqual(gate.evaluate(audit(*MOBILE_KNOWN), "apps/mobile", MOBILE_EXCEPTIONS, TODAY), [])
+        self.assertEqual(
+            gate.evaluate(audit(*MOBILE_KNOWN), "apps/mobile", MOBILE_EXCEPTIONS, TODAY), []
+        )
 
     def test_new_high_fails(self):
         report = audit(*MOBILE_KNOWN, advisory("GHSA-new", "lodash", "high", "apps/mobile"))
@@ -70,7 +78,10 @@ class MobileExceptionsTest(unittest.TestCase):
         self.assertIn("GHSA-new", errors[0])
 
     def test_expired_exception_fails(self):
-        expired = [exception("GHSA-86w9-cpqp-85rv", "node-forge", dt.date(2026, 10, 5)), MOBILE_EXCEPTIONS[1]]
+        expired = [
+            exception("GHSA-86w9-cpqp-85rv", "node-forge", dt.date(2026, 10, 5)),
+            MOBILE_EXCEPTIONS[1],
+        ]
         errors = gate.evaluate(audit(*MOBILE_KNOWN), "apps/mobile", expired, TODAY)
         self.assertEqual(len(errors), 1)
         self.assertIn("abgelaufen", errors[0])
