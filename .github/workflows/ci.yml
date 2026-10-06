@@ -200,7 +200,7 @@ jobs:
       - name: uv.lock exportieren
         run: uv export --frozen --all-packages --no-dev --no-emit-workspace --format requirements-txt -o "$RUNNER_TEMP/requirements.txt"
       - name: pip-audit (pinned 2.10.1)
-        run: uvx pip-audit==2.10.1 --require-hashes --disable-pip --strict -r "$RUNNER_TEMP/requirements.txt"
+        run: uvx pip-audit@2.10.1 --require-hashes --disable-pip --strict -r "$RUNNER_TEMP/requirements.txt"
 
   security-gate:
     # Einziger vorgesehener Required Check fuer die Audits. `always()` damit der Job auch
