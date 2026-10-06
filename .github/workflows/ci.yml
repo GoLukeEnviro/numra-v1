@@ -146,6 +146,8 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
+      # Ohne Install liefert pnpm audit keine Abhaengigkeitspfade (Workspace-Zuordnung unmoeglich).
+      - run: pnpm install --frozen-lockfile --ignore-scripts
       - name: pnpm audit (Workspace-Audit als JSON)
         run: pnpm audit --prod --json > "$RUNNER_TEMP/audit.json" || true
       - name: apps/web -- High/Critical in produktiven Abhaengigkeiten (inkl. transitiv)
@@ -159,6 +161,8 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
+      # Ohne Install liefert pnpm audit keine Abhaengigkeitspfade (Workspace-Zuordnung unmoeglich).
+      - run: pnpm install --frozen-lockfile --ignore-scripts
       - name: pnpm audit (Workspace-Audit als JSON)
         run: pnpm audit --prod --json > "$RUNNER_TEMP/audit.json" || true
       - name: apps/pdf -- High/Critical in produktiven Abhaengigkeiten (inkl. transitiv)
@@ -179,6 +183,8 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
       - name: Self-Test des Audit-Gates
         run: uv run --no-project --with pyyaml==6.0.2 python -m unittest discover -s scripts/ci -p "test_node_audit_gate.py"
+      # Ohne Install liefert pnpm audit keine Abhaengigkeitspfade (Workspace-Zuordnung unmoeglich).
+      - run: pnpm install --frozen-lockfile --ignore-scripts
       - name: pnpm audit (Workspace-Audit als JSON)
         run: pnpm audit --prod --json > "$RUNNER_TEMP/audit.json" || true
       - name: apps/mobile -- High/Critical gegen Ausnahmeliste

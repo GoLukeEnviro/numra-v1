@@ -48,6 +48,17 @@ class WorkspaceScopeTest(unittest.TestCase):
         self.assertEqual(gate.evaluate(report, "apps/web", [], TODAY), [])
 
 
+class MissingPathsTest(unittest.TestCase):
+    def test_gated_advisory_without_paths_fails_closed(self):
+        report = audit({**advisory("GHSA-aaaa", "x", "high"), "findings": [{"paths": []}]})
+        with self.assertRaises(SystemExit):
+            gate.evaluate(report, "apps/web", [], TODAY)
+
+    def test_moderate_without_paths_is_ignored(self):
+        report = audit({**advisory("GHSA-aaaa", "x", "moderate"), "findings": [{"paths": []}]})
+        self.assertEqual(gate.evaluate(report, "apps/web", [], TODAY), [])
+
+
 class MobileExceptionsTest(unittest.TestCase):
     def test_only_the_two_valid_exceptions_is_green(self):
         self.assertEqual(gate.evaluate(audit(*MOBILE_KNOWN), "apps/mobile", MOBILE_EXCEPTIONS, TODAY), [])

@@ -47,7 +47,13 @@ def workspace_findings(audit: dict, workspace: str) -> dict[str, dict]:
     for advisory in audit["advisories"].values():
         if advisory.get("severity") not in GATED_SEVERITIES:
             continue
-        paths = [p for f in advisory.get("findings", []) for p in f.get("paths", []) if p.startswith(prefix)]
+        all_paths = [p for f in advisory.get("findings", []) for p in f.get("paths", [])]
+        if not all_paths:
+            raise SystemExit(
+                f"FAIL: {advisory['github_advisory_id']} ohne Abhaengigkeitspfade -- "
+                "pnpm audit lief ohne vorheriges pnpm install, Zuordnung zum Workspace unmoeglich"
+            )
+        paths = [p for p in all_paths if p.startswith(prefix)]
         if paths:
             found[advisory["github_advisory_id"]] = {
                 "package": advisory["module_name"],
