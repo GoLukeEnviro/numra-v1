@@ -139,6 +139,8 @@ export const deAdmin = {
   "admin.flags.lastChangedBy": "von",
   "admin.flags.never": "Noch nie geändert",
   "admin.flags.toggleError": "Die Änderung konnte nicht gespeichert werden.",
+  "admin.flags.refreshError": "Gespeichert, Ansicht konnte nicht aktualisiert werden.",
+  "admin.flags.reload": "Neu laden",
   "admin.flags.name.v2_master": "V2-Hauptschalter",
   "admin.flags.desc.v2_master": "Persönlicher Workspace (Private Notizen, Reflexionen, Aufgaben). Voraussetzung für alle anderen Flags.",
   "admin.flags.name.connections": "Verbindungen",

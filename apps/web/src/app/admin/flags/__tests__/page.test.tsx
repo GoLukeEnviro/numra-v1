@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import AdminFlagsPage from "@/app/admin/flags/page";
 import { api, type FeatureFlagOut } from "@/api/client";
@@ -34,6 +34,14 @@ function flag(overrides: Partial<FeatureFlagOut> = {}): FeatureFlagOut {
     updated_by_user_id: null,
     ...overrides,
   };
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((r) => {
+    resolve = r;
+  });
+  return { promise, resolve };
 }
 
 function renderPage() {
@@ -75,11 +83,8 @@ describe("AdminFlagsPage", () => {
     await waitFor(() =>
       expect(screen.getByRole("switch", { name: /Check-ins/i })).toHaveAttribute("aria-checked", "true"),
     );
-    expect(await screen.findByRole("switch", { name: /Check-ins/i })).toHaveAttribute(
-      "aria-checked",
-      "true",
-    );
     expect(api.admin.flags.update).toHaveBeenCalledWith("checkins", { enabled: true });
+    expect(api.admin.flags.list).toHaveBeenCalledTimes(2);
   });
 
   it("does not flip the switch when the update call fails", async () => {
@@ -109,5 +114,55 @@ describe("AdminFlagsPage", () => {
 
     await waitFor(() => expect(screen.queryByText(/Noch nie geändert/)).not.toBeInTheDocument());
     expect(screen.getByRole("switch", { name: /Check-ins/i })).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("reports a refresh failure after a successful save without claiming the save failed", async () => {
+    vi.mocked(api.admin.flags.list)
+      .mockResolvedValueOnce({ flags: [flag({ name: "checkins", enabled: false })] })
+      .mockRejectedValueOnce(new Error("refetch boom"));
+    vi.mocked(api.admin.flags.update).mockResolvedValue(undefined);
+    renderPage();
+
+    fireEvent.click(await screen.findByRole("switch", { name: /Check-ins/i }));
+
+    expect(
+      await screen.findByText(/Gespeichert, Ansicht konnte nicht aktualisiert werden/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Die Änderung konnte nicht gespeichert werden.")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Neu laden" })).toBeInTheDocument();
+    expect(api.admin.flags.update).toHaveBeenCalledTimes(1);
+  });
+
+  it("applies only the newest refetch when responses arrive out of order", async () => {
+    const stale = deferred<{ flags: FeatureFlagOut[] }>();
+    const newest = deferred<{ flags: FeatureFlagOut[] }>();
+    vi.mocked(api.admin.flags.list)
+      .mockResolvedValueOnce({
+        flags: [flag({ name: "checkins", enabled: false }), flag({ name: "copilot", enabled: false })],
+      })
+      .mockReturnValueOnce(stale.promise)
+      .mockReturnValueOnce(newest.promise);
+    vi.mocked(api.admin.flags.update).mockResolvedValue(undefined);
+    renderPage();
+
+    fireEvent.click(await screen.findByRole("switch", { name: /Check-ins/i }));
+    await waitFor(() => expect(api.admin.flags.list).toHaveBeenCalledTimes(2));
+    fireEvent.click(screen.getByRole("switch", { name: /Copilot/i }));
+    await waitFor(() => expect(api.admin.flags.list).toHaveBeenCalledTimes(3));
+
+    newest.resolve({
+      flags: [flag({ name: "checkins", enabled: true }), flag({ name: "copilot", enabled: true })],
+    });
+    await waitFor(() =>
+      expect(screen.getByRole("switch", { name: /Copilot/i })).toHaveAttribute("aria-checked", "true"),
+    );
+    stale.resolve({
+      flags: [flag({ name: "checkins", enabled: true }), flag({ name: "copilot", enabled: false })],
+    });
+    await act(async () => {
+      await stale.promise;
+    });
+
+    expect(screen.getByRole("switch", { name: /Copilot/i })).toHaveAttribute("aria-checked", "true");
   });
 });
