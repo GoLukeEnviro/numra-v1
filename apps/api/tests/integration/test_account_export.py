@@ -583,7 +583,9 @@ async def test_export_never_contains_credentials_or_internals(client, sessionmak
                 report_job_id=job.id,
                 provider="mock",
                 model="m",
-                status="OK",
+                source="report",
+                status="ok",
+                attempt=1,
                 prompt_hash=_SECRET_SENTINELS["LLM prompt hash"],
             )
         )
