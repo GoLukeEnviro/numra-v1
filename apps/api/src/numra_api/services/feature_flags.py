@@ -7,10 +7,12 @@ Route wiederholt. In der Dependencies-Liste des jeweiligen Routers MUSS die Flag
 Dependency VOR jeder Auth-Dependency stehen, damit ein deaktiviertes Feature nicht mal
 die "authenticated vs. nicht authenticated"-Unterscheidung leakt.
 
-Datenquelle ist seit der Admin-Flag-Verwaltung die `feature_flags`-DB-Tabelle (ueber
-den gecachten `FeatureFlagCache`, siehe `services/feature_flag_cache.py`), NICHT mehr
-`Settings`/die `AVENYTH_*_ENABLED`-Env-Vars -- die Settings-Felder bleiben nur als
-deprecated Seed-Default fuer die Migration bestehen (siehe `config.py`).
+Datenquelle ist ausschliesslich die `feature_flags`-DB-Tabelle (ueber den gecachten
+`FeatureFlagCache`, siehe `services/feature_flag_cache.py`), NICHT `Settings`/die
+`AVENYTH_*_ENABLED`-Env-Vars (deprecated, ohne Wirkung -- siehe `config.py`). Die
+Erstbefuellung einer neuen Umgebung erledigt der einmalige Init-Schritt
+`python -m numra_api.cli flags init --profile <name>` (siehe
+`services/feature_flag_bootstrap.py`); danach aendert nur noch `/admin/flags` Werte.
 """
 
 from __future__ import annotations

@@ -126,12 +126,12 @@ class Settings(BaseSettings):
     smtp_use_tls: bool = False
     smtp_timeout_seconds: float = 10.0
 
-    #: DEPRECATED: nur noch Seed-Default fuer die feature_flags-Migration
-    #: (alembic/versions/..._feature_flags_table.py), nicht mehr die Laufzeit-
-    #: Wahrheit -- services/feature_flags.py liest seit der Admin-Flag-Verwaltung aus
-    #: der feature_flags-DB-Tabelle (ueber FeatureFlagCache), nicht mehr von hier.
-    #: Felder bleiben bestehen (Minimal-Touch, keine Folgeschaeden an
-    #: compose.production.yml/docs/ops/*), werden aber zur Laufzeit nicht mehr gelesen.
+    #: DEPRECATED und OHNE Wirkung: Quelle der Wahrheit ist die feature_flags-DB-
+    #: Tabelle (services/feature_flags.py liest sie ueber den FeatureFlagCache). Die
+    #: Erstbefuellung laeuft ueber den Init-Schritt `python -m numra_api.cli flags init
+    #: --profile <name>` (services/feature_flag_bootstrap.py, Profile in
+    #: feature_flag_profiles.py), NICHT ueber diese Felder. Sie bleiben nur bestehen,
+    #: damit vorhandene Env-Dateien weiter ladbar sind (Minimal-Touch).
     avenyth_v2_enabled: bool = False
     avenyth_connections_enabled: bool = False
     avenyth_relationship_workspaces_enabled: bool = False

@@ -16,7 +16,7 @@ Zugangsdaten, keine Tokens, keine Verbindungsstrings — die Werte liegen aussch
 | HTTP nach außen | Tailscale `:8443` | Tailscale `:8444` |
 | API auf Loopback | `:17800` | `:17801` |
 | Datenbank | Container `numra-prod-postgres-1`, DB `numra` | Container `numra-audit-postgres-1`, DB `numra` |
-| Sieben `AVENYTH_*`-V2-Flags | aus (Produktentscheidung) | im Overlay erzwungen an (nur so sind die V2-Flows abnehmbar) |
+| Sieben V2-Flags (DB-Tabelle `feature_flags`) | Profil `NUMRA_FLAGS_PROFILE` beim ersten Init (kein Default; Bestands-DB: unverändert übernommen) | derzeit unverändert aus der DB; soll `audit-all-on` sein (nur so sind die V2-Flows abnehmbar), siehe E3-Vorbereitung unten |
 | Zweck | echte Nutzer | ausschließlich synthetische `@example.com`-Konten |
 
 Beide Stacks laufen mit `restart: unless-stopped` und überleben einen Host-Reboot.
@@ -25,12 +25,13 @@ Auto-Deploy — ein Deploy ist ein bewusster Einzelbefehl (Rezept unten).
 
 ## Container
 
-Produktion: `api`, `web`, `worker`, `postgres`, `redis`, `pdf`, dazu der Migrations-
-Einmaljob. `analysis-worker` (V2-Jobpipeline) ist seit 2026-09-26 in
+Produktion: `api`, `web`, `worker`, `postgres`, `redis`, `pdf`, dazu die Einmaljobs
+`migrate` (Alembic) und danach `flags-init` (siehe „Feature-Flags: Init-Schritt“); `api`
+startet erst, wenn beide erfolgreich beendet sind. `analysis-worker` (V2-Jobpipeline) ist seit 2026-09-26 in
 `deploy/compose.production.yml` definiert und läuft ab Stufe 0 der V2-Aktivierung
 (`docs/ops/2026-09-26-v2-activation-connections-workspaces.md`); bis zum Host-Deploy
-läuft er nur im Audit-Stack. Die sieben `AVENYTH_*`-Flags werden ebenfalls durchgereicht
-(Default `false`).
+läuft er nur im Audit-Stack. Die `AVENYTH_*_ENABLED`-Variablen sind deprecated und ohne
+Wirkung (Quelle der Wahrheit ist die DB, siehe unten).
 
 Das PDF-Rendering läuft in beiden Stacks als eigener Dienst (Chromium); die
 Readiness-Antwort des API enthält dessen Zustand als `pdf`.
@@ -44,7 +45,48 @@ Readiness-Antwort des API enthält dessen Zustand als `pdf`.
 | `/var/lib/numra/backups` | logische Postgres-Dumps + `.sha256`-Sidecar | root, 0750 (Gruppe `hermes` darf **auflisten**, nicht lesen) |
 | `/var/lib/numra/deployed_sha` | Commit, der in Produktion ausgerollt ist | root |
 | `/var/lib/numra/health-status.json` | Ergebnis der Readiness-Probe | `hermes` |
-| DB-Tabelle `feature_flags` (`numra`-DB) | Laufzeitwert der sieben `AVENYTH_*`-Flags -- Quelle der Wahrheit seit der Admin-Flags-Erweiterung (`/admin/flags`), loest `AVENYTH_*_ENABLED` als Laufzeitquelle ab (die Env-Vars bleiben nur Seed-Default fuer die Migration) | ueber `/admin/flags` (Rolle ADMIN) oder direkt per SQL |
+| DB-Tabelle `feature_flags` (`numra`-DB) | Laufzeitwert der sieben V2-Flags -- einzige Quelle der Wahrheit (`/admin/flags`); die `AVENYTH_*_ENABLED`-Env-Vars sind deprecated und wirkungslos | ueber `/admin/flags` (Rolle ADMIN) oder direkt per SQL |
+| DB-Tabelle `feature_flag_bootstrap` (`numra`-DB) | Singleton-Status des einmaligen Flag-Inits (`bootstrap` oder `adopted`, Profil, Zeitpunkt) | nur durch Migration bzw. `flags init` |
+
+## Feature-Flags: Init-Schritt
+
+Flag-Werte entstehen **nicht** aus Env-Variablen, sondern aus der DB. Neue Umgebungen
+werden einmalig initialisiert; danach ändert nur noch `/admin/flags` Werte.
+
+- Befehl: `python -m numra_api.cli flags init [--profile <all-off|beta|audit-all-on>] [--dry-run]`
+  (in Produktion als Einmaljob `flags-init` nach `migrate`; ohne `--profile` gilt
+  `NUMRA_FLAGS_PROFILE` aus der Env-Datei, **kein Default-Profil**).
+- Profil ist nur nötig, solange der Status fehlt. Fehlt er und es ist kein Profil gesetzt
+  (z. B. nach Restore/`alembic stamp`), bricht `init` mit Exit 2 ab, schreibt nichts und
+  `api` startet nicht. Mit vorhandenem Status und `--dry-run` geht es auch ohne Profil;
+  eine Bestands-DB scheitert nie am fehlenden Env.
+- Profile liegen versioniert in `apps/api/src/numra_api/feature_flag_profiles.py`:
+  `all-off` (7 aus), `beta` (`v2_master`, `connections`, `relationship_workspaces`,
+  `copilot` an), `audit-all-on` (7 an).
+- Entscheidend ist allein die Singleton-Zeile in `feature_flag_bootstrap`. Existiert sie,
+  ist `init` ein No-op (auch mit anderem Profil, dann nur ein Hinweis im Log). Fehlt sie,
+  werden Profilwerte und Status in einer Transaktion gesetzt; konkurrierende Inits wirken
+  nur einmal. Jede Änderung wird als `FEATURE_FLAG_CHANGED` mit `actor_user_id = NULL`
+  und `origin = bootstrap` auditiert.
+- Bestands-DBs: stand `feature_flags` (Migration `04d4d6f4c5a0`) schon VOR dem
+  Alembic-Lauf, legt `7c3e9a51b2d8` den Status `adopted` / Profil `pre-existing` an; Werte
+  und `updated_at` bleiben unverändert. Frische DBs (Lauf startet leer oder vor `04d4`)
+  bekommen keinen Status: die Seed-Zeilen von `04d4` stammen dann aus demselben Lauf, und
+  `flags init` setzt das Profil. Die Startrevisionen legt `alembic/env.py` in
+  `config.attributes["starting_heads"]` ab (die Versionstabelle wird während des Laufs
+  fortgeschrieben, ein Skript kann den Startzustand sonst nicht mehr lesen). Fehlt der
+  Eintrag, gilt fail-safe `adopted`.
+- `--dry-run` zeigt Status und Diff und schreibt nichts.
+- Dev-/CI-Compose (`docker-compose.yml`): bewusst **ohne** `flags-init`-Job. Dort wirken
+  die Seed-Werte von `04d4` (4 an, kein Status), das Verhalten der CI-Stacks bleibt
+  unverändert (kleinster Eingriff). Alle sieben an: manuell
+  `docker compose exec api python -m numra_api.cli flags init --profile audit-all-on`.
+  Der `AVENYTH_*`-Block in `docker-compose.rc2.yml` ist wirkungslos.
+- **E3-Vorbereitung Audit-Stack** (Host-Overlay `/opt/numra/audit-compose.yml`, nicht Teil
+  dieses Repos/PRs): `NUMRA_FLAGS_PROFILE=audit-all-on` in `/etc/numra/audit.env` setzen und
+  einen `flags-init`-Job nach `migrate` ergänzen; die `AVENYTH_*`-Variablen im Overlay
+  entfernen (wirkungslos). Eine bestehende Audit-DB wird als `adopted` übernommen, ihre
+  Flagwerte ändert der Init nicht -- Sollwerte dort einmalig über `/admin/flags` setzen.
 
 ## Monitoring und Sicherung
 

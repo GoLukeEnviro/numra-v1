@@ -21,6 +21,14 @@ target_metadata = Base.metadata
 config.set_main_option("sqlalchemy.url", get_settings().database_url)
 
 
+def _record_starting_heads() -> None:
+    """Revisionen, auf denen die DB VOR diesem Lauf stand. Waehrend des Laufs schreibt
+    Alembic die Versionstabelle schritt-/transaktionsweise fort, ein Migrationsskript
+    kann den Startzustand danach nicht mehr aus der DB lesen (siehe
+    7c3e9a51b2d8_feature_flag_bootstrap.py)."""
+    config.attributes["starting_heads"] = tuple(context.get_context().get_current_heads())
+
+
 def run_migrations_offline() -> None:
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
@@ -29,12 +37,14 @@ def run_migrations_offline() -> None:
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
     )
+    _record_starting_heads()
     with context.begin_transaction():
         context.run_migrations()
 
 
 def do_run_migrations(connection: Connection) -> None:
     context.configure(connection=connection, target_metadata=target_metadata)
+    _record_starting_heads()
     with context.begin_transaction():
         context.run_migrations()
 

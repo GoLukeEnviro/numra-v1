@@ -2,6 +2,7 @@
 
     uv run python -m numra_api.cli admin promote-admin --email <email>
     uv run python -m numra_api.cli admin list
+    uv run python -m numra_api.cli flags init [--profile <name>] [--dry-run]
 
 Stdlib `argparse` only -- no new dependency, no new pyproject entrypoint (keeps this
 release's footprint minimal). Reuses the app's existing Settings/engine/sessionmaker
@@ -13,15 +14,19 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import os
+import sys
 
 from sqlalchemy import select
 
 from numra_api.config import get_settings
 from numra_api.db import build_engine, build_sessionmaker
+from numra_api.feature_flag_profiles import PROFILES
 from numra_api.models import User
 from numra_api.models.enums import AuditAction, UserRole
 from numra_api.repositories.audit import record_audit_event
 from numra_api.repositories.users import get_user_by_email, set_user_role
+from numra_api.services.feature_flag_bootstrap import ProfileRequiredError, bootstrap_flags
 
 
 async def promote_admin(email: str) -> int:
@@ -74,6 +79,37 @@ async def list_admins() -> int:
         await engine.dispose()
 
 
+async def init_flags(profile: str | None, dry_run: bool = False) -> int:
+    """Einmaliger Flag-Bootstrap. No-op (Exit 0), sobald ein Bootstrap-Status existiert --
+    auch bei anderem oder ohne Profil. Fehlt der Status, ist ein Profil Pflicht (Exit 2,
+    nichts geschrieben). Mit `dry_run` werden Status und Diff nur angezeigt."""
+    settings = get_settings()
+    engine = build_engine(settings.database_url)
+    sessionmaker = build_sessionmaker(engine)
+    try:
+        try:
+            async with sessionmaker() as db:
+                result = await bootstrap_flags(db, profile=profile, dry_run=dry_run)
+        except (ProfileRequiredError, ValueError) as exc:
+            print(str(exc), file=sys.stderr)
+            return 2
+        if result.status_source is None:
+            print(f"bootstrap status: missing (profile {profile!r})")
+        else:
+            print(f"bootstrap status: {result.status_source} (profile {result.profile!r})")
+        for change in result.changes:
+            print(f"  {change.name}: {change.before} -> {change.after}")
+        if dry_run:
+            print("dry-run: nothing written")
+        elif result.applied:
+            print(f"applied profile {profile!r}")
+        else:
+            print("no-op: bootstrap already done, nothing changed")
+        return 0
+    finally:
+        await engine.dispose()
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="numra_api.cli")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -88,6 +124,19 @@ def build_parser() -> argparse.ArgumentParser:
 
     admin_subparsers.add_parser("list", help="list all ADMIN users")
 
+    flags_parser = subparsers.add_parser("flags", help="feature-flag bootstrap")
+    flags_subparsers = flags_parser.add_subparsers(dest="flags_command", required=True)
+    init_parser = flags_subparsers.add_parser(
+        "init", help="set initial flag values once from a versioned profile"
+    )
+    init_parser.add_argument(
+        "--profile",
+        choices=sorted(PROFILES),
+        default=os.environ.get("NUMRA_FLAGS_PROFILE") or None,
+        help="required while no bootstrap status exists; default: $NUMRA_FLAGS_PROFILE",
+    )
+    init_parser.add_argument("--dry-run", action="store_true")
+
     return parser
 
 
@@ -99,6 +148,8 @@ def main() -> int:
         return asyncio.run(promote_admin(args.email))
     if args.command == "admin" and args.admin_command == "list":
         return asyncio.run(list_admins())
+    if args.command == "flags" and args.flags_command == "init":
+        return asyncio.run(init_flags(args.profile, args.dry_run))
 
     parser.print_help()
     return 1
