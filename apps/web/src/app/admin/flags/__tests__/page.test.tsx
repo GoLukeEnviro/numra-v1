@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import AdminFlagsPage from "@/app/admin/flags/page";
 import { api, type FeatureFlagOut } from "@/api/client";
@@ -64,14 +64,17 @@ describe("AdminFlagsPage", () => {
   });
 
   it("toggles a flag on and calls the API with the correct arguments", async () => {
-    vi.mocked(api.admin.flags.list).mockResolvedValue({
-      flags: [flag({ name: "checkins", enabled: false })],
-    });
+    vi.mocked(api.admin.flags.list)
+      .mockResolvedValueOnce({ flags: [flag({ name: "checkins", enabled: false })] })
+      .mockResolvedValueOnce({ flags: [flag({ name: "checkins", enabled: true })] });
     vi.mocked(api.admin.flags.update).mockResolvedValue(undefined);
     renderPage();
 
     fireEvent.click(await screen.findByRole("switch", { name: /Check-ins/i }));
 
+    await waitFor(() =>
+      expect(screen.getByRole("switch", { name: /Check-ins/i })).toHaveAttribute("aria-checked", "true"),
+    );
     expect(await screen.findByRole("switch", { name: /Check-ins/i })).toHaveAttribute(
       "aria-checked",
       "true",
@@ -90,5 +93,21 @@ describe("AdminFlagsPage", () => {
 
     expect(await screen.findByText("Die Änderung konnte nicht gespeichert werden.")).toBeInTheDocument();
     expect(screen.getByRole("switch", { name: /Check-ins/i })).toHaveAttribute("aria-checked", "false");
+  });
+
+  it("shows 'last changed' from the server state after a toggle without reload", async () => {
+    vi.mocked(api.admin.flags.list)
+      .mockResolvedValueOnce({ flags: [flag({ name: "checkins", enabled: false })] })
+      .mockResolvedValueOnce({
+        flags: [flag({ name: "checkins", enabled: true, updated_by_user_id: "admin-1" })],
+      });
+    vi.mocked(api.admin.flags.update).mockResolvedValue(undefined);
+    renderPage();
+
+    expect(await screen.findByText(/Noch nie geändert/)).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("switch", { name: /Check-ins/i }));
+
+    await waitFor(() => expect(screen.queryByText(/Noch nie geändert/)).not.toBeInTheDocument());
+    expect(screen.getByRole("switch", { name: /Check-ins/i })).toHaveAttribute("aria-checked", "true");
   });
 });

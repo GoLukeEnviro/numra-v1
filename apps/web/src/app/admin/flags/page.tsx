@@ -23,7 +23,7 @@ function sortFlags(flags: FeatureFlagOut[]): FeatureFlagOut[] {
   return [...flags].sort((a, b) => FLAG_ORDER.indexOf(a.name as (typeof FLAG_ORDER)[number]) - FLAG_ORDER.indexOf(b.name as (typeof FLAG_ORDER)[number]));
 }
 
-function FlagRow({ flag, onChanged }: { flag: FeatureFlagOut; onChanged: (updated: FeatureFlagOut) => void }) {
+function FlagRow({ flag, onChanged }: { flag: FeatureFlagOut; onChanged: () => Promise<void> }) {
   const { t, locale } = useLocale();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState(false);
@@ -36,9 +36,9 @@ function FlagRow({ flag, onChanged }: { flag: FeatureFlagOut; onChanged: (update
     setPending(true);
     setError(false);
     try {
-      const next = !flag.enabled;
-      await api.admin.flags.update(flag.name, { enabled: next });
-      onChanged({ ...flag, enabled: next, updated_at: new Date().toISOString() });
+      await api.admin.flags.update(flag.name, { enabled: !flag.enabled });
+      // PATCH liefert 204 ohne Body: Serverzustand (inkl. updated_by_user_id) neu laden.
+      await onChanged();
     } catch {
       setError(true);
     } finally {
@@ -91,11 +91,9 @@ export default function AdminFlagsPage() {
 
   const current = flags ?? (flagsState.status === "success" ? sortFlags(flagsState.data.flags) : null);
 
-  function handleChanged(updated: FeatureFlagOut) {
-    setFlags((prev) => {
-      const base = prev ?? current ?? [];
-      return base.map((f) => (f.name === updated.name ? updated : f));
-    });
+  async function handleChanged() {
+    const { flags: fresh } = await api.admin.flags.list();
+    setFlags(sortFlags(fresh));
   }
 
   return (
