@@ -45,6 +45,40 @@ services:
         condition: service_healthy
     logging: *default-logging
 
+  # Einmaliger Flag-Bootstrap (Plan v4 Variante A): setzt die Feature-Flags nur, wenn
+  # noch kein Bootstrap-Status existiert (frische DB). Auf Bestands-DBs hat die Migration
+  # den Status als `adopted` angelegt -- dann ist der Job ein No-op und aendert nichts.
+  # Profil: NUMRA_FLAGS_PROFILE in /etc/numra/numra.env (all-off | beta | audit-all-on).
+  flags-init:
+    build:
+      context: /opt/numra/repo
+      dockerfile: docker/api.Dockerfile
+      target: api
+    command:
+      - python
+      - -m
+      - numra_api.cli
+      - flags
+      - init
+      - --profile
+      - ${NUMRA_FLAGS_PROFILE:-all-off}
+    working_dir: /app/apps/api
+    restart: "no"
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      # Constructs the shared Settings model, whose production validator forbids
+      # RATE_LIMIT_BACKEND=memory (same rationale as the worker service).
+      RATE_LIMIT_BACKEND: ${RATE_LIMIT_BACKEND:-redis}
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    logging: *default-logging
+
   api:
     build:
       context: /opt/numra/repo
@@ -87,11 +121,10 @@ services:
       SMTP_USE_TLS: ${SMTP_USE_TLS:-false}
       SMTP_TIMEOUT_SECONDS: ${SMTP_TIMEOUT_SECONDS:-10.0}
       WEB_APP_BASE_URL: ${WEB_APP_BASE_URL:-}
-      # AVENYTH V2 runtime feature flags (apps/api/src/numra_api/config.py:131-139,
-      # services/feature_flags.py). Only the api process evaluates them; every
-      # default is false, so this block changes nothing until /etc/numra/numra.env
-      # sets a value. Staged rollout + rollback:
-      # docs/ops/2026-09-26-v2-activation-connections-workspaces.md
+      # DEPRECATED, ohne Wirkung: die V2-Feature-Flags liegen in der DB-Tabelle
+      # `feature_flags` (services/feature_flags.py), Erstbefuellung ueber den
+      # `flags-init`-Job oben, danach /admin/flags. Diese Variablen werden nicht mehr
+      # ausgewertet und bleiben nur, damit vorhandene Env-Dateien unveraendert passen.
       AVENYTH_V2_ENABLED: ${AVENYTH_V2_ENABLED:-false}
       AVENYTH_CONNECTIONS_ENABLED: ${AVENYTH_CONNECTIONS_ENABLED:-false}
       AVENYTH_RELATIONSHIP_WORKSPACES_ENABLED: ${AVENYTH_RELATIONSHIP_WORKSPACES_ENABLED:-false}
@@ -105,6 +138,8 @@ services:
       postgres:
         condition: service_healthy
       migrate:
+        condition: service_completed_successfully
+      flags-init:
         condition: service_completed_successfully
       pdf:
         condition: service_started
