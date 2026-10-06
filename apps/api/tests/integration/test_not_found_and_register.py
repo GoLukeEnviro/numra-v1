@@ -124,7 +124,7 @@ async def test_ready_reports_unhealthy_when_db_down() -> None:
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://testserver") as ac:
         response = await ac.get("/v1/health/ready")
-        assert response.status_code == 200
+        assert response.status_code == 503
         assert response.json()["database"] == "unhealthy"
         assert response.json()["status"] == "unhealthy"
     await bad_engine.dispose()
