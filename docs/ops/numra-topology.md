@@ -64,10 +64,14 @@ werden einmalig initialisiert; danach ändert nur noch `/admin/flags` Werte.
   werden Profilwerte und Status in einer Transaktion gesetzt; konkurrierende Inits wirken
   nur einmal. Jede Änderung wird als `FEATURE_FLAG_CHANGED` mit `actor_user_id = NULL`
   und `origin = bootstrap` auditiert.
-- Bestands-DBs: die Migration `7c3e9a51b2d8` legt bei vorhandenen Flag-Zeilen den Status
-  `adopted` / Profil `pre-existing` an; Werte und `updated_at` bleiben unverändert.
-  Hinweis: auch die Seed-Zeilen der Migration `04d4d6f4c5a0` zählen als vorhandene
-  Zeilen, eine per `alembic upgrade head` neu aufgebaute DB gilt daher als `adopted`.
+- Bestands-DBs: stand `feature_flags` (Migration `04d4d6f4c5a0`) schon VOR dem
+  Alembic-Lauf, legt `7c3e9a51b2d8` den Status `adopted` / Profil `pre-existing` an; Werte
+  und `updated_at` bleiben unverändert. Frische DBs (Lauf startet leer oder vor `04d4`)
+  bekommen keinen Status: die Seed-Zeilen von `04d4` stammen dann aus demselben Lauf, und
+  `flags init` setzt das Profil. Die Startrevisionen legt `alembic/env.py` in
+  `config.attributes["starting_heads"]` ab (die Versionstabelle wird während des Laufs
+  fortgeschrieben, ein Skript kann den Startzustand sonst nicht mehr lesen). Fehlt der
+  Eintrag, gilt fail-safe `adopted`.
 - `--dry-run` zeigt Status und Diff und schreibt nichts.
 
 ## Monitoring und Sicherung

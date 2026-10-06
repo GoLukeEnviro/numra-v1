@@ -15,8 +15,12 @@ import asyncpg
 import pytest
 from sqlalchemy.engine import make_url
 
+from numra_api.db import build_engine, build_sessionmaker
+from numra_api.services.feature_flag_bootstrap import bootstrap_flags
+
 API_DIR = Path(__file__).resolve().parents[2]
 PREV = "04d4d6f4c5a0"  # feature_flags-Tabelle + Seed (wird nicht umgeschrieben)
+PRE_FLAGS = "b9c0d1e2f3a4"  # Vorgaenger von 04d4
 BASE_URL = os.environ.get(
     "TEST_DATABASE_URL", "postgresql+asyncpg://numra:numra_dev_password@127.0.0.1:5432/numra_test"
 )
@@ -108,14 +112,60 @@ def test_empty_flags_table_gets_no_status(migration_url) -> None:
     assert _sql(migration_url, "SELECT * FROM feature_flag_bootstrap") == []
 
 
+def test_empty_db_upgrade_head_gets_no_status_and_init_wins(migration_url) -> None:
+    _alembic(migration_url, "upgrade", "head")
+    assert _sql(migration_url, "SELECT * FROM feature_flag_bootstrap") == []
+    assert len(_flag_rows(migration_url)) == 7  # Seed von 04d4 bleibt
+    assert sum(r["enabled"] for r in _flag_rows(migration_url)) == 4
+
+
+@pytest.mark.parametrize(
+    ("profile", "expected_on", "expected_audits"),
+    [("all-off", 0, 4), ("audit-all-on", 7, 3)],
+)
+def test_init_after_empty_db_upgrade_applies_profile(
+    migration_url, profile, expected_on, expected_audits
+) -> None:
+    _alembic(migration_url, "upgrade", "head")
+
+    async def run():
+        engine = build_engine(migration_url)
+        try:
+            async with build_sessionmaker(engine)() as db:
+                return await bootstrap_flags(db, profile=profile)
+        finally:
+            await engine.dispose()
+
+    assert asyncio.run(run()).applied is True
+    assert sum(r["enabled"] for r in _flag_rows(migration_url)) == expected_on
+    audits = _sql(
+        migration_url,
+        "SELECT actor_user_id, safe_metadata FROM admin_audit_events WHERE action = $1",
+        "FEATURE_FLAG_CHANGED",
+    )
+    assert len(audits) == expected_audits
+    assert all(a["actor_user_id"] is None for a in audits)
+    assert _sql(migration_url, "SELECT profile, source FROM feature_flag_bootstrap") == [
+        {"profile": profile, "source": "bootstrap"}
+    ]
+
+
+def test_run_starting_before_flags_revision_gets_no_status(migration_url) -> None:
+    _alembic(migration_url, "upgrade", PRE_FLAGS)
+    _alembic(migration_url, "upgrade", "head")
+    assert _sql(migration_url, "SELECT * FROM feature_flag_bootstrap") == []
+
+
 def test_up_down_up_keeps_flags_and_readopts(migration_url) -> None:
     _alembic(migration_url, "upgrade", "head")
     before = _flag_rows(migration_url)
+    assert _sql(migration_url, "SELECT * FROM feature_flag_bootstrap") == []
 
     _alembic(migration_url, "downgrade", PREV)
     assert _sql(migration_url, "SELECT to_regclass('feature_flag_bootstrap') AS t")[0]["t"] is None
     assert _flag_rows(migration_url) == before
 
+    # Zweiter Lauf startet auf 04d4: die Zeilen sind jetzt Bestand => adopted, unveraendert.
     _alembic(migration_url, "upgrade", "head")
     rows = _sql(migration_url, "SELECT profile, source FROM feature_flag_bootstrap")
     assert rows == [{"profile": "pre-existing", "source": "adopted"}]
