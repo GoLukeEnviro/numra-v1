@@ -1723,3 +1723,23 @@ class FeatureFlag(Base):
     updated_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
+
+
+class FeatureFlagBootstrap(Base):
+    """Singleton-Status des einmaligen Flag-Bootstraps (`cli flags init`). Genau eine
+    Zeile (`id = 1`); ihre blosse Existenz entscheidet, ob Init noch wirken darf --
+    NICHT `feature_flags.updated_by_user_id IS NULL` (FK ON DELETE SET NULL)."""
+
+    __tablename__ = "feature_flag_bootstrap"
+    __table_args__ = (
+        CheckConstraint("id = 1", name="ck_feature_flag_bootstrap_singleton"),
+        CheckConstraint(
+            "source IN ('bootstrap', 'adopted')", name="ck_feature_flag_bootstrap_source"
+        ),
+    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+    initialized_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    profile: Mapped[str] = mapped_column(String(32), nullable=False)
+    source: Mapped[str] = mapped_column(String(16), nullable=False)
