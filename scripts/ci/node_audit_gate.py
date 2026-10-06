@@ -1,7 +1,8 @@
 """Bewertet `pnpm audit --prod --json` fuer genau einen Workspace-Pfad.
 
 Fail-closed: ungueltige/unvollstaendige Audit-Ausgabe, jedes High/Critical-Advisory
-im Workspace ohne gueltige Ausnahme und jede abgelaufene Ausnahme beenden mit Exit 1.
+im Workspace ohne gueltige Ausnahme, jede abgelaufene Ausnahme und jeder High/Critical-
+Befund ausserhalb der gegateten Workspaces (web, pdf, mobile) beenden mit Exit 1.
 """
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ from pathlib import Path
 
 GATED_SEVERITIES = {"high", "critical"}
 REQUIRED_FIELDS = ("id", "package", "path", "reason", "expires")
+GATED_WORKSPACES = ("apps/web", "apps/pdf", "apps/mobile")
 
 
 def load_audit(path: Path) -> dict:
@@ -33,8 +35,13 @@ def load_exceptions(path: Path | None, workspace: str) -> list[dict]:
         return []
     import yaml
 
-    entries = (yaml.safe_load(path.read_text(encoding="utf-8")) or {}).get("exceptions") or []
+    document = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    if not isinstance(document, dict):
+        raise SystemExit("FAIL: Ausnahmeliste ist kein Mapping mit Schluessel 'exceptions'")
+    entries = document.get("exceptions") or []
     for entry in entries:
+        if not isinstance(entry, dict):
+            raise SystemExit(f"FAIL: Ausnahme-Eintrag ist kein Mapping: {entry!r}")
         missing = [f for f in REQUIRED_FIELDS if not entry.get(f)]
         if missing:
             raise SystemExit(f"FAIL: Ausnahme {entry.get('id', '?')} ohne Pflichtfelder {missing}")
@@ -66,8 +73,32 @@ def workspace_findings(audit: dict, workspace: str) -> dict[str, dict]:
     return found
 
 
-def evaluate(audit: dict, workspace: str, exceptions: list[dict], today: dt.date) -> list[str]:
+def unscoped_findings(audit: dict, gated: tuple[str, ...]) -> dict[str, str]:
+    """High/Critical-Befunde mit Pfaden ausserhalb aller gegateten Workspaces (z. B. Root)."""
+    found: dict[str, str] = {}
+    for advisory in audit["advisories"].values():
+        if advisory.get("severity") not in GATED_SEVERITIES:
+            continue
+        for finding in advisory.get("findings", []):
+            for path in finding.get("paths", []):
+                if path.split(" > ")[0] not in gated:
+                    found[advisory["github_advisory_id"]] = path.split(" > ")[0]
+    return found
+
+
+def evaluate(
+    audit: dict,
+    workspace: str,
+    exceptions: list[dict],
+    today: dt.date,
+    gated: tuple[str, ...] = GATED_WORKSPACES,
+) -> list[str]:
     errors: list[str] = []
+    for advisory_id, origin in sorted(unscoped_findings(audit, gated).items()):
+        errors.append(
+            f"High/Critical-Befund {advisory_id} im ungegateten Pfad '{origin}' "
+            f"(gegatet: {', '.join(gated)})"
+        )
     expired = {e["id"] for e in exceptions if _expiry(e) < today}
     for entry in exceptions:
         if entry["id"] in expired:
@@ -87,6 +118,8 @@ def evaluate(audit: dict, workspace: str, exceptions: list[dict], today: dt.date
 
 def _expiry(entry: dict) -> dt.date:
     value = entry["expires"]
+    if isinstance(value, dt.datetime):
+        return value.date()
     return value if isinstance(value, dt.date) else dt.date.fromisoformat(str(value))
 
 
