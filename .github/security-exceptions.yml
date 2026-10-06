@@ -1,0 +1,30 @@
+# Versionierte Ausnahmen fuer den Security-Gate (Job `node-audit-mobile`, scripts/ci/node_audit_gate.py).
+#
+# Regeln (vom Gate erzwungen):
+# - Jede Ausnahme braucht id, package, path, reason, expires.
+# - `path` ist der Workspace; erlaubt ist nur apps/mobile.
+# - Nach `expires` (UTC, einschliesslich) scheitert der Job -- Ausnahme dann pruefen, ob ein
+#   gepatchtes Release existiert, und entfernen oder mit neuer Begruendung verlaengern.
+# - Jeder weitere High/Critical-Befund in apps/mobile scheitert ohne Eintrag hier.
+#
+# Beide Advisories haben zum Eintragsdatum kein gepatchtes Release (patched_versions: keine),
+# die Pakete kommen ausschliesslich transitiv ueber die Expo-CLI/Metro-Toolchain von apps/mobile.
+# Laufzeit 90 Tage (eingetragen 2026-10-06), danach Neubewertung.
+exceptions:
+  - id: GHSA-86w9-cpqp-85rv
+    package: node-forge
+    path: apps/mobile
+    reason: >-
+      node-forge <=1.4.0 (RSA-PKCS#1-v1.5-Signaturpruefung), kein gepatchtes Release verfuegbar.
+      Nur transitiv ueber expo > @expo/cli > @expo/code-signing-certificates, d. h. Expo-CLI-
+      Build-Tooling, nicht als eigene Abhaengigkeit der App.
+    expires: 2027-01-04
+  - id: GHSA-vfj7-8cjw-p6xm
+    package: braces
+    path: apps/mobile
+    reason: >-
+      braces <=3.0.3 (Stack-Exhaustion-DoS bei tief verschachtelten Mustern), kein gepatchtes
+      Release verfuegbar. Nur transitiv ueber Metro-Bundler (metro-file-map > micromatch),
+      d. h. Build-Tooling mit Entwickler-/CI-kontrollierter Eingabe, nicht als eigene
+      Abhaengigkeit der App.
+    expires: 2027-01-04
