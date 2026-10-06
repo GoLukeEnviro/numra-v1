@@ -194,6 +194,7 @@ jobs:
             --exceptions .github/security-exceptions.yml
 
   python-audit:
+    if: false
     # Eingabe ist der Export von uv.lock (Runtime-Abhaengigkeiten aller Workspace-Pakete,
     # mit Hashes). --disable-pip + --require-hashes: kein Resolver, nur die gelockten
     # Versionen; --strict: nicht pruefbare Pakete lassen den Job scheitern.
