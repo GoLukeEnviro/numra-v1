@@ -135,6 +135,12 @@ llm_token_usage
 llm_estimated_cost
 ```
 
+`llm_latency_ms` and `llm_token_usage` are backed by `llm_generations` (one row per
+provider call: `source` report|analysis|copilot, `status` ok|error|retry, `attempt`,
+`latency_ms`, nullable `prompt_tokens`/`completion_tokens`/`total_tokens`). Token columns
+are filled only from provider usage data and stay NULL otherwise -- never estimated.
+Only the `report` source is wired so far.
+
 Never logged: journal contents, chat text, private notes, raw birth profile
 content (`specs/v2/privacy-spec.md`).
 

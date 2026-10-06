@@ -97,6 +97,9 @@ this list so nothing is added or renamed silently.
 - `calculation_version`, `knowledge_version`, `prompt_version`, `model_provider`,
   `model_name` are stored on every LLM-generated artifact (matches the existing
   `LLMGeneration` discipline).
+- `LLMGeneration` stores metadata only (no prompt, answer or error text): `source`,
+  `status`, `attempt >= 1`, `latency_ms`, nullable provider token counts and a keyed
+  (HMAC-SHA256) prompt hash. `report_job_id` is `ON DELETE CASCADE`.
 
 ## Row-Level Security
 

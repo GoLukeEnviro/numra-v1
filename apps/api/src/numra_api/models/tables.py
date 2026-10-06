@@ -339,20 +339,35 @@ class ReportJob(Base):
 
 
 class LLMGeneration(Base):
-    """PII-safe LLM call log — never stores the full prompt or report content by
-    default, only metadata (provider/model/status/latency/prompt_hash/section_id)."""
+    """PII-safe LLM call log (one row per provider call) -- never stores prompt, answer
+    or error text, only metadata. Token counts are filled exclusively from provider
+    usage data and stay NULL otherwise (never estimated). Rows hang on the report job
+    (`ON DELETE CASCADE`) and therefore go with account deletion, see
+    docs/audits/2026-09-20-pwa-07-retention-matrix.md."""
 
     __tablename__ = "llm_generations"
+    __table_args__ = (
+        CheckConstraint(
+            "source IN ('report', 'analysis', 'copilot')", name="ck_llm_generations_source"
+        ),
+        CheckConstraint("status IN ('ok', 'error', 'retry')", name="ck_llm_generations_status"),
+        CheckConstraint("attempt >= 1", name="ck_llm_generations_attempt"),
+    )
 
     id: Mapped[uuid.UUID] = _uuid_pk()
     report_job_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("report_jobs.id", ondelete="CASCADE"), nullable=True, index=True
     )
+    source: Mapped[str] = mapped_column(String(20))
     provider: Mapped[str] = mapped_column(String(60))
     model: Mapped[str] = mapped_column(String(120))
     status: Mapped[str] = mapped_column(String(20))
+    #: Job-level retry attempt (1 = first try), not the pipeline-internal repair attempt.
+    attempt: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
     latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    token_usage: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    prompt_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    completion_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    total_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     prompt_hash: Mapped[str] = mapped_column(String(64))
     section_id: Mapped[str | None] = mapped_column(String(80), nullable=True)
     error_code: Mapped[str | None] = mapped_column(String(80), nullable=True)

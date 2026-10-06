@@ -23,6 +23,7 @@ from numra_api.repositories.reports import (
     requeue_job_for_retry,
 )
 from numra_api.services.errors import NotFoundError
+from numra_api.services.llm_generation_log import RecordingLLMProvider
 from numra_interpretation.errors import InvalidReportSection
 from numra_interpretation.knowledge_loader import load_knowledge_base
 from numra_interpretation.llm.errors import LLMProviderError
@@ -113,6 +114,7 @@ async def run_report_job(
     silently substitutes a mock. Every exception path below is caught and routed to
     `_handle_job_failure`: a raw provider/network exception must never propagate out of
     here and crash the worker loop (see `numra_api.worker.run_one_cycle`)."""
+    llm = RecordingLLMProvider(llm, db, job_id=job.id, attempt=job.attempt_count)
     try:
         await mark_job_status(db, job=job, status=ReportJobStatus.GENERATING, progress=10)
 
