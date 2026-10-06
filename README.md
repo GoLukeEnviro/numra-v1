@@ -172,11 +172,14 @@ pnpm --filter @numra/web exec playwright test
 cd apps/pdf && node --test src/__tests__/render.test.js
 ```
 
-CI (`.github/workflows/ci.yml`) runs 13 required checks on every PR: `lint-python`,
-`python-typecheck`, `unit-and-property-tests`, `no-golden-leakage`,
-`dependency-security`, `sast`, `schema-and-openapi-drift`,
-`web-lint-typecheck-build-test`, `pdf-service-tests`, `docker-build`,
-`docker-compose-e2e`, `playwright`, `system-e2e`.
+CI (`.github/workflows/ci.yml`) runs these required checks on every PR: `lint-python`,
+`python-typecheck`, `engine-unit-property`, `no-golden-leakage`, `security-gate`, `sast`,
+`schema-and-openapi-drift`, `web-lint-typecheck-build-test`, `pdf-service-tests`,
+`docker-build`, `docker-compose-e2e`, `playwright`, `system-e2e` (13).
+`security-gate` aggregates the four audit jobs `node-audit-web`, `node-audit-pdf`,
+`node-audit-mobile` and `python-audit` and is red unless all four report `success`
+(failure, cancelled and skipped all fail it). Accepted Mobile advisories live in
+`.github/security-exceptions.yml` with an expiry date.
 
 ## Docker
 
@@ -281,10 +284,12 @@ state doc above first; the ADRs explain *why*, not *what's shipped right now*.
 - PII-safe logging: access logs and LLM-generation logs never contain names, birth
   data, or full prompts — only IDs, status, latency (`middleware/security.py`,
   `models/tables.py::LLMGeneration`).
-- Dependency security audit: `pnpm audit --prod` (Node/web), `uvx pip-audit` (Python),
-  and `bandit` (SAST, MEDIUM+ gate) — all run as explicit CI gates
-  (`dependency-security` and `sast` jobs, `.github/workflows/ci.yml`) that fail the
-  build on a fixable Critical/High production advisory or a new MEDIUM+ finding.
+- Dependency security audit: `pnpm audit --prod` per workspace (`apps/web`, `apps/pdf`,
+  `apps/mobile`), `pip-audit` on the `uv.lock` export, and `bandit` (SAST, MEDIUM+ gate) —
+  explicit CI gates (`security-gate` aggregating `node-audit-*`/`python-audit`, and `sast`,
+  `.github/workflows/ci.yml`) that fail the build on a High/Critical production advisory
+  or a new MEDIUM+ finding. The only exceptions are the time-boxed Mobile entries in
+  `.github/security-exceptions.yml`.
 
 ## Privacy notes
 

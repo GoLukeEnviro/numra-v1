@@ -132,12 +132,13 @@ jobs:
       - run: uv sync --all-packages --all-groups
       - run: uv run pytest packages/engine-numerology/tests/unit/test_no_golden_leakage.py -q
 
-  dependency-security:
-    # Explicit release gate (not just a local `pnpm audit`/`pip-audit` run someone might
-    # forget): Critical or High-with-an-available-fix in production dependencies fails
-    # the build. --audit-level=high intentionally does not hard-fail on moderate/low
-    # findings that may have no upstream fix yet -- see specs/evidence/final-release-closure.md
-    # for the Next.js 14->15 migration this gate was added to guard against regressing.
+  # Security-Gate: vier getrennte Audit-Jobs + ein Sammel-Job `security-gate`.
+  # Als Required Check ist nur `security-gate` vorgesehen; er ist rot, sobald einer der
+  # vier Audit-Jobs nicht `success` meldet (failure, cancelled oder skipped).
+  # `pnpm audit` kennt keinen Workspace-Filter; scripts/ci/node_audit_gate.py wertet die
+  # JSON-Ausgabe deshalb pro Workspace-Pfad aus (produktiv inkl. transitiv, High/Critical,
+  # fail-closed bei unlesbarer Ausgabe). Self-Test: scripts/ci/test_node_audit_gate.py.
+  node-audit-web:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -145,17 +146,84 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: pnpm audit (production dependencies across the workspace, fail on high/critical)
-        run: pnpm audit --prod --audit-level=high
+      - name: pnpm audit (Workspace-Audit als JSON)
+        run: pnpm audit --prod --json > "$RUNNER_TEMP/audit.json" || true
+      - name: apps/web -- High/Critical in produktiven Abhaengigkeiten (inkl. transitiv)
+        run: python3 scripts/ci/node_audit_gate.py --audit-json "$RUNNER_TEMP/audit.json" --workspace apps/web
+
+  node-audit-pdf:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: pnpm audit (Workspace-Audit als JSON)
+        run: pnpm audit --prod --json > "$RUNNER_TEMP/audit.json" || true
+      - name: apps/pdf -- High/Critical in produktiven Abhaengigkeiten (inkl. transitiv)
+        run: python3 scripts/ci/node_audit_gate.py --audit-json "$RUNNER_TEMP/audit.json" --workspace apps/pdf
+
+  node-audit-mobile:
+    # Ausnahmen nur ueber .github/security-exceptions.yml (Advisory-ID, Pfad, Begruendung,
+    # Ablaufdatum). Neuer High/Critical-Befund oder abgelaufene Ausnahme => Job rot.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.UV_VERSION }}
-          enable-cache: true
-      - run: uv python install ${{ env.PYTHON_VERSION }}
-      - name: pip-audit (Python dependencies)
-        run: uvx pip-audit
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Self-Test des Audit-Gates
+        run: uv run --no-project --with pyyaml==6.0.2 python -m unittest discover -s scripts/ci -p "test_node_audit_gate.py"
+      - name: pnpm audit (Workspace-Audit als JSON)
+        run: pnpm audit --prod --json > "$RUNNER_TEMP/audit.json" || true
+      - name: apps/mobile -- High/Critical gegen Ausnahmeliste
+        run: |
+          uv run --no-project --with pyyaml==6.0.2 python scripts/ci/node_audit_gate.py \
+            --audit-json "$RUNNER_TEMP/audit.json" --workspace apps/mobile \
+            --exceptions .github/security-exceptions.yml
+
+  python-audit:
+    # Eingabe ist der Export von uv.lock (Runtime-Abhaengigkeiten aller Workspace-Pakete,
+    # mit Hashes). --disable-pip + --require-hashes: kein Resolver, nur die gelockten
+    # Versionen; --strict: nicht pruefbare Pakete lassen den Job scheitern.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ env.UV_VERSION }}
+      - name: uv.lock exportieren
+        run: uv export --frozen --all-packages --no-dev --no-emit-workspace --format requirements-txt -o "$RUNNER_TEMP/requirements.txt"
+      - name: pip-audit (pinned 2.10.1)
+        run: uvx pip-audit==2.10.1 --require-hashes --disable-pip --strict -r "$RUNNER_TEMP/requirements.txt"
+
+  security-gate:
+    # Einziger vorgesehener Required Check fuer die Audits. `always()` damit der Job auch
+    # bei failure/cancelled/skipped der Vorgaenger laeuft; ohne explizite success-Pruefung
+    # wuerde ein uebersprungener Audit-Job das Gate stillschweigend gruen lassen.
+    if: always()
+    needs: [node-audit-web, node-audit-pdf, node-audit-mobile, python-audit]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Alle vier Audit-Jobs muessen success melden
+        env:
+          NODE_AUDIT_WEB: ${{ needs.node-audit-web.result }}
+          NODE_AUDIT_PDF: ${{ needs.node-audit-pdf.result }}
+          NODE_AUDIT_MOBILE: ${{ needs.node-audit-mobile.result }}
+          PYTHON_AUDIT: ${{ needs.python-audit.result }}
+        run: |
+          status=0
+          for pair in "node-audit-web=$NODE_AUDIT_WEB" "node-audit-pdf=$NODE_AUDIT_PDF" \
+                      "node-audit-mobile=$NODE_AUDIT_MOBILE" "python-audit=$PYTHON_AUDIT"; do
+            echo "$pair"
+            [ "${pair#*=}" = "success" ] || status=1
+          done
+          exit $status
 
   sast:
     # PWA-08 hardening (#140): pinned static analysis for the Python surface. `-ll`
