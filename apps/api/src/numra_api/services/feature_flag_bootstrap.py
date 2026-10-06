@@ -24,6 +24,10 @@ from numra_api.repositories.audit import record_audit_event
 logger = logging.getLogger(__name__)
 
 
+class ProfileRequiredError(Exception):
+    """Status fehlt und kein Profil angegeben: bewusst kein stilles Default-Profil."""
+
+
 @dataclass(frozen=True)
 class FlagChange:
     name: str
@@ -34,7 +38,7 @@ class FlagChange:
 @dataclass
 class BootstrapResult:
     applied: bool
-    profile: str
+    profile: str | None
     status_source: str | None
     changes: list[FlagChange] = field(default_factory=list)
 
@@ -48,16 +52,28 @@ def _diff(current: dict[str, bool], target: dict[str, bool]) -> list[FlagChange]
 
 
 async def bootstrap_flags(
-    db: AsyncSession, *, profile: str, dry_run: bool = False
+    db: AsyncSession, *, profile: str | None, dry_run: bool = False
 ) -> BootstrapResult:
-    if profile not in PROFILES:
+    """`profile=None` ist nur zulaessig, solange ein Status existiert (No-op) oder bei
+    `dry_run`; fehlt der Status, bricht der Claim-Pfad VOR dem INSERT ab."""
+    if profile is not None and profile not in PROFILES:
         raise ValueError(f"unknown profile: {profile!r} (known: {sorted(PROFILES)})")
-    target = PROFILES[profile]
 
-    if dry_run:
+    if dry_run or profile is None:
         status = (await db.execute(select(FeatureFlagBootstrap))).scalar_one_or_none()
         if status is not None:
             return BootstrapResult(False, status.profile, status.source)
+        if profile is None:
+            if dry_run:
+                return BootstrapResult(False, None, None)
+            raise ProfileRequiredError(
+                "Profil nötig, Status fehlt: --profile bzw. NUMRA_FLAGS_PROFILE setzen "
+                f"({', '.join(sorted(PROFILES))})"
+            )
+    assert profile is not None
+    target = PROFILES[profile]
+
+    if dry_run:
         current = {f.name: f.enabled for f in (await db.execute(select(FeatureFlag))).scalars()}
         return BootstrapResult(False, profile, None, _diff(current, target))
 
@@ -70,7 +86,7 @@ async def bootstrap_flags(
     if claimed.scalar_one_or_none() is None:
         await db.rollback()
         status = (await db.execute(select(FeatureFlagBootstrap))).scalar_one()
-        if status.profile != profile:
+        if status.source == "bootstrap" and status.profile != profile:
             logger.warning(
                 "flag bootstrap already done with profile %r (source %s); requested profile "
                 "%r is NOT applied -- change flags via /admin/flags",

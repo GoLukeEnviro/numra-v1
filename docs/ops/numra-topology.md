@@ -16,7 +16,7 @@ Zugangsdaten, keine Tokens, keine Verbindungsstrings — die Werte liegen aussch
 | HTTP nach außen | Tailscale `:8443` | Tailscale `:8444` |
 | API auf Loopback | `:17800` | `:17801` |
 | Datenbank | Container `numra-prod-postgres-1`, DB `numra` | Container `numra-audit-postgres-1`, DB `numra` |
-| Sieben V2-Flags (DB-Tabelle `feature_flags`) | Profil `NUMRA_FLAGS_PROFILE` beim ersten Init (Default `all-off`; Bestands-DB: unverändert übernommen) | Profil `audit-all-on` (nur so sind die V2-Flows abnehmbar) |
+| Sieben V2-Flags (DB-Tabelle `feature_flags`) | Profil `NUMRA_FLAGS_PROFILE` beim ersten Init (kein Default; Bestands-DB: unverändert übernommen) | derzeit unverändert aus der DB; soll `audit-all-on` sein (nur so sind die V2-Flows abnehmbar), siehe E3-Vorbereitung unten |
 | Zweck | echte Nutzer | ausschließlich synthetische `@example.com`-Konten |
 
 Beide Stacks laufen mit `restart: unless-stopped` und überleben einen Host-Reboot.
@@ -53,9 +53,13 @@ Readiness-Antwort des API enthält dessen Zustand als `pdf`.
 Flag-Werte entstehen **nicht** aus Env-Variablen, sondern aus der DB. Neue Umgebungen
 werden einmalig initialisiert; danach ändert nur noch `/admin/flags` Werte.
 
-- Befehl: `python -m numra_api.cli flags init --profile <all-off|beta|audit-all-on> [--dry-run]`
-  (in Produktion als Einmaljob `flags-init` nach `migrate`, Profil aus
-  `NUMRA_FLAGS_PROFILE` der Env-Datei, Default `all-off`).
+- Befehl: `python -m numra_api.cli flags init [--profile <all-off|beta|audit-all-on>] [--dry-run]`
+  (in Produktion als Einmaljob `flags-init` nach `migrate`; ohne `--profile` gilt
+  `NUMRA_FLAGS_PROFILE` aus der Env-Datei, **kein Default-Profil**).
+- Profil ist nur nötig, solange der Status fehlt. Fehlt er und es ist kein Profil gesetzt
+  (z. B. nach Restore/`alembic stamp`), bricht `init` mit Exit 2 ab, schreibt nichts und
+  `api` startet nicht. Mit vorhandenem Status und `--dry-run` geht es auch ohne Profil;
+  eine Bestands-DB scheitert nie am fehlenden Env.
 - Profile liegen versioniert in `apps/api/src/numra_api/feature_flag_profiles.py`:
   `all-off` (7 aus), `beta` (`v2_master`, `connections`, `relationship_workspaces`,
   `copilot` an), `audit-all-on` (7 an).
@@ -73,6 +77,16 @@ werden einmalig initialisiert; danach ändert nur noch `/admin/flags` Werte.
   fortgeschrieben, ein Skript kann den Startzustand sonst nicht mehr lesen). Fehlt der
   Eintrag, gilt fail-safe `adopted`.
 - `--dry-run` zeigt Status und Diff und schreibt nichts.
+- Dev-/CI-Compose (`docker-compose.yml`): bewusst **ohne** `flags-init`-Job. Dort wirken
+  die Seed-Werte von `04d4` (4 an, kein Status), das Verhalten der CI-Stacks bleibt
+  unverändert (kleinster Eingriff). Alle sieben an: manuell
+  `docker compose exec api python -m numra_api.cli flags init --profile audit-all-on`.
+  Der `AVENYTH_*`-Block in `docker-compose.rc2.yml` ist wirkungslos.
+- **E3-Vorbereitung Audit-Stack** (Host-Overlay `/opt/numra/audit-compose.yml`, nicht Teil
+  dieses Repos/PRs): `NUMRA_FLAGS_PROFILE=audit-all-on` in `/etc/numra/audit.env` setzen und
+  einen `flags-init`-Job nach `migrate` ergänzen; die `AVENYTH_*`-Variablen im Overlay
+  entfernen (wirkungslos). Eine bestehende Audit-DB wird als `adopted` übernommen, ihre
+  Flagwerte ändert der Init nicht -- Sollwerte dort einmalig über `/admin/flags` setzen.
 
 ## Monitoring und Sicherung
 

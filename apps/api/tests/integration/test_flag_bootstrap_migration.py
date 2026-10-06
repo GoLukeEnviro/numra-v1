@@ -4,15 +4,18 @@ Anwendungs-DB). Bestandsupgrade => `adopted`, Flagwerte + updated_at bitgleich."
 from __future__ import annotations
 
 import asyncio
+import importlib.util
 import os
 import subprocess
 import sys
+import types
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 
 import asyncpg
 import pytest
+from alembic.config import Config
 from sqlalchemy.engine import make_url
 
 from numra_api.db import build_engine, build_sessionmaker
@@ -170,3 +173,49 @@ def test_up_down_up_keeps_flags_and_readopts(migration_url) -> None:
     rows = _sql(migration_url, "SELECT profile, source FROM feature_flag_bootstrap")
     assert rows == [{"profile": "pre-existing", "source": "adopted"}]
     assert _flag_rows(migration_url) == before
+
+
+def test_two_step_run_before_then_at_flags_revision(migration_url) -> None:
+    """Start vor 04d4 => kein Status; ein spaeterer Lauf, der auf 04d4 startet => adopted."""
+    _alembic(migration_url, "upgrade", PRE_FLAGS)
+    _alembic(migration_url, "upgrade", PREV)
+    assert _sql(migration_url, "SELECT to_regclass('feature_flag_bootstrap') AS t")[0]["t"] is None
+    before = _flag_rows(migration_url)
+    _alembic(migration_url, "upgrade", "head")
+    assert _sql(migration_url, "SELECT profile, source FROM feature_flag_bootstrap") == [
+        {"profile": "pre-existing", "source": "adopted"}
+    ]
+    assert _flag_rows(migration_url) == before
+
+
+def _predate(monkeypatch, attributes: dict) -> bool:
+    """Ruft `_flags_predate_this_run` der Migration mit einem Fake-Kontext auf."""
+    path = API_DIR / "alembic" / "versions" / "7c3e9a51b2d8_feature_flag_bootstrap.py"
+    spec = importlib.util.spec_from_file_location("flag_bootstrap_migration", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    monkeypatch.chdir(API_DIR)
+    config = Config(str(API_DIR / "alembic.ini"))
+    config.attributes.update(attributes)
+    context = types.SimpleNamespace(config=config)
+    monkeypatch.setattr(module, "op", types.SimpleNamespace(get_context=lambda: context))
+    return module._flags_predate_this_run()
+
+
+def test_missing_starting_heads_is_failsafe_adopted(monkeypatch) -> None:
+    assert _predate(monkeypatch, {}) is True
+
+
+@pytest.mark.parametrize(
+    ("heads", "expected"),
+    [
+        ((), False),
+        ((PRE_FLAGS,), False),
+        ((PREV,), True),
+        (("7c3e9a51b2d8",), True),
+        ((PRE_FLAGS, PREV), True),  # mehrere Start-Heads: ein Treffer genuegt
+    ],
+)
+def test_starting_heads_decide(monkeypatch, heads, expected) -> None:
+    assert _predate(monkeypatch, {"starting_heads": heads}) is expected

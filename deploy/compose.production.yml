@@ -48,20 +48,14 @@ services:
   # Einmaliger Flag-Bootstrap (Plan v4 Variante A): setzt die Feature-Flags nur, wenn
   # noch kein Bootstrap-Status existiert (frische DB). Auf Bestands-DBs hat die Migration
   # den Status als `adopted` angelegt -- dann ist der Job ein No-op und aendert nichts.
-  # Profil: NUMRA_FLAGS_PROFILE in /etc/numra/numra.env (all-off | beta | audit-all-on).
+  # Profil: NUMRA_FLAGS_PROFILE in /etc/numra/numra.env (all-off | beta | audit-all-on),
+  # nur fuer frische DBs noetig -- es gibt bewusst kein Default-Profil.
   flags-init:
     build:
       context: /opt/numra/repo
       dockerfile: docker/api.Dockerfile
       target: api
-    command:
-      - python
-      - -m
-      - numra_api.cli
-      - flags
-      - init
-      - --profile
-      - ${NUMRA_FLAGS_PROFILE:-all-off}
+    command: ["python", "-m", "numra_api.cli", "flags", "init"]
     working_dir: /app/apps/api
     restart: "no"
     environment:
@@ -72,6 +66,11 @@ services:
       # RATE_LIMIT_BACKEND=memory (same rationale as the worker service).
       RATE_LIMIT_BACKEND: ${RATE_LIMIT_BACKEND:-redis}
       REDIS_URL: redis://redis:6379/0
+      # Bewusst OHNE Default: das Profil wird nur gebraucht, solange noch kein
+      # Bootstrap-Status existiert (frische DB). Bestands-DBs (Status `adopted`) laufen
+      # auch mit leerem Wert durch; fehlt der Status UND das Profil, bricht der Job ab
+      # und `api` startet nicht (statt still `all-off` zu waehlen).
+      NUMRA_FLAGS_PROFILE: ${NUMRA_FLAGS_PROFILE:-}
     depends_on:
       postgres:
         condition: service_healthy
