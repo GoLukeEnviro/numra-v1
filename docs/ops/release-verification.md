@@ -206,6 +206,9 @@ Readiness ausschließlich über den Datenbank-Check; `numerology_engine`, `llm` 
 `pdf` werden weiterhin einzeln geprüft und im Payload zurückgegeben, fließen aber
 **nicht** in `status` ein.
 
+Statuscode: `status=unhealthy` liefert HTTP 503, `healthy` HTTP 200 (`degraded`/`disabled`
+einzelner Dienste ändern ihn nicht); der Body bleibt in beiden Fällen vollständig.
+
 Diese Entscheidung ist bewusst (nicht nur für `llm`/`pdf`, sondern ausdrücklich
 auch für `numerology_engine`):
 

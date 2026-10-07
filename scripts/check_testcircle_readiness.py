@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -13,6 +14,16 @@ def response_is_healthy(name: str, status_code: int, body: object) -> bool:
     if status_code != 200 or not isinstance(body, dict):
         return False
     return name != "readiness" or body.get("status") == "healthy"
+
+
+def fetch_json(url: str, timeout_seconds: float) -> tuple[int, object]:
+    # Readiness antwortet bei unhealthy mit 503 und vollem JSON-Body; urllib wirft dann
+    # HTTPError, der Body bleibt aber lesbar und enthaelt die Dienstdetails.
+    try:
+        with urllib.request.urlopen(url, timeout=timeout_seconds) as response:
+            return response.status, json.load(response)
+    except urllib.error.HTTPError as exc:
+        return exc.code, json.load(exc)
 
 
 def main() -> int:
@@ -27,17 +38,10 @@ def main() -> int:
     ok = True
     for name, path in (("liveness", "/v1/health/live"), ("readiness", "/v1/health/ready")):
         try:
-            with urllib.request.urlopen(
-                args.base_url.rstrip("/") + path, timeout=args.timeout_seconds
-            ) as response:
-                body = json.load(response)
-                healthy = response_is_healthy(name, response.status, body)
-                checks[name] = {
-                    "ok": healthy,
-                    "status": response.status,
-                    "body": body,
-                }
-                ok &= healthy
+            status_code, body = fetch_json(args.base_url.rstrip("/") + path, args.timeout_seconds)
+            healthy = response_is_healthy(name, status_code, body)
+            checks[name] = {"ok": healthy, "status": status_code, "body": body}
+            ok &= healthy
         except Exception as exc:  # command reports the operational failure verbatim
             checks[name] = {"ok": False, "error": str(exc)}
             ok = False
