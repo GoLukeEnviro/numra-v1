@@ -206,9 +206,6 @@ Readiness ausschließlich über den Datenbank-Check; `numerology_engine`, `llm` 
 `pdf` werden weiterhin einzeln geprüft und im Payload zurückgegeben, fließen aber
 **nicht** in `status` ein.
 
-Statuscode: `status=unhealthy` liefert HTTP 503, `healthy` HTTP 200 (`degraded`/`disabled`
-einzelner Dienste ändern ihn nicht); der Body bleibt in beiden Fällen vollständig.
-
 Diese Entscheidung ist bewusst (nicht nur für `llm`/`pdf`, sondern ausdrücklich
 auch für `numerology_engine`):
 
@@ -223,3 +220,7 @@ auch für `numerology_engine`):
   rechenfähig" neu definiert werden (z. B. weil ein separater Health-Check-Prozess
   ohne die Engine denkbar wird), gehört das in einen eigenen PR mit eigenem Eintrag
   hier — nicht rückwirkend in diesen.
+
+Statuscode: `GET /v1/health/ready` liefert nur dann HTTP 503, wenn die Datenbank
+`unhealthy` ist; `unhealthy` bei `llm`/`pdf`/`numerology_engine` sowie `degraded`/`disabled`
+ändern den Statuscode nicht (200). Der Body bleibt in beiden Fällen vollständig.

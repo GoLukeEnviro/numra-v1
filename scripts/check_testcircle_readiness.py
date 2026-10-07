@@ -23,7 +23,12 @@ def fetch_json(url: str, timeout_seconds: float) -> tuple[int, object]:
         with urllib.request.urlopen(url, timeout=timeout_seconds) as response:
             return response.status, json.load(response)
     except urllib.error.HTTPError as exc:
-        return exc.code, json.load(exc)
+        try:
+            return exc.code, json.load(exc)
+        except ValueError:  # Nicht-JSON-Body (z. B. HTML eines Proxys): Statuscode bleibt
+            return exc.code, None
+        finally:
+            exc.close()
 
 
 def main() -> int:

@@ -18,9 +18,15 @@ Stand: 2026-10-05. Rollen und Pfade: `docs/ops/numra-topology.md`.
 | Frische der Sicherung | jüngster `numra-*.dump` jünger als 26 h | Fehlschlag → Alarm |
 
 Die Readiness-Antwort deckt Datenbank, Numerologie-Engine, LLM-Provider und PDF-Dienst
-ab. Statuscode des Endpunkts: Gesamtstatus `unhealthy` => **HTTP 503**, `healthy` => **HTTP 200**;
-`degraded`/`disabled` einzelner Dienste ändern den Code nicht (200). Der Body enthält in beiden
-Fällen alle Dienstdetails, auch auf dem TTL-Cache-Pfad. Der Monitor liest den JSON-Body bei **HTTP 200 und 503** (kein `curl -f`): ein 503
+ab.
+
+**Statuscode des Endpunkts:** `GET /v1/health/ready` antwortet nur dann mit **HTTP 503**,
+wenn die Datenbank `unhealthy` ist (Gesamtstatus `unhealthy`). Sonst ist es **HTTP 200**:
+`unhealthy` bei `llm`, `pdf` oder `numerology_engine` sowie `degraded`/`disabled` ändern den
+Statuscode nicht. Der Body enthält in beiden Fällen alle Dienstdetails, auch auf dem
+TTL-Cache-Pfad.
+
+Der Monitor liest den JSON-Body bei **HTTP 200 und 503** (kein `curl -f`): ein 503
 trägt genau die Dienstdetails, die für die Bewertung nötig sind. Andere HTTP-Codes
 (404, 500, …) zählen als Fehlschlag des Endpunkts.
 
@@ -183,7 +189,7 @@ bash scripts/ops/tests/test-numra-healthcheck.sh
 - `EXPECTED_DEPENDENCIES` und `FAIL_THRESHOLD` gelten global für Produktion und Audit;
   eine getrennte Soll-Konfiguration je Stack gibt es nicht. Ebenso gibt es keinen eigenen
   Schwellwert pro Dienst (z. B. für `database`).
-- Die Statuscode-Semantik von `/v1/health/ready` (503 nur bei Gesamtstatus `unhealthy`, sonst 200)
+- Die Statuscode-Semantik von `/v1/health/ready` (503 nur bei unhealthy Datenbank, sonst 200)
   legt die API fest, nicht der Monitor; er wertet beide Varianten mit Body korrekt aus.
 - `worker` und `analysis-worker` haben im Compose **keinen** Healthcheck (nur
   `restart: unless-stopped`). Der Probe merkt einen stehenden Worker nur indirekt: über
