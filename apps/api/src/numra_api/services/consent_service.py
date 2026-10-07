@@ -26,6 +26,7 @@ from numra_api.repositories.consent import (
 )
 from numra_api.repositories.workspaces import get_workspace_member, list_workspace_members
 from numra_api.services.errors import ConsentNotGranted, NotFoundError
+from numra_api.services.workspace_guard import assert_workspace_active_by_id
 
 
 async def grant_consent(
@@ -34,7 +35,8 @@ async def grant_consent(
     """Grants `scope` from `grantor_user_id` to the *other* ACTIVE member of the
     workspace. Requires the grantor to actually be an ACTIVE member (IDOR gate) --
     the grantee is derived from workspace membership, never accepted from the
-    client."""
+    client. Lehnt einen DISSOLVED-Workspace mit `WorkspaceDissolved` ab (nach IDOR-Gate und
+    Gegenueber-Aufloesung), damit ein Re-Grant die Dissolution-Policy nicht aushebelt."""
     grantor_member = await get_workspace_member(
         db, workspace_id=workspace_id, user_id=grantor_user_id
     )
@@ -44,6 +46,7 @@ async def grant_consent(
     grantee_user_id = await _other_member_user_id(
         db, workspace_id=workspace_id, user_id=grantor_user_id
     )
+    await assert_workspace_active_by_id(db, workspace_id=workspace_id)
 
     # Idempotent -- granting an already-active scope (e.g. one of the 3 defaults
     # auto-granted at workspace creation) returns the existing row rather than
@@ -98,7 +101,8 @@ async def revoke_consent(
 ) -> ConsentGrant:
     """Only the original grantor may revoke -- `get_active_grant` filters on
     `grantor_user_id` so a caller can never revoke a grant they did not themselves
-    make."""
+    make. Bewusst ohne `assert_workspace_active`-Guard: Revoke verengt nur Zugriff, und
+    nach Dissolution ist ohnehin alles revoked (-> `ConsentNotGranted`)."""
     grantor_member = await get_workspace_member(
         db, workspace_id=workspace_id, user_id=grantor_user_id
     )
