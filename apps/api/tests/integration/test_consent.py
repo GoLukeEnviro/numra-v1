@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from numra_api.auth.passwords import hash_password
 from numra_api.models import ConsentEvent, ConsentGrant, User
@@ -347,22 +347,32 @@ async def test_grant_after_dissolve_keeps_partner_core_numbers_hidden(
         json={"as_of_date": "2026-01-01"},
         headers=headers_b,
     )
-    await _dissolve(client, headers_b)
-    await client.post(
-        f"/v1/workspaces/{workspace_id}/consent/grant",
-        json={"scope": "CORE_NUMEROLOGY"},
-        headers=headers_b,
-    )
-
     async with sessionmaker() as db:
         user_b_id = str(
             (await db.execute(select(User.id).where(User.email == email_b))).scalar_one()
         )
+
+    async def partner_core_numbers(headers: dict):
+        overview = await client.get(f"/v1/workspaces/{workspace_id}", headers=headers)
+        assert overview.status_code == 200
+        return next(m for m in overview.json()["dual_profile"] if m["user_id"] == user_b_id)[
+            "core_numbers"
+        ]
+
     headers_a = await _switch_user(client, email_a)
-    overview = await client.get(f"/v1/workspaces/{workspace_id}", headers=headers_a)
-    assert overview.status_code == 200
-    partner = next(m for m in overview.json()["dual_profile"] if m["user_id"] == user_b_id)
-    assert partner["core_numbers"] is None
+    assert await partner_core_numbers(headers_a) is not None
+
+    headers_b = await _switch_user(client, email_b)
+    await _dissolve(client, headers_b)
+    grant = await client.post(
+        f"/v1/workspaces/{workspace_id}/consent/grant",
+        json={"scope": "CORE_NUMEROLOGY"},
+        headers=headers_b,
+    )
+    assert grant.status_code == 409
+
+    headers_a = await _switch_user(client, email_a)
+    assert await partner_core_numbers(headers_a) is None
 
 
 async def test_grant_in_active_workspace_still_works(client, sessionmaker) -> None:
@@ -389,10 +399,38 @@ async def test_revoke_after_dissolve_is_not_a_dissolved_error(client, sessionmak
     headers_b = await _switch_user(client, "consent-diss-rev-b@example.com")
     await _dissolve(client, headers_b)
 
+    async with sessionmaker() as db:
+        events_before = (
+            await db.execute(select(func.count()).select_from(ConsentEvent))
+        ).scalar_one()
+
     revoke = await client.post(
         f"/v1/workspaces/{workspace_id}/consent/revoke",
         json={"scope": "CORE_NUMEROLOGY"},
         headers=headers_b,
     )
-    assert revoke.json()["code"] != "WORKSPACE_DISSOLVED"
+    assert revoke.status_code == 403
+    assert revoke.json()["code"] == "CONSENT_NOT_GRANTED"
     assert await _active_grant_count(sessionmaker, workspace_id) == 0
+    async with sessionmaker() as db:
+        events_after = (
+            await db.execute(select(func.count()).select_from(ConsentEvent))
+        ).scalar_one()
+    assert events_after == events_before
+
+
+async def test_grant_by_non_member_on_dissolved_workspace_is_404(client, sessionmaker) -> None:
+    workspace_id = await _connect(
+        client, sessionmaker, "consent-diss-nm-a@example.com", "consent-diss-nm-b@example.com"
+    )
+    headers_b = await _switch_user(client, "consent-diss-nm-b@example.com")
+    await _dissolve(client, headers_b)
+
+    headers_stranger = await _signup(client, sessionmaker, "consent-diss-nm-x@example.com")
+    grant = await client.post(
+        f"/v1/workspaces/{workspace_id}/consent/grant",
+        json={"scope": "CORE_NUMEROLOGY"},
+        headers=headers_stranger,
+    )
+    assert grant.status_code == 404
+    assert grant.json()["code"] == "NOT_FOUND"

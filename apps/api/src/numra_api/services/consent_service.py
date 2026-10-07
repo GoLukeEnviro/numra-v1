@@ -24,9 +24,13 @@ from numra_api.repositories.consent import (
     revoke_all_active_grants_for_workspace,
     revoke_grant,
 )
-from numra_api.repositories.workspaces import get_workspace_member, list_workspace_members
+from numra_api.repositories.workspaces import (
+    get_workspace_member,
+    list_workspace_members,
+    lock_workspace,
+)
 from numra_api.services.errors import ConsentNotGranted, NotFoundError
-from numra_api.services.workspace_guard import assert_workspace_active_by_id
+from numra_api.services.workspace_guard import assert_workspace_active
 
 
 async def grant_consent(
@@ -46,7 +50,12 @@ async def grant_consent(
     grantee_user_id = await _other_member_user_id(
         db, workspace_id=workspace_id, user_id=grantor_user_id
     )
-    await assert_workspace_active_by_id(db, workspace_id=workspace_id)
+    # Zeilensperre geteilt mit dem Dissolve-UPDATE: ein parallel committender Dissolve
+    # kann nicht zwischen Guard und Grant schlüpfen (Muster: checkin_service).
+    workspace = await lock_workspace(db, workspace_id=workspace_id)
+    if workspace is None:
+        raise NotFoundError(f"workspace {workspace_id} not found")
+    await assert_workspace_active(db, workspace=workspace)
 
     # Idempotent -- granting an already-active scope (e.g. one of the 3 defaults
     # auto-granted at workspace creation) returns the existing row rather than
