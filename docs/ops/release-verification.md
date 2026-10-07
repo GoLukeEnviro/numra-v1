@@ -90,6 +90,12 @@ $DC run --rm migrate alembic current
 # Ziel: current == heads == <erwartete Revision>
 ```
 
+Hinweis zu Migrationen mit Tabellen-Locks (z. B. `c5a9d3e72b16`, setzt
+`SET LOCAL lock_timeout = '5s'`): Worker und `analysis-worker` vor `alembic upgrade`
+stoppen, damit keine offene Job-Transaktion die Zeile/Tabelle hält. Bei einem
+Lock-Konflikt bricht die Migration kontrolliert ab (transaktional, nichts halb
+angewendet); nach Beheben der Ursache einfach erneut ausführen.
+
 ### 3. Optionaler DB-Aggregat-Check (kein PII)
 
 ```bash

@@ -341,8 +341,10 @@ class ReportJob(Base):
 class LLMGeneration(Base):
     """PII-safe LLM call log (one row per provider call) -- never stores prompt, answer
     or error text, only metadata. Token counts are filled exclusively from provider
-    usage data and stay NULL otherwise (never estimated). Rows hang on the report job
-    (`ON DELETE CASCADE`) and therefore go with account deletion, see
+    usage data and stay NULL otherwise (never estimated). Each row hangs on exactly the
+    origin of the call with `ON DELETE CASCADE` -- `report_job_id` (report worker),
+    `analysis_job_id` (analysis worker), `chat_message_id` (the Copilot ASSISTANT
+    message) -- so it lives and dies with that artefact, see
     docs/audits/2026-09-20-pwa-07-retention-matrix.md."""
 
     __tablename__ = "llm_generations"
@@ -352,11 +354,21 @@ class LLMGeneration(Base):
         ),
         CheckConstraint("status IN ('ok', 'error', 'retry')", name="ck_llm_generations_status"),
         CheckConstraint("attempt >= 1", name="ck_llm_generations_attempt"),
+        CheckConstraint(
+            "num_nonnulls(report_job_id, analysis_job_id, chat_message_id) <= 1",
+            name="ck_llm_generations_single_ref",
+        ),
     )
 
     id: Mapped[uuid.UUID] = _uuid_pk()
     report_job_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("report_jobs.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    analysis_job_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("analysis_jobs.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    chat_message_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("chat_messages.id", ondelete="CASCADE"), nullable=True, index=True
     )
     source: Mapped[str] = mapped_column(String(20))
     provider: Mapped[str] = mapped_column(String(60))

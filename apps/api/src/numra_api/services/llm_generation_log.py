@@ -17,6 +17,17 @@ geloggt, die Aufrufer-Transaktion bleibt intakt. Folge der gemeinsamen Transakti
 bricht der Job ab oder stirbt der Worker vor dem Commit, gehen die Zeilen dieses Laufs
 verloren. Das ist bewusst so.
 
+Dieselbe Strategie fuer alle drei Quellen: Analyse-Worker (Job-Transaktion mit
+`FOR UPDATE` auf `analysis_jobs`) und Copilot (die Request-Transaktion, die auch die
+ASSISTANT-Nachricht anlegt; synchron, kein Streaming) schreiben im SAVEPOINT der
+Aufrufer-Session, nie ueber eine eigene Verbindung (FK-Insert nimmt `FOR KEY SHARE` auf
+die Elternzeile). Beim Copilot ist die Elternzeile die eigene, noch nicht committete
+ASSISTANT-Nachricht; ein Log-Fehler kippt weder Antwort noch FAILED-Persistierung.
+
+Status beschreibt den Provider-Aufruf, nicht die Weiterverarbeitung: Output, den der
+Validator danach verwirft (Reparatur, FAILED), steht als Provider-Zeile `ok` im Log --
+wie bei den Reports.
+
 `attempt` ist der Job-Versuch. Die Pipeline wiederholt einen Abschnitt bei verworfener
 Ausgabe einmal innerhalb desselben Job-Versuchs (Reparatur); diese Aufrufe tragen daher
 dieselbe `attempt`-Nummer (unterscheidbar ueber `section_id` und `created_at`).
@@ -69,6 +80,8 @@ async def record(
     prompt_hash: str,
     latency_ms: int | None = None,
     report_job_id: uuid.UUID | None = None,
+    analysis_job_id: uuid.UUID | None = None,
+    chat_message_id: uuid.UUID | None = None,
     section_id: str | None = None,
     error_code: str | None = None,
     prompt_tokens: int | None = None,
@@ -77,8 +90,9 @@ async def record(
 ) -> bool:
     """Schreibt eine Zeile; True bei Erfolg, False (geloggt) bei jedem Schreibfehler.
 
-    Ausstehende Aenderungen des Aufrufers werden vorab ausserhalb des Fangnetzes
-    geflusht: ein Fehler darin ist der des Aufrufers und wird nicht verschluckt."""
+    Die Zusage "scheitert nie am Logging" gilt fuer den INSERT der Log-Zeile (im SAVEPOINT).
+    Ausstehende Aenderungen des Aufrufers werden vorab ausserhalb des Fangnetzes geflusht:
+    ein Fehler darin ist der des Aufrufers, wird durchgereicht und nicht verschluckt."""
     await db.flush()
     try:
         async with db.begin_nested():
@@ -92,6 +106,8 @@ async def record(
                     prompt_hash=prompt_hash,
                     latency_ms=latency_ms,
                     report_job_id=report_job_id,
+                    analysis_job_id=analysis_job_id,
+                    chat_message_id=chat_message_id,
                     section_id=section_id,
                     error_code=error_code,
                     prompt_tokens=prompt_tokens,
@@ -122,19 +138,40 @@ def _safe_prompt_hash(request: GenerationRequest) -> str:
 
 
 class RecordingLLMProvider:
-    """Decorator um einen `LLMProvider`: protokolliert jeden `generate*`-Aufruf des
-    Report-Pfads als eine `llm_generations`-Zeile und reicht Ergebnis bzw. Exception
-    unveraendert durch. `health` wird nicht protokolliert (kein Generierungsaufruf).
+    """Decorator um einen `LLMProvider`: protokolliert jeden `generate*`-Aufruf eines
+    Pfads (Report-Worker, Analyse-Worker, Copilot) als eine `llm_generations`-Zeile und
+    reicht Ergebnis bzw. Exception unveraendert durch. `health` wird nicht protokolliert
+    (kein Generierungsaufruf).
 
-    Status: `ok`; `retry` nur bei einem retrybaren `LLMProviderError` UND wenn der Job
-    noch einen weiteren Versuch hat (`attempt < MAX_ATTEMPTS`, wie
-    `report_service._handle_job_failure`); sonst `error`."""
+    Genau eine Herkunft je Instanz: `job_id` (Report), `analysis_job_id` (Analyse) oder
+    `chat_message_id` (Copilot-ASSISTANT-Nachricht), passend zu `source`.
 
-    def __init__(self, inner: LLMProvider, db: AsyncSession, *, job_id: uuid.UUID, attempt: int):
+    Status: `ok`; `retry` nur bei einem retrybaren `LLMProviderError` UND wenn der Aufrufer
+    noch einen weiteren Versuch hat (`attempt < max_attempts`, wie
+    `report_service._handle_job_failure`); sonst `error`. Der Copilot hat keine
+    Job-Wiederholung (der Nutzer sendet neu) und uebergibt `max_attempts=1` -- dort gibt es
+    nie `retry`."""
+
+    def __init__(
+        self,
+        inner: LLMProvider,
+        db: AsyncSession,
+        *,
+        attempt: int,
+        source: GenerationSource = "report",
+        job_id: uuid.UUID | None = None,
+        analysis_job_id: uuid.UUID | None = None,
+        chat_message_id: uuid.UUID | None = None,
+        max_attempts: int = MAX_ATTEMPTS,
+    ):
         self._inner = inner
         self._db = db
+        self._source: GenerationSource = source
         self._job_id = job_id
+        self._analysis_job_id = analysis_job_id
+        self._chat_message_id = chat_message_id
         self._attempt = attempt
+        self._max_attempts = max_attempts
 
     async def health(self) -> ProviderHealth:
         return await self._inner.health()
@@ -160,7 +197,9 @@ class RecordingLLMProvider:
             return await call()
         except Exception as exc:
             will_retry = (
-                isinstance(exc, LLMProviderError) and exc.retryable and self._attempt < MAX_ATTEMPTS
+                isinstance(exc, LLMProviderError)
+                and exc.retryable
+                and self._attempt < self._max_attempts
             )
             status = "retry" if will_retry else "error"
             error_code = type(exc).__name__
@@ -168,7 +207,7 @@ class RecordingLLMProvider:
         finally:
             await record(
                 self._db,
-                source="report",
+                source=self._source,
                 provider=getattr(self._inner, "provider_name", type(self._inner).__name__),
                 model=getattr(self._inner, model_attr, "unknown"),
                 status=status,
@@ -176,6 +215,8 @@ class RecordingLLMProvider:
                 prompt_hash=prompt_hash,
                 latency_ms=round((time.perf_counter() - started) * 1000),
                 report_job_id=self._job_id,
+                analysis_job_id=self._analysis_job_id,
+                chat_message_id=self._chat_message_id,
                 section_id=request.metadata.get("section_id"),
                 error_code=error_code,
             )

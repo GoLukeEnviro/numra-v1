@@ -51,7 +51,9 @@ zurückbleiben.
 
 Nicht durch eigene `DELETE`-Aufrufe, sondern über die Kaskade der Elternzeile:
 `report_sections`/`llm_generations` (unter `reports`/`report_jobs`),
-`name_identities`/`calculations` (unter `people`).
+`name_identities`/`calculations` (unter `people`), `chat_messages` (unter `chat_threads`)
+und `llm_generations` der Quelle `copilot` (unter `chat_messages`, damit mit dem privaten
+Thread weg).
 
 ### 2 — Erhalten (geteilte Historie und Audit-Spur)
 
@@ -72,6 +74,23 @@ Nicht durch eigene `DELETE`-Aufrufe, sondern über die Kaskade der Elternzeile:
 
 Die letzten drei sind die nicht offensichtlichen Fälle und der Grund, warum diese Matrix
 überhaupt nötig war — siehe „Was diese Arbeit gefunden hat".
+
+`llm_generations` der Quelle `analysis` hängen per `ON DELETE CASCADE` an `analysis_jobs`
+und bleiben damit wie ihr Job erhalten (reine Metadaten, kein Inhalt; der Prompt-Hash
+ist ein HMAC mit Server-Secret). Dasselbe gilt für Copilot-Zeilen des geteilten Threads. Eine
+Workspace-Dissolution löscht nichts (Statuswechsel); eine Workspace-Löschung kaskadiert über
+`analysis_jobs`/`chat_threads` auf alle Nutzungszeilen
+(`test_llm_generation_log_analysis_copilot.py`).
+
+**Bewusste Entscheidung: `ON DELETE CASCADE` statt `SET NULL`** (der Arbeitsauftrag
+2026-09-26 sah für `chat_message_id` `SET NULL` vor). Privacy: `SET NULL` ließe nach der
+Löschung eines privaten Threads herkunftslose Copilot-Zeilen mit Prompt-Hash, Modell und
+Zeitstempel zurück, also abgeleitete Nutzungsdaten ohne Zweck und ohne Eigentümer. Mit
+`CASCADE` lebt jede Zeile genau so lange wie ihr Artefakt. Folge für spätere Kostenhistorien
+(A7): eine Löschung senkt rückwirkend die Summen über `llm_generations`. Braucht A7 eine
+löschungsfeste Kostenhistorie, muss ein Aggregat (ohne Nutzer- oder Inhaltsbezug, z. B. pro
+Tag/Quelle/Modell) vor der Löschung separat gesichert werden. Die Tabelle selbst ist dafür
+nicht die Quelle der Wahrheit.
 
 ### 3 — Vom Fixture nicht befüllt, aber klassifiziert
 
