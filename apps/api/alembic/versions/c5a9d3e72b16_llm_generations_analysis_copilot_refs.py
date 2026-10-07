@@ -34,7 +34,10 @@ def upgrade() -> None:
     op.add_column(
         "llm_generations", sa.Column("chat_message_id", sa.Uuid(as_uuid=True), nullable=True)
     )
-    for column, parent in (("analysis_job_id", "analysis_jobs"), ("chat_message_id", "chat_messages")):
+    for column, parent in (
+        ("analysis_job_id", "analysis_jobs"),
+        ("chat_message_id", "chat_messages"),
+    ):
         name = f"llm_generations_{column}_fkey"
         op.execute(
             f"ALTER TABLE llm_generations ADD CONSTRAINT {name} FOREIGN KEY ({column})"
