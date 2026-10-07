@@ -78,10 +78,14 @@ werden einmalig initialisiert; danach ändert nur noch `/admin/flags` Werte.
   Eintrag, gilt fail-safe `adopted`.
 - `--dry-run` zeigt Status und Diff und schreibt nichts.
 - Dev-/CI-Compose (`docker-compose.yml`): bewusst **ohne** `flags-init`-Job. Dort wirken
-  die Seed-Werte von `04d4` (4 an, kein Status), das Verhalten der CI-Stacks bleibt
-  unverändert (kleinster Eingriff). Alle sieben an: manuell
+  die Seed-Werte von `04d4` (4 an: `v2_master`, `connections`, `relationship_workspaces`,
+  `copilot`; kein Status). Alle sieben an: manuell
   `docker compose exec api python -m numra_api.cli flags init --profile audit-all-on`.
-  Der `AVENYTH_*`-Block in `docker-compose.rc2.yml` ist wirkungslos.
+- RC2-Journey-Stack (`docker-compose.rc2.yml`, Workflow `rc2-journey.yml`): hat einen
+  eigenen `flags-init`-Job mit Profil `audit-all-on` nach `migrate`, `api` wartet darauf.
+  Ohne ihn blieben `checkins`, `tasks` und `evidence_layer` auf der frischen DB aus und die
+  Journey scheiterte an den 503-Seiten. Die `AVENYTH_*`-Variablen dort wurden entfernt
+  (seit #271 wirkungslos).
 - **E3-Vorbereitung Audit-Stack** (Host-Overlay `/opt/numra/audit-compose.yml`, nicht Teil
   dieses Repos/PRs): `NUMRA_FLAGS_PROFILE=audit-all-on` in `/etc/numra/audit.env` setzen und
   einen `flags-init`-Job nach `migrate` ergänzen; die `AVENYTH_*`-Variablen im Overlay
