@@ -180,3 +180,38 @@ async def test_ready_stays_200_when_only_optional_dependencies_are_down(
     assert response.status_code == 200
     assert response.json()["status"] == "healthy"
     assert response.json()["pdf"] == "unhealthy"
+
+
+@pytest.mark.parametrize(
+    ("database_state", "expected_status_code"),
+    [("unhealthy", 503), ("healthy", 200)],
+)
+async def test_ready_cache_path_keeps_status_code_without_rechecking(
+    settings, db_engine, monkeypatch, database_state: str, expected_status_code: int
+) -> None:
+    calls = 0
+
+    async def _database_check(*_args: object, **_kwargs: object) -> str:
+        nonlocal calls
+        calls += 1
+        return database_state
+
+    monkeypatch.setattr(health_routes, "_check_database", _database_check)
+    app = create_app(
+        settings=Settings(
+            database_url=settings.database_url,
+            environment="test",
+            numra_llm_provider="mock",
+            health_ready_cache_ttl_seconds=60.0,
+        )
+    )
+    app.state.engine = db_engine
+    app.state.sessionmaker = build_sessionmaker(db_engine)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        first = await client.get("/v1/health/ready")
+        second = await client.get("/v1/health/ready")
+    assert calls == 1
+    assert first.status_code == expected_status_code
+    assert second.status_code == expected_status_code
+    assert second.json() == first.json()

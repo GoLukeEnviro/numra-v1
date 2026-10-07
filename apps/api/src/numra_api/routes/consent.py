@@ -47,7 +47,15 @@ async def list_workspace_consent_route(
 
 
 @router.post(
-    "/grant", response_model=ConsentGrantOut, status_code=201, dependencies=[Depends(require_csrf)]
+    "/grant",
+    response_model=ConsentGrantOut,
+    status_code=201,
+    dependencies=[Depends(require_csrf)],
+    responses={
+        409: {
+            "description": "WORKSPACE_DISSOLVED or CONSENT_GRANT_CONFLICT",
+        },
+    },
 )
 async def grant_consent_route(
     workspace_id: uuid.UUID,
