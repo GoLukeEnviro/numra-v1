@@ -104,7 +104,10 @@ this list so nothing is added or renamed silently.
   (analysis worker), `chat_message_id` (the Copilot ASSISTANT message). A row therefore
   lives exactly as long as the artefact it belongs to: private Copilot threads go with
   account deletion, rows of retained shared artefacts (`analysis_jobs`, the SHARED
-  thread) stay.
+  thread) stay. `CASCADE` instead of `SET NULL` is a deliberate privacy decision (no
+  origin-less rows with prompt hash after deletion); consequence: deleting an account
+  retroactively lowers sums over this table. If cost reporting (A7) needs a
+  deletion-proof history, a user-free aggregate must be secured separately before deletion.
 
 ## Row-Level Security
 

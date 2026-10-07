@@ -24,6 +24,10 @@ Aufrufer-Session, nie ueber eine eigene Verbindung (FK-Insert nimmt `FOR KEY SHA
 die Elternzeile). Beim Copilot ist die Elternzeile die eigene, noch nicht committete
 ASSISTANT-Nachricht; ein Log-Fehler kippt weder Antwort noch FAILED-Persistierung.
 
+Status beschreibt den Provider-Aufruf, nicht die Weiterverarbeitung: Output, den der
+Validator danach verwirft (Reparatur, FAILED), steht als Provider-Zeile `ok` im Log --
+wie bei den Reports.
+
 `attempt` ist der Job-Versuch. Die Pipeline wiederholt einen Abschnitt bei verworfener
 Ausgabe einmal innerhalb desselben Job-Versuchs (Reparatur); diese Aufrufe tragen daher
 dieselbe `attempt`-Nummer (unterscheidbar ueber `section_id` und `created_at`).
@@ -86,8 +90,9 @@ async def record(
 ) -> bool:
     """Schreibt eine Zeile; True bei Erfolg, False (geloggt) bei jedem Schreibfehler.
 
-    Ausstehende Aenderungen des Aufrufers werden vorab ausserhalb des Fangnetzes
-    geflusht: ein Fehler darin ist der des Aufrufers und wird nicht verschluckt."""
+    Die Zusage "scheitert nie am Logging" gilt fuer den INSERT der Log-Zeile (im SAVEPOINT).
+    Ausstehende Aenderungen des Aufrufers werden vorab ausserhalb des Fangnetzes geflusht:
+    ein Fehler darin ist der des Aufrufers, wird durchgereicht und nicht verschluckt."""
     await db.flush()
     try:
         async with db.begin_nested():

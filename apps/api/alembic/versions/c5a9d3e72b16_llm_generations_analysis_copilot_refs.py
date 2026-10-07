@@ -21,29 +21,26 @@ depends_on: str | Sequence[str] | None = None
 def upgrade() -> None:
     """Upgrade schema. Beide FKs sind ON DELETE CASCADE (Retention-Matrix): eine Zeile lebt
     genau so lange wie der Analyse-Job bzw. die Copilot-Nachricht, an der sie haengt. Die
-    Bestandszeilen (Quelle report) behalten beide Spalten NULL."""
+    Bestandszeilen (Quelle report) behalten beide Spalten NULL.
+
+    Fail fast statt Blockade: `lock_timeout` bricht die Migration bei Lock-Konflikt (z. B.
+    laufender Worker mit offener Job-Transaktion) kontrolliert ab; sie ist transaktional und
+    kann nach Beheben des Konflikts einfach wiederholt werden. Die FKs entstehen `NOT VALID`
+    (kurzer Lock, kein Tabellenscan unter Lock) und werden danach validiert."""
+    op.execute("SET LOCAL lock_timeout = '5s'")
     op.add_column(
         "llm_generations", sa.Column("analysis_job_id", sa.Uuid(as_uuid=True), nullable=True)
     )
     op.add_column(
         "llm_generations", sa.Column("chat_message_id", sa.Uuid(as_uuid=True), nullable=True)
     )
-    op.create_foreign_key(
-        "llm_generations_analysis_job_id_fkey",
-        "llm_generations",
-        "analysis_jobs",
-        ["analysis_job_id"],
-        ["id"],
-        ondelete="CASCADE",
-    )
-    op.create_foreign_key(
-        "llm_generations_chat_message_id_fkey",
-        "llm_generations",
-        "chat_messages",
-        ["chat_message_id"],
-        ["id"],
-        ondelete="CASCADE",
-    )
+    for column, parent in (("analysis_job_id", "analysis_jobs"), ("chat_message_id", "chat_messages")):
+        name = f"llm_generations_{column}_fkey"
+        op.execute(
+            f"ALTER TABLE llm_generations ADD CONSTRAINT {name} FOREIGN KEY ({column})"
+            f" REFERENCES {parent} (id) ON DELETE CASCADE NOT VALID"
+        )
+        op.execute(f"ALTER TABLE llm_generations VALIDATE CONSTRAINT {name}")
     op.create_index(
         op.f("ix_llm_generations_analysis_job_id"),
         "llm_generations",
@@ -66,6 +63,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Downgrade schema. Zeilen der Quellen analysis/copilot bleiben ohne Herkunftsbezug
     erhalten (die Spalten entfallen)."""
+    op.execute("SET LOCAL lock_timeout = '5s'")
     op.drop_constraint("ck_llm_generations_single_ref", "llm_generations", type_="check")
     op.drop_index(op.f("ix_llm_generations_chat_message_id"), table_name="llm_generations")
     op.drop_index(op.f("ix_llm_generations_analysis_job_id"), table_name="llm_generations")

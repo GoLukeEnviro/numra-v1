@@ -82,6 +82,16 @@ Workspace-Dissolution löscht nichts (Statuswechsel); eine Workspace-Löschung k
 `analysis_jobs`/`chat_threads` auf alle Nutzungszeilen
 (`test_llm_generation_log_analysis_copilot.py`).
 
+**Bewusste Entscheidung: `ON DELETE CASCADE` statt `SET NULL`** (der Arbeitsauftrag
+2026-09-26 sah für `chat_message_id` `SET NULL` vor). Privacy: `SET NULL` ließe nach der
+Löschung eines privaten Threads herkunftslose Copilot-Zeilen mit Prompt-Hash, Modell und
+Zeitstempel zurück, also abgeleitete Nutzungsdaten ohne Zweck und ohne Eigentümer. Mit
+`CASCADE` lebt jede Zeile genau so lange wie ihr Artefakt. Folge für spätere Kostenhistorien
+(A7): eine Löschung senkt rückwirkend die Summen über `llm_generations`. Braucht A7 eine
+löschungsfeste Kostenhistorie, muss ein Aggregat (ohne Nutzer- oder Inhaltsbezug, z. B. pro
+Tag/Quelle/Modell) vor der Löschung separat gesichert werden. Die Tabelle selbst ist dafür
+nicht die Quelle der Wahrheit.
+
 ### 3 — Vom Fixture nicht befüllt, aber klassifiziert
 
 `chat_messages` (kein Verlauf im Seed) und `admin_audit_events` (Admin-Pfad nicht

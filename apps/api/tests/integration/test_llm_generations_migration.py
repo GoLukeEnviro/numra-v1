@@ -259,3 +259,47 @@ def test_refs_revision_is_the_single_head_on_top_of_the_report_revision() -> Non
     script = ScriptDirectory.from_config(config)
     assert script.get_heads() == [REFS]
     assert script.get_revision(REFS).down_revision == "9d2f6b83a1c4"
+
+
+def test_refs_foreign_keys_are_validated_after_upgrade(migration_url) -> None:
+    _alembic(migration_url, "upgrade", REFS)
+    rows = _sql(
+        migration_url,
+        "SELECT convalidated FROM pg_constraint"
+        " WHERE conrelid='llm_generations'::regclass AND contype='f'",
+    )
+    assert len(rows) == 3 and all(r["convalidated"] for r in rows)
+
+
+def test_refs_upgrade_fails_fast_on_lock_conflict_and_can_be_repeated(migration_url) -> None:
+    """Haelt ein anderer Prozess die Tabelle gesperrt, bricht die Migration per
+    `lock_timeout` kontrolliert ab (nichts halb angewendet) und laeuft danach durch."""
+    _alembic(migration_url, "upgrade", "9d2f6b83a1c4")
+    plain_url = migration_url.replace("postgresql+asyncpg://", "postgresql://")
+
+    async def blocked_attempt() -> subprocess.CompletedProcess[str]:
+        conn = await asyncpg.connect(plain_url)
+        tx = conn.transaction()
+        await tx.start()
+        try:
+            await conn.execute("LOCK TABLE llm_generations IN ACCESS EXCLUSIVE MODE")
+            return await asyncio.to_thread(
+                subprocess.run,
+                [sys.executable, "-m", "alembic", "upgrade", REFS],
+                cwd=API_DIR,
+                env={**os.environ, "DATABASE_URL": migration_url},
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+        finally:
+            await tx.rollback()
+            await conn.close()
+
+    result = asyncio.run(blocked_attempt())
+    assert result.returncode != 0
+    assert "lock timeout" in result.stderr
+    assert not {"analysis_job_id", "chat_message_id"} & _columns(migration_url)
+
+    _alembic(migration_url, "upgrade", REFS)
+    assert {"analysis_job_id", "chat_message_id"} <= _columns(migration_url)
