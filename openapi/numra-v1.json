@@ -12627,6 +12627,9 @@
             },
             "description": "Successful Response"
           },
+          "409": {
+            "description": "WORKSPACE_DISSOLVED or CONSENT_GRANT_CONFLICT"
+          },
           "422": {
             "content": {
               "application/json": {

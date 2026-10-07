@@ -220,3 +220,7 @@ auch für `numerology_engine`):
   rechenfähig" neu definiert werden (z. B. weil ein separater Health-Check-Prozess
   ohne die Engine denkbar wird), gehört das in einen eigenen PR mit eigenem Eintrag
   hier — nicht rückwirkend in diesen.
+
+Statuscode: `GET /v1/health/ready` liefert nur dann HTTP 503, wenn die Datenbank
+`unhealthy` ist; `unhealthy` bei `llm`/`pdf`/`numerology_engine` sowie `degraded`/`disabled`
+ändern den Statuscode nicht (200). Der Body bleibt in beiden Fällen vollständig.
