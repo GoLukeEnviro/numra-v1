@@ -126,20 +126,6 @@ class Settings(BaseSettings):
     smtp_use_tls: bool = False
     smtp_timeout_seconds: float = 10.0
 
-    #: DEPRECATED und OHNE Wirkung: Quelle der Wahrheit ist die feature_flags-DB-
-    #: Tabelle (services/feature_flags.py liest sie ueber den FeatureFlagCache). Die
-    #: Erstbefuellung laeuft ueber den Init-Schritt `python -m numra_api.cli flags init
-    #: --profile <name>` (services/feature_flag_bootstrap.py, Profile in
-    #: feature_flag_profiles.py), NICHT ueber diese Felder. Sie bleiben nur bestehen,
-    #: damit vorhandene Env-Dateien weiter ladbar sind (Minimal-Touch).
-    avenyth_v2_enabled: bool = False
-    avenyth_connections_enabled: bool = False
-    avenyth_relationship_workspaces_enabled: bool = False
-    avenyth_checkins_enabled: bool = False
-    avenyth_tasks_enabled: bool = False
-    avenyth_copilot_enabled: bool = False
-    avenyth_evidence_layer_enabled: bool = False
-
     @property
     def cookies_secure(self) -> bool:
         return self.environment == "production"

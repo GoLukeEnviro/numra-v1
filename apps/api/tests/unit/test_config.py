@@ -154,15 +154,23 @@ def test_smtp_starttls_and_use_tls_both_true_forbidden() -> None:
         )
 
 
-def test_v2_flags_default_false() -> None:
+def test_legacy_avenyth_env_vars_are_ignored(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Alte Host-Env-Dateien (/etc/numra/numra.env) enthalten evtl. noch AVENYTH_*-
+    Zeilen -- `extra="ignore"` muss das Laden weiter erlauben; Settings kennt die
+    Felder nicht mehr, die Flag-Wahrheit liegt in der feature_flags-DB-Tabelle."""
+    for name in (
+        "V2",
+        "CONNECTIONS",
+        "RELATIONSHIP_WORKSPACES",
+        "CHECKINS",
+        "TASKS",
+        "COPILOT",
+        "EVIDENCE_LAYER",
+    ):
+        monkeypatch.setenv(f"AVENYTH_{name}_ENABLED", "true")
     settings = Settings(database_url=_DB_URL)
-    assert settings.avenyth_v2_enabled is False
-    assert settings.avenyth_connections_enabled is False
-    assert settings.avenyth_relationship_workspaces_enabled is False
-    assert settings.avenyth_checkins_enabled is False
-    assert settings.avenyth_tasks_enabled is False
-    assert settings.avenyth_copilot_enabled is False
-    assert settings.avenyth_evidence_layer_enabled is False
+    assert not [field for field in Settings.model_fields if field.startswith("avenyth_")]
+    assert not hasattr(settings, "avenyth_v2_enabled")
 
 
 def test_disabled_email_backend_allowed_in_production() -> None:
