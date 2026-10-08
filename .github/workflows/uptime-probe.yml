@@ -4,6 +4,8 @@ name: Uptime Probe
 # keine Secrets des Hosts). Details: docs/ops/numra-monitoring.md, "Externer Uptime-Probe".
 
 on:
+  push:
+    branches: [ci/uptime-probe]
   schedule:
     # Alle 15 Minuten. GitHub startet Cron-Laeufe oft verzoegert (teils mehrere Minuten,
     # zu Stundenbeginn mehr); einzelne Laeufe koennen ausfallen.
