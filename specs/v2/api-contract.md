@@ -86,6 +86,25 @@ max_workspaces
 Beta default: everything unlocked. Payment provider integration is explicitly
 out of scope for V2 Core (`specs/v2/architecture.md`).
 
+## Connection invitations require a verified email
+
+```
+POST /v1/connections/invitations          create (LINK | CODE | EMAIL)
+POST /v1/connections/invitations/redeem   redeem
+```
+
+Both routes require an account with a verified email (`users.email_verified_at`),
+for every invitation method. An unverified account receives
+`403 EMAIL_VERIFICATION_REQUIRED` (not 404: the error concerns the caller's own
+account, so it is no IDOR signal). On redeem the check runs before the invitation
+is read or claimed.
+
+`EMAIL` invitations stay bound to the addressed account: a different account, even
+a verified one, receives the same `400 INVITATION_EXPIRED_OR_INVALID` as for an
+unknown token, and the failed attempt does not consume the invitation (it stays
+`PENDING`). The routes declare no error responses in OpenAPI; this section is the
+reference for the 403.
+
 ## Primary navigation (Web/PWA)
 
 ```

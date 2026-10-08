@@ -181,3 +181,30 @@ async def test_email_invitation_requires_verified_email_to_redeem(client, sessio
         headers=headers_bob,
     )
     assert verified_attempt.status_code == 201
+
+
+async def test_unverified_user_gets_404_on_foreign_connection_and_workspace(
+    client, sessionmaker
+) -> None:
+    """Fehlende Verifizierung oeffnet keine fremden Daten: derselbe 404 wie fuer ein
+    verifiziertes fremdes Konto."""
+    headers_a = await _login(client, sessionmaker, "idor-unver-a@example.com")
+    invitation = await _create_link_invitation(client, headers_a)
+    await client.post("/v1/auth/logout")
+    headers_b = await _login(client, sessionmaker, "idor-unver-b@example.com")
+    redeem = await client.post(
+        "/v1/connections/invitations/redeem",
+        json={"token": invitation["token"]},
+        headers=headers_b,
+    )
+    connection_id = redeem.json()["connection"]["id"]
+    workspace_id = redeem.json()["workspace_id"]
+
+    await client.post("/v1/auth/logout")
+    headers_c = await _login(client, sessionmaker, "idor-unver-c@example.com", verified=False)
+
+    dissolve = await client.post(f"/v1/connections/{connection_id}/dissolve", headers=headers_c)
+    assert dissolve.status_code == 404
+    workspace = await client.get(f"/v1/workspaces/{workspace_id}", headers=headers_c)
+    assert workspace.status_code == 404
+    assert (await client.get("/v1/connections", headers=headers_c)).json() == []
