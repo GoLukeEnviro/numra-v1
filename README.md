@@ -184,7 +184,7 @@ outside these workspaces (e.g. repo root) fails as well. `python-audit` runs `pi
 on the `uv.lock` export and fails on any known advisory of any severity (`--strict` only
 fails on packages that cannot be audited). Accepted Mobile advisories live in
 `.github/security-exceptions.yml` with an expiry date. Branch protection must be updated
-separately to require `security-gate` and `api-integration`.
+separately to require `security-gate` and `api-integration` (as of 2026-10-08 the live protection of `main` requires 12 checks and does not yet include these two).
 
 ## Docker
 
