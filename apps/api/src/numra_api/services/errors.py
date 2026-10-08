@@ -428,12 +428,12 @@ class EvidenceStatementLintFailed(ApplicationError):
 class V2Disabled(ApplicationError):
     """AVENYTH V2 Runtime-Feature-Flags (specs/v2/architecture.md "Feature flags") --
     ausgeloest von `services/feature_flags.py::require_v2_master`, wenn der Master-
-    Switch `AVENYTH_V2_ENABLED` aus ist. 503, nicht 404: ein deaktivierter V2-Rollout
-    ist ein deployment-weites, oeffentlich dokumentiertes Faktum (die Flag-Namen
-    stehen bereits in specs/v2/architecture.md), kein IDOR-Fall -- ein 404 wuerde
-    legitimen API-Konsumenten (z.B. dem Web-Frontend) aktiv schaden, weil sie
-    "Endpoint existiert nicht" nicht von "Endpoint ist temporaer aus" unterscheiden
-    koennten."""
+    Flag `v2_master` (DB-Tabelle `feature_flags`) aus ist. 503, nicht 404: ein
+    deaktivierter V2-Rollout ist ein deployment-weites, oeffentlich dokumentiertes
+    Faktum (die Flag-Namen stehen bereits in specs/v2/architecture.md), kein
+    IDOR-Fall -- ein 404 wuerde legitimen API-Konsumenten (z.B. dem Web-Frontend)
+    aktiv schaden, weil sie "Endpoint existiert nicht" nicht von "Endpoint ist
+    temporaer aus" unterscheiden koennten."""
 
     code = "V2_DISABLED"
     status_code = 503
@@ -442,7 +442,7 @@ class V2Disabled(ApplicationError):
 class V2PhaseDisabled(ApplicationError):
     """AVENYTH V2 Runtime-Feature-Flags -- ausgeloest von
     `services/feature_flags.py::require_v2_phase`, wenn der Master-Switch zwar an
-    ist, aber die einzelne Phase (z.B. `AVENYTH_CHECKINS_ENABLED`) noch aus ist.
+    ist, aber die einzelne Phase (z.B. `checkins` in der DB-Tabelle `feature_flags`) noch aus ist.
     Gleiche 503-Begruendung wie `V2Disabled`."""
 
     code = "V2_PHASE_DISABLED"

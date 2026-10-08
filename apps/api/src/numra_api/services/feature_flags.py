@@ -8,8 +8,8 @@ Dependency VOR jeder Auth-Dependency stehen, damit ein deaktiviertes Feature nic
 die "authenticated vs. nicht authenticated"-Unterscheidung leakt.
 
 Datenquelle ist ausschliesslich die `feature_flags`-DB-Tabelle (ueber den gecachten
-`FeatureFlagCache`, siehe `services/feature_flag_cache.py`), NICHT `Settings`/die
-`AVENYTH_*_ENABLED`-Env-Vars (deprecated, ohne Wirkung -- siehe `config.py`). Die
+`FeatureFlagCache`, siehe `services/feature_flag_cache.py`), NICHT `Settings`/Env-Vars
+(die frueheren `AVENYTH_*_ENABLED`-Variablen existieren nicht mehr). Die
 Erstbefuellung einer neuen Umgebung erledigt der einmalige Init-Schritt
 `python -m numra_api.cli flags init --profile <name>` (siehe
 `services/feature_flag_bootstrap.py`); danach aendert nur noch `/admin/flags` Werte.
