@@ -98,7 +98,7 @@ flowchart TB
 **V2-Invarianten ([`specs/v2/architecture.md`](specs/v2/architecture.md)):**
 - Kein Rewrite, kein Parallel-Stack — V2 wird additiv auf dem bestehenden Stack aufgebaut.
 - Brand „AVENYTH" ist reine Anzeige-Konfiguration; technische Namespaces (`numra_*`, DB-Identifier, `calculation_version`) werden nicht umbenannt.
-- Feature-Flags (`AVENYTH_V2_ENABLED`, `AVENYTH_TASKS_ENABLED`, …) bleiben in Produktion deaktiviert, bis das jeweilige Phase-Acceptance-Gate bestanden ist.
+- Neue V2-Phasen bleiben deaktiviert, bis das jeweilige Phase-Acceptance-Gate bestanden ist. Die sieben Feature-Flags liegen in der DB-Tabelle `feature_flags` (Schalter: `/admin/flags`); die `AVENYTH_*_ENABLED`-Env-Variablen sind seit #271 wirkungslos. Produktionsstand: `docs/planning/avenyth-pwa-execution-state.md`.
 
 ---
 
@@ -174,9 +174,9 @@ flowchart TB
 
 1. `lint-python` (ruff format + check)
 2. `python-typecheck` (mypy --strict)
-3. `unit-and-property-tests` (Postgres/Redis, Coverage ≥90 %)
+3. `engine-unit-property` (Postgres/Redis, Coverage ≥90 %)
 4. `no-golden-leakage`
-5. `dependency-security` (`pnpm audit --prod --audit-level=high` + `pip-audit`)
+5. `sast` (Bandit)
 6. `schema-and-openapi-drift`
 7. `web-lint-typecheck-build-test`
 8. `pdf-service-tests`
