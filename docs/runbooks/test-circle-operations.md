@@ -21,7 +21,7 @@ Ein Restore synthetischer Daten belegt nur das Verfahren. Die Wiederherstellbark
 
 ## Überwachung
 
-`python scripts/check_testcircle_readiness.py --base-url http://127.0.0.1:58080 --backup <artefakt>` prüft Erreichbarkeit, Readiness und ein Backup-Alter von höchstens 24 Stunden. Ein Exitcode ungleich null wird vom später gewählten Scheduler/Alert-Kanal übernommen. Reale Empfänger werden erst nach ausdrücklicher Autorisierung konfiguriert.
+`python scripts/check_testcircle_readiness.py --base-url http://127.0.0.1:58080 --backup <artefakt>` prüft Erreichbarkeit, Readiness und ein Backup-Alter von höchstens 24 Stunden. Bei Readiness `unhealthy` antwortet die API mit HTTP 503 (sonst 200); das Skript wertet den Body auch dann aus, sodass die Dienstdetails in der JSON-Ausgabe sichtbar bleiben (Exitcode dennoch ungleich null). Ein Exitcode ungleich null wird vom später gewählten Scheduler/Alert-Kanal übernommen. Reale Empfänger werden erst nach ausdrücklicher Autorisierung konfiguriert.
 
 ## Rollback und Datenbank
 

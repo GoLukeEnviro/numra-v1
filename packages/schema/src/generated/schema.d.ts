@@ -8022,6 +8022,13 @@ export interface operations {
                     "application/json": components["schemas"]["ConsentGrantOut"];
                 };
             };
+            /** @description WORKSPACE_DISSOLVED or CONSENT_GRANT_CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
