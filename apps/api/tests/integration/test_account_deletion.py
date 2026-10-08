@@ -10,6 +10,8 @@ Zwei-Parteien-Sicht.
 
 from __future__ import annotations
 
+import datetime as dt
+
 import pytest
 from sqlalchemy import func, select
 
@@ -34,7 +36,7 @@ from numra_api.models.enums import (
     WorkspaceMemberStatus,
     WorkspaceStatus,
 )
-from numra_api.repositories.users import create_user
+from numra_api.repositories.users import create_user, mark_email_verified
 
 pytestmark = pytest.mark.integration
 
@@ -43,7 +45,8 @@ _PASSWORD = "password12345"
 
 async def _signup(client, sessionmaker, email: str) -> dict:
     async with sessionmaker() as db:
-        await create_user(db, email=email, password_hash=hash_password(_PASSWORD))
+        user = await create_user(db, email=email, password_hash=hash_password(_PASSWORD))
+        await mark_email_verified(db, user=user, verified_at=dt.datetime.now(dt.UTC))
         await db.commit()
     return await _switch_user(client, email)
 

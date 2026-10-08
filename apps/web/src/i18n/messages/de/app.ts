@@ -579,6 +579,8 @@ export const deApp = {
   "app.connectionsInvite.copiedFeedback": "Kopiert!",
   "app.connectionsInvite.doneButton": "Fertig",
   "app.connectionsInvite.submitError": "Einladung konnte nicht erstellt werden",
+  "app.connectionsInvite.verifyEmailError": "Bestätige zuerst deine E-Mail-Adresse, bevor du eine Einladung erstellst.",
+  "app.connectionsInvite.verifyEmailCta": "Zu den Einstellungen",
 
   "app.connectionsRedeem.title": "Einladung einlösen",
   "app.connectionsRedeem.previewing": "Einladung wird geprüft…",

@@ -28,7 +28,7 @@ from numra_api.repositories.entitlements import (
     get_entitlement_set_by_key,
 )
 from numra_api.repositories.password_reset_tokens import create_password_reset_token
-from numra_api.repositories.users import create_user, get_user_by_email
+from numra_api.repositories.users import create_user, get_user_by_email, mark_email_verified
 from numra_api.repositories.verification_tokens import create_verification_token
 from numra_api.worker import run_one_cycle
 
@@ -43,7 +43,8 @@ async def _count(sessionmaker, model) -> int:
 
 async def _login(client, sessionmaker, email: str) -> dict:
     async with sessionmaker() as db:
-        await create_user(db, email=email, password_hash=hash_password("password12345"))
+        user = await create_user(db, email=email, password_hash=hash_password("password12345"))
+        await mark_email_verified(db, user=user, verified_at=dt.datetime.now(dt.UTC))
         await db.commit()
     response = await client.post(
         "/v1/auth/login", json={"email": email, "password": "password12345"}
