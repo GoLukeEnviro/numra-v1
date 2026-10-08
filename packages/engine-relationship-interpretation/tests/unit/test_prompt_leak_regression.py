@@ -24,6 +24,7 @@ from numra_interpretation.llm.types import (
     ProviderHealth,
     StructuredGenerationRequest,
 )
+from numra_interpretation.llm.validator import build_metric_display_value_index
 from numra_numerology.engine import calculate_profile
 from numra_numerology.models.person import PersonInput
 from numra_relationship_interpretation.errors import AnalysisGenerationError
@@ -264,6 +265,8 @@ async def test_relationship_analysis_renders_the_audit_shape_without_scaffolding
         knowledge_version="0.1.0",
     )
 
+    value_a = build_metric_display_value_index(profile_a)["expression"]
+    value_b = build_metric_display_value_index(profile_b)["expression"]
     texts = [
         statement.text for dimension in result.dimensions for statement in dimension.statements
     ]
@@ -271,7 +274,10 @@ async def test_relationship_analysis_renders_the_audit_shape_without_scaffolding
     for text in texts:
         for marker in FORBIDDEN_SCAFFOLDING_MARKERS:
             assert marker not in text, f"leaked {marker!r}: {text[:120]!r}"
-        assert "durch " in text and "gepraegt" in text
+        assert text == (
+            "In der Kommunikation zeigt sich eine strukturierte Ausdrucksweise, die durch "
+            f"{value_a} gepraegt ist, waehrend Person B mit {value_b} eher grosszuegig zuhoert."
+        )
 
 
 async def test_shadow_dynamics_fails_closed_on_inline_scaffolding(

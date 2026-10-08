@@ -498,18 +498,19 @@ async def test_copied_fact_label_is_resolved_and_the_analysis_completes(
 
 @pytest.mark.parametrize("kind", ["relationship-analysis", "shadow-dynamics"])
 @pytest.mark.parametrize(
-    "unrepairable",
+    ("case", "unrepairable"),
     [
-        "Wissen [knowledge:communication:semantic_context] im Satz.",
-        "Mehrdeutig [profile_fact:life_path] im Satz.",
-        "Unbekannt [profile_fact:a:does_not_exist] im Satz.",
-        "Template {partner_a} im Satz.",
+        ("knowledge", "Wissen [knowledge:communication:semantic_context] im Satz."),
+        ("ambiguous", "Mehrdeutig [profile_fact:life_path] im Satz."),
+        ("unknown", "Unbekannt [profile_fact:a:does_not_exist] im Satz."),
+        ("template", "Template {partner_a} im Satz."),
+        ("fullwidth", "Voll \uff3bprofile_fact\uff1aa:expression\uff3d im Satz."),
     ],
 )
 async def test_unrepairable_token_never_completes_and_fails_with_one_error_code(
-    client, sessionmaker, lukas_payload, kind, unrepairable
+    client, sessionmaker, lukas_payload, kind, case, unrepairable
 ) -> None:
-    slug = f"{kind}-{abs(hash(unrepairable)) % 10_000}"
+    slug = f"{kind}-{case}"
     workspace_id, headers_a, _headers_b = await _set_up_partner_workspace(
         client,
         sessionmaker,

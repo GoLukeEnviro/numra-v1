@@ -231,6 +231,62 @@ def test_other_unresolved_template_tokens_are_rejected(text, profile_a, profile_
         )
 
 
+# --------------------------------------------------------------------------- Unicode
+
+_LOOKALIKES = (
+    "Voll\uff3bprofile_fact\uff1aa:expression\uff3d im Satz.",  # full-width [ : ]
+    "Voll [profile_fact\uff1aa:expression] im Satz.",  # nur Doppelpunkt
+    "Homoglyph [\u0440rofile_fact:a:expression] im Satz.",  # kyrillisch r
+    "Homoglyph [kn\u043ewledge:x] im Satz.",  # kyrillisch o
+    "Homoglyph [syst\u0435m] im Satz.",  # kyrillisch e
+    "Zero-Width [profile\u200b_fact:a:expression] im Satz.",
+    "Gemischt \uff3bkn\u043ewledge\uff1ax\uff3d im Satz.",
+    "Voll {metric:a:life_path} im Satz.".replace("{", "\uff5b").replace("}", "\uff5d"),
+    "Voll \uff5b\uff5bpartner_a\uff5d\uff5d im Satz.",
+)
+
+
+@pytest.mark.parametrize("text", _LOOKALIKES)
+@pytest.mark.parametrize("is_mock_provider", [False, True])
+def test_unicode_lookalike_tokens_are_rejected(
+    text, is_mock_provider, profile_a, profile_b
+) -> None:
+    with pytest.raises(InvalidAnalysisSection):
+        _validate_and_resolve_text(
+            text, profile_a=profile_a, profile_b=profile_b, is_mock_provider=is_mock_provider
+        )
+
+
+async def test_unicode_lookalike_in_a_whole_analysis_fails_closed(profile_a, profile_b) -> None:
+    frame = load_relationship_frame(KNOWLEDGE_ROOT, "PARTNER")
+    assert frame is not None
+    with pytest.raises(AnalysisGenerationError):
+        await generate_relationship_analysis(
+            profile_a=profile_a,
+            profile_b=profile_b,
+            relationship_type="PARTNER",
+            frame_knowledge=frame,
+            llm=_FixedTextProvider(_LOOKALIKES[0]),
+            knowledge_version="0.1.0",
+        )
+
+
+_GERMAN_PROSE = (
+    "Über Grenzen hinweg: „Nähe“ und »Freiraum« sind für beide wichtig – größer, schöner, "
+    "behutsamer. Straße, Maß, Äußerung, Ärger, Öl und Übung; 25/7 … fast 100 % ehrlich.",
+    "Он сказал «да» (русский текст ist kein Marker), und α, β, γ bleiben erlaubt.",
+    "Klammern (wie hier) und [Anmerkung der Redaktion] sind normale Prosa.",
+)
+
+
+@pytest.mark.parametrize("text", _GERMAN_PROSE)
+def test_ordinary_german_prose_is_not_a_false_positive(text, profile_a, profile_b) -> None:
+    resolved = _validate_and_resolve_text(
+        text, profile_a=profile_a, profile_b=profile_b, is_mock_provider=True
+    )
+    assert resolved == text  # geprueft, nie umgeschrieben
+
+
 # --------------------------------------------------------------------------- Pipeline
 
 
@@ -392,6 +448,26 @@ async def test_result_level_backstop_rejects_a_token_that_slipped_past_the_state
 ) -> None:
     monkeypatch.setattr(
         pipeline, "_recommended_micro_tasks", lambda _ctx: ("Aufgabe fuer {partner_a}.",)
+    )
+    with pytest.raises(AnalysisGenerationError, match="ANALYSIS_VALIDATION_FAILED"):
+        await generate_shadow_dynamics(
+            profile_a=profile_a,
+            profile_b=profile_b,
+            relationship_type="PARTNER",
+            knowledge=load_knowledge_base(KNOWLEDGE_ROOT),
+            shadow_rules=load_shadow_interaction_rules(KNOWLEDGE_ROOT),
+            llm=_LabelCitingProvider(),
+            knowledge_version="0.1.0",
+        )
+
+
+async def test_result_level_backstop_also_sees_unicode_lookalikes(
+    profile_a, profile_b, monkeypatch
+) -> None:
+    monkeypatch.setattr(
+        pipeline,
+        "_recommended_micro_tasks",
+        lambda _ctx: ("Aufgabe \uff3bprofile_fact\uff1aa:expression\uff3d.",),
     )
     with pytest.raises(AnalysisGenerationError, match="ANALYSIS_VALIDATION_FAILED"):
         await generate_shadow_dynamics(

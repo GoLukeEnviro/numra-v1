@@ -14,6 +14,7 @@ chooses which knowledge entry or which shadow-interaction rule applies.
 from __future__ import annotations
 
 import re
+import unicodedata
 from collections.abc import Iterable
 
 from pydantic import BaseModel, ConfigDict
@@ -137,6 +138,44 @@ _LEFTOVER_MARKER_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+#: Latin look-alikes that NFKC does not fold (it only folds compatibility forms such as
+#: full-width brackets and colons). Used for *checking* only, see `_canonical_for_check`.
+_CONFUSABLES = str.maketrans(
+    {
+        "а": "a",
+        "е": "e",
+        "о": "o",
+        "р": "p",
+        "с": "c",
+        "у": "y",
+        "х": "x",
+        "і": "i",
+        "ѕ": "s",
+        "ј": "j",
+        "ԁ": "d",
+        "ӏ": "l",
+        "ο": "o",
+        "ν": "v",
+        "ι": "i",
+        "α": "a",
+        "ε": "e",
+        "ρ": "p",
+    }
+)
+
+
+def _canonical_for_check(text: str) -> str:
+    """The form of ``text`` the scaffolding guard and the leftover check look at: NFKC
+    (full-width ``［profile_fact：a:x］`` -> ``[profile_fact:a:x]``), invisible format
+    characters removed (zero-width joiners inside a marker), common Cyrillic/Greek
+    look-alikes folded to Latin. Only ever used to *detect*; the text that is stored is
+    never rewritten with it, so ordinary German (umlauts, ß, typographic quotes) is
+    unaffected apart from being checked in its normalised spelling."""
+    normalised = unicodedata.normalize("NFKC", text)
+    visible = "".join(ch for ch in normalised if unicodedata.category(ch) != "Cf")
+    return visible.translate(_CONFUSABLES)
+
+
 #: ``[profile_fact:a:expression]`` -- the exact framing the provider put in front of one
 #: grounding fact. The label part may not contain whitespace or brackets, so a nested or
 #: decorated label (``[profile_fact:[profile_fact:a:x]]``, ``[profile_fact:a:x = 5]``)
@@ -173,9 +212,15 @@ def _assert_no_unresolved_tokens(texts: Iterable[str]) -> None:
     may still carry prompt scaffolding or an unresolved template token. The per-statement
     gate already guarantees this for rendered prose; this also covers the deterministic
     parts (micro tasks) and makes "never assembled, never persisted" independent of the
-    order of the gates above."""
+    order of the gates above.
+
+    The ``ANALYSIS_VALIDATION_FAILED`` prefix is the log category shared with every other
+    pipeline rejection; the stored job ``error_code`` is not taken from the message but
+    from the exception class (always ``ANALYSIS_GENERATION_ERROR``, see
+    `numra_api.services.relationship_analysis_service`)."""
     for text in texts:
-        if contains_prompt_scaffolding(text) or _LEFTOVER_MARKER_PATTERN.search(text):
+        checked = _canonical_for_check(text)
+        if contains_prompt_scaffolding(checked) or _LEFTOVER_MARKER_PATTERN.search(checked):
             raise AnalysisGenerationError(
                 f"ANALYSIS_VALIDATION_FAILED: result text carries an unresolved token: "
                 f"{text[:80]!r}"
@@ -262,7 +307,7 @@ def _validate_and_resolve_text(
     malformed/unresolved placeholder marker is left over. Raises
     `InvalidAnalysisSection` on any of them — the caller's existing one-repair-attempt
     pattern catches it."""
-    if contains_prompt_scaffolding(text):
+    if contains_prompt_scaffolding(text) or contains_prompt_scaffolding(_canonical_for_check(text)):
         raise InvalidAnalysisSection(
             "PromptScaffoldingRejected: provider returned its own prompt scaffolding "
             "instead of rendered text (never rendered or persisted)"
@@ -277,7 +322,7 @@ def _validate_and_resolve_text(
                 "not referenced via a metric/special placeholder"
             )
     resolved = _resolve_placeholders(text, profile_a=profile_a, profile_b=profile_b)
-    leftover = _LEFTOVER_MARKER_PATTERN.search(resolved)
+    leftover = _LEFTOVER_MARKER_PATTERN.search(_canonical_for_check(resolved))
     if leftover:
         raise InvalidAnalysisSection(
             f"MalformedPlaceholder: text contains unresolved or malformed placeholder "
