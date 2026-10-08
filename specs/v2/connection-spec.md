@@ -12,8 +12,8 @@ people directory or username search for V2 Core.
 ## Invitation methods
 
 ```
-INVITE_LINK
-INVITE_CODE
+LINK
+CODE
 EMAIL
 ```
 
