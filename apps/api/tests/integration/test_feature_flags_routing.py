@@ -116,6 +116,44 @@ async def test_v2_master_switch_blocks_all_phases_when_false(settings: Settings,
             assert response.json()["code"] == "V2_DISABLED", phase
 
 
+async def test_legacy_avenyth_env_vars_do_not_influence_flags(
+    settings: Settings, db_engine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Alte AVENYTH_*-Env-Zeilen (Host-Env-Datei) werden ohne Fehler geladen, haben
+    aber keinen Einfluss: allein die DB-Zeilen entscheiden ueber 503 bzw. Betrieb."""
+    for name in (
+        "V2",
+        "CONNECTIONS",
+        "RELATIONSHIP_WORKSPACES",
+        "CHECKINS",
+        "TASKS",
+        "COPILOT",
+        "EVIDENCE_LAYER",
+    ):
+        monkeypatch.setenv(f"AVENYTH_{name}_ENABLED", "true")
+    env_settings = Settings(
+        database_url=settings.database_url, environment="test", numra_llm_provider="mock"
+    )
+
+    # Env sagt "an", DB sagt "aus" -> 503.
+    disabled_app = await _build_client(env_settings, db_engine, {"v2_master": False})
+    async with AsyncClient(
+        transport=ASGITransport(app=disabled_app), base_url="http://testserver"
+    ) as c:
+        response = await c.get(_PHASE_ENDPOINT["copilot"])
+    assert response.status_code == 503
+    assert response.json()["code"] == "V2_DISABLED"
+
+    # Env sagt weiterhin "an", DB-Phase aus -> Phasen-503 trotz Master an.
+    phase_app = await _build_client(env_settings, db_engine, {"v2_master": True, "copilot": False})
+    async with AsyncClient(
+        transport=ASGITransport(app=phase_app), base_url="http://testserver"
+    ) as c:
+        response = await c.get(_PHASE_ENDPOINT["copilot"])
+    assert response.status_code == 503
+    assert response.json()["code"] == "V2_PHASE_DISABLED"
+
+
 async def test_personal_workspace_routes_gated_by_master_only(
     settings: Settings, db_engine
 ) -> None:
