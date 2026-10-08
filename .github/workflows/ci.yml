@@ -24,9 +24,9 @@ jobs:
           version: ${{ env.UV_VERSION }}
           enable-cache: true
       - run: uv python install ${{ env.PYTHON_VERSION }}
-      - run: uv sync --all-packages --all-groups
-      - run: uv run ruff format --check .
-      - run: uv run ruff check .
+      - run: uv sync --locked --all-packages --all-groups
+      - run: uv run --locked ruff format --check .
+      - run: uv run --locked ruff check .
 
   python-typecheck:
     runs-on: ubuntu-latest
@@ -37,9 +37,9 @@ jobs:
           version: ${{ env.UV_VERSION }}
           enable-cache: true
       - run: uv python install ${{ env.PYTHON_VERSION }}
-      - run: uv sync --all-packages --all-groups
+      - run: uv sync --locked --all-packages --all-groups
       - run: |
-          uv run mypy apps/api/src packages/engine-numerology/src \
+          uv run --locked mypy apps/api/src packages/engine-numerology/src \
             packages/engine-interpretation/src packages/engine-relationship-interpretation/src \
             packages/engine-astrology/src
 
@@ -56,14 +56,14 @@ jobs:
           version: ${{ env.UV_VERSION }}
           enable-cache: true
       - run: uv python install ${{ env.PYTHON_VERSION }}
-      - run: uv sync --all-packages --all-groups
+      - run: uv sync --locked --all-packages --all-groups
       - name: Engine + interpretation tests, incl. Hypothesis property tests, with coverage gate (>=90%)
         run: |
-          uv run pytest packages/engine-numerology/tests packages/engine-interpretation/tests \
+          uv run --locked pytest packages/engine-numerology/tests packages/engine-interpretation/tests \
             packages/engine-relationship-interpretation/tests -q \
             --cov=packages/engine-numerology/src/numra_numerology \
             --cov-report=term-missing --cov-report=xml
-          uv run coverage report \
+          uv run --locked coverage report \
             --include="packages/engine-numerology/src/numra_numerology/*" \
             --fail-under=90
 
@@ -97,7 +97,7 @@ jobs:
           version: ${{ env.UV_VERSION }}
           enable-cache: true
       - run: uv python install ${{ env.PYTHON_VERSION }}
-      - run: uv sync --all-packages --all-groups
+      - run: uv sync --locked --all-packages --all-groups
       # apps/api/tests exercises a REAL apps/pdf instance (export creation, health
       # checks) rather than mocking the PDF service -- see specs/evidence/phase-4.md
       # and the export/PDF product integration work.
@@ -118,7 +118,7 @@ jobs:
           done
           curl -sf http://127.0.0.1:4300/health/ready || (cat /tmp/pdf-service.log && exit 1)
       - name: API integration suite
-        run: uv run pytest apps/api/tests -q
+        run: uv run --locked pytest apps/api/tests -q
 
   no-golden-leakage:
     runs-on: ubuntu-latest
@@ -129,8 +129,8 @@ jobs:
           version: ${{ env.UV_VERSION }}
           enable-cache: true
       - run: uv python install ${{ env.PYTHON_VERSION }}
-      - run: uv sync --all-packages --all-groups
-      - run: uv run pytest packages/engine-numerology/tests/unit/test_no_golden_leakage.py -q
+      - run: uv sync --locked --all-packages --all-groups
+      - run: uv run --locked pytest packages/engine-numerology/tests/unit/test_no_golden_leakage.py -q
 
   # Security-Gate: vier getrennte Audit-Jobs + ein Sammel-Job `security-gate`.
   # Als Required Check ist nur `security-gate` vorgesehen; er ist rot, sobald einer der
@@ -209,7 +209,7 @@ jobs:
         with:
           version: ${{ env.UV_VERSION }}
       - name: uv.lock exportieren
-        run: uv export --frozen --all-packages --no-dev --no-emit-workspace --format requirements-txt -o "$RUNNER_TEMP/requirements.txt"
+        run: uv export --locked --all-packages --no-dev --no-emit-workspace --format requirements-txt -o "$RUNNER_TEMP/requirements.txt"
       - name: pip-audit (pinned 2.10.1)
         run: uvx pip-audit@2.10.1 --require-hashes --disable-pip --strict -r "$RUNNER_TEMP/requirements.txt"
 
@@ -254,9 +254,9 @@ jobs:
           version: ${{ env.UV_VERSION }}
           enable-cache: true
       - run: uv python install ${{ env.PYTHON_VERSION }}
-      - run: uv sync --all-packages --all-groups
+      - run: uv sync --locked --all-packages --all-groups
       - name: bandit (pinned 1.8.6, MEDIUM and above)
-        run: uv run --with bandit==1.8.6 bandit -q -r apps/api/src packages -ll
+        run: uv run --locked --with bandit==1.8.6 bandit -q -r apps/api/src packages -ll
 
   schema-and-openapi-drift:
     runs-on: ubuntu-latest
@@ -267,10 +267,10 @@ jobs:
           version: ${{ env.UV_VERSION }}
           enable-cache: true
       - run: uv python install ${{ env.PYTHON_VERSION }}
-      - run: uv sync --all-packages --all-groups
+      - run: uv sync --locked --all-packages --all-groups
       - name: profile.schema.json validates the golden fixture
         run: |
-          uv run python3 -c "
+          uv run --locked python3 -c "
           import json, jsonschema
           schema = json.load(open('specs/profile.schema.json'))
           fixture = json.load(open('fixtures/canonical/lukas-springer.v1.json'))
@@ -278,7 +278,7 @@ jobs:
           print('OK')
           "
       - name: OpenAPI export has no drift
-        run: uv run python3 scripts/export_openapi.py --check
+        run: uv run --locked python3 scripts/export_openapi.py --check
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v7
         with:
@@ -384,14 +384,14 @@ jobs:
           version: ${{ env.UV_VERSION }}
           enable-cache: true
       - run: uv python install ${{ env.PYTHON_VERSION }}
-      - run: uv sync --all-packages --all-groups
+      - run: uv sync --locked --all-packages --all-groups
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: uv run --directory apps/api alembic upgrade head
+      - run: uv run --locked --directory apps/api alembic upgrade head
       - run: pnpm --filter @numra/pdf exec playwright install --with-deps chromium
       - name: Start the real PDF service in the background
         run: |
@@ -404,7 +404,7 @@ jobs:
           curl -sf http://127.0.0.1:4300/health/ready || (cat /tmp/pdf-service.log && exit 1)
       - name: Start a real FastAPI instance in the background
         run: |
-          nohup uv run --directory apps/api uvicorn numra_api.app:app \
+          nohup uv run --locked --directory apps/api uvicorn numra_api.app:app \
             --host 127.0.0.1 --port 8010 > /tmp/api.log 2>&1 &
           for i in $(seq 1 30); do
             curl -sf http://127.0.0.1:8010/v1/health/live && break
@@ -412,7 +412,7 @@ jobs:
           done
           curl -sf http://127.0.0.1:8010/v1/health/ready || (cat /tmp/api.log && exit 1)
       - name: Start a real report worker in the background
-        run: nohup uv run --directory apps/api python -m numra_api.worker > /tmp/worker.log 2>&1 &
+        run: nohup uv run --locked --directory apps/api python -m numra_api.worker > /tmp/worker.log 2>&1 &
       - run: pnpm --filter @numra/web exec playwright install --with-deps chromium
       - name: Run the real system journey
         working-directory: apps/web
