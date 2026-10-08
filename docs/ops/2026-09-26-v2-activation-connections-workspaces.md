@@ -1,14 +1,20 @@
 # Runbook: Stufenweise V2-Aktivierung — Connections und Relationship Workspaces
 
 **Stand:** 2026-09-26 · **Gilt für:** Produktion `numra-prod` auf agent0 (`docs/ops/numra-topology.md`)
-**Status:** vorbereitet, **nicht ausgeführt**. Jede Stufe ist ein bewusster Operator-Schritt.
+**Status:** ausgeführt am 2026-10-04 (Stufe 0 → 1 → 2 + Copilot, siehe `docs/planning/avenyth-pwa-execution-state.md`); der Text unten ist der ursprüngliche Plan. Jede Stufe war ein bewusster Operator-Schritt.
 **Werkzeuge:** `deploy/compose.production.yml` (analysis-worker und Flag-Durchreichung), `scripts/ops/v2-flag-probe.sh` (anonymer, schreibfreier Flag-Nachweis)
+
+> **Stand-Hinweis 2026-10-08 (gegen `main` ee549d8 geprüft):**
+> - **Flag-Schalter:** Die `AVENYTH_*`-Zeilen in `numra.env` (§6, §7) sind auf `main` seit #271 ohne Wirkung. Quelle der Wahrheit ist die DB-Tabelle `feature_flags`; umgeschaltet wird über `/admin/flags`, neue Umgebungen werden über `flags init` initialisiert (`docs/ops/numra-topology.md`).
+> - **G1** ist unerfüllt: `https://avenyth.de/impressum` und `/datenschutz` liefern 404 (gemessen 2026-10-08); die Legal-Seiten (#218) sind zurückgestellt.
+> - **G3** ist im Code nur zur Hälfte umgesetzt: Nur das Einlösen prüft `email_verified_at` (`services/connection_service.py:180`); das Erstellen einer Einladung prüft es nicht.
+> - **G7 / A7:** Der LLM-Call-Log ist auf `main` gemergt (#274, #275), aber nicht in Produktion deployed (Produktion steht auf `1a5dc5b3`).
 
 ---
 
 ## 1. Worum es geht
 
-Alle sieben `AVENYTH_*`-Flags sind in Produktion aus. Deshalb antworten `/v1/connections`, `/v1/workspaces` und `/v1/me/copilot/threads` heute mit `503 V2_DISABLED` (live gemessen am 26.09.2026). Der Code ist im Audit-Stack abgenommen (PWA-04: Zwei-Account-Journey, PWA-07: Dissolution/Retention).
+Zum Planungsstand (2026-09-26) waren alle sieben `AVENYTH_*`-Flags in Produktion aus. Deshalb antworteten `/v1/connections`, `/v1/workspaces` und `/v1/me/copilot/threads` damals mit `503 V2_DISABLED` (live gemessen am 26.09.2026). Der Code ist im Audit-Stack abgenommen (PWA-04: Zwei-Account-Journey, PWA-07: Dissolution/Retention).
 
 Dieses Runbook schaltet **nur** frei:
 

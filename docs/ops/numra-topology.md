@@ -1,6 +1,6 @@
 # NUMRA — Laufzeit-Topologie auf Agent0 (versioniert, ohne Secrets)
 
-Stand: 2026-09-20. Diese Datei beschreibt **nur** Namen, Rollen und Ports. Keine
+Stand: 2026-10-08. Diese Datei beschreibt **nur** Namen, Rollen und Ports. Keine
 Zugangsdaten, keine Tokens, keine Verbindungsstrings — die Werte liegen ausschließlich in
 `/etc/numra/*.env` (root, 0600). Historischer Migrationsbericht:
 `docs/ops/2026-09-19-hermestrader-to-agent0-migration.md`.
@@ -11,16 +11,16 @@ Zugangsdaten, keine Tokens, keine Verbindungsstrings — die Werte liegen aussch
 |---|---|---|
 | Compose-Projekt | `numra-prod` | `numra-audit` |
 | Verzeichnis | `/opt/numra` | `/opt/numra` |
-| Compose-Dateien | `/opt/numra/compose.production.yml` | `/opt/numra/repo/docker-compose.yml` + `/opt/numra/audit-compose.yml` |
+| Compose-Dateien | `/opt/numra/compose.production.yml` | `/opt/numra/audit-repo/docker-compose.yml` + `/opt/numra/audit-compose-s1.yml` (Host-Overlay; das ältere `/opt/numra/audit-compose.yml` bleibt als Rückrollweg) |
 | Env-Datei (Werte root-only) | `/etc/numra/numra.env` | `/etc/numra/audit.env` |
 | HTTP nach außen | Tailscale `:8443` | Tailscale `:8444` |
 | API auf Loopback | `:17800` | `:17801` |
 | Datenbank | Container `numra-prod-postgres-1`, DB `numra` | Container `numra-audit-postgres-1`, DB `numra` |
-| Sieben V2-Flags (DB-Tabelle `feature_flags`) | Profil `NUMRA_FLAGS_PROFILE` beim ersten Init (kein Default; Bestands-DB: unverändert übernommen) | derzeit unverändert aus der DB; soll `audit-all-on` sein (nur so sind die V2-Flows abnehmbar), siehe E3-Vorbereitung unten |
+| Sieben V2-Flags (DB-Tabelle `feature_flags`) | Profil `NUMRA_FLAGS_PROFILE` beim ersten Init (kein Default; Bestands-DB: unverändert übernommen) | Profil `audit-all-on` (alle sieben an, Status `bootstrap`; gemessen 2026-10-08) |
 | Zweck | echte Nutzer | ausschließlich synthetische `@example.com`-Konten |
 
 Beide Stacks laufen mit `restart: unless-stopped` und überleben einen Host-Reboot.
-Der Checkout `/opt/numra/repo` ist auf einen Commit gepinnt; es gibt **kein**
+Die Checkouts `/opt/numra/repo` (Produktion) und `/opt/numra/audit-repo` (Audit) sind je auf einen Commit gepinnt; es gibt **kein**
 Auto-Deploy — ein Deploy ist ein bewusster Einzelbefehl (Rezept unten).
 
 ## Container
@@ -41,7 +41,8 @@ Readiness-Antwort des API enthält dessen Zustand als `pdf`.
 | Pfad | Inhalt | Rechte |
 |---|---|---|
 | `/etc/numra/*.env` | alle Secrets beider Stacks | root, 0600 |
-| `/opt/numra/repo` | Git-Checkout der Audit-Instanz (Commit gepinnt) | root |
+| `/opt/numra/repo` | Git-Checkout der Produktion (detached auf `deployed_sha`) | hermes |
+| `/opt/numra/audit-repo` | Git-Checkout der Audit-Instanz (Commit gepinnt, Marker `/var/lib/numra/audit_deployed_sha`) | hermes |
 | `/var/lib/numra/backups` | logische Postgres-Dumps + `.sha256`-Sidecar | root, 0750 (Gruppe `hermes` darf **auflisten**, nicht lesen) |
 | `/var/lib/numra/deployed_sha` | Commit, der in Produktion ausgerollt ist | root |
 | `/var/lib/numra/health-status.json` | Ergebnis der Readiness-Probe | `hermes` |
@@ -89,8 +90,8 @@ werden einmalig initialisiert; danach ändert nur noch `/admin/flags` Werte.
 - **E3-Vorbereitung Audit-Stack** (Host-Overlay `/opt/numra/audit-compose.yml`, nicht Teil
   dieses Repos/PRs): `NUMRA_FLAGS_PROFILE=audit-all-on` in `/etc/numra/audit.env` setzen und
   einen `flags-init`-Job nach `migrate` ergänzen; die `AVENYTH_*`-Variablen im Overlay
-  entfernen (wirkungslos). Eine bestehende Audit-DB wird als `adopted` übernommen, ihre
-  Flagwerte ändert der Init nicht -- Sollwerte dort einmalig über `/admin/flags` setzen.
+  entfernen (wirkungslos). Die Audit-DB stand vor `04d4d6f4c5a0` und hat daher
+  den Status `bootstrap` (Profil `audit-all-on`, gemessen 2026-10-08), nicht `adopted`.
 
 ## Monitoring und Sicherung
 
@@ -117,16 +118,19 @@ gesichert (Wegwerfdaten, siehe `docs/audits/2026-09-20-pwa-09-restore-drill.md`)
 
 ```bash
 SHA=<commit>
-sudo git -C /opt/numra/repo fetch origin --prune
-sudo git -C /opt/numra/repo checkout "$SHA"
-cd /opt/numra && sudo docker compose -p numra-audit --env-file /etc/numra/audit.env \
-  -f /opt/numra/repo/docker-compose.yml -f /opt/numra/audit-compose.yml build
-sudo docker compose -p numra-audit --env-file /etc/numra/audit.env \
-  -f /opt/numra/repo/docker-compose.yml -f /opt/numra/audit-compose.yml up -d
+sudo git -C /opt/numra/audit-repo fetch origin --prune
+sudo git -C /opt/numra/audit-repo checkout "$SHA"
+cd /opt/numra && sudo docker compose -p numra-audit --project-directory /opt/numra/audit-repo \
+  --env-file /etc/numra/audit.env \
+  -f /opt/numra/audit-repo/docker-compose.yml -f /opt/numra/audit-compose-s1.yml build
+sudo docker compose -p numra-audit --project-directory /opt/numra/audit-repo \
+  --env-file /etc/numra/audit.env \
+  -f /opt/numra/audit-repo/docker-compose.yml -f /opt/numra/audit-compose-s1.yml up -d
 ```
 
-Für Produktion dieselbe Sequenz mit `-p numra-prod`, `compose.production.yml` und
-`/etc/numra/numra.env`. Vor jeder Änderung an einer Env-Datei liegt eine
+`up -d` startet über `depends_on` zuerst `migrate`, dann `flags-init`; `api` wartet auf beide.
+Für Produktion dieselbe Sequenz mit `-p numra-prod`, dem Checkout `/opt/numra/repo`,
+`/opt/numra/compose.production.yml` und `/etc/numra/numra.env`. Vor jeder Änderung an einer Env-Datei liegt eine
 `*.bak-pre-<thema>-<zeitstempel>`-Kopie daneben.
 
 ## Wiederherstellung

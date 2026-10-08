@@ -16,7 +16,7 @@ into a social/dating discovery product, which is explicitly out of scope
 ## Decision
 
 A `RelationshipWorkspace` connects **exactly two active adult `User` accounts**,
-created only after a real `ConnectionInvitation` (`INVITE_LINK` / `INVITE_CODE` /
+created only after a real `ConnectionInvitation` (`LINK` / `CODE` /
 `EMAIL`) is accepted and consent is configured (`specs/v2/connection-spec.md`,
 `specs/v2/consent-spec.md`). There is no public people directory and no username
 search in V2 Core — the only path into a workspace is an explicit invitation.

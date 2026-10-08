@@ -135,7 +135,8 @@ llm_token_usage
 llm_estimated_cost
 ```
 
-`llm_latency_ms` and `llm_token_usage` are backed by `llm_generations` (one row per
+`llm_latency_ms` and `llm_token_usage` are specified, not yet implemented: no metrics
+reader or endpoint exists as of 2026-10-08. The data source is `llm_generations` (one row per
 provider call: `source` report|analysis|copilot, `status` ok|error|retry, `attempt`,
 `latency_ms`, nullable `prompt_tokens`/`completion_tokens`/`total_tokens`). Token columns
 are filled only from provider usage data and stay NULL otherwise -- never estimated.
