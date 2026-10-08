@@ -6,13 +6,14 @@ the `_connect` two-user helper pattern from test_relationship_workspaces.py and 
 
 from __future__ import annotations
 
+import datetime as dt
 import re
 
 import pytest
 
 from numra_api.analysis_worker import run_one_cycle
 from numra_api.auth.passwords import hash_password
-from numra_api.repositories.users import create_user
+from numra_api.repositories.users import create_user, mark_email_verified
 
 pytestmark = pytest.mark.integration
 
@@ -21,7 +22,8 @@ _COMPATIBILITY_PATTERN = re.compile(r"\d+\s*%.*(kompatib|match|übereinstimm)", 
 
 async def _signup(client, sessionmaker, email: str) -> dict:
     async with sessionmaker() as db:
-        await create_user(db, email=email, password_hash=hash_password("password12345"))
+        user = await create_user(db, email=email, password_hash=hash_password("password12345"))
+        await mark_email_verified(db, user=user, verified_at=dt.datetime.now(dt.UTC))
         await db.commit()
     return await _switch_user(client, email)
 

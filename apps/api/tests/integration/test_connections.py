@@ -19,18 +19,20 @@ from numra_api.models import (
     WorkspaceMember,
 )
 from numra_api.repositories.feature_flags import get_all_flags
-from numra_api.repositories.users import create_user
+from numra_api.repositories.users import create_user, mark_email_verified
 from numra_api.services.feature_flag_cache import FeatureFlagCache
 
 pytestmark = pytest.mark.integration
 
 
-async def _signup(client, sessionmaker, email: str) -> dict:
+async def _signup(client, sessionmaker, email: str, *, verified: bool = True) -> dict:
     """Creates the user and logs in -- use once per email. See `_switch_user` to
     re-activate an already-created user's session (the test `client` fixture has one
     shared cookie jar, so only one user is "logged in" at a time)."""
     async with sessionmaker() as db:
-        await create_user(db, email=email, password_hash=hash_password("password12345"))
+        user = await create_user(db, email=email, password_hash=hash_password("password12345"))
+        if verified:
+            await mark_email_verified(db, user=user, verified_at=dt.datetime.now(dt.UTC))
         await db.commit()
     return await _switch_user(client, email)
 
@@ -456,3 +458,114 @@ async def test_create_invitation_redeem_url_honors_overridden_origin_and_trailin
 
     token = invitation["token"]
     assert invitation["redeem_url"] == f"https://app.example.org/connections/redeem?token={token}"
+
+
+# --- G3: verifizierte E-Mail beim Erstellen UND Einloesen jeder Einladung ---
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"method": "LINK"},
+        {"method": "CODE"},
+        {"method": "EMAIL", "invitee_email": "g3-create-invitee@example.com"},
+    ],
+    ids=["LINK", "CODE", "EMAIL"],
+)
+async def test_unverified_user_cannot_create_invitation(client, sessionmaker, payload) -> None:
+    headers = await _signup(
+        client, sessionmaker, "g3-create-unverified@example.com", verified=False
+    )
+
+    response = await client.post("/v1/connections/invitations", json=payload, headers=headers)
+    assert response.status_code == 403
+    assert response.json()["code"] == "EMAIL_VERIFICATION_REQUIRED"
+
+    async with sessionmaker() as db:
+        assert (await db.execute(select(ConnectionInvitation))).scalars().all() == []
+
+
+async def test_verified_user_can_create_invitation_after_verifying(client, sessionmaker) -> None:
+    headers = await _signup(client, sessionmaker, "g3-create-later@example.com", verified=False)
+    denied = await client.post(
+        "/v1/connections/invitations", json={"method": "LINK"}, headers=headers
+    )
+    assert denied.status_code == 403
+
+    async with sessionmaker() as db:
+        user = (
+            await db.execute(select(User).where(User.email == "g3-create-later@example.com"))
+        ).scalar_one()
+        await mark_email_verified(db, user=user, verified_at=dt.datetime.now(dt.UTC))
+        await db.commit()
+
+    allowed = await client.post(
+        "/v1/connections/invitations", json={"method": "LINK"}, headers=headers
+    )
+    assert allowed.status_code == 201
+
+
+@pytest.mark.parametrize("method", ["LINK", "CODE"])
+async def test_unverified_user_cannot_redeem_link_or_code_invitation(
+    client, sessionmaker, method
+) -> None:
+    headers_a = await _signup(client, sessionmaker, f"g3-redeem-a-{method.lower()}@example.com")
+    created = await client.post(
+        "/v1/connections/invitations", json={"method": method}, headers=headers_a
+    )
+    assert created.status_code == 201
+    token = created.json()["token"]
+
+    headers_b = await _signup(
+        client, sessionmaker, f"g3-redeem-b-{method.lower()}@example.com", verified=False
+    )
+    denied = await client.post(
+        "/v1/connections/invitations/redeem", json={"token": token}, headers=headers_b
+    )
+    assert denied.status_code == 403
+    assert denied.json()["code"] == "EMAIL_VERIFICATION_REQUIRED"
+
+    async with sessionmaker() as db:
+        invitation = (await db.execute(select(ConnectionInvitation))).scalar_one()
+        assert invitation.state == "PENDING"
+        assert invitation.redeemed_by_user_id is None
+
+    async with sessionmaker() as db:
+        user = (
+            await db.execute(
+                select(User).where(User.email == f"g3-redeem-b-{method.lower()}@example.com")
+            )
+        ).scalar_one()
+        await mark_email_verified(db, user=user, verified_at=dt.datetime.now(dt.UTC))
+        await db.commit()
+    accepted = await client.post(
+        "/v1/connections/invitations/redeem", json={"token": token}, headers=headers_b
+    )
+    assert accepted.status_code == 201
+
+
+async def test_unverified_user_redeeming_email_invitation_for_other_address_is_denied(
+    client, sessionmaker
+) -> None:
+    headers_a = await _signup(client, sessionmaker, "g3-email-a@example.com")
+    created = await client.post(
+        "/v1/connections/invitations",
+        json={"method": "EMAIL", "invitee_email": "g3-email-bob@example.com"},
+        headers=headers_a,
+    )
+    assert created.status_code == 201
+
+    headers_mallory = await _signup(
+        client, sessionmaker, "g3-email-mallory@example.com", verified=False
+    )
+    denied = await client.post(
+        "/v1/connections/invitations/redeem",
+        json={"token": created.json()["token"]},
+        headers=headers_mallory,
+    )
+    assert denied.status_code == 403
+    assert denied.json()["code"] == "EMAIL_VERIFICATION_REQUIRED"
+
+    async with sessionmaker() as db:
+        invitation = (await db.execute(select(ConnectionInvitation))).scalar_one()
+        assert invitation.state == "PENDING"

@@ -9,6 +9,7 @@ Metadaten -- nie Prompt, Antwort oder Fehlertext.
 
 from __future__ import annotations
 
+import datetime as dt
 import itertools
 import logging
 import re
@@ -23,7 +24,7 @@ from numra_api.auth.passwords import hash_password
 from numra_api.models import AnalysisJob, LLMGeneration
 from numra_api.models.enums import AnalysisJobStatus
 from numra_api.repositories.analysis import MAX_ATTEMPTS
-from numra_api.repositories.users import create_user
+from numra_api.repositories.users import create_user, mark_email_verified
 from numra_api.services import llm_generation_log as log_module
 from numra_interpretation.llm.errors import LLMProviderTimeout, LLMProviderUnavailable
 from numra_interpretation.llm.mock_provider import MockLLMProvider
@@ -76,7 +77,8 @@ class _Provider:
 
 async def _signup(client, sessionmaker, email: str) -> dict:
     async with sessionmaker() as db:
-        await create_user(db, email=email, password_hash=hash_password(_PASSWORD))
+        user = await create_user(db, email=email, password_hash=hash_password(_PASSWORD))
+        await mark_email_verified(db, user=user, verified_at=dt.datetime.now(dt.UTC))
         await db.commit()
     return await _switch_user(client, email)
 

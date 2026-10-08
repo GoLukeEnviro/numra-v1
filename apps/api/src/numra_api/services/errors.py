@@ -183,11 +183,12 @@ class ConnectionAlreadyExists(ApplicationError):
 
 
 class EmailVerificationRequired(ApplicationError):
-    """A `method=EMAIL` invitation is a claim about *who* the inviter is connecting
-    to, not just a bearer token -- without this, an attacker could pre-register the
-    invitee's address (before the real owner signs up) and redeem the invitation as
-    themselves. Raised only for the EMAIL method; LINK/CODE invitations have no
-    invitee identity to verify against."""
+    """Creating and redeeming connection invitations requires a verified email
+    (docs/planning/2026-09-26-p0-agent-work-orders.md A3, ops gate G3). An invitation
+    is a claim about *who* the inviter connects to; without a verified address an
+    attacker could pre-register the invitee's address and redeem an EMAIL invitation
+    as themselves, or mint invitations from throwaway accounts. 403 (not 404): it
+    concerns the caller's own account, so it is no IDOR signal."""
 
     code = "EMAIL_VERIFICATION_REQUIRED"
     status_code = 403

@@ -580,6 +580,8 @@ export const enApp: Record<keyof typeof deApp, string> = {
   "app.connectionsInvite.copiedFeedback": "Copied!",
   "app.connectionsInvite.doneButton": "Done",
   "app.connectionsInvite.submitError": "Invitation could not be created",
+  "app.connectionsInvite.verifyEmailError": "Verify your email address before creating an invitation.",
+  "app.connectionsInvite.verifyEmailCta": "Go to settings",
 
   "app.connectionsRedeem.title": "Redeem invitation",
   "app.connectionsRedeem.previewing": "Checking invitation…",

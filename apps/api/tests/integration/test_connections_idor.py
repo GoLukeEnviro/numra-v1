@@ -10,9 +10,11 @@ from numra_api.repositories.users import create_user, get_user_by_email, mark_em
 pytestmark = pytest.mark.integration
 
 
-async def _login(client, sessionmaker, email: str) -> dict:
+async def _login(client, sessionmaker, email: str, *, verified: bool = True) -> dict:
     async with sessionmaker() as db:
-        await create_user(db, email=email, password_hash=hash_password("password12345"))
+        user = await create_user(db, email=email, password_hash=hash_password("password12345"))
+        if verified:
+            await mark_email_verified(db, user=user, verified_at=dt.datetime.now(dt.UTC))
         await db.commit()
     response = await client.post(
         "/v1/auth/login", json={"email": email, "password": "password12345"}
@@ -134,7 +136,6 @@ async def test_email_invitation_cannot_be_redeemed_by_wrong_account(client, sess
     invitation = await _create_email_invitation(client, headers_a, "idor-email-bob@example.com")
 
     headers_mallory = await _login(client, sessionmaker, "idor-email-mallory@example.com")
-    await _verify_email(sessionmaker, "idor-email-mallory@example.com")
 
     response = await client.post(
         "/v1/connections/invitations/redeem",
@@ -146,7 +147,6 @@ async def test_email_invitation_cannot_be_redeemed_by_wrong_account(client, sess
 
     # The rejected attempt must not have burned the invitation for the real invitee.
     headers_bob = await _login(client, sessionmaker, "idor-email-bob@example.com")
-    await _verify_email(sessionmaker, "idor-email-bob@example.com")
     retry = await client.post(
         "/v1/connections/invitations/redeem",
         json={"token": invitation["token"]},
@@ -163,7 +163,9 @@ async def test_email_invitation_requires_verified_email_to_redeem(client, sessio
         client, headers_a, "idor-email-verify-bob@example.com"
     )
 
-    headers_bob = await _login(client, sessionmaker, "idor-email-verify-bob@example.com")
+    headers_bob = await _login(
+        client, sessionmaker, "idor-email-verify-bob@example.com", verified=False
+    )
     unverified_attempt = await client.post(
         "/v1/connections/invitations/redeem",
         json={"token": invitation["token"]},

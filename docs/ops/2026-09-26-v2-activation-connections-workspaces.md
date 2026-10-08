@@ -7,7 +7,7 @@
 > **Stand-Hinweis 2026-10-08 (gegen `main` ee549d8 geprüft):**
 > - **Flag-Schalter:** Die `AVENYTH_*`-Zeilen in `numra.env` (§6, §7) sind auf `main` seit #271 ohne Wirkung. Quelle der Wahrheit ist die DB-Tabelle `feature_flags`; umgeschaltet wird über `/admin/flags`, neue Umgebungen werden über `flags init` initialisiert (`docs/ops/numra-topology.md`).
 > - **G1** ist unerfüllt: `https://avenyth.de/impressum` und `/datenschutz` liefern 404 (gemessen 2026-10-08); die Legal-Seiten (#218) sind zurückgestellt.
-> - **G3** ist im Code nur zur Hälfte umgesetzt: Nur das Einlösen prüft `email_verified_at` (`services/connection_service.py:180`); das Erstellen einer Einladung prüft es nicht.
+> - **G3** ist auf `main` vollständig umgesetzt: Erstellen und Einlösen jeder Einladung (`LINK`/`CODE`/`EMAIL`) verlangt `email_verified_at` (`services/connection_service.py`, `create_invitation`/`accept_invitation`, Fehler `EMAIL_VERIFICATION_REQUIRED`, 403); `EMAIL`-Einladungen sind zusätzlich an die verifizierte Adresse gebunden. In Produktion erst nach dem nächsten Deploy wirksam (Produktion steht auf `1a5dc5b3`).
 > - **G7 / A7:** Der LLM-Call-Log ist auf `main` gemergt (#274, #275), aber nicht in Produktion deployed (Produktion steht auf `1a5dc5b3`).
 
 ---
