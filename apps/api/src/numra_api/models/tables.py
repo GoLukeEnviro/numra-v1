@@ -1739,7 +1739,8 @@ class CheckinIdempotency(Base):
 class FeatureFlag(Base):
     """AVENYTH V2 runtime feature flags, DB-backed so an admin toggle takes effect
     without a container restart (see services/feature_flags.py). `name` is one of
-    the seven AVENYTH_*_ENABLED keys, lowercased without the prefix/suffix."""
+    the seven flag keys (v2_master, connections, relationship_workspaces, checkins,
+    tasks, copilot, evidence_layer)."""
 
     __tablename__ = "feature_flags"
     name: Mapped[str] = mapped_column(String(64), primary_key=True)

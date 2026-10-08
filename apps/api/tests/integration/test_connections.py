@@ -435,9 +435,6 @@ async def test_create_invitation_redeem_url_honors_overridden_origin_and_trailin
         database_url=settings.database_url,
         environment="test",
         numra_llm_provider="mock",
-        avenyth_v2_enabled=True,
-        avenyth_connections_enabled=True,
-        avenyth_relationship_workspaces_enabled=True,
         web_app_base_url="https://app.example.org/",
     )
     app = create_app(settings=custom_settings)
