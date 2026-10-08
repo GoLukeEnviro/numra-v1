@@ -2,7 +2,7 @@
 
 **Stand:** 2026-09-26 · **Gilt für:** Produktion `numra-prod` auf agent0 (`docs/ops/numra-topology.md`)
 **Status:** ausgeführt am 2026-10-04 (Stufe 0 → 1 → 2 + Copilot, siehe `docs/planning/avenyth-pwa-execution-state.md`); der Text unten ist der ursprüngliche Plan. Jede Stufe war ein bewusster Operator-Schritt.
-**Werkzeuge:** `deploy/compose.production.yml` (analysis-worker und Flag-Durchreichung), `scripts/ops/v2-flag-probe.sh` (anonymer, schreibfreier Flag-Nachweis)
+**Werkzeuge:** `deploy/compose.production.yml` (analysis-worker; die frühere Flag-Durchreichung wurde mit #285 entfernt), `scripts/ops/v2-flag-probe.sh` (anonymer, schreibfreier Flag-Nachweis)
 
 > **Stand-Hinweis 2026-10-08 (gegen `main` ee549d8 geprüft):**
 > - **Flag-Schalter:** Die `AVENYTH_*`-Zeilen in `numra.env` (§6, §7) sind auf `main` seit #271 ohne Wirkung. Quelle der Wahrheit ist die DB-Tabelle `feature_flags`; umgeschaltet wird über `/admin/flags`, neue Umgebungen werden über `flags init` initialisiert (`docs/ops/numra-topology.md`).

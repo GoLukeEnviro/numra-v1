@@ -27,10 +27,10 @@ Auto-Deploy — ein Deploy ist ein bewusster Einzelbefehl (Rezept unten).
 
 Produktion: `api`, `web`, `worker`, `postgres`, `redis`, `pdf`, dazu die Einmaljobs
 `migrate` (Alembic) und danach `flags-init` (siehe „Feature-Flags: Init-Schritt“); `api`
-startet erst, wenn beide erfolgreich beendet sind. `analysis-worker` (V2-Jobpipeline) ist seit 2026-09-26 in
-`deploy/compose.production.yml` definiert und läuft ab Stufe 0 der V2-Aktivierung
-(`docs/ops/2026-09-26-v2-activation-connections-workspaces.md`); bis zum Host-Deploy
-läuft er nur im Audit-Stack. Die `AVENYTH_*_ENABLED`-Variablen sind deprecated und ohne
+startet erst, wenn beide erfolgreich beendet sind (im Audit-Stack kommt `flags-init` aus dem
+Overlay `audit-compose-s1.yml`). `analysis-worker` (V2-Jobpipeline) ist seit 2026-09-26 in
+`deploy/compose.production.yml` definiert und läuft seit Stufe 0 der V2-Aktivierung
+(2026-10-04, `docs/ops/2026-09-26-v2-activation-connections-workspaces.md`) auch in Produktion. Die `AVENYTH_*_ENABLED`-Variablen sind deprecated und ohne
 Wirkung (Quelle der Wahrheit ist die DB, siehe unten).
 
 Das PDF-Rendering läuft in beiden Stacks als eigener Dienst (Chromium); die
@@ -41,10 +41,10 @@ Readiness-Antwort des API enthält dessen Zustand als `pdf`.
 | Pfad | Inhalt | Rechte |
 |---|---|---|
 | `/etc/numra/*.env` | alle Secrets beider Stacks | root, 0600 |
-| `/opt/numra/repo` | Git-Checkout der Produktion (detached auf `deployed_sha`) | hermes |
-| `/opt/numra/audit-repo` | Git-Checkout der Audit-Instanz (Commit gepinnt, Marker `/var/lib/numra/audit_deployed_sha`) | hermes |
+| `/opt/numra/repo` | Git-Checkout der Produktion (detached auf `deployed_sha`) | hermes, 0755 (`stat` 2026-10-08) |
+| `/opt/numra/audit-repo` | Git-Checkout der Audit-Instanz (Commit gepinnt, Marker `/var/lib/numra/audit_deployed_sha`, hermes 0664) | hermes, 0775 (`stat` 2026-10-08) |
 | `/var/lib/numra/backups` | logische Postgres-Dumps + `.sha256`-Sidecar | root, 0750 (Gruppe `hermes` darf **auflisten**, nicht lesen) |
-| `/var/lib/numra/deployed_sha` | Commit, der in Produktion ausgerollt ist | root |
+| `/var/lib/numra/deployed_sha` | Commit, der in Produktion ausgerollt ist | hermes, 0644 (`stat` 2026-10-08) |
 | `/var/lib/numra/health-status.json` | Ergebnis der Readiness-Probe | `hermes` |
 | DB-Tabelle `feature_flags` (`numra`-DB) | Laufzeitwert der sieben V2-Flags -- einzige Quelle der Wahrheit (`/admin/flags`); die `AVENYTH_*_ENABLED`-Env-Vars sind deprecated und wirkungslos | ueber `/admin/flags` (Rolle ADMIN) oder direkt per SQL |
 | DB-Tabelle `feature_flag_bootstrap` (`numra`-DB) | Singleton-Status des einmaligen Flag-Inits (`bootstrap` oder `adopted`, Profil, Zeitpunkt) | nur durch Migration bzw. `flags init` |
@@ -87,10 +87,10 @@ werden einmalig initialisiert; danach ändert nur noch `/admin/flags` Werte.
   Ohne ihn blieben `checkins`, `tasks` und `evidence_layer` auf der frischen DB aus und die
   Journey scheiterte an den 503-Seiten. Die `AVENYTH_*`-Variablen dort wurden entfernt
   (seit #271 wirkungslos).
-- **E3-Vorbereitung Audit-Stack** (Host-Overlay `/opt/numra/audit-compose.yml`, nicht Teil
-  dieses Repos/PRs): `NUMRA_FLAGS_PROFILE=audit-all-on` in `/etc/numra/audit.env` setzen und
-  einen `flags-init`-Job nach `migrate` ergänzen; die `AVENYTH_*`-Variablen im Overlay
-  entfernen (wirkungslos). Die Audit-DB stand vor `04d4d6f4c5a0` und hat daher
+- **Audit-Stack (E3-Vorbereitung, erledigt):** Das Host-Overlay `/opt/numra/audit-compose-s1.yml`
+  (nicht Teil dieses Repos) ergänzt den `flags-init`-Job nach `migrate` und enthält keine
+  `AVENYTH_*`-Variablen mehr; `NUMRA_FLAGS_PROFILE=audit-all-on` kommt aus
+  `/etc/numra/audit.env`. Das ältere `/opt/numra/audit-compose.yml` ist nur noch Rückrollweg. Die Audit-DB stand vor `04d4d6f4c5a0` und hat daher
   den Status `bootstrap` (Profil `audit-all-on`, gemessen 2026-10-08), nicht `adopted`.
 
 ## Monitoring und Sicherung
