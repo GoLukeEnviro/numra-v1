@@ -120,17 +120,6 @@ services:
       SMTP_USE_TLS: ${SMTP_USE_TLS:-false}
       SMTP_TIMEOUT_SECONDS: ${SMTP_TIMEOUT_SECONDS:-10.0}
       WEB_APP_BASE_URL: ${WEB_APP_BASE_URL:-}
-      # DEPRECATED, ohne Wirkung: die V2-Feature-Flags liegen in der DB-Tabelle
-      # `feature_flags` (services/feature_flags.py), Erstbefuellung ueber den
-      # `flags-init`-Job oben, danach /admin/flags. Diese Variablen werden nicht mehr
-      # ausgewertet und bleiben nur, damit vorhandene Env-Dateien unveraendert passen.
-      AVENYTH_V2_ENABLED: ${AVENYTH_V2_ENABLED:-false}
-      AVENYTH_CONNECTIONS_ENABLED: ${AVENYTH_CONNECTIONS_ENABLED:-false}
-      AVENYTH_RELATIONSHIP_WORKSPACES_ENABLED: ${AVENYTH_RELATIONSHIP_WORKSPACES_ENABLED:-false}
-      AVENYTH_CHECKINS_ENABLED: ${AVENYTH_CHECKINS_ENABLED:-false}
-      AVENYTH_TASKS_ENABLED: ${AVENYTH_TASKS_ENABLED:-false}
-      AVENYTH_COPILOT_ENABLED: ${AVENYTH_COPILOT_ENABLED:-false}
-      AVENYTH_EVIDENCE_LAYER_ENABLED: ${AVENYTH_EVIDENCE_LAYER_ENABLED:-false}
     volumes:
       - numra_exports_data:/app/data/exports
     depends_on:
