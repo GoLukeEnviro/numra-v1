@@ -24,6 +24,7 @@ from numra_interpretation.llm.types import (
     ProviderHealth,
     StructuredGenerationRequest,
 )
+from numra_interpretation.llm.validator import build_metric_display_value_index
 from numra_numerology.engine import calculate_profile
 from numra_numerology.models.person import PersonInput
 from numra_relationship_interpretation.errors import AnalysisGenerationError
@@ -64,6 +65,16 @@ _INLINE_SCAFFOLDING = (
     "In der Kommunikation zeigt sich eine strukturierte Ausdrucksweise, die durch "
     "[profile_fact:a:expression] gepraegt ist, waehrend Person B mit "
     "[profile_fact:b:expression] eher grosszuegig zuhoert."
+)
+
+#: The same shape, but with labels that name no single fact of the prompt (no person
+#: prefix: matches both profiles). These cannot be resolved deterministically and must
+#: stay rejected. The audit shape above is resolved since `numra-relationship-v3`
+#: (see test_label_repair.py); the guard itself is unchanged.
+_INLINE_UNREPAIRABLE = (
+    "In der Kommunikation zeigt sich eine strukturierte Ausdrucksweise, die durch "
+    "[profile_fact:expression] gepraegt ist, waehrend Person B mit "
+    "[profile_fact:life_path] eher grosszuegig zuhoert."
 )
 
 
@@ -120,6 +131,8 @@ class _ScaffoldingProvider:
 class _InlineScaffoldingProvider:
     """Stands in for a real provider that copies a context block's label into prose."""
 
+    text = _INLINE_UNREPAIRABLE
+
     async def health(self) -> ProviderHealth:
         return ProviderHealth(
             status="healthy", provider="ollama_cloud", checked_at=dt.datetime.now(dt.UTC)
@@ -133,7 +146,7 @@ class _InlineScaffoldingProvider:
         request: StructuredGenerationRequest,
         schema: type,  # type: ignore[no-untyped-def]
     ):
-        return schema(text=_INLINE_SCAFFOLDING)
+        return schema(text=self.text)
 
 
 async def test_relationship_analysis_mock_text_has_no_prompt_scaffolding(
@@ -228,6 +241,42 @@ async def test_relationship_analysis_fails_closed_on_inline_scaffolding(
             frame_knowledge=frame,
             llm=_InlineScaffoldingProvider(),
             knowledge_version="0.1.0",
+        )
+
+
+class _AuditShapeProvider(_InlineScaffoldingProvider):
+    text = _INLINE_SCAFFOLDING
+
+
+async def test_relationship_analysis_renders_the_audit_shape_without_scaffolding(
+    profile_a, profile_b
+) -> None:
+    """The text captured on the audit stack names facts of the prompt unambiguously
+    (`a:`/`b:` prefix): it renders with the canonical values and no framing marker."""
+    frame = load_relationship_frame(KNOWLEDGE_ROOT, "PARTNER")
+    assert frame is not None
+
+    result = await generate_relationship_analysis(
+        profile_a=profile_a,
+        profile_b=profile_b,
+        relationship_type="PARTNER",
+        frame_knowledge=frame,
+        llm=_AuditShapeProvider(),
+        knowledge_version="0.1.0",
+    )
+
+    value_a = build_metric_display_value_index(profile_a)["expression"]
+    value_b = build_metric_display_value_index(profile_b)["expression"]
+    texts = [
+        statement.text for dimension in result.dimensions for statement in dimension.statements
+    ]
+    assert texts
+    for text in texts:
+        for marker in FORBIDDEN_SCAFFOLDING_MARKERS:
+            assert marker not in text, f"leaked {marker!r}: {text[:120]!r}"
+        assert text == (
+            "In der Kommunikation zeigt sich eine strukturierte Ausdrucksweise, die durch "
+            f"{value_a} gepraegt ist, waehrend Person B mit {value_b} eher grosszuegig zuhoert."
         )
 
 
