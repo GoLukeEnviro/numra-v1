@@ -175,9 +175,80 @@ hängende QUEUED-Jobs und die 24h-Zählung inkl. Analysefehlern.
 bash scripts/ops/tests/test-numra-healthcheck.sh
 ```
 
+## Externer Uptime-Probe
+
+Der Host-Healthcheck (oben) meldet einen **Hostausfall nicht**: fällt Agent0 aus, läuft
+auch der Timer nicht mehr. Ergänzend prüft deshalb der GitHub-Actions-Workflow
+`.github/workflows/uptime-probe.yml` die öffentliche Readiness **von außerhalb des
+Hosts**. Er braucht keine Secrets und keinen Zugang zum Host; es entsteht keine neue
+öffentliche Erreichbarkeit (nur ausgehende GETs gegen eine bereits öffentliche URL).
+
+**Was geprüft wird.** `GET https://avenyth.de/api/v1/health/ready` (`curl -sS -m 15`,
+bis zu 3 Versuche mit 20 s Pause). Ergebnis OK nur bei HTTP 200 **und** JSON-Feld
+`status` = `healthy` **und** `database` = `healthy`. Das entspricht der API-Semantik:
+der Gesamtstatus ist nur von der Datenbank abhängig. `llm`, `pdf` und
+`numerology_engine` erzeugen bei Abweichung (außer `disabled`) nur eine Warnung im
+Lauf-Log, keinen Alarm — wie bei den optionalen Diensten im Host-Healthcheck
+(„Alarmsemantik pro Dienst“). Das Log enthält weder Header noch Cookies noch den
+Response-Body, nur Statuscode und die bereinigten Feldwerte.
+
+**Intervall und Verzögerung.** Zeitplan `*/15 * * * *`. GitHub startet geplante Läufe
+häufig verspätet (teils mehrere Minuten, besonders zu Stundenbeginn), einzelne Läufe
+können ausfallen. Die Erkennungszeit liegt daher grob bei 15 bis 30 Minuten und ist
+nicht garantiert. Bei Repositories ohne Aktivität deaktiviert GitHub geplante
+Workflows nach 60 Tagen; dann ist der Workflow im Actions-Tab wieder zu aktivieren.
+
+**Alarmweg.** Bei Fehlschlag legt der Lauf ein Issue mit Label `uptime-alert` und dem
+festen Titel `ALARM: avenyth.de Readiness nicht erreichbar/unhealthy` an (das Label
+wird bei Bedarf erzeugt) und endet rot. Ist bereits ein offenes Issue mit diesem Titel
+vorhanden, wird nur ein Kommentar mit Zeitstempel und Statuscode ergänzt. Bei Erholung
+kommentiert der nächste OK-Lauf „Wiederhergestellt“ mit Zeitstempel und schließt das
+Issue. Alle Schritte nutzen `gh` mit dem eingebauten `GITHUB_TOKEN`
+(`contents: read`, `issues: write`); es werden keine Fremd-Actions verwendet.
+
+**Benachrichtigung.** Belegt ist nur, dass das Issue erstellt, kommentiert und
+geschlossen wird. Ob und wie GitHub dies als E-Mail oder Push an eine Person zustellt,
+hängt von deren GitHub-Benachrichtigungseinstellungen ab (Watch-Status des Repos,
+Kanäle unter Settings → Notifications) und ist hier **nicht belegt**. Wer den Alarm
+erhalten soll, muss das Repo beobachten bzw. dem Issue zugewiesen sein; eine
+Empfängerliste ist im Workflow bewusst nicht hinterlegt.
+
+**Grenzen.**
+
+- Geprüft wird nur die Erreichbarkeit über Cloudflare/Tunnel und die in der öffentlichen
+  Readiness enthaltenen Dienststatus; nicht jeder Dienst, nicht die Job-Pipeline, keine
+  Sicherungen.
+- Die öffentliche Readiness kann kurzzeitig zwischengespeichert sein (serverseitiger
+  Cache); sehr kurze Ausfälle bleiben unsichtbar.
+- Ein einzelner fehlgeschlagener Lauf (nach 3 Versuchen) alarmiert sofort; es gibt hier
+  keinen Schwellwert über mehrere Läufe wie beim Host-Healthcheck.
+- Ein manueller Lauf mit abweichender `target_url` nutzt dasselbe Alarm-Issue: ein
+  erfolgreicher Testlauf schließt ein offenes, echtes Alarm-Issue.
+- Der Probe ersetzt keinen Pager: Zustellung und Reaktion hängen an GitHub und an der
+  Person, die das Repo beobachtet.
+
+**Testverfahren.** `target_url` ist auf `https://avenyth.de/...` beschränkt
+(Allowlist, Eingabe nur über `env`, nie direkt in `run:`), sodass der Dispatch nicht
+als Proxy für andere Ziele dient.
+
+```bash
+# Fehlerfall: 404 -> Alarm-Issue wird erstellt, Lauf ist rot
+gh workflow run uptime-probe.yml -f target_url=https://avenyth.de/api/v1/health/does-not-exist
+# Erholung/Normalfall: Standard-URL -> Kommentar "Wiederhergestellt", Issue geschlossen
+gh workflow run uptime-probe.yml
+gh run list --workflow uptime-probe.yml --limit 5
+```
+
+Das Test-Issue danach mit Hinweis „Kontrollierter Test“ schließen (nicht löschen).
+
+**Rückbau.** `.github/workflows/uptime-probe.yml` löschen (und optional das Label
+`uptime-alert`). Es bleiben keine Ressourcen außerhalb von GitHub zurück.
+
+
 ## Bewusste Grenzen
 
-- Kein Alarmkanal nach außen (E-Mail/Push). Ein solcher Kanal gehört an einen
+- Kein Alarmkanal nach außen (E-Mail/Push) aus dem Host-Skript; der Hostausfall wird nur vom
+  „Externen Uptime-Probe“ (GitHub Actions, Issue-Alarm) von außen erfasst. Ein solcher Kanal gehört an einen
   Messaging-Anbieter und damit an eine Zugangsdaten-Entscheidung des Betreibers; das
   Skript bleibt deshalb zugangsfrei. Sobald SMTP existiert (PWA-05), ist ein
   `OnFailure=`-Versand die naheliegende Ergänzung.
