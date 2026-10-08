@@ -1,0 +1,126 @@
+name: Uptime Probe
+
+# Vom Host unabhaengige Pruefung der oeffentlichen Readiness (nur ausgehende GETs,
+# keine Secrets des Hosts). Details: docs/ops/numra-monitoring.md, "Externer Uptime-Probe".
+
+on:
+  schedule:
+    # Alle 15 Minuten. GitHub startet Cron-Laeufe oft verzoegert (teils mehrere Minuten,
+    # zu Stundenbeginn mehr); einzelne Laeufe koennen ausfallen.
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: "Zu pruefende URL (nur https://avenyth.de/...), z. B. fuer kontrollierte Fehlertests"
+        required: false
+        default: "https://avenyth.de/api/v1/health/ready"
+        type: string
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: uptime-probe
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TARGET_URL: ${{ inputs.target_url || 'https://avenyth.de/api/v1/health/ready' }}
+      ALERT_TITLE: "ALARM: avenyth.de Readiness nicht erreichbar/unhealthy"
+      ALERT_LABEL: uptime-alert
+    steps:
+      - name: Ziel-URL pruefen (Allowlist)
+        run: |
+          set -euo pipefail
+          allow='^https://avenyth\.de/[A-Za-z0-9._~/?=&%-]*$'
+          if [[ ! "$TARGET_URL" =~ $allow ]]; then
+            echo "::error::target_url ist nicht erlaubt (nur https://avenyth.de/...)."
+            exit 1
+          fi
+
+      - name: Readiness pruefen
+        id: probe
+        run: |
+          set -uo pipefail
+          body="$(mktemp)"
+          ok=false
+          code=000
+          reason="nicht geprueft"
+
+          field() {
+            jq -r --arg k "$1" '(.[$k] // "fehlt") | if type == "string" and test("^[a-z_]{1,20}$") then . else "ungueltig" end' "$body"
+          }
+
+          for attempt in 1 2 3; do
+            code="$(curl -sS -m 15 -o "$body" -w '%{http_code}' -- "$TARGET_URL")" || true
+            code="${code:-000}"
+            if [ "$code" != "200" ]; then
+              reason="HTTP $code"
+            elif ! jq -e 'type == "object"' "$body" >/dev/null 2>&1; then
+              reason="HTTP 200, Antwort ist kein JSON-Objekt"
+            else
+              st="$(field status)"
+              db="$(field database)"
+              for svc in numerology_engine llm pdf; do
+                v="$(field "$svc")"
+                case "$v" in healthy|disabled) ;; *) echo "::warning::Optionaler Dienst $svc meldet: $v" ;; esac
+              done
+              if [ "$st" = "healthy" ] && [ "$db" = "healthy" ]; then
+                ok=true
+                reason="status=healthy database=healthy"
+                break
+              fi
+              reason="HTTP 200, status=$st database=$db"
+            fi
+            echo "Versuch $attempt/3 fehlgeschlagen: $reason"
+            [ "$attempt" -lt 3 ] && sleep 20
+          done
+
+          echo "Ergebnis: ok=$ok code=$code ($reason)"
+          {
+            echo "ok=$ok"
+            echo "code=$code"
+            echo "reason=$reason"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Alarm-Issue pflegen
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PROBE_OK: ${{ steps.probe.outputs.ok }}
+          PROBE_CODE: ${{ steps.probe.outputs.code }}
+          PROBE_REASON: ${{ steps.probe.outputs.reason }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          num="$(gh issue list --label "$ALERT_LABEL" --state open --limit 100 --json number,title \
+            | jq -r --arg t "$ALERT_TITLE" 'map(select(.title == $t)) | .[0].number // empty')"
+
+          if [ "$PROBE_OK" = "true" ]; then
+            if [ -n "$num" ]; then
+              gh issue close "$num" --comment "Wiederhergestellt: $ts, Probe OK ($PROBE_REASON). Lauf: $RUN_URL"
+              echo "Issue #$num geschlossen."
+            else
+              echo "OK, kein offenes Alarm-Issue."
+            fi
+            exit 0
+          fi
+
+          if [ -n "$num" ]; then
+            gh issue comment "$num" --body "Weiterhin gestoert: $ts, Statuscode $PROBE_CODE ($PROBE_REASON). Ziel: $TARGET_URL. Lauf: $RUN_URL"
+            echo "Kommentar an Issue #$num."
+          else
+            gh label create "$ALERT_LABEL" --color B60205 --description "Externer Uptime-Probe: Alarm" || true
+            gh issue create --title "$ALERT_TITLE" --label "$ALERT_LABEL" \
+              --body "Der externe Uptime-Probe meldet einen Fehler: $ts, Statuscode $PROBE_CODE ($PROBE_REASON). Ziel: $TARGET_URL. Lauf: $RUN_URL. Das Issue wird bei Erholung automatisch kommentiert und geschlossen."
+          fi
+
+      - name: Lauf bei Fehlschlag rot markieren
+        if: steps.probe.outputs.ok != 'true'
+        run: exit 1
+
