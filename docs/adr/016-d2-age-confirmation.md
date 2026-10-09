@@ -12,10 +12,11 @@ keinen Nachweis.
 
 - **Registrierung.** Die Web-UI zeigt eine ausdrückliche, **nicht vorangekreuzte**
   Checkbox „Ich bin mindestens 18 Jahre alt.“. Maßgeblich ist der Server:
-  `POST /v1/auth/register` verlangt `age_confirmed: true` (nur ein echtes JSON-`true`).
+  `POST /v1/auth/register` verlangt `age_confirmed: true` (nur ein echtes JSON-`true`; jeder andere Wert, auch `null`, `"true"` oder `1`, wird zu `false`).
   Fehlt das Feld oder ist es `false`, antwortet die API mit `422` und dem Code
   `AGE_CONFIRMATION_REQUIRED`, es entsteht weder Konto noch Sitzung. Ein Direktaufruf
   ohne UI scheitert damit.
+- **Konto-Export.** `age_confirmed_at` und `age_declaration_version` stehen im Abschnitt `account` des Datenexports.
 - **Speicherung.** `users.age_confirmed_at` (UTC, `timestamptz`) und
   `users.age_declaration_version` (aktuell `age-declaration-v1`, Konstante
   `AGE_DECLARATION_VERSION` in `services/age_declaration.py`). Bei jeder inhaltlichen
@@ -58,8 +59,6 @@ eine eigene Produktentscheidung.
 - Eine Erklärung ist kein Altersnachweis; sie ist selbst abgegeben und nicht verifizierbar.
 - Konten, die nicht über die Registrierung entstehen (z. B. per CLI angelegt), bekommen keine
   Erklärung automatisch; sie bleiben `NULL` bis zur Bestätigung.
-- Der Konto-Export (`account_export_service`) enthält die neuen Felder noch nicht;
-  Nachzug als eigener kleiner Schritt möglich.
 - Mobile-App und Bearer-Pfad (`/v1/auth/mobile/*`) nutzen das neue Feld in `UserOut`
   noch nicht; die mobile Registrierung existiert nicht im Repo.
 

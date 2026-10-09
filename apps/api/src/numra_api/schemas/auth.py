@@ -1,8 +1,14 @@
 from __future__ import annotations
 
 import datetime as dt
+from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, StrictBool
+from pydantic import BaseModel, BeforeValidator, ConfigDict, EmailStr, Field
+
+#: D2: nur ein echtes JSON-`true` zaehlt als Erklaerung. Jeder andere Wert (fehlend, `false`,
+#: `null`, `"true"`, `1`, ...) wird zu `False`, damit die Route in allen Faellen denselben
+#: Fehlercode AGE_CONFIRMATION_REQUIRED liefert statt eines generischen Schema-422.
+AgeDeclaration = Annotated[bool, BeforeValidator(lambda value: value is True)]
 
 
 class LoginRequest(BaseModel):
@@ -24,7 +30,7 @@ class RegisterRequest(BaseModel):
     #: D2: Erklaerung "mindestens 18 Jahre alt". Der Default `False` ist Absicht: ein
     #: fehlendes Feld lehnt die Route mit AGE_CONFIRMATION_REQUIRED ab (klarer Fehlercode
     #: statt generischem Schema-Fehler) -- der Direktaufruf ohne UI scheitert.
-    age_confirmed: StrictBool = False
+    age_confirmed: AgeDeclaration = False
 
 
 class AgeConfirmRequest(BaseModel):
@@ -33,7 +39,7 @@ class AgeConfirmRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    age_confirmed: StrictBool = False
+    age_confirmed: AgeDeclaration = False
 
 
 class UserOut(BaseModel):
