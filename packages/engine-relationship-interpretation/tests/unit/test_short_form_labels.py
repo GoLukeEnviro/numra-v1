@@ -510,3 +510,24 @@ def test_analyses_accept_dialogue_but_keep_the_strict_brace_rule(
             )
             == text
         )
+
+
+@pytest.mark.parametrize(
+    "text",
+    (
+        "Es zeigt [a:life_path und geht weiter.",
+        "Es zeigt [a:life_path, danach mehr.",
+        "Es zeigt [a:life_path. Danach mehr.",
+        "Es zeigt [b:expression) so.",
+    ),
+)
+@pytest.mark.parametrize("is_mock_provider", [False, True])
+def test_an_unclosed_known_label_mid_sentence_is_rejected_by_the_gate(
+    text, is_mock_provider, profile_a, profile_b
+) -> None:
+    with pytest.raises(InvalidAnalysisSection):
+        _validate_and_resolve_text(
+            text, profile_a=profile_a, profile_b=profile_b, is_mock_provider=is_mock_provider
+        )
+    with pytest.raises(AnalysisGenerationError):
+        pipeline._assert_no_unresolved_tokens([text])

@@ -148,22 +148,46 @@ def _short_label_alternatives() -> str:
     test), so dialogue in brackets (``[A: Ich bin müde]``, ``[a: Nähe]``) and links
     or checkboxes stay ordinary prose:
 
-    * a known id followed by ``]``, the end, or more identifier characters (a known id
-      extended by ``_x`` is still a label, fail-closed);
+    * a known id that is not the start of a longer word (``(?![a-z])``): with or without
+      the closing bracket, so ``[a:life_path und``, ``[a:life_path,`` and
+      ``[a:life_path_extra]`` are labels while ``[a:life_pathology]`` is not. Known
+      trade-off: bracketed dialogue that *starts with* an id word (``[a: Balance ...``)
+      is read as a label;
     * any unspaced snake_case label ``[a:some_thing]`` -- an unknown or misspelled id of
-      the same shape is still a token (prose never contains an underscore);
-    * a response cut off inside the label: ``[a:`` and any prefix of a known id at the
-      very end of the text.
+      the same shape is still a token (prose never contains an underscore).
+
+    A response cut off inside the label is not a regex (see `_ends_in_cut_off_label`):
+    every `\\s*` here is followed by a character class it cannot overlap, so no
+    alternative can backtrack quadratically.
     """
     ids = sorted(KNOWN_FACT_IDS, key=len, reverse=True)
     known = "|".join(re.escape(i) for i in ids)
-    prefixes = sorted({i[:n] for i in ids for n in range(1, len(i) + 1)}, key=len, reverse=True)
-    cut = "|".join(re.escape(p) for p in prefixes)
-    return (
-        rf"\[\s*[ab]\s*:\s*(?:{known})(?=\s*\]|\s*\Z|[0-9_])"
-        r"|\[[ab]:[a-z][a-z0-9]*_[a-z0-9_]+\]"
-        rf"|\[\s*[ab]\s*:\s*(?:{cut})?\s*\Z"
-    )
+    return rf"\[\s*[ab]\s*:\s*(?:{known})(?![a-z])|\[[ab]:[a-z][a-z0-9]*_[a-z0-9_]+\]"
+
+
+_CUT_OFF_LABEL = re.compile(r"\[\s*[ab]\s*:\s*(\S*)\s*")
+_MAX_FACT_ID_LENGTH = max(len(i) for i in KNOWN_FACT_IDS)
+
+
+def _ends_in_cut_off_label(checked: str) -> bool:
+    """True when the text ends inside a shortened label: the last ``[`` is followed by
+    ``a``/``b``, a colon, blanks and nothing but a (possibly empty) prefix of a known
+    fact id -- ``... [a:``, ``... [b:soul_u``, ``... [a: ``.
+
+    Deliberately not part of the regex: the end-of-text anchor made the former pattern
+    ``\\s*(?:prefix|...)?\\s*\\Z`` quadratic in the blanks after ``[a:``. Only the last
+    ``[`` can start such a label and the tail is matched once with disjoint classes
+    (``\\s*`` / ``\\S*``), so the check is linear."""
+    start = checked.rfind("[")
+    if start < 0:
+        return False
+    match = _CUT_OFF_LABEL.fullmatch(checked, start)
+    if match is None:
+        return False
+    fragment = match.group(1)
+    if len(fragment) > _MAX_FACT_ID_LENGTH:
+        return False
+    return any(fact_id.startswith(fragment) for fact_id in KNOWN_FACT_IDS)
 
 
 #: Alternatives shared by the strict and the lenient pattern (matched on
@@ -221,4 +245,6 @@ def find_unresolved_template_token(text: str, *, strict_braces: bool = True) -> 
             return marker
     pattern = UNRESOLVED_TOKEN_PATTERN if strict_braces else LENIENT_UNRESOLVED_TOKEN_PATTERN
     match = pattern.search(checked)
-    return match.group(0) if match else None
+    if match:
+        return match.group(0)
+    return "[a:" if _ends_in_cut_off_label(checked) else None

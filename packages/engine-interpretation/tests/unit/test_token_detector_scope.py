@@ -10,6 +10,7 @@ Reste (Review zu PR #308).
 from __future__ import annotations
 
 import datetime as dt
+import time
 
 import pytest
 
@@ -58,6 +59,11 @@ _REJECTED_SHORT_FORMS = (
     "Satz [a:does_not_exist] unbekannt, aber Label-Form.",
     "Satz [a:hidden_passion] Special-ID.",
     "Satz [a:challenge_4] hoechste Challenge-ID.",
+    "Satz [a:life_path und geht weiter.",
+    "Satz [a:life_path, danach mehr.",
+    "Satz [a:life_path. Danach mehr.",
+    "Satz [b:expression) mit Klammer.",
+    "Satz [a: soul_urge und mehr.",
     "Satz [а:life_path] kyrillisches a.",
     "Satz [A​:life_path] Zero-Width.",
     "Satz ［Ａ：ｌife_path］ voll breit.",
@@ -74,7 +80,9 @@ _ACCEPTED_BRACKET_TEXT = (
     "[A: Ich bin müde]",
     "Er sagte leise [a: Nähe] und ging.",
     "[B: Das stimmt so nicht.] [A: Doch.]",
-    "Dialog: [a: Balance bedeutet für mich Ruhe] und weiter.",
+    "Dialog: [a: Wärme bedeutet für mich Ruhe] und weiter.",
+    "Satz [a:attitudes] ist ein anderes Wort.",
+    "Satz [a:foo] bleibt Prosa wie entschieden.",
     "[a: balanced und ruhig]",
     "Siehe [Text](https://example.org/a:b) im Anhang.",
     "Aufgabe [x] erledigt, Aufgabe [ ] offen.",
@@ -132,3 +140,44 @@ def test_isolated_braces_are_prose_for_report_and_copilot(text) -> None:
 @pytest.mark.parametrize("text", _ISOLATED_BRACES)
 def test_isolated_braces_stay_rejected_for_analyses(text) -> None:
     assert find_unresolved_template_token(text) is not None
+
+
+# ------------------------------------------------------------------ Laufzeit (ReDoS)
+
+_PERF_SIZES = (20_000, 200_000)
+_PERF_INPUTS = {
+    "label-blanks-x": lambda n: "[a:" + " " * n + "x",
+    "label-blanks": lambda n: "[a:" + " " * n,
+    "blanks-label": lambda n: " " * n + "[a:",
+    "repeated-label": lambda n: "[a:" * n,
+    "bracket-blanks": lambda n: "[" + " " * n,
+    "bracket-blanks-bracket": lambda n: "[" + " " * n + "[a:",
+    "repeated-bracket-blank": lambda n: "[ " * n,
+    "known-id-blanks": lambda n: "[a:life_path" + " " * n + "x",
+    "brace-blanks": lambda n: "{a" + " " * n + "x",
+    "repeated-brace": lambda n: "{a:" * n,
+    "angle-word": lambda n: "<" + "a_" * n,
+    "percent": lambda n: "%(" + "a" * n,
+}
+
+
+@pytest.mark.parametrize("size", _PERF_SIZES)
+@pytest.mark.parametrize("shape", sorted(_PERF_INPUTS))
+@pytest.mark.parametrize("strict_braces", [True, False])
+def test_worst_case_inputs_are_checked_in_linear_time(shape, size, strict_braces) -> None:
+    text = _PERF_INPUTS[shape](size)
+
+    start = time.perf_counter()
+    find_unresolved_template_token(text, strict_braces=strict_braces)
+
+    assert time.perf_counter() - start < 1.0
+
+
+@pytest.mark.parametrize("text", ["Satz [a:", "Satz [b:soul_u", "Satz [a: ", "Satz [a:life_path"])
+def test_a_label_cut_off_at_the_end_is_still_rejected(text) -> None:
+    assert find_unresolved_template_token(text) is not None
+
+
+@pytest.mark.parametrize("text", ["Satz [a:   x", "Satz [a: Ich bin mü", "Satz [a:zzz"])
+def test_a_bracket_at_the_end_that_is_no_label_prefix_is_prose(text) -> None:
+    assert find_unresolved_template_token(text) is None

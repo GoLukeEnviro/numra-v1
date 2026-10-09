@@ -277,3 +277,25 @@ def test_lint_report_accepts_an_isolated_brace_but_not_a_placeholder_shape(field
 
     assert not any("PlaceholderResolution" in error for error in ok.errors)
     assert any("PlaceholderResolution" in error for error in bad.errors)
+
+
+@pytest.mark.parametrize("field", ["text", "summary"])
+@pytest.mark.parametrize(
+    "remnant",
+    (
+        "[a:life_path und geht weiter.",
+        "[a:life_path, danach.",
+        "[a:life_path. Danach.",
+        "[b:expression) so.",
+    ),
+)
+async def test_an_unclosed_known_label_mid_sentence_never_makes_a_report(
+    field, remnant, profile, knowledge_base
+) -> None:
+    if field == "text":
+        provider = _Provider(text_for=lambda _sid, _a, filler: f"Satz {remnant} {filler}")
+    else:
+        provider = _Provider(summary_for=lambda _sid, _a: f"Satz {remnant}")
+
+    with pytest.raises(ReportGenerationError, match="REPORT_SECTION_UNRENDERABLE"):
+        await _generate(profile, knowledge_base, provider)

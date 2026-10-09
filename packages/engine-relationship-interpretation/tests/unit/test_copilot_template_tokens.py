@@ -155,3 +155,24 @@ async def test_isolated_braces_and_bracketed_dialogue_do_not_fail_a_copilot_turn
 
     assert result.text == text
     assert provider.calls == 1
+
+
+@pytest.mark.parametrize(
+    "text",
+    (
+        "Dein Weg [a:life_path und geht weiter.",
+        "Dein Weg [a:life_path, danach mehr.",
+        "Dein Weg [a:life_path. Danach mehr.",
+        "Dein Weg [b:expression) so.",
+    ),
+)
+async def test_an_unclosed_known_label_mid_sentence_is_rejected(text, profile_self) -> None:
+    provider = _FixedReplyProvider(text)
+
+    with pytest.raises(AnalysisGenerationError, match="PROMPT_SCAFFOLDING_REJECTED"):
+        await generate_copilot_reply(
+            request=_request(),
+            llm=provider,
+            knowledge_version="v1",
+            grounding_profiles=(profile_self,),
+        )
