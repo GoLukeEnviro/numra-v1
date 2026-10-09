@@ -1,6 +1,6 @@
 # NUMRA — Überwachung und Alarmierung auf Agent0
 
-Stand: 2026-10-05. Rollen und Pfade: `docs/ops/numra-topology.md`.
+Stand: 2026-10-09. Rollen und Pfade: `docs/ops/numra-topology.md`.
 
 ## Was überwacht wird
 
@@ -32,16 +32,18 @@ trägt genau die Dienstdetails, die für die Bewertung nötig sind. Andere HTTP-
 
 ## Alarmsemantik pro Dienst
 
-Soll-Zustand je Dienst in `healthcheck.env`. **Nur ein Beispiel** — der Ist-Stand von
-Produktion und Audit (`curl -s http://127.0.0.1:17800/v1/health/ready`, `…:17801…`) muss
-vor dem Rollout geprüft werden. Meldet ein Dienst z. B. `llm=healthy`, alarmiert
-`llm=optional-disabled` sofort als Konfigurationsabweichung:
+Soll-Zustand je Dienst in `healthcheck.env`. Ist-Stand auf dem Host (gemessen
+2026-10-09; Produktion und Audit melden alle vier Dienste `healthy`):
 
 ```bash
-# BEISPIEL, nicht blind übernehmen:
-EXPECTED_DEPENDENCIES="database=required numerology_engine=required llm=optional-disabled pdf=required"
+EXPECTED_DEPENDENCIES="database=required numerology_engine=required llm=required pdf=required"
 FAIL_THRESHOLD=3
 ```
+
+Vor jeder Änderung den Ist-Stand prüfen (`curl -s http://127.0.0.1:17800/v1/health/ready`,
+`…:17801…`). Meldet ein `required`-Dienst `disabled` (z. B. `llm=disabled`), alarmiert das
+sofort als Konfigurationsabweichung (`config_deviation:llm_required_but_disabled`). Wird
+ein Dienst bewusst abgeschaltet, ist sein Eintrag auf `optional-disabled` zu ändern.
 
 `EXPECTED_DEPENDENCIES` gilt **global für Produktion und Audit** gleichermaßen. Dienstnamen
 bestehen aus `[a-z0-9_]`; ein Tippfehler (`pdf=reqired`), ein unbekannter Wert oder ein
@@ -119,14 +121,20 @@ ein zweiter ist einer.
 Soll-Zustand:
 
 ```bash
-PROD_READY_URL=http://127.0.0.1:17800/v1/health/ready
-PROD_DB_CONTAINER=numra-prod-postgres-1
+# /etc/numra/healthcheck.env, Ist-Stand 2026-10-09 (ohne Kommentarzeilen)
 AUDIT_READY_URL=http://127.0.0.1:17801/v1/health/ready
-AUDIT_DB_CONTAINER=numra-audit-postgres-1
-# Beispielwerte: Soll-Zustand vor dem Rollout gegen den Ist-Stand prüfen (gilt für Prod und Audit)
-EXPECTED_DEPENDENCIES="database=required numerology_engine=required llm=optional-disabled pdf=required"
+EXPECTED_DEPENDENCIES="database=required numerology_engine=required llm=required pdf=required"
 FAIL_THRESHOLD=3
 ```
+
+Die übrigen Ziele sind die Vorgaben des Skripts und stehen nicht in der Datei, lassen
+sich dort aber überschreiben: `PROD_READY_URL=http://127.0.0.1:17800/v1/health/ready`,
+`PROD_DB_CONTAINER=numra-prod-postgres-1`, `AUDIT_DB_CONTAINER=numra-audit-postgres-1`.
+
+Am 2026-10-09 (E2) wurde das installierte `/usr/local/bin/numra-healthcheck.sh` durch den
+Repo-Stand `scripts/ops/numra-healthcheck.sh` ersetzt (sha256 `7515b7f682264ac0…`,
+vorher `e3a4a64188c945a5…`; Sicherung unter `/var/lib/numra/release-backups/`) und die
+Datei um `EXPECTED_DEPENDENCIES` und `FAIL_THRESHOLD` ergänzt.
 
 Fehlt die Datei oder eine Zeile, gelten die Vorgaben (der Produktions-Stack wird also
 immer geprüft; ohne `EXPECTED_DEPENDENCIES` zählt nur der Gesamtstatus, `FAIL_THRESHOLD`
@@ -174,6 +182,32 @@ hängende QUEUED-Jobs und die 24h-Zählung inkl. Analysefehlern.
 ```bash
 bash scripts/ops/tests/test-numra-healthcheck.sh
 ```
+
+### Kontrollierter Fehlertest (2026-10-09)
+
+Der Alarmpfad wurde in einer **isolierten** Umgebung geprüft: ein Fake-Readiness-Endpunkt
+statt der echten Stacks, eine eigene Statusdatei, aufgerufen über das Hostskript
+`/home/hermes/e2test.sh` (liegt nur auf dem Host, nicht im Repository). Die produktive
+Statusdatei und die produktive Unit blieben unberührt.
+
+| Testfall | Lauf | Ergebnis |
+|---|---|---|
+| `database` unhealthy | 1 | Warnung `database_unhealthy_1_of_3` |
+| `database` unhealthy | 2 | Warnung `database_unhealthy_2_of_3` |
+| `database` unhealthy | 3 | Alarm `database_unhealthy_3x` |
+| `database` wieder healthy | folgender Lauf | Erholung erkannt (`database_recovered`), Zähler 0 |
+| `llm=disabled` bei `required` | 1 | sofort Alarm `config_deviation:llm_required_but_disabled` |
+| Endpunkt antwortet 502 | 1 | Warnung `readiness_failed_1_of_3(http_502)` |
+| Endpunkt antwortet 502 | 2 | Warnung `readiness_failed_2_of_3(http_502)` |
+| Endpunkt antwortet 502 | 3 | Alarm `readiness_failed_3x(http_502)` |
+| Server aus (`unreachable`) | 4 | Alarm `readiness_failed_4x(unreachable)` |
+
+Im Test lief die Jobprüfung absichtlich ohne DB-Container; deshalb erscheint in allen
+Läufen zusätzlich `prod:jobs_unreadable`. Das ist ein Testartefakt und zeigt zugleich,
+dass unlesbare Job-Zähler als Alarm gelten.
+
+Dieser Test belegt die Bewertungslogik des Skripts mit den realen Soll-Werten, nicht die
+Zustellung eines Alarms an eine Person.
 
 ## Externer Uptime-Probe
 
@@ -251,6 +285,33 @@ Das Test-Issue danach mit Hinweis „Kontrollierter Test“ schließen (nicht l�
 **Rückbau.** `.github/workflows/uptime-probe.yml` löschen (und optional das Label
 `uptime-alert`). Es bleiben keine Ressourcen außerhalb von GitHub zurück.
 
+
+## Was belegt ist / was nicht
+
+**Belegt (Stand 2026-10-09):**
+
+- Das installierte Healthcheck-Skript entspricht dem Repo-Stand (sha256-Präfix
+  `7515b7f682264ac0`); `EXPECTED_DEPENDENCIES` und `FAIL_THRESHOLD=3` sind gesetzt;
+  Produktion und Audit melden alle vier Dienste `healthy`.
+- Warnung → Alarm nach 3 Läufen, Erholung, sofortiger Alarm bei Konfigurationsabweichung
+  und Alarm bei 502-Endpunkt (siehe „Kontrollierter Fehlertest“), jeweils in isolierter
+  Umgebung.
+- Externer Uptime-Probe (#296): erster Schedule-Lauf am 2026-10-08 gegen 21:28 UTC; bis
+  2026-10-09 15:00 CEST waren alle geprüften Schedule-Läufe erfolgreich (35 geprüft).
+  Die einzigen 2 Fehlläufe waren die absichtlichen `workflow_dispatch`-Tests vom
+  2026-10-08 (Fehlerfall und Erholung, Issue #295).
+- Der Host-Alarm ist lokal sichtbar: `systemctl --failed`, Journal, Statusdatei.
+
+**Nicht belegt bzw. nicht vorhanden:**
+
+- Dass GitHub-Benachrichtigungen (E-Mail/Push) zu `uptime-alert`-Issues beim Betreiber
+  ankommen.
+- Ein externer Alarmkanal für Jobfehler und Backup-Frische: Diese Alarme bleiben lokal
+  (Statusdatei plus `systemctl --failed`).
+- Hostausfall wird nur vom externen Probe (Issue) erkannt; der Host-Healthcheck kann ihn
+  nicht melden.
+- Ein Fehlertest gegen die echten Stacks wurde nicht durchgeführt (nur isolierte
+  Umgebung).
 
 ## Bewusste Grenzen
 

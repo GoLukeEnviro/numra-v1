@@ -14,57 +14,119 @@ Wo etwas nicht belegt ist, steht „offen“ bzw. „nicht belegt“.
 
 | Feld | Wert |
 |---|---|
-| `main` | `98148b58afbc750fd59fcb889bf2113c2e8d73a0` (Merge von #297) |
+| `main` | `f957df0656aac31c2344d2e4265ec7133ff0dde8` (Commit von #308) |
 | Datum | 2026-10-09 |
-| Required Checks | 14, darunter `api-integration` und `security-gate` (seit E1, 2026-10-08) |
+| Required Checks | 14 (seit E1, 2026-10-08: 12 → 14, zusätzlich `api-integration` und `security-gate`) |
 | Required Approvals | 0 |
-| `enforce_admins` | `false` |
+| `enforce_admins` | `false` (unverändert; Entscheidung D3 offen) |
 
-## 2. Audit-Stand (gemessen 2026-10-08)
+Die vorherige Branch-Protection-Konfiguration liegt als Sicherung lokal beim
+Betreiber-Arbeitsplatz, nicht in diesem Repository.
 
-| Feld | Wert |
-|---|---|
-| Checkout / Marker | `018ca67cc7028130cf034a11b310b0f79551e8d8` (= S1) |
-| Alembic | `c5a9d3e72b16` |
-| Feature-Flags | 7 von 7 an |
-
-## 3. Produktions-Stand (gemessen 2026-10-08 21:09 CEST)
+## 2. Audit-Stand (gemessen 2026-10-09)
 
 | Feld | Wert |
 |---|---|
-| Checkout / Marker | `1a5dc5b3a25dfdab128e812eef369ec42aa42344` |
-| Alembic | `04d4d6f4c5a0` |
+| Checkout / Marker (`audit_deployed_sha`) | `f957df0656aac31c2344d2e4265ec7133ff0dde8` (= S3) |
+| Alembic, Feature-Flags | auf S3 hier nicht erneut erhoben; zuletzt 2026-10-08 (S1): `c5a9d3e72b16`, 7 von 7 Flags an |
+
+## 3. Produktions-Stand (ausgeführt und gemessen 2026-10-09, Zeiten CEST)
+
+Produktion = S3 = `main` (`f957df06…`).
+
+| Feld | Wert |
+|---|---|
+| Checkout / Marker (`/var/lib/numra/deployed_sha`) | `f957df0656aac31c2344d2e4265ec7133ff0dde8`, gesetzt 15:03:51, atomar, Eigentümer `hermes`, 0644 |
+| Alembic | `c5a9d3e72b16` (Kette `04d4d6f4c5a0` → `7c3e9a51b2d8` → `9d2f6b83a1c4` → `c5a9d3e72b16`, in einer Transaktion, alles oder nichts) |
+| Neu erzeugt (force-recreate, neue Images) | `api`, `web`, `worker`, `analysis-worker` |
+| Unverändert | `pdf`, `postgres`, `redis` (das `pdf`-Image läuft seit 5 Tagen und weicht vom Tag `:latest` ab; bewusst nicht angefasst) |
 | Flags an | `v2_master`, `connections`, `relationship_workspaces`, `copilot` |
 | Flags aus | `checkins`, `tasks`, `evidence_layer` |
-| Nutzer | 6 |
+| Flags vor/nach Release | Hash identisch; Bootstrap-Status `adopted` / `pre-existing`; 0 Einträge `FEATURE_FLAG_CHANGED` |
+| Schreibpause (Fenster) | 49 s |
+| Pre-Deploy-Dump | `numra-20261009T125739Z.dump`, 540350 Byte, sha256 geprüft |
+| Rollback-Material | Tags `numra-prod-<dienst>:rollback-20261009-145523`; Hostkonfiguration gesichert in `/var/lib/numra/release-backups/20261009-145523/` (root, 0700) |
+| Konten | 6, davon 4 unverifiziert; durch das Smoke-Cleanup zusätzlich 1 anonymisierte Tombstone-Zeile in `users` |
+| Produktions-Smoke | 44 PASS, 0 FAIL (Details unter 5) |
 
-Produktion steht damit weiterhin auf dem Stand vor allen unter 4 genannten PRs.
+## 4. Seit Produktions-Stand S3 gemergt: (leer)
 
-## 4. Auf `main` gemergt, in Produktion nicht deployed
+Auf `main` liegt kein Commit nach S3 (`f957df06…`); „gemergt, aber nicht deployed“ ist
+damit leer. (Dieser Dokumentations-PR erzeugt nach dem Merge einen neuen `main`-Commit
+ohne Code- oder Konfigurationsänderung.)
 
-Relevante Code-, Konfigurations- und CI-PRs (keine Vollständigkeitsbehauptung):
-#249, #250, #251, #268, #271, #273, #274, #275, #282, #283, #284, #285, #286, #287,
-#288, #289, #290, #292, #293, #294, #296, #297, #298 sowie die Dependabot-Bumps.
-Zusätzlich gemergt, nur Dokumentation: #248.
+**In Produktion enthalten (S3, gemergt und deployed)** — relevante Code-,
+Konfigurations- und CI-PRs (keine Vollständigkeitsbehauptung): #249, #250, #251, #268,
+#271, #273, #274, #275, #282, #283, #284, #285, #286, #288, #289, #290, #292, #293,
+#294, #296, #297, #298, #307, #308 sowie die Dependabot-Bumps #276, #277, #278, #279.
+Gemergt, nur Dokumentation: #248, #287, #299.
 
-## 5. Abnahmezeitpunkt und Belege
+**Nicht in S3, offen:**
 
-- **E3 auf aktueller SHA: offen.** Eine Audit-Abnahme auf der Kandidaten-SHA des
-  nächsten Produktionsreleases liegt nicht vor.
-- Die Werte in 2 und 3 stammen aus Messungen vom 2026-10-08; eine Rohausgabe ist in
-  diesem Repository nicht abgelegt. Der Wert in 1 ist der `main`-Stand vom 2026-10-09.
-- Ablauf, Marker und Rollback eines Produktionsreleases:
-  [`docs/ops/release-verification.md`](../ops/release-verification.md), Abschnitt
-  „Produktionsauslieferung: Ablauf, Marker, Rollback“.
+- Dependabot #300 bis #306 (das uv-Ökosystem ist seit #298 aktiv: diese PRs ändern
+  `pyproject.toml` und `uv.lock` gemeinsam; #305, sqlalchemy 2.1.3, ist rot).
+- eslint-/React-/TypeScript-Migrationen #235, #238, #280, #281.
+- Draft #218 (Betreiberdaten-Guard, 6 leere Pflichtfelder).
+- 4 Dependabot-Alerts (npm, nur Build-/Dev-Ketten Expo/Tailwind).
+
+## 5. Abnahme und Belege (alle 2026-10-09)
+
+Rohausgaben liegen auf dem Host (Agent0), nicht in diesem Repository.
+
+- **Produktions-Smoke:** `/home/hermes/prod-smoke/prod_smoke.py`, Lauf
+  `/home/hermes/prod-smoke/runs/20261009T125834Z-prod.txt`: 44 PASS, 0 FAIL.
+  Abgedeckt: Register/Login/Sessions/CSRF lokal, über den Web-Proxy und öffentlich
+  (`https://avenyth.de`), Admin-Route 403, Flag-Gating `checkins` 503, 404-Schutz,
+  Origin-Guard, QUICK-Report `COMPLETE` in 280 s mit 12763 Zeichen, PDF 88515 Byte,
+  `llm_generations` 14 Zeilen alle ok, `total_tokens` 49142 (echte Provider-Zahlen),
+  Cleanup per `delete-all`.
+- **E3-Abnahme auf S3 (Audit):** `/home/hermes/e3-acceptance/e3_acceptance.py --profile s2`,
+  zweimal vollständig: je 125 PASS, 0 FAIL, 1 SKIP (PDF-Textextraktion im Skript mangels
+  Extraktor). Läufe: `/home/hermes/e3-acceptance/runs/20261009T123623Z/` und
+  `/home/hermes/e3-acceptance/runs/20261009T124044Z/` (je `summary.txt`, `result.json`).
+- **PDF-Inhalt (separat mit pypdf geprüft):** 8 Seiten, rund 1700 Wörter, deutsch, 0
+  Treffer auf Platzhalter-/Labelmuster.
+- **Vorherige Abnahme auf S2 (`8a037f4f`) fand Blocker:** neue Analysen mit ungelösten
+  Kurzform-Tokens (`[a:life_path]`), ein Report mit ungelöstem `{{metric:maturity}}` in
+  `summary`, `llm_generations`-Tokens `NULL`. Behoben mit #307 (Token-Usage aus Ollama
+  `prompt_eval_count`/`eval_count`, nie geschätzt) und #308 (Prompt v4, Kurzform-Repair,
+  zentraler Detektor `rendering_guard.find_unresolved_template_token`, Report-`summary`,
+  Copilot, `error_code`-Reset bei `COMPLETE`).
+- **Rollback:** Mechanik R1 (Rück-Tag auf `:latest` plus `up -d --force-recreate
+  --no-deps --no-build`) auf dem Audit-Stack getestet (Container == Rollback-Tag-ID,
+  healthy, danach zurück auf S3). Auf Produktion nicht nötig. Restore-Drill 2026-10-08
+  (Dump → isolierte Wegwerf-DB → Migration → alter Produktionscode gegen migrierte DB).
+- **E1 (2026-10-08):** Required Checks auf `main` 12 → 14; Approvals 0 und
+  `enforce_admins` `false` unverändert.
+- **E2 (2026-10-09):** installiertes `/usr/local/bin/numra-healthcheck.sh` durch den
+  Repo-Stand ersetzt (sha256 `7515b7f682264ac0…`, vorher `e3a4a64188c945a5…`);
+  `/etc/numra/healthcheck.env` mit `EXPECTED_DEPENDENCIES` und `FAIL_THRESHOLD=3`
+  ergänzt; kontrollierter Fehlertest in isolierter Umgebung; externer Uptime-Probe (#296).
+  Details und Grenzen: [`docs/ops/numra-monitoring.md`](../ops/numra-monitoring.md).
+- **Ablauf der Auslieferung:** [`docs/ops/release-verification.md`](../ops/release-verification.md),
+  Abschnitt „Produktionsauslieferung: Ablauf, Marker, Rollback“, Unterabschnitt
+  „Ausgeführtes Beispiel: Release f957df06 (2026-10-09)“.
 
 ## 6. Offene Punkte (getrennt von den Ständen oben)
 
-- **Entscheidungen D1, D2, D3, D4, D6:** offen. Ihr Inhalt ist in diesem Repository
-  nicht belegt und wird hier nicht ergänzt.
-- **Proxy-Fragen:** offen; Inhalt in diesem Repository nicht belegt.
-- **E2:** Status nicht belegt.
-- **E3:** offen (siehe 5).
-- **E4:** Status nicht belegt.
+- **24-h-Beobachtung** der Produktion: Beginn 2026-10-09 15:04, Ergebnis offen.
+- **rc2-journey** am Montag 2026-10-12: erster Beleg von #283 auf `main`, offen.
+- **Entscheidungen, nicht getroffen:** D1 (Betreiberangaben), D2 (Altersregel), D3
+  (Approvals), D4 (Entitlement), D6 (Altanalysen).
+- **Proxy-Fragen, nicht entschieden:** Ratelimit pro Tailnet-IP bzw. Nutzer; feste
+  Web-IP gegenüber Shared Secret.
+- **Nicht belegt:** ob GitHub-Benachrichtigungen (E-Mail/Push) zu den `uptime-alert`-Issues
+  beim Betreiber ankommen; Alarme für Jobfehler und Backup-Frische bleiben lokal
+  (Statusdatei, `systemctl --failed`), ein externer Kanal dafür existiert nicht. E4: Status
+  nicht belegt.
+- **Bekannte Folgen und Hinweise:**
+  1. G3 (#294) wirkt jetzt in Produktion: 4 von 6 Konten sind unverifiziert und können
+     weder einladen noch einlösen, bis sie ihre E-Mail verifizieren (`EMAIL_BACKEND=smtp`
+     ist konfiguriert); 1 Einladung ist `PENDING`.
+  2. `delete-all` hinterlässt eine anonymisierte Tombstone-Zeile.
+  3. Produktions-Analysen und -Reports vor S3 wurden nicht angefasst (Entscheidung D6
+     offen).
+  4. Die öffentliche Readiness enthält den Dienststatus (`llm`, `pdf`, …).
 
 ## Historie: frühere Statusfelder (historisch)
 
