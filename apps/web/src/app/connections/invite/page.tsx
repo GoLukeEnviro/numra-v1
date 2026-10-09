@@ -102,6 +102,7 @@ function MethodStep({
   const [emailTouched, setEmailTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [needsEmailVerification, setNeedsEmailVerification] = useState(false);
 
   const emailInvalid = method === "EMAIL" && emailTouched && !EMAIL_PATTERN.test(email.trim());
 
@@ -113,13 +114,19 @@ function MethodStep({
     }
     setSubmitting(true);
     setError(null);
+    setNeedsEmailVerification(false);
     try {
       const result = await api.connections.invite(
         method === "EMAIL" ? { method, invitee_email: email.trim() } : { method },
       );
       onCreated(result);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t("app.connectionsInvite.submitError"));
+      if (err instanceof ApiError && err.code === "EMAIL_VERIFICATION_REQUIRED") {
+        setError(t("app.connectionsInvite.verifyEmailError"));
+        setNeedsEmailVerification(true);
+      } else {
+        setError(err instanceof ApiError ? err.message : t("app.connectionsInvite.submitError"));
+      }
       setSubmitting(false);
     }
   }
@@ -154,7 +161,12 @@ function MethodStep({
 
       {error && (
         <div role="alert" className="mt-4 rounded-lg border border-danger/30 bg-danger-surface p-3 text-sm text-text">
-          {error}
+          <p>{error}</p>
+          {needsEmailVerification && (
+            <Link href="/settings" className="mt-1 inline-block text-gold underline-offset-4 hover:underline">
+              {t("app.connectionsInvite.verifyEmailCta")}
+            </Link>
+          )}
         </div>
       )}
 
