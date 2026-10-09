@@ -9,7 +9,7 @@ from sqlalchemy.orm import aliased
 from numra_api.models import Calculation, Person, RelationshipComparison
 
 
-def _relationship_with_people_stmt() -> Select[tuple[RelationshipComparison, Person, Person]]:
+def _relationship_with_people_stmt() -> Select[RelationshipComparison, Person, Person]:
     """Shared join: resolves both participants' `Person` rows in one query so the
     frontend never needs a browser-only cache to know who Person A/B are.
     `RelationshipComparison.user_id` is the ownership scope -- both calculations were
