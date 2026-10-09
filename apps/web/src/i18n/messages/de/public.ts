@@ -148,6 +148,10 @@ export const dePublic = {
   "public.register.errorRateLimited": "Zu viele Versuche. Bitte warte einen Moment und versuche es erneut.",
   "public.register.errorServer": "Der Server konnte die Registrierung nicht abschließen. Bitte versuche es später erneut.",
   "public.register.errorValidation": "Die Angaben wurden vom Server nicht akzeptiert. Bitte prüfe E-Mail und Passwort.",
+  "public.register.ageConfirm": "Ich bin mindestens 18 Jahre alt.",
+  "public.register.ageHint":
+    "Eigene Konten sind erst ab 18 Jahren möglich. Wir speichern nur diese Erklärung mit Zeitpunkt — kein Geburtsdatum, keine Ausweisdaten.",
+  "public.register.errorAgeRequired": "Bitte bestätige, dass du mindestens 18 Jahre alt bist.",
 
   // Onboarding
   "public.onboarding.stepLabel": "Schritt",

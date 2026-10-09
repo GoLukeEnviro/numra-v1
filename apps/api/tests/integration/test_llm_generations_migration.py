@@ -250,14 +250,16 @@ def test_single_ref_check_rejects_two_origins_after_upgrade(migration_url) -> No
         )
 
 
-def test_refs_revision_is_the_single_head_on_top_of_the_report_revision() -> None:
+def test_refs_revision_sits_on_top_of_the_report_revision_in_a_single_head_chain() -> None:
     from alembic.config import Config
     from alembic.script import ScriptDirectory
 
     config = Config(str(API_DIR / "alembic.ini"))
     config.set_main_option("script_location", str(API_DIR / "alembic"))
     script = ScriptDirectory.from_config(config)
-    assert script.get_heads() == [REFS]
+    heads = script.get_heads()
+    assert len(heads) == 1
+    assert REFS in {rev.revision for rev in script.walk_revisions(head=heads[0])}
     assert script.get_revision(REFS).down_revision == "9d2f6b83a1c4"
 
 

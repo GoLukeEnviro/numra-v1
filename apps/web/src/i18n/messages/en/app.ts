@@ -339,6 +339,15 @@ export const enApp: Record<keyof typeof deApp, string> = {
   "app.emailVerificationBanner.resendSent": "A new verification link has been sent.",
   "app.emailVerificationBanner.dismiss": "Dismiss",
 
+  // 18+ confirmation for existing accounts (D2)
+  "app.ageBanner.title": "Please confirm your age",
+  "app.ageBanner.body":
+    "Personal accounts are only intended for people aged 18 or older. Please confirm that you are at least 18 years old. We store only this declaration with a timestamp — no date of birth, no ID documents.",
+  "app.ageBanner.checkbox": "I am at least 18 years old.",
+  "app.ageBanner.confirm": "Confirm",
+  "app.ageBanner.errorUnchecked": "Please tick the box first.",
+  "app.ageBanner.errorFailed": "The confirmation could not be saved. Please try again.",
+
   // Settings: entitlements
   "app.entitlements.title": "Entitlements",
   "app.entitlements.body": "Your current feature set — for your information only.",
