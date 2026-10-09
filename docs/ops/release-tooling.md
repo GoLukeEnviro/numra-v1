@@ -46,7 +46,7 @@ $S --target prod --config $CFG --phase prep --old-sha <ALT> --new-sha <NEU> \
    --i-am-sure-prod --confirm-sha <NEU8>
 $S --target prod --config $CFG --phase switch --old-sha <ALT> --new-sha <NEU> \
    --expect-revision <ZIEL_REV> --i-am-sure-prod --confirm-sha <NEU8>
-# Abnahme (Smoke/Acceptance, siehe acceptance-tooling.md) -> JSON-Bericht
+# Abnahme (Smoke/Acceptance, siehe acceptance-tooling.md) -> JSON-Bericht (--report-dir)
 $S --target prod --config $CFG --phase marker --old-sha <ALT> --new-sha <NEU> \
    --smoke-report <abnahme.json> --i-am-sure-prod --confirm-sha <NEU8>
 $S --target prod --config $CFG --phase rollback --old-sha <ALT> --i-am-sure-prod --confirm-sha <ALT8>
@@ -91,7 +91,8 @@ Ein Hash allein gilt nicht als Nachweis. Berichte enthalten keine Secrets oder P
 1. `baseline` einmal nach dem letzten stabilen Zustand, danach `pre --dry-run`, dann `pre`.
 2. `prep` ohne Downtime; Bericht und Rollback-Tags ansehen.
 3. `switch` im Wartungsfenster mit der vorab festgelegten Ziel-Revision.
-4. Abnahme gegen das Ziel (Smoke bzw. Acceptance-Lauf mit `--target-sha`), Bericht aufbewahren.
+4. Abnahme gegen das Ziel (Smoke bzw. Acceptance-Lauf mit `--target-sha`, siehe
+   [acceptance-tooling.md](acceptance-tooling.md)), Bericht aufbewahren.
 5. `marker` mit genau diesem Bericht. Bei Fehlschlag oder Abweichung `rollback`, danach
    Bericht prüfen.
 6. Beobachtungsfenster; die Entscheidung über einen DB-Restore (R2) bleibt eine manuelle
@@ -112,5 +113,5 @@ Ein Hash allein gilt nicht als Nachweis. Berichte enthalten keine Secrets oder P
 ```bash
 bash scripts/release/tests/test-numra-release.sh
 bash scripts/release/tests/test-numra-drill.sh
-uv run --no-project --with pytest pytest scripts/ops_report -q
+uv run --no-project --with pytest --with-requirements scripts/acceptance/requirements.txt \n  pytest scripts/ops_report scripts/acceptance -q
 ```
