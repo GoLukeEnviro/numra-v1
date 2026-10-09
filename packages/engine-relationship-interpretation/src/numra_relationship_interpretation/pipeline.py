@@ -197,9 +197,12 @@ def _repair_short_form_labels(text: str, context_blocks: tuple[ContextBlock, ...
     display value by `_resolve_placeholders`, never to anything the model said.
 
     An unknown id, a person letter/metric combination the prompt did not contain (a
-    special id, a metric of the other person's profile that was not sent), and a nested
-    or decorated form are returned untouched and fail closed in the leftover check
-    (`rendering_guard.find_unresolved_template_token`)."""
+    metric of the other person's profile that was not sent), and a nested or decorated
+    form are returned untouched and fail closed in the leftover check
+    (`rendering_guard.find_unresolved_template_token`). A special fact that does have a
+    `profile_fact` block is rewritten to ``{{metric:a:<id>}}`` like any other label; the
+    resolver then does not find it in the metric index and raises
+    `InvalidAnalysisSection`, so it fails closed there instead."""
     known = {block.label for block in context_blocks if block.role == "profile_fact"}
 
     def _replace(match: re.Match[str]) -> str:

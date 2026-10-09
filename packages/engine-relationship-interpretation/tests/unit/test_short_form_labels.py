@@ -395,7 +395,7 @@ async def test_a_model_writing_the_short_label_gets_the_canonical_value(
     "template",
     (
         "Das ist gepraegt durch [a:does_not_exist] im Alltag.",
-        "Das ist gepraegt durch [{label}] und [a:unbekannt] im Alltag.",
+        "Das ist gepraegt durch [{label}] und [a:unbekannte_metrik] im Alltag.",
         "Das ist gepraegt durch [[{label}]] im Alltag.",
         "Das ist gepraegt durch [{label}",
         "Das ist gepraegt durch {{{{metric:{label}",
@@ -433,3 +433,80 @@ async def test_the_prompt_states_the_placeholder_syntax_literally(
 
 def test_prompt_version_marks_the_changed_instructions() -> None:
     assert PROMPT_VERSION == "numra-relationship-v4"
+
+
+# --------------------------------------------------------------------------- echte Audit-Saetze
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    (
+        "Im Austausch wirkt [a:expression] offen und idealistisch, Person B bleibt ruhiger.",
+        "Person A bringt durch [a:life_path] eine nachdenkliche, abwägende Art ein.",
+        "Die Nähe entsteht zwischen [a:life_path] und [b:life_path] im Alltag.",
+        "Bedürfnisse: [b:soul_urge] sucht Tiefe, [a:soul_urge] eher Weite.",
+        "Haltung [a:attitude], Balance [b:balance], Unterbewusstsein [a:subconscious_self].",
+        "Persönliches Jahr [a:personal_year], Herausforderung [b:challenge_2], [a:challenge_1].",
+    ),
+)
+def test_audit_sentences_resolve_to_canonical_values(
+    sentence, profile_a, profile_b, blocks_ab
+) -> None:
+    resolved = _validate_and_resolve_text(
+        _repair_short_form_labels(sentence, blocks_ab),
+        profile_a=profile_a,
+        profile_b=profile_b,
+        is_mock_provider=True,
+    )
+
+    assert "[" not in resolved and "{" not in resolved
+    index_a = build_metric_display_value_index(profile_a)
+    index_b = build_metric_display_value_index(profile_b)
+    expected = sentence
+    for role, index in (("a", index_a), ("b", index_b)):
+        for metric_id, value in index.items():
+            expected = expected.replace(f"[{role}:{metric_id}]", value)
+    assert resolved == expected
+
+
+def test_a_special_fact_with_a_profile_fact_block_fails_closed_in_the_resolver(
+    profile_a, profile_b, blocks_ab
+) -> None:
+    special_id = next(iter(build_special_claim_index(profile_a)))
+    blocks = (
+        *blocks_ab,
+        ContextBlock(role="profile_fact", label=f"a:{special_id}", content="x"),
+    )
+    repaired = _repair_short_form_labels(f"Es zeigt [a:{special_id}] im Satz.", blocks)
+    assert repaired == f"Es zeigt {{{{metric:a:{special_id}}}}} im Satz."
+
+    with pytest.raises(InvalidAnalysisSection):
+        _validate_and_resolve_text(
+            repaired, profile_a=profile_a, profile_b=profile_b, is_mock_provider=False
+        )
+
+
+@pytest.mark.parametrize(
+    "text",
+    (
+        "[A: Ich bin müde] sagte sie.",
+        "Er sagte [a: Nähe] und ging.",
+        "Siehe [Text](https://example.org) und Aufgabe [x].",
+        "Mengenangabe a{1,2} im Beispiel.",
+    ),
+)
+def test_analyses_accept_dialogue_but_keep_the_strict_brace_rule(
+    text, profile_a, profile_b
+) -> None:
+    if "{" in text:
+        with pytest.raises(InvalidAnalysisSection):
+            _validate_and_resolve_text(
+                text, profile_a=profile_a, profile_b=profile_b, is_mock_provider=True
+            )
+    else:
+        assert (
+            _validate_and_resolve_text(
+                text, profile_a=profile_a, profile_b=profile_b, is_mock_provider=True
+            )
+            == text
+        )

@@ -69,8 +69,9 @@ _INLINE_SCAFFOLDING = (
 
 #: The same shape, but with labels that name no single fact of the prompt (no person
 #: prefix: matches both profiles). These cannot be resolved deterministically and must
-#: stay rejected. The audit shape above is resolved since `numra-relationship-v3`
-#: (see test_label_repair.py); the guard itself is unchanged.
+#: stay rejected. The audit shape above is resolved since `numra-relationship-v3` (the
+#: shortened `[a:life_path]` since `numra-relationship-v4`); see test_label_repair.py and
+#: test_short_form_labels.py. The guard itself is unchanged.
 _INLINE_UNREPAIRABLE = (
     "In der Kommunikation zeigt sich eine strukturierte Ausdrucksweise, die durch "
     "[profile_fact:expression] gepraegt ist, waehrend Person B mit "

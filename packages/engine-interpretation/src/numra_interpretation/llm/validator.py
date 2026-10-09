@@ -31,6 +31,7 @@ from numra_interpretation.llm.types import NumericClaim
 from numra_numerology.models.profile import CanonicalProfile
 
 __all__ = [
+    "KNOWN_FACT_IDS",
     "build_metric_display_value_index",
     "build_special_claim_index",
     "extract_placeholder_metric_ids",
@@ -43,6 +44,41 @@ __all__ = [
     "validate_metric_ref_coverage",
     "validate_numeric_claims",
 ]
+
+#: Every id a model may legitimately cite for one profile: the scalar metric ids of
+#: `build_metric_display_value_index` plus the `{{special:ID}}` ids of
+#: `build_special_claim_index`. The token detector in `rendering_guard` matches shortened
+#: block labels against exactly this set; a test pins it to both indices.
+KNOWN_FACT_IDS: frozenset[str] = frozenset(
+    {
+        "life_path",
+        "birthday",
+        "attitude",
+        "expression",
+        "soul_urge",
+        "personality",
+        "maturity",
+        "balance",
+        "cornerstone",
+        "capstone",
+        "first_vowel",
+        "personal_year",
+        "personal_month",
+        "personal_day",
+        "universal_year",
+        "pinnacle_1",
+        "pinnacle_2",
+        "pinnacle_3",
+        "pinnacle_4",
+        "challenge_1",
+        "challenge_2",
+        "challenge_3",
+        "challenge_4",
+        "subconscious_self",
+        "hidden_passion",
+        "karmic_lessons",
+    }
+)
 
 _PLACEHOLDER_PATTERN = re.compile(r"\{\{\s*metric\s*:\s*([a-zA-Z0-9_]+)\s*\}\}")
 _SPECIAL_PLACEHOLDER_PATTERN = re.compile(r"\{\{\s*special\s*:\s*([a-zA-Z0-9_]+)\s*\}\}")

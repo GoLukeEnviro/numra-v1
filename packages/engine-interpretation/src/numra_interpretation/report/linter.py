@@ -122,7 +122,7 @@ def _check_placeholder_resolution(sections: tuple[StructuredReportSection, ...])
             ("summary", section.summary),
             ("title", section.title),
         ):
-            if find_unresolved_template_token(value) is not None:
+            if find_unresolved_template_token(value, strict_braces=False) is not None:
                 errors.append(
                     f"PlaceholderResolution: unresolved template token in "
                     f"{section.section_id!r} {field_name}"

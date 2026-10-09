@@ -117,7 +117,7 @@ def _validate_reply(
     # Copilot-Antwort kennt keine Platzhalter -- Zahlen stehen im Klartext und in
     # `numeric_claims` --, jede Template-Syntax im Text ist also ein Rest.
     if not is_mock_provider:
-        leftover = find_unresolved_template_token(reply.text)
+        leftover = find_unresolved_template_token(reply.text, strict_braces=False)
         if leftover is not None:
             raise AnalysisGenerationError(
                 "PROMPT_SCAFFOLDING_REJECTED: reply carries an internal template token "

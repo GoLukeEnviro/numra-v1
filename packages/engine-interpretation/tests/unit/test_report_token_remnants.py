@@ -234,3 +234,46 @@ def test_lint_report_accepts_clean_fields(profile) -> None:
     result = lint_report(manifest, _sections(manifest), profile)
 
     assert not any("PlaceholderResolution" in error for error in result.errors)
+
+
+# ------------------------------------------------------------------ einzelne Klammern
+
+
+@pytest.mark.parametrize(
+    "brace_text",
+    (
+        "Das Muster a{1,2} passt auf ein bis zwei Wiederholungen.",
+        "Die Menge { 3 } hat ein Element.",
+        "Eine einzelne { Klammer bleibt Prosa.",
+        "Und eine schliessende } ebenfalls.",
+    ),
+)
+@pytest.mark.parametrize("field", ["text", "summary"])
+async def test_an_isolated_brace_does_not_fail_a_report(
+    field, brace_text, profile, knowledge_base
+) -> None:
+    if field == "text":
+        provider = _Provider(text_for=lambda _sid, _a, filler: f"{brace_text} {filler}")
+    else:
+        provider = _Provider(summary_for=lambda _sid, _a: brace_text)
+
+    report = await _generate(profile, knowledge_base, provider)
+
+    assert report.sections
+
+
+@pytest.mark.parametrize("field", ["text", "summary", "title"])
+def test_lint_report_accepts_an_isolated_brace_but_not_a_placeholder_shape(field, profile) -> None:
+    manifest = build_manifest(
+        report_type="CUSTOM", calculation_id="calc-1", custom_total_target_words=100
+    )
+
+    ok = lint_report(
+        manifest, _sections(manifest, **{field: "Muster a{1,2} und eine } offen."}), profile
+    )
+    bad = lint_report(
+        manifest, _sections(manifest, **{field: "Rest {partner_a} im Satz."}), profile
+    )
+
+    assert not any("PlaceholderResolution" in error for error in ok.errors)
+    assert any("PlaceholderResolution" in error for error in bad.errors)

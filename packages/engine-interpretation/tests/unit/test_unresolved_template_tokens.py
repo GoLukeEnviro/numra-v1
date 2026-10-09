@@ -145,7 +145,7 @@ def test_ordinary_german_prose_is_not_a_false_positive(text) -> None:
 def test_the_returned_token_is_short_and_never_carries_surrounding_prose() -> None:
     token = find_unresolved_template_token("Geheimer Satz Anna Berger [a:life_path] geht weiter.")
     assert token is not None
-    assert len(token) <= 8
+    assert len(token) <= 24
     assert "Anna" not in token and "Satz" not in token
 
 

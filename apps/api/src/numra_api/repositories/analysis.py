@@ -135,7 +135,8 @@ async def mark_job_status(
     if error_code is not None:
         job.error_code = error_code
     if status == AnalysisJobStatus.COMPLETE:
-        # A job that succeeded on a retry keeps no error category from the failed
+        # An `error_code` passed together with COMPLETE is discarded on purpose: a job
+        # that succeeded on a retry keeps no error category from the failed
         # attempt (the progress UI shows `error_code` verbatim);
         # `last_error_at` stays as the record that a retry happened.
         job.error_code = None

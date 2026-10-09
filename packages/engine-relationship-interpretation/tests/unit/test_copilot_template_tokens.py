@@ -130,3 +130,28 @@ async def test_the_mock_provider_stays_exempt_because_its_text_is_replaced(profi
     )
 
     assert "[" not in result.text and "{" not in result.text
+
+
+@pytest.mark.parametrize(
+    "text",
+    (
+        "Das Muster a{1,2} passt auf ein bis zwei Wiederholungen.",
+        "Die Menge { 3 } hat ein Element, eine einzelne } bleibt Prosa.",
+        "[A: Ich bin müde] sagte sie, siehe [Text](https://example.org).",
+        "Er sagte [a: Nähe] und ging. Aufgabe [x] ist erledigt.",
+    ),
+)
+async def test_isolated_braces_and_bracketed_dialogue_do_not_fail_a_copilot_turn(
+    text, profile_self
+) -> None:
+    provider = _FixedReplyProvider(text)
+
+    result = await generate_copilot_reply(
+        request=_request(),
+        llm=provider,
+        knowledge_version="v1",
+        grounding_profiles=(profile_self,),
+    )
+
+    assert result.text == text
+    assert provider.calls == 1

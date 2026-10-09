@@ -468,7 +468,7 @@ async def _generate_section(
     resolved_summary = _resolve_placeholders(summary, profile) if summary else ""
     resolved_summary = resolved_summary or _summary_from_text(resolved_text)
     for field_name, value in (("text", resolved_text), ("summary", resolved_summary)):
-        leftover = find_unresolved_template_token(value)
+        leftover = find_unresolved_template_token(value, strict_braces=False)
         if leftover is not None:
             raise InvalidReportSection(
                 f"MalformedPlaceholder: section {spec.section_id!r} {field_name} still "

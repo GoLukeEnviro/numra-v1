@@ -25,8 +25,11 @@ from __future__ import annotations
 import re
 import unicodedata
 
+from numra_interpretation.llm.validator import KNOWN_FACT_IDS
+
 __all__ = [
     "PROMPT_SCAFFOLDING_MARKERS",
+    "LENIENT_UNRESOLVED_TOKEN_PATTERN",
     "UNRESOLVED_TOKEN_PATTERN",
     "canonical_for_check",
     "contains_prompt_scaffolding",
@@ -138,32 +141,68 @@ def canonical_for_check(text: str) -> str:
     return visible.translate(_CONFUSABLES)
 
 
-#: Anything that looks like template syntax in a *finished* text is, by construction,
-#: unresolved or malformed -- the well-formed placeholders were substituted before this
-#: runs. Matched on `canonical_for_check` output, so it is written for the folded form:
+def _short_label_alternatives() -> str:
+    """Regex alternatives for the shortened block label ``[a:<id>]`` / ``[b:<id>]``
+    (audit 2026-10-09). Narrow on purpose -- the person letter must be followed by a
+    *known* fact id (`validator.KNOWN_FACT_IDS`, pinned to the profile indices by a
+    test), so dialogue in brackets (``[A: Ich bin müde]``, ``[a: Nähe]``) and links
+    or checkboxes stay ordinary prose:
+
+    * a known id followed by ``]``, the end, or more identifier characters (a known id
+      extended by ``_x`` is still a label, fail-closed);
+    * any unspaced snake_case label ``[a:some_thing]`` -- an unknown or misspelled id of
+      the same shape is still a token (prose never contains an underscore);
+    * a response cut off inside the label: ``[a:`` and any prefix of a known id at the
+      very end of the text.
+    """
+    ids = sorted(KNOWN_FACT_IDS, key=len, reverse=True)
+    known = "|".join(re.escape(i) for i in ids)
+    prefixes = sorted({i[:n] for i in ids for n in range(1, len(i) + 1)}, key=len, reverse=True)
+    cut = "|".join(re.escape(p) for p in prefixes)
+    return (
+        rf"\[\s*[ab]\s*:\s*(?:{known})(?=\s*\]|\s*\Z|[0-9_])"
+        r"|\[[ab]:[a-z][a-z0-9]*_[a-z0-9_]+\]"
+        rf"|\[\s*[ab]\s*:\s*(?:{cut})?\s*\Z"
+    )
+
+
+#: Alternatives shared by the strict and the lenient pattern (matched on
+#: `canonical_for_check` output, so written for the folded form):
 #:
-#: * any brace (``{{metric:x}}``, a truncated ``{{metric:matur``, ``{partner_a}``);
 #: * ``[metric:`` / ``<special:`` (wrong brackets around a placeholder body);
 #: * ``%(name)s`` and ``<partner_a>``;
 #: * a prompt-framing label in a spelling the exact-match guard does not cover;
-#: * the *shortened* block label a generative model writes when it abbreviates
-#:   ``[profile_fact:a:life_path]`` to ``[a:life_path]`` (audit 2026-10-09): ``[``, the
-#:   person letter ``a``/``b``, a colon and the start of an identifier -- closing bracket
-#:   not required, so a response cut off mid-token is caught as well. A time such as
-#:   ``[10:30]``, a footnote ``[1]`` or ordinary ``a:b`` in running text does not match.
-UNRESOLVED_TOKEN_PATTERN = re.compile(
-    r"[{}]"
-    r"|[\[<]\s*(?:metric|special)\s*:"
+#: * the shortened block label, see `_short_label_alternatives`.
+_COMMON_TOKEN_ALTERNATIVES = (
+    r"[\[<]\s*(?:metric|special)\s*:"
     r"|%\(\w+\)s"
     r"|<\s*[a-z]+_[a-z_]+\s*>"
     r"|\[\s*(?:profile_fact|knowledge|system|instruction_supplement"
     r"|untrusted_user_content|user_instructions)\b"
-    r"|\[\s*[ab]\s*:(?:\s*[\[a-z_]|\s*\Z)",
+    "|" + _short_label_alternatives()
+)
+
+#: Strict variant: **any** brace is template syntax (``{{metric:x}}``, a truncated
+#: ``{{metric:matur``, ``{partner_a}``). Kept for relationship/shadow analyses, whose
+#: leftover check always rejected every brace; their prose has no use for one.
+UNRESOLVED_TOKEN_PATTERN = re.compile(r"[{}]|" + _COMMON_TOKEN_ALTERNATIVES, re.IGNORECASE)
+
+#: Lenient variant for free-form product text (report sections, Copilot replies), where
+#: an isolated brace is legitimate (``{1,2}``, a set ``{ 3 }``, code or maths in an
+#: answer) and rejecting it would fail a whole report or turn: only concrete placeholder
+#: shapes count -- ``{{`` / ``}}`` (also unbalanced, i.e. a cut-off ``{{metric:matur``),
+#: ``{identifier}`` with optional ``:``/``.`` parts, and an opening ``{metric`` /
+#: ``{special`` that was never closed.
+LENIENT_UNRESOLVED_TOKEN_PATTERN = re.compile(
+    r"\{\{|\}\}"
+    r"|\{\s*[a-z_][a-z0-9_]*(?:\s*[:.]\s*[a-z0-9_]+)*\s*\}"
+    r"|\{\s*(?:metric|special)\b"
+    "|" + _COMMON_TOKEN_ALTERNATIVES,
     re.IGNORECASE,
 )
 
 
-def find_unresolved_template_token(text: str) -> str | None:
+def find_unresolved_template_token(text: str, *, strict_braces: bool = True) -> str | None:
     """The first unresolved internal template token in ``text`` (prompt scaffolding or
     any `UNRESOLVED_TOKEN_PATTERN` form), or ``None`` when the text is clean.
 
@@ -171,10 +210,15 @@ def find_unresolved_template_token(text: str) -> str | None:
     (relationship/shadow statements, report sections and summaries, Copilot replies), so
     "a finished text carries no internal token" is stated once. Both the raw and the
     `canonical_for_check` form are inspected; the return value is the offending
-    *token*, never surrounding prose, so it is safe to put into a log line."""
+    *token*, never surrounding prose, so it is safe to put into a log line.
+
+    ``strict_braces=True`` (default, analyses) rejects any ``{`` or ``}``;
+    ``strict_braces=False`` (report, Copilot) only rejects concrete placeholder shapes,
+    see `LENIENT_UNRESOLVED_TOKEN_PATTERN`. Every other form is identical."""
     checked = canonical_for_check(text)
     for marker in PROMPT_SCAFFOLDING_MARKERS:
         if marker in text or marker in checked:
             return marker
-    match = UNRESOLVED_TOKEN_PATTERN.search(checked)
+    pattern = UNRESOLVED_TOKEN_PATTERN if strict_braces else LENIENT_UNRESOLVED_TOKEN_PATTERN
+    match = pattern.search(checked)
     return match.group(0) if match else None
