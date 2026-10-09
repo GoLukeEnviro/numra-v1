@@ -113,7 +113,8 @@ async def test_login_wrong_password_rejected(client, sessionmaker) -> None:
 
 async def test_self_signup_disabled_by_default(client) -> None:
     response = await client.post(
-        "/v1/auth/register", json={"email": "new@example.com", "password": "whatever12345"}
+        "/v1/auth/register",
+        json={"email": "new@example.com", "password": "whatever12345", "age_confirmed": True},
     )
     assert response.status_code == 403
     assert response.json()["code"] == "SELF_SIGNUP_DISABLED"
@@ -159,13 +160,18 @@ async def test_register_rejects_password_shorter_than_12_chars(settings, db_engi
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://testserver") as open_client:
         too_short = await open_client.post(
-            "/v1/auth/register", json={"email": "short-pw@example.com", "password": "short1"}
+            "/v1/auth/register",
+            json={"email": "short-pw@example.com", "password": "short1", "age_confirmed": True},
         )
         assert too_short.status_code == 422
 
         long_enough = await open_client.post(
             "/v1/auth/register",
-            json={"email": "long-enough@example.com", "password": "long-enough-password"},
+            json={
+                "email": "long-enough@example.com",
+                "password": "long-enough-password",
+                "age_confirmed": True,
+            },
         )
         assert long_enough.status_code == 201
 
@@ -195,6 +201,7 @@ async def test_register_rejects_role_field_as_privilege_escalation_attempt(
             json={
                 "email": "wannabe-admin@example.com",
                 "password": "long-enough-password",
+                "age_confirmed": True,
                 "role": "ADMIN",
             },
         )
@@ -202,7 +209,11 @@ async def test_register_rejects_role_field_as_privilege_escalation_attempt(
 
         legit_register = await open_client.post(
             "/v1/auth/register",
-            json={"email": "legit-user@example.com", "password": "long-enough-password"},
+            json={
+                "email": "legit-user@example.com",
+                "password": "long-enough-password",
+                "age_confirmed": True,
+            },
         )
         assert legit_register.status_code == 201
         assert legit_register.json()["role"] == "USER"

@@ -54,7 +54,7 @@ test("real system journey: login through delete-all against the live stack", asy
   // below — that shared cookie jar is what makes the post-delete auth checks mean
   // anything.
   const registerResponse = await page.request.post("/api/v1/auth/register", {
-    data: { email, password: PASSWORD },
+    data: { email, password: PASSWORD, age_confirmed: true },
   });
   expect(registerResponse.status(), await registerResponse.text()).toBe(201);
 
@@ -217,7 +217,7 @@ test("real system journey: login through delete-all against the live stack", asy
   // A second registration with the same email must succeed — proof the account row
   // itself, not just its session, was removed.
   const reRegisterResponse = await page.request.post("/api/v1/auth/register", {
-    data: { email, password: PASSWORD },
+    data: { email, password: PASSWORD, age_confirmed: true },
   });
   expect(reRegisterResponse.status(), await reRegisterResponse.text()).toBe(201);
 

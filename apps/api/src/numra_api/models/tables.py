@@ -89,6 +89,15 @@ class User(Base):
     #: Jede Stelle, die einen User-Anzeigenamen auflöst, muss dieses Feld VOR `email`
     #: prüfen -- ein gelöschter User darf nie mehr über `email` identifizierbar sein.
     display_name_override: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    #: D2 -- Zeitpunkt (UTC) der Erklaerung "Ich bin mindestens 18 Jahre alt". `NULL`
+    #: heisst "NICHT bestaetigt": Bestandskonten werden bewusst nie rueckwirkend markiert.
+    #: Gespeichert wird nur diese Erklaerung, weder Geburtsdatum noch Ausweisdaten.
+    age_confirmed_at: Mapped[dt.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    #: D2 -- Version des Erklaerungstexts (z. B. `age-declaration-v1`), gesetzt zusammen
+    #: mit `age_confirmed_at`.
+    age_declaration_version: Mapped[str | None] = mapped_column(String(40), nullable=True)
     created_at: Mapped[dt.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

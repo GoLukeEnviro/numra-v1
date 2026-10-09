@@ -23,6 +23,7 @@ const MIN_PASSWORD_LENGTH = 12;
 /** Maps a failed register call to a catalog key — never leaks raw server prose. */
 function errorKeyFor(err: unknown): MessageKey {
   if (err instanceof ApiError) {
+    if (err.code === "AGE_CONFIRMATION_REQUIRED") return "public.register.errorAgeRequired";
     if (err.status === 409) return "public.register.errorDuplicate";
     if (err.status === 403) return "public.register.errorDisabled";
     if (err.status === 429) return "public.register.errorRateLimited";
@@ -40,6 +41,8 @@ function RegisterForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
+  // D2: bewusst NICHT vorangekreuzt -- die Erklaerung muss aktiv abgegeben werden.
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<{ code: string; messageKey: MessageKey } | null>(null);
 
@@ -57,9 +60,14 @@ function RegisterForm() {
       return;
     }
 
+    if (!ageConfirmed) {
+      setError({ code: "AGE_CONFIRMATION_REQUIRED", messageKey: "public.register.errorAgeRequired" });
+      return;
+    }
+
     setSubmitting(true);
     try {
-      await register(email, password);
+      await register(email, password, ageConfirmed);
       router.replace("/onboarding");
     } catch (err) {
       setSubmitting(false);
@@ -101,7 +109,7 @@ function RegisterForm() {
           {t("public.register.passwordHint")}
         </p>
       </div>
-      <div className="mb-5">
+      <div className="mb-4">
         <Label htmlFor="passwordConfirm">{t("public.register.passwordConfirm")}</Label>
         <Input
           id="passwordConfirm"
@@ -113,6 +121,25 @@ function RegisterForm() {
           value={passwordConfirm}
           onChange={(e) => setPasswordConfirm(e.target.value)}
         />
+      </div>
+      <div className="mb-5">
+        <div className="flex items-start gap-2">
+          <input
+            id="ageConfirmed"
+            name="ageConfirmed"
+            type="checkbox"
+            className="mt-1 h-4 w-4 shrink-0"
+            aria-describedby="age-hint"
+            checked={ageConfirmed}
+            onChange={(e) => setAgeConfirmed(e.target.checked)}
+          />
+          <Label htmlFor="ageConfirmed" className="mb-0 font-normal">
+            {t("public.register.ageConfirm")}
+          </Label>
+        </div>
+        <p id="age-hint" className="mt-1.5 text-xs text-muted">
+          {t("public.register.ageHint")}
+        </p>
       </div>
 
       {error && (

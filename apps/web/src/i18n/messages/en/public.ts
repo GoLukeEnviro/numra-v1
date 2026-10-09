@@ -149,6 +149,10 @@ export const enPublic: Record<keyof typeof dePublic, string> = {
   "public.register.errorRateLimited": "Too many attempts. Please wait a moment and try again.",
   "public.register.errorServer": "The server could not complete the registration. Please try again later.",
   "public.register.errorValidation": "The server did not accept the input. Please check email and password.",
+  "public.register.ageConfirm": "I am at least 18 years old.",
+  "public.register.ageHint":
+    "Personal accounts are only available from age 18. We store only this declaration with a timestamp — no date of birth, no ID documents.",
+  "public.register.errorAgeRequired": "Please confirm that you are at least 18 years old.",
 
   // Onboarding
   "public.onboarding.stepLabel": "Step",

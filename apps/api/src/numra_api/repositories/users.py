@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime as dt
 import uuid
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from numra_api.models import User
@@ -17,8 +17,20 @@ def normalize_email(email: str) -> str:
     return email.strip().lower()
 
 
-async def create_user(db: AsyncSession, *, email: str, password_hash: str) -> User:
-    user = User(email=normalize_email(email), password_hash=password_hash)
+async def create_user(
+    db: AsyncSession,
+    *,
+    email: str,
+    password_hash: str,
+    age_confirmed_at: dt.datetime | None = None,
+    age_declaration_version: str | None = None,
+) -> User:
+    user = User(
+        email=normalize_email(email),
+        password_hash=password_hash,
+        age_confirmed_at=age_confirmed_at,
+        age_declaration_version=age_declaration_version,
+    )
     db.add(user)
     await db.flush()
     return user
@@ -65,3 +77,29 @@ async def set_user_active(db: AsyncSession, *, user: User, is_active: bool) -> U
     user.is_active = is_active
     await db.flush()
     return user
+
+
+async def claim_age_confirmation(
+    db: AsyncSession, *, user_id: uuid.UUID, confirmed_at: dt.datetime, version: str
+) -> bool:
+    """D2: atomarer Erstanspruch (`UPDATE ... WHERE age_confirmed_at IS NULL`). `True`
+    nur fuer den einen Aufruf, der die Bestaetigung tatsaechlich setzt; jede Wiederholung
+    (auch parallel) ist ein No-op und ueberschreibt Zeitpunkt und Version nie."""
+    result = await db.execute(
+        update(User)
+        .where(User.id == user_id, User.age_confirmed_at.is_(None))
+        .values(age_confirmed_at=confirmed_at, age_declaration_version=version)
+        .returning(User.id)
+    )
+    return result.scalar_one_or_none() is not None
+
+
+async def get_age_confirmation(
+    db: AsyncSession, *, user_id: uuid.UUID
+) -> tuple[dt.datetime | None, str | None]:
+    row = (
+        await db.execute(
+            select(User.age_confirmed_at, User.age_declaration_version).where(User.id == user_id)
+        )
+    ).one()
+    return row[0], row[1]

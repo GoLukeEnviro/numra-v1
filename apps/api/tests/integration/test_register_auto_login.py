@@ -33,7 +33,8 @@ def _open_signup_client(settings: Settings, db_engine) -> AsyncClient:
 
 async def test_register_rejected_when_self_signup_disabled(client) -> None:
     response = await client.post(
-        "/v1/auth/register", json={"email": "closed@example.com", "password": PASSWORD}
+        "/v1/auth/register",
+        json={"email": "closed@example.com", "password": PASSWORD, "age_confirmed": True},
     )
 
     assert response.status_code == 403
@@ -45,7 +46,8 @@ async def test_register_signs_the_new_user_straight_in(settings: Settings, db_en
     session + CSRF cookies as `login`, so the very next request is authenticated."""
     async with _open_signup_client(settings, db_engine) as signup_client:
         response = await signup_client.post(
-            "/v1/auth/register", json={"email": "fresh@example.com", "password": PASSWORD}
+            "/v1/auth/register",
+            json={"email": "fresh@example.com", "password": PASSWORD, "age_confirmed": True},
         )
 
         assert response.status_code == 201
@@ -83,6 +85,7 @@ async def test_register_rejects_privileged_payload_keys(
             json={
                 "email": "escalation@example.com",
                 "password": PASSWORD,
+                "age_confirmed": True,
                 privileged_key: privileged_value,
             },
         )
@@ -101,13 +104,15 @@ async def test_register_rejects_duplicate_email_regardless_of_casing(
     must fail with the application error, never with a raw DB constraint violation."""
     async with _open_signup_client(settings, db_engine) as signup_client:
         first = await signup_client.post(
-            "/v1/auth/register", json={"email": "Foo@Example.com", "password": PASSWORD}
+            "/v1/auth/register",
+            json={"email": "Foo@Example.com", "password": PASSWORD, "age_confirmed": True},
         )
         assert first.status_code == 201
         assert first.json()["email"] == "foo@example.com"
 
         duplicate = await signup_client.post(
-            "/v1/auth/register", json={"email": "foo@example.com", "password": PASSWORD}
+            "/v1/auth/register",
+            json={"email": "foo@example.com", "password": PASSWORD, "age_confirmed": True},
         )
 
     assert duplicate.status_code == 409
@@ -119,7 +124,8 @@ async def test_login_accepts_a_different_casing_than_registration(
 ) -> None:
     async with _open_signup_client(settings, db_engine) as signup_client:
         registered = await signup_client.post(
-            "/v1/auth/register", json={"email": "Mixed.Case@Example.com", "password": PASSWORD}
+            "/v1/auth/register",
+            json={"email": "Mixed.Case@Example.com", "password": PASSWORD, "age_confirmed": True},
         )
         assert registered.status_code == 201
 

@@ -24,7 +24,7 @@ function Probe() {
       <p data-testid="error">{error ?? "none"}</p>
       <button
         onClick={() => {
-          void register("ada@example.com", "a-strong-password").catch(() => {
+          void register("ada@example.com", "a-strong-password", true).catch(() => {
             /* surfaced via error state; swallow here so the click handler itself
                never throws inside the test's synthetic event dispatch */
           });
@@ -62,6 +62,11 @@ describe("AuthProvider.register", () => {
 
     expect(await screen.findByTestId("status")).toHaveTextContent("authenticated");
     expect(screen.getByTestId("email")).toHaveTextContent("ada@example.com");
+    expect(api.auth.register).toHaveBeenCalledWith({
+      email: "ada@example.com",
+      password: "a-strong-password",
+      age_confirmed: true,
+    });
   });
 
   it("stays anonymous and records the error when registration fails", async () => {

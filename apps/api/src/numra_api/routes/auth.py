@@ -25,14 +25,23 @@ from numra_api.deps import (
 from numra_api.email.sender import EmailSender
 from numra_api.models import Session as SessionModel
 from numra_api.models import User
+from numra_api.models.enums import AuditAction
+from numra_api.repositories.audit import record_audit_event
 from numra_api.repositories.sessions import (
     create_session,
     list_active_sessions_for_user,
     revoke_all_sessions_except,
     revoke_session,
 )
-from numra_api.repositories.users import create_user, get_user_by_email, update_user_password
+from numra_api.repositories.users import (
+    claim_age_confirmation,
+    create_user,
+    get_age_confirmation,
+    get_user_by_email,
+    update_user_password,
+)
 from numra_api.schemas.auth import (
+    AgeConfirmRequest,
     ChangePasswordRequest,
     ForgotPasswordRequest,
     LoginRequest,
@@ -44,7 +53,9 @@ from numra_api.schemas.auth import (
     VerifyEmailRequest,
 )
 from numra_api.services import auth_recovery_service
+from numra_api.services.age_declaration import AGE_DECLARATION_VERSION
 from numra_api.services.errors import (
+    AgeConfirmationRequired,
     EmailAlreadyRegistered,
     InvalidCredentials,
     SelfSignupDisabled,
@@ -119,11 +130,19 @@ async def register(
     `extra="forbid"` is what stops a "role": "ADMIN" body from ever reaching here."""
     if not settings.allow_self_signup:
         raise SelfSignupDisabled("self-signup is disabled (ALLOW_SELF_SIGNUP=false)")
+    if not body.age_confirmed:
+        raise AgeConfirmationRequired("registration requires age_confirmed=true (18+ declaration)")
     if await get_user_by_email(db, email=body.email) is not None:
         raise EmailAlreadyRegistered("an account with this email already exists")
 
     try:
-        user = await create_user(db, email=body.email, password_hash=hash_password(body.password))
+        user = await create_user(
+            db,
+            email=body.email,
+            password_hash=hash_password(body.password),
+            age_confirmed_at=dt.datetime.now(dt.UTC),
+            age_declaration_version=AGE_DECLARATION_VERSION,
+        )
     except IntegrityError as exc:
         # The check above loses to a concurrent signup for the same address; the unique
         # index on users.email is the only real arbiter, and losing that race must
@@ -131,14 +150,15 @@ async def register(
         await db.rollback()
         raise EmailAlreadyRegistered("an account with this email already exists") from exc
 
-    await _issue_authenticated_session(response=response, db=db, settings=settings, user=user)
-    return UserOut(
-        id=str(user.id),
-        email=user.email,
-        role=str(user.role),
-        is_active=user.is_active,
-        email_verified_at=user.email_verified_at,
+    await record_audit_event(
+        db,
+        actor_user_id=user.id,
+        action=AuditAction.AGE_CONFIRMED,
+        target_user_id=user.id,
+        safe_metadata={"declaration_version": AGE_DECLARATION_VERSION, "source": "registration"},
     )
+    await _issue_authenticated_session(response=response, db=db, settings=settings, user=user)
+    return _user_out(user)
 
 
 @router.post(
@@ -177,6 +197,8 @@ def _user_out(user: User) -> UserOut:
         role=str(user.role),
         is_active=user.is_active,
         email_verified_at=user.email_verified_at,
+        age_confirmed_at=user.age_confirmed_at,
+        age_declaration_version=user.age_declaration_version,
     )
 
 
@@ -238,13 +260,49 @@ async def logout(
 
 @router.get("/me", response_model=UserOut)
 async def me(user: User = Depends(get_current_user)) -> UserOut:
-    return UserOut(
-        id=str(user.id),
-        email=user.email,
-        role=str(user.role),
-        is_active=user.is_active,
-        email_verified_at=user.email_verified_at,
+    return _user_out(user)
+
+
+@router.post(
+    "/confirm-age",
+    response_model=UserOut,
+    dependencies=[
+        Depends(require_csrf),
+        Depends(rate_limit_by_user("auth:confirm_age", limit=10, window_seconds=3600)),
+    ],
+)
+async def confirm_age(
+    body: AgeConfirmRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db, scope="function"),
+) -> UserOut:
+    """D2: nachtraegliche 18+-Bestaetigung fuer Bestandskonten. Idempotent: eine bereits
+    abgegebene Bestaetigung bleibt unveraendert (Zeitpunkt/Version werden nie
+    ueberschrieben, kein zweiter Audit-Eintrag) und wird mit 200 zurueckgegeben."""
+    if not body.age_confirmed:
+        raise AgeConfirmationRequired("age_confirmed=true is required to confirm")
+    claimed = await claim_age_confirmation(
+        db,
+        user_id=user.id,
+        confirmed_at=dt.datetime.now(dt.UTC),
+        version=AGE_DECLARATION_VERSION,
     )
+    if claimed:
+        await record_audit_event(
+            db,
+            actor_user_id=user.id,
+            action=AuditAction.AGE_CONFIRMED,
+            target_user_id=user.id,
+            safe_metadata={
+                "declaration_version": AGE_DECLARATION_VERSION,
+                "source": "existing_account",
+            },
+        )
+    confirmed_at, version = await get_age_confirmation(db, user_id=user.id)
+    out = _user_out(user)
+    out.age_confirmed_at = confirmed_at
+    out.age_declaration_version = version
+    return out
 
 
 @router.post(
