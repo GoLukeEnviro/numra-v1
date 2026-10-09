@@ -212,6 +212,8 @@ das Protokoll des jeweiligen Release, nicht in diese Vorlage.
 
 `DC` ist wie in Schritt 2 definiert (`docker compose -p numra-prod --env-file
 /etc/numra/numra.env -f /opt/numra/compose.production.yml`).
+`DC_NEU` ist `DC` mit `-f <SCRATCH>/compose.production.yml` statt der Host-Datei und
+dient allen Prüfungen der **neuen** Compose-Datei vor Schritt 4.4.
 
 ### Abgrenzung zu „Kein automatisches `alembic upgrade head`“
 
@@ -219,7 +221,7 @@ Die Regel oben gilt für das Verifikations-Runbook (Schritte 1 bis 8): Es prüft
 (`alembic heads`/`alembic current`) und migriert nie selbst. Ein **geplanter Release**
 ist etwas anderes: Die Migration ist dort ein ausdrücklicher, vorab freigegebener
 Schritt mit festgelegter Ziel-Revision `<ZIEL_REV>` (Reihenfolge der Revisionen vorher
-gegen den Compare `<S_ALT>`…`<S2>` geprüft), ausgeführt als `$DC run --rm migrate`
+gegen den Compare `<S_ALT>`…`<S2>` geprüft), ausgeführt als `$DC run --rm --no-deps -T migrate`
 bei gestoppten Schreibern und mit Gleichheitsprüfung danach. Es gibt kein blindes
 „upgrade auf Verdacht“. Nach dem Release dient das Verifikations-Runbook (Schritte 1
 und 2) als unabhängige Gegenprobe.
@@ -268,35 +270,74 @@ und 2) als unabhängige Gegenprobe.
    Tagging per ID (containerd-Store), das Image per `docker save` sichern.
 3. Dienste, die im Release unverändert bleiben (z. B. `pdf`), werden nicht neu gebaut
    oder neu gestartet.
+4. Rollback-Preflight, **vor dem ersten `stop`** (Schritt 4.2): Alle Rückwege müssen
+   vorhanden sein, sonst STOPP.
+
+   ```bash
+   for d in api web worker analysis-worker migrate; do
+     docker image inspect -f '{{.Id}}' "numra-prod-$d:rollback-<TS>" >/dev/null \
+       || echo "FEHLT: Rollback-Tag $d"
+   done
+   sudo test -s /var/lib/numra/release-backups/<TS>/compose.production.yml \
+     || echo "FEHLT: Backup-Compose"
+   ```
 
 ### 3. Vorbereiten ohne Downtime
 
 1. `git -C /opt/numra/repo fetch` und `git -C /opt/numra/repo checkout --detach <S2>`
    (Eigentümer des Checkouts beibehalten; fremde Untracked-Dateien unberührt lassen).
-2. `diff` zwischen Repo-`deploy/compose.production.yml` bei `<S2>` und der Host-Datei:
-   nur erwartete Unterschiede. Die neue Datei in `<SCRATCH>` mit `$DC config --quiet`
-   (mit `-f <SCRATCH>/compose.production.yml`) validieren; die Host-Datei dabei **nicht**
-   überschreiben.
+2. Compose-Diff-Gate: `diff -u /opt/numra/compose.production.yml
+   <SCRATCH>/compose.production.yml` (Quelle: `deploy/compose.production.yml` bei `<S2>`)
+   zeigt nur erwartete Unterschiede. Es darf **keine** Änderung an `volumes`, `networks`
+   und den Diensten `pdf`, `postgres`, `redis` geben, sonst STOPP. Gegenprobe auf der
+   aufgelösten Konfiguration:
+
+   ```bash
+   for f in /opt/numra/compose.production.yml <SCRATCH>/compose.production.yml; do
+     docker compose -p numra-prod --env-file /etc/numra/numra.env -f "$f" config --format json \
+       | jq -S '[.volumes, .networks, .services.pdf, .services.postgres, .services.redis]' | sha256sum
+   done   # beide Hashes müssen gleich sein
+   ```
+
+   Die neue Datei zusätzlich mit `$DC_NEU config --quiet` validieren; die Host-Datei
+   dabei **nicht** überschreiben.
 3. Build mit der Scratch-Datei, niedrige Priorität: `nice -n 19 docker compose -p
    numra-prod --env-file /etc/numra/numra.env -f <SCRATCH>/compose.production.yml build
    <geänderte Dienste>`. Laufende Container bleiben unberührt. Build-Log sichern.
    Erfolg anhand der neuen Image-IDs prüfen, nicht mit `pgrep` auf den Build-Prozess
    warten.
-4. Vorab-Prüfung „Welche Container würde Compose neu erzeugen?“: `$DC --dry-run up -d
-   --no-deps api worker analysis-worker web` (globales Flag vor dem Unterbefehl; ab
-   welcher Compose-Version verfügbar, ist vorab zu prüfen) und dieselbe Ausgabe ohne
-   Dienstliste (`$DC --dry-run up -d`) vergleichen: Nur die geplanten Dienste dürfen
-   „Recreate“ zeigen. Ohne `--dry-run`: `$DC config` und je Dienst die ID des
-   laufenden Containers (`docker inspect -f '{{.Image}}' <container>`) mit der ID von
-   `numra-prod-<dienst>:latest` vergleichen; ein Dienst mit abweichender ID würde bei
-   einem `up -d` ohne Dienstliste neu erzeugt.
+4. Vorab-Gate „Welche Container würde Compose neu erzeugen?“, ausgeführt gegen die
+   **neue** Compose-Datei, nicht gegen die Host-Datei (ein Dry-run gegen die Host-Datei
+   sagt nichts über Image-, Umgebungs- oder Abhängigkeitsänderungen der neuen Datei):
+
+   ```bash
+   $DC_NEU --dry-run up -d --force-recreate --no-deps api web worker analysis-worker
+   ```
+
+   `--dry-run` ist ein globales Flag vor dem Unterbefehl; ab welcher Compose-Version es
+   verfügbar ist, vorab prüfen. Die Ausgabe darf nur die vier genannten Dienste nennen;
+   erscheinen `pdf`, `postgres` oder `redis`, ist das ein STOPP. Lässt man die
+   Dienstliste weg (`$DC_NEU --dry-run up -d`), zeigt Compose zusätzlich die Einmaljobs
+   `migrate` und `flags-init` als Start (sie sind `run --rm`-Einmaljobs und laufen im
+   Release über 4.5 und 4.6) und erzeugt jeden Dienst neu, dessen Konfiguration oder
+   Image abweicht, z. B. `pdf` auf einem Image, das nicht mehr `:latest` entspricht.
+   Diese Variante ist nur Diagnose, nie das Kommando des Release. Ersatz ohne
+   `--dry-run`: je Dienst die ID des laufenden Containers (`docker inspect -f
+   '{{.Image}}' <container>`) mit der ID von `numra-prod-<dienst>:latest` vergleichen.
+5. Abbruch in der Vorbereitung (vor dem ersten `stop`): Checkout in `/opt/numra/repo`
+   zurück auf den alten Stand setzen (`git -C /opt/numra/repo checkout --detach
+   <S_ALT>`), Host-Compose und Marker bleiben unberührt, Scratch-Dateien nicht in den
+   Deployment-Checkout legen. Prüfen: `git -C /opt/numra/repo rev-parse HEAD` ==
+   Marker `<S_ALT>`.
 
 ### 4. Wartungsfenster (Schreibpause)
 
 1. Nutzer vorab informieren (kurze Fehler/Ausfall von Minuten); Fenster mit geringer
    Nutzung wählen.
-2. Schreiber stoppen: `$DC stop web api worker analysis-worker`. Postgres, Redis und
-   unveränderte Dienste laufen weiter.
+2. Rollback-Preflight (Schritt 2.4) muss bestanden sein. Dann den Healthcheck-Timer
+   stoppen, damit die geplante Pause keine Fehlalarme auslöst (`sudo systemctl stop
+   numra-healthcheck.timer`), und die Schreiber stoppen: `$DC stop web api worker
+   analysis-worker`. Postgres, Redis und unveränderte Dienste laufen weiter.
 3. Dump **während** der Pause: `sudo systemctl start numra-backup.service` (Host-
    Konfiguration unter `/etc/systemd/system`, nicht im Repository belegt; vorher
    prüfen, dass die Unit existiert); neuen Dump
@@ -305,21 +346,39 @@ und 2) als unabhängige Gegenprobe.
 4. Neue Compose-Datei installieren: Sicherung liegt bereits in
    `release-backups/<TS>`; dann `sudo cp -p <SCRATCH>/compose.production.yml
    /opt/numra/compose.production.yml`.
-5. Migration: `$DC run --rm migrate` mit Exit 0; danach `alembic current == heads ==
+5. Migration: `$DC run --rm --no-deps -T migrate` mit Exit 0; danach `alembic current == heads ==
    <ZIEL_REV>` (Schritt 2 des Verifikations-Runbooks). Abbruch mittendrin: siehe
    „Migrationsabbruch“ unten.
-6. Falls der Ziel-Stand einen `flags-init`-Job enthält: `$DC run --rm flags-init`
+6. Falls der Ziel-Stand einen `flags-init`-Job enthält: `$DC run --rm --no-deps -T flags-init`
    (Exit 0, erwartet No-op bei bestehender Datenbank); danach Flag-Werte samt
    `updated_at` identisch zum Pre-Flight und keine neuen `FEATURE_FLAG_CHANGED`-Einträge
    in `admin_audit_events`.
-7. Nach `run --rm migrate` und `run --rm flags-init` die Dienste **explizit** starten:
-   `$DC up -d --no-deps api worker analysis-worker web`. Ein `$DC up -d` ohne
-   Dienstliste erzeugt jeden Dienst neu, dessen Konfiguration oder Image von der
-   Compose-Datei abweicht; das trifft z. B. `pdf`, wenn es auf einem Image läuft, das
-   nicht mehr der aktuellen `:latest`-ID entspricht, obwohl es im Release unverändert
-   bleiben soll. `--no-deps` verhindert zusätzlich, dass über `depends_on` weitere
-   Dienste angefasst werden (Postgres/Redis laufen, `migrate`/`flags-init` sind schon
-   gelaufen). Auf `healthy` warten, Zeitlimit 5 min.
+7. Nach `run --rm migrate` und `run --rm flags-init` die Dienste **explizit neu erzeugen**:
+   `$DC up -d --force-recreate --no-deps api worker analysis-worker web`. `stop` gefolgt
+   von `up -d` erzeugt einen Container nicht zwingend neu (im Audit-Stack blieb `web`
+   dabei auf dem alten Image); erst `--force-recreate` mit expliziter Dienstliste
+   garantiert den Wechsel auf die neuen Images. Ein `$DC up -d` ohne Dienstliste erzeugt
+   jeden Dienst neu, dessen Konfiguration oder Image von der Compose-Datei abweicht;
+   das trifft z. B. `pdf`, wenn es auf einem Image läuft, das nicht mehr der aktuellen
+   `:latest`-ID entspricht, obwohl es im Release unverändert bleiben soll. `--no-deps`
+   verhindert zusätzlich, dass über `depends_on` weitere Dienste angefasst werden
+   (Postgres/Redis laufen, `migrate`/`flags-init` sind schon gelaufen). Auf `healthy`
+   warten, Zeitlimit 5 min. Danach die Image-ID des **laufenden** Containers mit
+   `:latest` vergleichen:
+
+   ```bash
+   for d in api worker analysis-worker web; do
+     [ "$(docker inspect -f '{{.Image}}' "$($DC ps -q $d)")" = \
+       "$(docker image inspect -f '{{.Id}}' numra-prod-$d:latest)" ] \
+       && echo "OK $d" || echo "ABWEICHUNG $d"
+   done
+   ```
+
+   Jede Abweichung ist ein STOPP. Zuletzt den Healthcheck-Timer wieder starten
+   (`sudo systemctl start numra-healthcheck.timer`). Als `SWITCH_OK` gilt der
+   Umschalt-Schritt (4.4 bis 4.7) nur, wenn die Migration mit Exit 0 und `alembic
+   current == heads == <ZIEL_REV>` endete, `flags-init` ein No-op war, alle vier Dienste
+   `healthy` sind und alle Image-Vergleiche `OK` zeigen.
 
 ### 5. Abnahme (minimal, mit synthetischem Konto)
 
@@ -357,7 +416,8 @@ printf '%s\n' "<S2>" | sudo tee /var/lib/numra/deployed_sha.new >/dev/null \
   && sudo mv -f /var/lib/numra/deployed_sha.new /var/lib/numra/deployed_sha
 ```
 
-Der Marker wird erst nach vollständig bestandener Abnahme geschrieben und per
+Der Marker wird erst geschrieben, wenn der Umschalt-Schritt `SWITCH_OK` ergeben hat
+(4.7) **und** die Abnahme vollständig bestanden ist, und per
 `mv` im selben Verzeichnis ersetzt (kein halb geschriebener Marker). `sudo tee` legt die
 Datei als root an; `chown`/`chmod --reference` übernehmen Eigentümer und Rechte der
 bisherigen Marker-Datei. Ein abgebrochener oder zurückgerollter Versuch hinterlässt **keinen**
@@ -373,7 +433,7 @@ Erfolgsmarker: der Marker bleibt `<S_ALT>`.
 - Fehler bei Login, CSRF, Zugriffsschutz, Worker-Pfad, Report oder PDF in der Abnahme.
 - Aktion: R1 ausführen, Ergebnis kontrollieren (Readiness, Login, Image-ID der
   laufenden Container == ID des Rollback-Tags, nach R1 (a) und (c) erfüllbar), Marker
-  unverändert lassen, Bericht schreiben.
+  unverändert lassen, Healthcheck-Timer wieder starten, Bericht schreiben.
 
 #### Migrationsabbruch
 
@@ -426,7 +486,8 @@ b. Die alte Compose-Datei aus `/var/lib/numra/release-backups/<TS>/compose.produ
    mit `-f` verwenden (`DC_ALT` = `DC` mit diesem `-f`) und danach mit `sudo cp -p`
    auf `/opt/numra/compose.production.yml` zurückkopieren, damit die Host-Datei zum
    laufenden Stand passt.
-c. Explizit starten: `$DC_ALT up -d --no-build --no-deps api worker analysis-worker web`.
+c. Explizit neu erzeugen: `$DC_ALT up -d --force-recreate --no-deps --no-build api worker
+   analysis-worker web`.
    Keine Dienstliste ohne `--no-deps`, damit `pdf`, Postgres und Redis unberührt
    bleiben.
 d. Prüfen, je Dienst: ID des laufenden Containers (`docker inspect -f '{{.Image}}'
@@ -439,12 +500,69 @@ Nach jedem Rollback: Readiness, Image-IDs gemäß (d), Login, Marker unveränder
 
 ### 9. Nach dem Wechsel
 
+- Healthcheck-Timer läuft wieder (`systemctl is-active numra-healthcheck.timer`).
 - Host-Healthcheck-Skript auf den neuen Stand prüfen, Timer-Lauf beobachten; 24 h
   beobachten (Readiness, Jobfehler, Backup-Frische, `uptime-alert`-Issues).
 - Statuskopf in `docs/planning/avenyth-pwa-execution-state.md` aktualisieren
   (Repository-, Audit-, Produktions-Stand, Messzeitpunkt, Belege).
 - Abhängigkeiten des Release dokumentieren, die Nutzer betreffen (z. B. Konten, die
   erst nach E-Mail-Verifizierung einladen können).
+
+
+### Ausgeführtes Beispiel: Release f957df06 (2026-10-09)
+
+Erster vollständig nach dieser Vorlage ausgeführter Produktionsrelease. Zeiten CEST.
+
+| Größe | Wert |
+|---|---|
+| Kandidat `<S2>` | `f957df0656aac31c2344d2e4265ec7133ff0dde8` (= Audit-Abnahme-SHA, `main`) |
+| Marker `/var/lib/numra/deployed_sha` | gesetzt 15:03:51, atomar, Eigentümer `hermes`, 0644 |
+| Migration `<ZIEL_REV>` | `c5a9d3e72b16`; Kette `04d4d6f4c5a0` → `7c3e9a51b2d8` → `9d2f6b83a1c4` → `c5a9d3e72b16` in einer Transaktion (alles oder nichts) |
+| Neu erzeugt | `api`, `web`, `worker`, `analysis-worker` (force-recreate, neue Images) |
+| Unverändert | `pdf` (Image seit 5 Tagen, weicht vom Tag `:latest` ab, bewusst nicht angefasst), `postgres`, `redis` |
+| Flags | unverändert: Hash vor/nach identisch, Bootstrap `adopted` / `pre-existing`, 0 `FEATURE_FLAG_CHANGED` |
+| Schreibpause (Fenster) | 49 s |
+| Dump in der Vorbereitung | `numra-20261009T125739Z.dump`, 540350 Byte, sha256 geprüft |
+| Rollback-Material | Tags `numra-prod-<dienst>:rollback-20261009-145523`; Hostkonfiguration in `/var/lib/numra/release-backups/20261009-145523/` (root, 0700) |
+| Produktions-Smoke | 44 PASS, 0 FAIL |
+
+Inhalt des Smoke-Laufs: Register/Login/Sessions/CSRF lokal, über den Web-Proxy und
+öffentlich (`https://avenyth.de`), Admin-Route 403, Flag-Gating `checkins` 503,
+404-Schutz, Origin-Guard, QUICK-Report `COMPLETE` in 280 s (12763 Zeichen), PDF 88515
+Byte, `llm_generations` 14 Zeilen alle ok, `total_tokens` 49142 (echte Provider-Zahlen),
+Cleanup per `delete-all` (hinterlässt 1 anonymisierte Tombstone-Zeile in `users`).
+
+**Evidenz (Host Agent0, nicht im Repository, keine Secrets):**
+
+- Smoke-Skript `/home/hermes/prod-smoke/prod_smoke.py`, Lauf
+  `/home/hermes/prod-smoke/runs/20261009T125834Z-prod.txt`.
+- Sicherungen `/var/lib/numra/release-backups/20261009-145523/` (root, 0700).
+- Audit-Abnahme auf derselben SHA: `/home/hermes/e3-acceptance/runs/20261009T123623Z/`
+  und `/home/hermes/e3-acceptance/runs/20261009T124044Z/` (je 125 PASS, 0 FAIL, 1 SKIP).
+
+**Rollback in diesem Release:** in Produktion nicht nötig und dort nicht ausgeführt. Die
+Mechanik R1 (Rück-Tag auf `:latest`, `up -d --force-recreate --no-deps --no-build`)
+wurde auf dem Audit-Stack getestet: Container == Rollback-Tag-ID, healthy, danach zurück
+auf S3. Der Restore-Drill vom 2026-10-08 (Dump → isolierte Wegwerf-DB → Migration →
+alter Produktionscode gegen die migrierte DB) bildet die Grundlage für R1. Ein
+Fehlerabbruch mitten in der Migration wurde auch hier nicht geübt.
+
+**Folgen für Nutzer:** G3 (#294) wirkt seitdem in Produktion; 4 von 6 Konten sind
+unverifiziert und können weder einladen noch einlösen, bis sie ihre E-Mail verifizieren.
+
+**Erkenntnisse und wo sie oben stehen:**
+
+1. `stop` plus `up -d` erzeugt Container nicht zwingend neu → 4.7 (`--force-recreate`,
+   Image-ID-Vergleich).
+2. Vorab-Gate per `--dry-run` gegen die neue Datei, `pdf`/`postgres`/`redis` dürfen nicht
+   genannt werden → 3.4.
+3. Einmaljobs als `run --rm --no-deps -T` → 4.5, 4.6.
+4. Healthcheck-Timer vor dem Fenster stoppen, danach starten → 4.2, 4.7, Abbruchkriterien.
+5. Bei Abbruch der Vorbereitung Checkout zurück auf die alte SHA → 3.5.
+6. Marker nur nach Abnahme und nur bei `SWITCH_OK` → 6.
+7. Compose-Diff-Gate (keine Änderung an `volumes`, `networks`, `pdf`, `postgres`,
+   `redis`) → 3.2.
+8. Rollback-Preflight (Tags und Backup-Compose) vor dem `stop` → 2.4.
 
 
 ## Betriebsentscheidung: `GET /v1/health/ready` bleibt DB-hart (2026-09-24)

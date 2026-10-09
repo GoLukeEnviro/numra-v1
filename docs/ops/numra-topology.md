@@ -1,6 +1,6 @@
 # NUMRA — Laufzeit-Topologie auf Agent0 (versioniert, ohne Secrets)
 
-Stand: 2026-10-08. Diese Datei beschreibt **nur** Namen, Rollen und Ports. Keine
+Stand: 2026-10-09. Diese Datei beschreibt **nur** Namen, Rollen und Ports. Keine
 Zugangsdaten, keine Tokens, keine Verbindungsstrings — die Werte liegen ausschließlich in
 `/etc/numra/*.env` (root, 0600). Historischer Migrationsbericht:
 `docs/ops/2026-09-19-hermestrader-to-agent0-migration.md`.
@@ -98,7 +98,7 @@ werden einmalig initialisiert; danach ändert nur noch `/admin/flags` Werte.
 - `numra-healthcheck.timer` (alle 5 min) → `numra-healthcheck.service`. Prüft die
   Readiness beider Stacks über `127.0.0.1:17800/17801/v1/health/ready`, die Frische des
   jüngsten Dumps (Grenze 26 h) und zählt fehlgeschlagene Report-/Analysejobs. Die
-  Readiness wird je Dienst gegen `EXPECTED_DEPENDENCIES` bewertet (Alarm ab 3
+  Readiness wird je Dienst gegen `EXPECTED_DEPENDENCIES` bewertet (Soll 2026-10-09: alle vier Dienste `required`; Alarm ab 3
   aufeinanderfolgenden Fehlschlägen, Details: `docs/ops/numra-monitoring.md`).
   Schreibt `/var/lib/numra/health-status.json`; ein Fehlschlag lässt die Unit in
   `systemctl --failed` auftauchen. Skript: `scripts/ops/numra-healthcheck.sh`.
@@ -110,8 +110,9 @@ werden einmalig initialisiert; danach ändert nur noch `/admin/flags` Werte.
   verschlüsselt (`restic`), Aufbewahrung 7 täglich / 4 wöchentlich / 6 monatlich.
   Wöchentlicher Integritätscheck: `restic-agent0-check.timer`.
 
-**Nicht** abgedeckt: Es gibt keinen externen Pager/Alertkanal. Der sichtbare Alarm ist
-die fehlgeschlagene Unit plus die Statusdatei; die Audit-Datenbank wird bewusst nicht
+**Nicht** abgedeckt: Es gibt keinen externen Pager/Alertkanal für Jobfehler und
+Backup-Frische; nur der Hostausfall wird vom externen Uptime-Probe (GitHub Actions) erfasst.
+Der sichtbare Alarm ist die fehlgeschlagene Unit plus die Statusdatei; die Audit-Datenbank wird bewusst nicht
 gesichert (Wegwerfdaten, siehe `docs/audits/2026-09-20-pwa-09-restore-drill.md`).
 
 ## Deploy-Rezept (bewusster Einzelbefehl)
@@ -129,8 +130,15 @@ sudo docker compose -p numra-audit --project-directory /opt/numra/audit-repo \
 ```
 
 `up -d` startet über `depends_on` zuerst `migrate`, dann `flags-init`; `api` wartet auf beide.
-Für Produktion dieselbe Sequenz mit `-p numra-prod`, dem Checkout `/opt/numra/repo`,
-`/opt/numra/compose.production.yml` und `/etc/numra/numra.env`. Vor jeder Änderung an einer Env-Datei liegt eine
+`up -d` (auch nach `stop`) erzeugt Container nicht zwingend neu (2026-10-09: der
+Audit-`web` blieb auf dem alten Image); nach dem Start die Image-ID des laufenden
+Containers mit `:latest` vergleichen.
+
+Für Produktion gilt diese Sequenz **nicht**: Dort werden `migrate` und `flags-init` als
+`run --rm --no-deps -T`-Einmaljobs bei gestoppten Schreibern ausgeführt und die Dienste
+mit `up -d --force-recreate --no-deps <Dienstliste>` neu erzeugt (`pdf`, `postgres` und
+`redis` bleiben unberührt). Ablauf, Marker und Rollback:
+`docs/ops/release-verification.md`, Abschnitt „Produktionsauslieferung“. Vor jeder Änderung an einer Env-Datei liegt eine
 `*.bak-pre-<thema>-<zeitstempel>`-Kopie daneben.
 
 ## Wiederherstellung
