@@ -32,6 +32,7 @@ __all__ = [
     "GenerationRequest",
     "GenerationResult",
     "LLMProvider",
+    "LLMUsage",
     "NumericClaim",
     "ProviderHealth",
     "StructuredGenerationRequest",
@@ -115,6 +116,18 @@ class StructuredGenerationRequest(GenerationRequest):
     target_schema_name: str
 
 
+class LLMUsage(BaseModel):
+    """Vom Provider gemeldete Tokenzahlen. Jedes Feld ist nur gesetzt, wenn der Provider
+    es geliefert hat -- nie geschaetzt, nie mit 0 aufgefuellt. ``total_tokens`` ist die
+    Summe und nur gesetzt, wenn beide Teilwerte vorliegen."""
+
+    model_config = ConfigDict(frozen=True)
+
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
+    total_tokens: int | None = None
+
+
 class GenerationResult(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -123,6 +136,7 @@ class GenerationResult(BaseModel):
     provider: str
     model: str
     finish_reason: str | None = None
+    usage: LLMUsage | None = None
 
 
 class LLMProvider(Protocol):
