@@ -22,9 +22,15 @@ The mock provider paths keep their own deterministic substitution on top, since
 
 from __future__ import annotations
 
+import re
+import unicodedata
+
 __all__ = [
     "PROMPT_SCAFFOLDING_MARKERS",
+    "UNRESOLVED_TOKEN_PATTERN",
+    "canonical_for_check",
     "contains_prompt_scaffolding",
+    "find_unresolved_template_token",
     "grounding_prose",
 ]
 
@@ -78,3 +84,97 @@ def grounding_prose(*values: str) -> str:
     real provider's text.
     """
     return " ".join(value.strip() for value in values if value and value.strip())
+
+
+#: Latin look-alikes that NFKC does not fold (it only folds compatibility forms such as
+#: full-width brackets and colons). Used for *checking* only, see `canonical_for_check`.
+_CONFUSABLES = str.maketrans(
+    {
+        "а": "a",
+        "е": "e",
+        "о": "o",
+        "р": "p",
+        "с": "c",
+        "у": "y",
+        "х": "x",
+        "і": "i",
+        "ѕ": "s",
+        "ј": "j",
+        "ԁ": "d",
+        "ӏ": "l",
+        "к": "k",
+        "т": "t",
+        "м": "m",
+        "ԝ": "w",
+        "ο": "o",
+        "ν": "v",
+        "ι": "i",
+        "α": "a",
+        "ε": "e",
+        "ρ": "p",
+        "κ": "k",
+        "τ": "t",
+        "υ": "u",
+    }
+)
+
+#: Unicode categories dropped from the check form: format characters and all combining marks.
+_IGNORED_CATEGORIES = frozenset({"Cf", "Mn", "Mc", "Me"})
+
+
+def canonical_for_check(text: str) -> str:
+    """The form of ``text`` every token check looks at: NFKD (full-width
+    ``［profile_fact：a:x］`` -> ``[profile_fact:a:x]``, ``é`` -> ``e`` + U+0301),
+    case-folded (so upper-case Cyrillic/Greek look-alikes such as ``Ѕ`` or ``К`` reach the
+    lower-case `_CONFUSABLES` table), then invisible format characters (Cf) and combining
+    marks (Mn/Mc/Me; ``[prof\u0301ile_fact:a]``, U+034F inside a marker) removed and the
+    common Cyrillic/Greek look-alikes folded to Latin. Only ever used to *detect*; the text
+    that is stored is never rewritten with it, so ordinary German (umlauts, ß, typographic
+    quotes, accents in names) is unaffected apart from being checked with ``ä`` read as
+    ``a``. ``casefold`` can itself emit combining characters (``İ``), hence the second
+    NFKD before the filter."""
+    folded = unicodedata.normalize("NFKD", unicodedata.normalize("NFKD", text).casefold())
+    visible = "".join(ch for ch in folded if unicodedata.category(ch) not in _IGNORED_CATEGORIES)
+    return visible.translate(_CONFUSABLES)
+
+
+#: Anything that looks like template syntax in a *finished* text is, by construction,
+#: unresolved or malformed -- the well-formed placeholders were substituted before this
+#: runs. Matched on `canonical_for_check` output, so it is written for the folded form:
+#:
+#: * any brace (``{{metric:x}}``, a truncated ``{{metric:matur``, ``{partner_a}``);
+#: * ``[metric:`` / ``<special:`` (wrong brackets around a placeholder body);
+#: * ``%(name)s`` and ``<partner_a>``;
+#: * a prompt-framing label in a spelling the exact-match guard does not cover;
+#: * the *shortened* block label a generative model writes when it abbreviates
+#:   ``[profile_fact:a:life_path]`` to ``[a:life_path]`` (audit 2026-10-09): ``[``, the
+#:   person letter ``a``/``b``, a colon and the start of an identifier -- closing bracket
+#:   not required, so a response cut off mid-token is caught as well. A time such as
+#:   ``[10:30]``, a footnote ``[1]`` or ordinary ``a:b`` in running text does not match.
+UNRESOLVED_TOKEN_PATTERN = re.compile(
+    r"[{}]"
+    r"|[\[<]\s*(?:metric|special)\s*:"
+    r"|%\(\w+\)s"
+    r"|<\s*[a-z]+_[a-z_]+\s*>"
+    r"|\[\s*(?:profile_fact|knowledge|system|instruction_supplement"
+    r"|untrusted_user_content|user_instructions)\b"
+    r"|\[\s*[ab]\s*:(?:\s*[\[a-z_]|\s*\Z)",
+    re.IGNORECASE,
+)
+
+
+def find_unresolved_template_token(text: str) -> str | None:
+    """The first unresolved internal template token in ``text`` (prompt scaffolding or
+    any `UNRESOLVED_TOKEN_PATTERN` form), or ``None`` when the text is clean.
+
+    The single check every pipeline runs over text that is about to become a result
+    (relationship/shadow statements, report sections and summaries, Copilot replies), so
+    "a finished text carries no internal token" is stated once. Both the raw and the
+    `canonical_for_check` form are inspected; the return value is the offending
+    *token*, never surrounding prose, so it is safe to put into a log line."""
+    checked = canonical_for_check(text)
+    for marker in PROMPT_SCAFFOLDING_MARKERS:
+        if marker in text or marker in checked:
+            return marker
+    match = UNRESOLVED_TOKEN_PATTERN.search(checked)
+    return match.group(0) if match else None

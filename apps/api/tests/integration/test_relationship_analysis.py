@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import datetime as dt
 import re
+import uuid
 
 import pytest
 from sqlalchemy import update
@@ -454,6 +455,11 @@ def _cites_first_fact_label(request) -> str:
     return f"Das ist gepraegt durch [profile_fact:{label}] im Alltag."
 
 
+def _cites_first_fact_short_label(request) -> str:
+    label = next(b.label for b in request.context_blocks if b.role == "profile_fact")
+    return f"Das ist gepraegt durch [{label}] im Alltag."
+
+
 def _strings(value):
     """Every string value anywhere in a JSON-shaped result."""
     if isinstance(value, str):
@@ -467,20 +473,22 @@ def _strings(value):
 
 
 @pytest.mark.parametrize("kind", ["relationship-analysis", "shadow-dynamics"])
+@pytest.mark.parametrize("cite_name", ["long", "short"])
 async def test_copied_fact_label_is_resolved_and_the_analysis_completes(
-    client, sessionmaker, lukas_payload, kind
+    client, sessionmaker, lukas_payload, kind, cite_name
 ) -> None:
+    cite = {"long": _cites_first_fact_label, "short": _cites_first_fact_short_label}[cite_name]
     workspace_id, headers_a, _headers_b = await _set_up_partner_workspace(
         client,
         sessionmaker,
         lukas_payload,
-        f"lr-ok-{kind}-a@example.com",
-        f"lr-ok-{kind}-b@example.com",
+        f"lr-ok-{kind}-{cite_name}-a@example.com",
+        f"lr-ok-{kind}-{cite_name}-b@example.com",
     )
     create = await client.post(f"/v1/workspaces/{workspace_id}/{kind}", json={}, headers=headers_a)
     assert create.status_code == 201
 
-    claimed = await run_one_cycle(sessionmaker, llm=_StubProvider(_cites_first_fact_label))
+    claimed = await run_one_cycle(sessionmaker, llm=_StubProvider(cite))
     assert claimed is True
 
     body = (await client.get(f"/v1/workspaces/{workspace_id}/{kind}", headers=headers_a)).json()
@@ -506,6 +514,11 @@ async def test_copied_fact_label_is_resolved_and_the_analysis_completes(
         ("unknown", "Unbekannt [profile_fact:a:does_not_exist] im Satz."),
         ("template", "Template {partner_a} im Satz."),
         ("fullwidth", "Voll \uff3bprofile_fact\uff1aa:expression\uff3d im Satz."),
+        ("short-unknown", "Unbekannt [a:does_not_exist] im Satz."),
+        ("short-truncated", "Abgeschnitten [a:life_pa"),
+        ("short-nested", "Verschachtelt [[a:life_path]] im Satz."),
+        ("short-fullwidth", "Voll \uff3ba\uff1alife_path\uff3d im Satz."),
+        ("metric-truncated", "Abgeschnitten {{metric:a:life_pa"),
     ],
 )
 async def test_unrepairable_token_never_completes_and_fails_with_one_error_code(
@@ -552,3 +565,46 @@ async def test_unrepairable_token_never_completes_and_fails_with_one_error_code(
     assert stored["result"] is None
     latest = await client.get(f"/v1/workspaces/{workspace_id}/{kind}", headers=headers_a)
     assert latest.status_code == 404 or latest.json()["status"] != "COMPLETE"
+
+
+async def test_job_that_succeeds_after_a_rejected_attempt_keeps_no_error_code(
+    client, sessionmaker, lukas_payload
+) -> None:
+    """Ein Job, der im zweiten Versuch COMPLETE wird, zeigt den Fehlercode des ersten
+    Versuchs nicht mehr (die Fortschrittsanzeige gibt ``error_code`` woertlich aus);
+    ``last_error_at`` bleibt als Spur des Retries."""
+    workspace_id, headers_a, _headers_b = await _set_up_partner_workspace(
+        client, sessionmaker, lukas_payload, "lr-retry-a@example.com", "lr-retry-b@example.com"
+    )
+    create = await client.post(
+        f"/v1/workspaces/{workspace_id}/relationship-analysis", json={}, headers=headers_a
+    )
+    assert create.status_code == 201
+    job_id = create.json()["job_id"]
+    calls = {"n": 0}
+
+    def _text(_request) -> str:
+        calls["n"] += 1
+        # Erste Dimension: Erstversuch + Reparaturversuch abgelehnt -> Job wird neu eingeplant.
+        return "Ein Rest [a:does_not_exist] im Satz." if calls["n"] <= 2 else "Saubere Prosa."
+
+    llm = _StubProvider(_text)
+
+    assert await run_one_cycle(sessionmaker, llm=llm) is True
+    job = (await client.get(f"/v1/analysis-jobs/{job_id}", headers=headers_a)).json()
+    assert job["status"] == "QUEUED"
+    assert job["error_code"] == "ANALYSIS_GENERATION_ERROR"
+
+    async with sessionmaker() as db:
+        await db.execute(
+            update(AnalysisJob).where(AnalysisJob.id == job_id).values(next_attempt_at=None)
+        )
+        await db.commit()
+    assert await run_one_cycle(sessionmaker, llm=llm) is True
+
+    job = (await client.get(f"/v1/analysis-jobs/{job_id}", headers=headers_a)).json()
+    assert job["status"] == "COMPLETE"
+    assert job["error_code"] is None
+    async with sessionmaker() as db:
+        stored = await db.get(AnalysisJob, uuid.UUID(job_id))
+        assert stored is not None and stored.last_error_at is not None

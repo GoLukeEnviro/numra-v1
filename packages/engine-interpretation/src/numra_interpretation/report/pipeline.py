@@ -21,7 +21,10 @@ from numra_interpretation.composer import (
 )
 from numra_interpretation.errors import InvalidReportSection
 from numra_interpretation.knowledge_loader import KnowledgeBase
-from numra_interpretation.llm.rendering_guard import contains_prompt_scaffolding
+from numra_interpretation.llm.rendering_guard import (
+    contains_prompt_scaffolding,
+    find_unresolved_template_token,
+)
 from numra_interpretation.llm.types import (
     ContextBlock,
     NumericClaim,
@@ -419,7 +422,7 @@ async def _generate_section(
         # Rendering or persisting that scaffolding is never acceptable, so it fails
         # here and the caller's one-repair-attempt path handles it like any other
         # invalid section.
-        if contains_prompt_scaffolding(result.text):
+        if contains_prompt_scaffolding(result.text) or contains_prompt_scaffolding(result.summary):
             raise InvalidReportSection(
                 f"PromptScaffoldingRejected: section {spec.section_id!r} returned prompt "
                 "scaffolding instead of rendered text (never rendered or persisted)"
@@ -457,6 +460,20 @@ async def _generate_section(
             )
 
     resolved_text = _resolve_placeholders(template_text, profile)
+    # The provider's summary is product text too (the web UI renders it above the
+    # section, `previous_sections_summary` feeds it into the next prompt) and the
+    # model uses the same placeholders there -- audit 2026-10-09: a summary that
+    # still carried `{{metric:maturity}}` was stored in a COMPLETE report because
+    # only `text` went through the resolver.
+    resolved_summary = _resolve_placeholders(summary, profile) if summary else ""
+    resolved_summary = resolved_summary or _summary_from_text(resolved_text)
+    for field_name, value in (("text", resolved_text), ("summary", resolved_summary)):
+        leftover = find_unresolved_template_token(value)
+        if leftover is not None:
+            raise InvalidReportSection(
+                f"MalformedPlaceholder: section {spec.section_id!r} {field_name} still "
+                f"carries the unresolved template token {leftover!r}"
+            )
     word_count = len(resolved_text.split())
 
     return StructuredReportSection(
@@ -465,7 +482,7 @@ async def _generate_section(
         order_index=spec.order_index,
         text=resolved_text,
         word_count=word_count,
-        summary=summary or _summary_from_text(resolved_text),
+        summary=resolved_summary,
         metric_refs=spec.metric_refs,
         knowledge_refs=spec.knowledge_refs,
     )

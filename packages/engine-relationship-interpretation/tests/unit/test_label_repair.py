@@ -538,7 +538,7 @@ async def test_prompt_forbids_labels_and_names_the_replacement(profile_a, profil
     instructions = llm.requests[0].system_instructions
     assert "Never reproduce the bracketed context-block labels" in instructions
     assert "instead of the label" in instructions
-    assert result.prompt_version == "numra-relationship-v3"
+    assert result.prompt_version == "numra-relationship-v4"
 
 
 # --------------------------------------------------------------------------- Wissen

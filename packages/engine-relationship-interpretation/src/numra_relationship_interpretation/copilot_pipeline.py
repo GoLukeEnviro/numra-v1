@@ -29,7 +29,7 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict
 
 from numra_interpretation.errors import InvalidReportSection
-from numra_interpretation.llm.rendering_guard import contains_prompt_scaffolding
+from numra_interpretation.llm.rendering_guard import find_unresolved_template_token
 from numra_interpretation.llm.types import ContextBlock, NumericClaim, StructuredGenerationRequest
 from numra_interpretation.llm.types import LLMProvider as LLMProviderProtocol
 from numra_interpretation.llm.validator import (
@@ -112,11 +112,17 @@ def _validate_reply(
     # Prompt als `ChatMessage.content` persistiert. Der Mock-Pfad bleibt ausgenommen --
     # er echot per Konstruktion und wird unten durch den festen, belegten Satz ersetzt,
     # nicht durch Ablehnung.
-    if not is_mock_provider and contains_prompt_scaffolding(reply.text):
-        raise AnalysisGenerationError(
-            "PROMPT_SCAFFOLDING_REJECTED: reply carries request scaffolding instead of "
-            "rendered text (never rendered or persisted)"
-        )
+    # Dieselbe zentrale Pruefung wie Analysen und Reports: neben dem Prompt-Geruest
+    # auch Platzhalter-Reste und verkuerzte Block-Labels (`[a:life_path]`). Die
+    # Copilot-Antwort kennt keine Platzhalter -- Zahlen stehen im Klartext und in
+    # `numeric_claims` --, jede Template-Syntax im Text ist also ein Rest.
+    if not is_mock_provider:
+        leftover = find_unresolved_template_token(reply.text)
+        if leftover is not None:
+            raise AnalysisGenerationError(
+                "PROMPT_SCAFFOLDING_REJECTED: reply carries an internal template token "
+                f"{leftover!r} instead of rendered text (never rendered or persisted)"
+            )
     if reply.basis_type not in VALID_BASIS_TYPES:
         raise AnalysisGenerationError(
             f"INVALID_BASIS_TYPE: {reply.basis_type!r} is not one of {sorted(VALID_BASIS_TYPES)}"
