@@ -1,13 +1,85 @@
 # AVENYTH PWA — Canonical Execution State
 
-- **PLAN_VERSION:** 8
-- **STATUS_DATE:** 2026-10-05
+- **STATUS_DATE:** 2026-10-09
 - **CANONICAL_CLIENT:** responsive web application / installable PWA (`apps/web`)
 - **NATIVE_MOBILE:** frozen; historical MOBILE-12A/B/C code remains, no new feature work
-- **VERIFIED_MAIN_SHA:** `1a5dc5b3a25dfdab128e812eef369ec42aa42344` (PR #246 merge — Admin-Panel-Erweiterung, `feature_flags`-Tabelle + `/admin/flags`). CI-Status dieses Merges wurde beim Schreiben nicht erneut geprüft; vor Nutzung als Gate für die nächste Änderung nachsehen. Nachgeprüft 2026-10-08 (Check-Runs des Commits): 16 success, 1 failure (`dependency-security`, zu dem Zeitpunkt nicht mehr required; der Job existiert auf `main` nicht mehr, ersetzt durch `node-audit-*`, `python-audit` und `security-gate`). `main` steht inzwischen weiter (`ee549d8`, alle 22 Check-Runs success).
-- **VERIFIED_PRODUCTION_SHA:** `1a5dc5b3a25dfdab128e812eef369ec42aa42344` — 2026-10-05 von `/var/lib/numra/deployed_sha` auf dem Host gelesen, nach vollem Rebuild (`build` + `up -d`) aus genau diesem Commit; Checkout `/opt/numra/repo` steht detached auf derselben SHA. Alembic `current == heads == 04d4d6f4c5a0` (neue Migration `feature_flags`). Compose-Datei unverändert gegenüber dem Host. Flag-Zustand nach dem Deploy unverändert gegenüber vorher: `v2_master=on, connections=on, relationship_workspaces=on, copilot=on; checkins=off, tasks=off, evidence_layer=off` (DB-Seed per SQL geprüft, 7 Zeilen; `scripts/ops/v2-flag-probe.sh https://avenyth.de/api` → `RESULT: OK`). Der Vorgänger-Stand auf dem Host war `53d20d3b958ef7cfc299091383cd5dbf6c2e1aed`.
-- **LAST_MERGED_PR:** [#246](https://github.com/GoLukeEnviro/numra-v1/pull/246)
-- **LAST_GREEN_MAIN_RUN:** beim Schreiben nicht erneut geprüft — vor Nutzung als Gate für die *nächste* Änderung nachsehen. Der Check-Run-Stand von `1a5dc5b3` ist unter `VERIFIED_MAIN_SHA` nachgetragen (2026-10-08).
+
+Dieser Kopf trennt vier Stände, die nicht verwechselt werden dürfen: Repository
+(`main`), Audit-Stack, Produktion und die Differenz zwischen `main` und Produktion.
+Er ersetzt die früheren `VERIFIED_*`-/`LAST_*`-Felder; diese stehen unverändert, aber
+als historisch markiert, im Abschnitt „Historie: frühere Statusfelder“ weiter unten.
+Wo etwas nicht belegt ist, steht „offen“ bzw. „nicht belegt“.
+
+## 1. Repository-Stand (gemessen 2026-10-09)
+
+| Feld | Wert |
+|---|---|
+| `main` | `9167c98af786325b7f11d6215998d4957f1b88fe` |
+| Datum | 2026-10-09 |
+| Required Checks | 14, darunter `api-integration` und `security-gate` (seit E1, 2026-10-08) |
+| Required Approvals | 0 |
+| `enforce_admins` | `false` |
+
+## 2. Audit-Stand (gemessen 2026-10-08)
+
+| Feld | Wert |
+|---|---|
+| Checkout / Marker | `018ca67cc7028130cf034a11b310b0f79551e8d8` (= S1) |
+| Alembic | `c5a9d3e72b16` |
+| Feature-Flags | 7 von 7 an |
+
+## 3. Produktions-Stand (gemessen 2026-10-08 21:09 CEST)
+
+| Feld | Wert |
+|---|---|
+| Checkout / Marker | `1a5dc5b3a25dfdab128e812eef369ec42aa42344` |
+| Alembic | `04d4d6f4c5a0` |
+| Flags an | `v2_master`, `connections`, `relationship_workspaces`, `copilot` |
+| Flags aus | `checkins`, `tasks`, `evidence_layer` |
+| Nutzer | 6 |
+
+Produktion steht damit weiterhin auf dem Stand vor allen unter 4 genannten PRs.
+
+## 4. Auf `main` gemergt, in Produktion nicht deployed
+
+#249, #250, #251, #268, #271, #273, #274, #275, #282, #283, #284, #285, #286, #287,
+#288, #289, #290, #292, #293, #294, #296 sowie die Dependabot-Bumps. #297 und #298
+sind offen (nicht gemergt) und gehören nicht in diese Liste.
+
+## 5. Abnahmezeitpunkt und Belege
+
+- **E3 auf aktueller SHA: offen.** Eine Audit-Abnahme auf der Kandidaten-SHA des
+  nächsten Produktionsreleases liegt nicht vor.
+- Die Werte in 2 und 3 stammen aus Messungen vom 2026-10-08; eine Rohausgabe ist in
+  diesem Repository nicht abgelegt. Der Wert in 1 ist der `main`-Stand vom 2026-10-09.
+- Ablauf, Marker und Rollback eines Produktionsreleases:
+  [`docs/ops/release-verification.md`](../ops/release-verification.md), Abschnitt
+  „Produktionsauslieferung: Ablauf, Marker, Rollback“.
+
+## 6. Offene Punkte (getrennt von den Ständen oben)
+
+- **Entscheidungen D1, D2, D3, D4, D6:** offen. Ihr Inhalt ist in diesem Repository
+  nicht belegt und wird hier nicht ergänzt.
+- **Proxy-Fragen:** offen; Inhalt in diesem Repository nicht belegt.
+- **E2:** Status nicht belegt.
+- **E3:** offen (siehe 5).
+- **E4:** Status nicht belegt.
+
+## Historie: frühere Statusfelder (historisch)
+
+Die folgenden Felder beschreiben den Stand 2026-10-05 mit Nachträgen bis 2026-10-08.
+Sie sind **historisch** und gelten nicht mehr als aktueller Stand; maßgeblich ist der
+Kopf oben. Inhalt unverändert, nur Markierungen ergänzt.
+
+
+- **PLAN_VERSION:** 8
+- **STATUS_DATE (historisch):** 2026-10-05
+- **CANONICAL_CLIENT:** responsive web application / installable PWA (`apps/web`)
+- **NATIVE_MOBILE:** frozen; historical MOBILE-12A/B/C code remains, no new feature work
+- **VERIFIED_MAIN_SHA (historisch, Stand 2026-10-05/08):** `1a5dc5b3a25dfdab128e812eef369ec42aa42344` (PR #246 merge — Admin-Panel-Erweiterung, `feature_flags`-Tabelle + `/admin/flags`). CI-Status dieses Merges wurde beim Schreiben nicht erneut geprüft; vor Nutzung als Gate für die nächste Änderung nachsehen. Nachgeprüft 2026-10-08 (Check-Runs des Commits): 16 success, 1 failure (`dependency-security`, zu dem Zeitpunkt nicht mehr required; der Job existiert auf `main` nicht mehr, ersetzt durch `node-audit-*`, `python-audit` und `security-gate`). `main` steht inzwischen weiter (`ee549d8`, alle 22 Check-Runs success).
+- **VERIFIED_PRODUCTION_SHA (historisch, Stand 2026-10-05):** `1a5dc5b3a25dfdab128e812eef369ec42aa42344` — 2026-10-05 von `/var/lib/numra/deployed_sha` auf dem Host gelesen, nach vollem Rebuild (`build` + `up -d`) aus genau diesem Commit; Checkout `/opt/numra/repo` steht detached auf derselben SHA. Alembic `current == heads == 04d4d6f4c5a0` (neue Migration `feature_flags`). Compose-Datei unverändert gegenüber dem Host. Flag-Zustand nach dem Deploy unverändert gegenüber vorher: `v2_master=on, connections=on, relationship_workspaces=on, copilot=on; checkins=off, tasks=off, evidence_layer=off` (DB-Seed per SQL geprüft, 7 Zeilen; `scripts/ops/v2-flag-probe.sh https://avenyth.de/api` → `RESULT: OK`). Der Vorgänger-Stand auf dem Host war `53d20d3b958ef7cfc299091383cd5dbf6c2e1aed`.
+- **LAST_MERGED_PR (historisch, Stand 2026-10-05):** [#246](https://github.com/GoLukeEnviro/numra-v1/pull/246)
+- **LAST_GREEN_MAIN_RUN (historisch, Stand 2026-10-05/08):** beim Schreiben nicht erneut geprüft — vor Nutzung als Gate für die *nächste* Änderung nachsehen. Der Check-Run-Stand von `1a5dc5b3` ist unter `VERIFIED_MAIN_SHA` nachgetragen (2026-10-08).
 - **CURRENT_MILESTONE:** PWA Product Closure
 - **CURRENT_TASK:** **2026-10-04, V2 activation executed on production (Stufe 0 → 1 → 2+Copilot).** PR #240 merged (two branch-protection fixes needed first: `dependency-security` removed from required checks — it fails identically on `main`, Expo-toolchain CVEs with no patched upstream — and the required-check name `unit-and-property-tests` corrected to the real job name `engine-unit-property`, which had never matched and was silently blocking every PR indefinitely). Full deploy recipe run (`docs/ops/numra-topology.md` build+up, not just `--force-recreate`, which would have kept stale images). Stufe 0, 1, and 2+Copilot all activated and probed `OK` the same session; Stufe 1 manual acceptance done live (private note create/edit/delete in the personal workspace; `/connections`, `/workspaces` calm-disabled-state). **Two bugs found and fixed live during Stufe 1/2 acceptance, both the same class as each other:** `/workspaces` (list page) and the Copilot index's relationship-workspace section both imported `isPhaseDisabledError`/`PhaseDisabledState` correctly elsewhere in the codebase but never wired it into their own `workspaces.list()`/`connections.list()` error branches, so they rendered a raw `ErrorState` (`/workspaces`: "Workspaces konnten nicht geladen werden"; Copilot index: generic "Etwas ist schiefgelaufen") instead of the intended calm gate message whenever a V2 phase was off — exactly the condition Stufe 1 puts the system in. Fixed in #242 and #243 (same pattern as the already-correct `/connections` page), each with regression tests, each verified live in the browser post-fix. Also found and fixed: the new `analysis-worker` service in `deploy/compose.production.yml` (PR #240) read `EMAIL_BACKEND` from the production env (`smtp`) but never passed through `SMTP_HOST`/`SMTP_PORT`/`SMTP_FROM_EMAIL`, so `Settings()` validation failed and the worker crash-looped on first boot — fixed in #241 by copying the already-correct passthrough block from the `api` service. All three fixes merged (#241, #242, #243), host rebuilt from the resulting clean `main` so `deployed_sha` is not ahead of what's merged. **Two-account acceptance completed the same day** (operator logged into both the real operator account and the prepared second account `lukvshop+avenythv2b@gmail.com` at the agent's request, since the browser extension used shares one cookie jar across tabs): Link invite created and redeemed, dual-profile view confirmed (no percentage/compatibility score anywhere), consent scope (`Kernzahlen`) revoked and the counterpart's loss of access verified live, then re-granted and restoration verified live, a private reflection shared from B to A and confirmed visible to A, a full relationship analysis run to `COMPLETE` (6 dimensions, `ollama_cloud`, well under 5 minutes) with the AI-disclosure footer present, and **the critical A3 test passed**: a third-party `EMAIL`-method invitation created by the operator and redeemed by the second account returned HTTP 400 (`POST /v1/connections/invitations/redeem`) — rejected, not accepted, exactly as required; the invitation is still sitting `PENDING` and unconsumed. Workspace dissolution (optional step 9) was not exercised. AI-disclosure notice confirmed present on both the personal and the relationship Copilot surface before any message is sent. Post-run monitoring query: `invitations_pending=1, connections_active=1, workspaces_active=1, analysis_queued_gt_15min=0, analysis_failed_24h=0, analysis_complete_24h=1`; 0 unexpected 5xx on `api` in the trailing 3h (the only 5xx seen were the expected `V2_PHASE_DISABLED` 503s from this session's own earlier probing). **One pre-existing, unrelated bug observed and left untouched** (out of scope for this activation): the generated relationship-analysis prose contains unresolved template placeholders (literal `{{a:life_path}}` / `[metric:a:life_path]` style tokens) instead of substituted values in at least the `Kommunikation`/`Nähe`/`Autonomie`/`Bedürfnisse`/`Konfliktdynamik`/`Stärken` dimensions — worth its own follow-up ticket, not caused by and not fixed as part of V2 activation.
 - **NEXT_ACTION:** **(1)** Two-account acceptance is done (see CURRENT_TASK) — no further action needed there. The prepared second account (`lukvshop+avenythv2b@gmail.com`, `Testina Testaccount`) remains in production as a standing artifact of this exception; the operator may delete or keep it (no code action required either way). Its email was still unverified at last check; the "critical" path (EMAIL-invite redemption) does not depend on the *redeeming* account's own verification state, only on its address matching the invitee address, so this does not need chasing further for V2 purposes. **(2)** `#218` (public legal pages) remains parked by explicit product decision; Gate G1 stays knowingly skipped. **(3)** `A7` (LLM usage/latency logging) and `A4` (entitlement enforcement / whitelist rollout) remain open backlog — Copilot and Connections are live for every logged-in user with no entitlement check and no cost visibility yet, both accepted risks per the original activation decision. **(4)** The branch-protection fixes above (dependency-security removed from required checks; `unit-and-property-tests` → `engine-unit-property`) are permanent repo settings changes, not scoped to this PR — future contributors benefit, but note it here since it wasn't an explicit part of the original activation plan. **(5)** New, optional backlog item: the template-placeholder bug in relationship-analysis prose generation noted in CURRENT_TASK deserves its own investigation — not urgent, cosmetic only, every number still traces to its source via "Herkunft". **(6) 2026-10-05, Admin-Panel-Erweiterung deployed (PR #246, Produktion = `1a5dc5b3`):** Die `AVENYTH_*`-V2-Flags liegen jetzt in der DB-Tabelle `feature_flags` (Migration `04d4d6f4c5a0`, Seed mit den damaligen Produktionswerten) und sind per `/admin/flags` sofort umschaltbar, ohne Container-Neustart; `/etc/numra/numra.env` bleibt nur Seed-Default-Fallback (Stand `1a5dc5b3`; auf `main` sind die `AVENYTH_*`-Variablen seit #271 ohne Wirkung, die Erstinitialisierung läuft über `flags init` / `NUMRA_FLAGS_PROFILE`, siehe `docs/ops/numra-topology.md` — in Produktion noch nicht deployed). Deploy nach Task 7 des Plans `docs/planning/2026-10-04-admin-panel-flags-plan.md`: Release-State-Gate PASS (`ORIGIN_MAIN = REPO_HEAD = DEPLOYED_SHA`), volles `build` + `up -d`, migrate-Job Exit 0, Alembic `current == heads`, `feature_flags` per SQL mit 7 Zeilen und den erwarteten Werten, `lukvshop@gmail.com` per `promote-admin` zu ADMIN befördert, Flag-Probe `RESULT: OK`. **Noch offen:** manuelle Browser-Abnahme (`/admin/login` → `/admin/flags` zeigt die 7 Produktionswerte; `checkins` testweise umschalten, Probe zeigt die Änderung sofort, zurückschalten; Eintrag im `/admin/audit`).

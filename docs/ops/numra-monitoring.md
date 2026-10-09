@@ -197,14 +197,18 @@ häufig verspätet (teils mehrere Minuten, besonders zu Stundenbeginn), einzelne
 können ausfallen. Die Erkennungszeit liegt daher grob bei 15 bis 30 Minuten und ist
 nicht garantiert. Bei Repositories ohne Aktivität deaktiviert GitHub geplante
 Workflows nach 60 Tagen; dann ist der Workflow im Actions-Tab wieder zu aktivieren.
+Folge: Ein stillschweigend deaktivierter Probe alarmiert nicht (kein Lauf, kein Issue).
+Der Actions-Tab ist deshalb im Betriebsablauf regelmäßig zu prüfen, ob der Workflow
+aktiv ist und zuletzt gelaufen ist.
 
 **Alarmweg.** Bei Fehlschlag legt der Lauf ein Issue mit Label `uptime-alert` und dem
 festen Titel `ALARM: avenyth.de Readiness nicht erreichbar/unhealthy` an (das Label
 wird bei Bedarf erzeugt) und endet rot. Ist bereits ein offenes Issue mit diesem Titel
 vorhanden, wird nur ein Kommentar mit Zeitstempel und Statuscode ergänzt. Bei Erholung
 kommentiert der nächste OK-Lauf „Wiederhergestellt“ mit Zeitstempel und schließt das
-Issue. Alle Schritte nutzen `gh` mit dem eingebauten `GITHUB_TOKEN`
-(`contents: read`, `issues: write`); es werden keine Fremd-Actions verwendet.
+Issue. Die Alarm-Schritte nutzen `gh` mit dem eingebauten `GITHUB_TOKEN`
+(`contents: read`, `issues: write`); der Probe-Schritt selbst nutzt `curl` und `jq`. Es
+werden keine Fremd-Actions verwendet.
 
 **Benachrichtigung.** Belegt ist nur, dass das Issue erstellt, kommentiert und
 geschlossen wird. Ob und wie GitHub dies als E-Mail oder Push an eine Person zustellt,
@@ -224,6 +228,9 @@ Empfängerliste ist im Workflow bewusst nicht hinterlegt.
   keinen Schwellwert über mehrere Läufe wie beim Host-Healthcheck.
 - Ein manueller Lauf mit abweichender `target_url` nutzt dasselbe Alarm-Issue: ein
   erfolgreicher Testlauf schließt ein offenes, echtes Alarm-Issue.
+- Einen manuellen Dispatch darf nur auslösen, wer Schreibrechte im Repository hat. Ein
+  Dispatch mit Fehl-URL kann ein echtes offenes Alarm-Issue kommentieren oder ein neues
+  anlegen; ein Erholungslauf kann ein echtes Alarm-Issue schließen.
 - Der Probe ersetzt keinen Pager: Zustellung und Reaktion hängen an GitHub und an der
   Person, die das Repo beobachtet.
 

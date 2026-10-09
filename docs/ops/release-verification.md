@@ -36,7 +36,9 @@ einer Claude-Code-Cloud/Remote-Session, die keinen Netzwerkpfad zum VPS hat.
 
 - **Kein automatisches `alembic upgrade head`.** Nur `alembic heads`/
   `alembic current` auswerten. Bei Abweichung stoppen und klären, nicht selbst
-  upgraden.
+  upgraden. (Gilt für dieses Verifikations-Runbook; ein geplanter Release mit
+  ausdrücklicher, freigegebener Migration folgt dem Abschnitt „Produktionsauslieferung:
+  Ablauf, Marker, Rollback“.)
 - **Kein Redeploy auf Verdacht.** Schlägt das SHA-Gate fehl: Auto-Updater-Logs
   prüfen, nicht selbst redeployen.
 - **Kein Klartext-Passwort** in Kommandozeile, Shell-History, Prozessliste oder
@@ -198,6 +200,178 @@ Kein Golden-Canon/Calculation-Code angefasst YES
   "cli"`) aus der ursprünglichen Promotion — der erneute (No-op-)Aufruf erzeugte
   erwartungsgemäß keinen weiteren Eintrag. Kein Redeploy ausgelöst, kein Passwort
   geändert.
+
+## Produktionsauslieferung: Ablauf, Marker, Rollback
+
+Wiederverwendbare Vorlage für einen geplanten Produktionsrelease. Platzhalter:
+`<S_ALT>` = bisheriger Produktionsstand (Checkout und Marker), `<S2>` = vollständige
+Kandidaten-SHA, `<TS>` = Zeitstempel der Sicherung, `<ZIEL_REV>` = erwartete
+Alembic-Revision nach dem Release, `<SCRATCH>` = temporäres Verzeichnis außerhalb des
+Deployment-Checkouts. Konkrete Werte (SHAs, Hashes, Image-IDs, Zählerstände) gehören in
+das Protokoll des jeweiligen Release, nicht in diese Vorlage.
+
+`DC` ist wie in Schritt 2 definiert (`docker compose -p numra-prod --env-file
+/etc/numra/numra.env -f /opt/numra/compose.production.yml`).
+
+### Abgrenzung zu „Kein automatisches `alembic upgrade head`“
+
+Die Regel oben gilt für das Verifikations-Runbook (Schritte 1 bis 8): Es prüft nur
+(`alembic heads`/`alembic current`) und migriert nie selbst. Ein **geplanter Release**
+ist etwas anderes: Die Migration ist dort ein ausdrücklicher, vorab freigegebener
+Schritt mit festgelegter Ziel-Revision `<ZIEL_REV>` (Reihenfolge der Revisionen vorher
+gegen den Compare `<S_ALT>`…`<S2>` geprüft), ausgeführt als `$DC run --rm migrate`
+bei gestoppten Schreibern und mit Gleichheitsprüfung danach. Es gibt kein blindes
+„upgrade auf Verdacht“. Nach dem Release dient das Verifikations-Runbook (Schritte 1
+und 2) als unabhängige Gegenprobe.
+
+### Grundsätze
+
+- Host-Eingriffe seriell und durch genau eine Instanz.
+- `alembic downgrade` wird **nicht** benutzt. Er kann Daten vernichten (z. B. gedropte
+  Spalten); er ist nur ein Notfall (R3) nach ausdrücklicher Entscheidung.
+- Rückwärtskompatibilität der Migrationen wird **vor** dem Release gezeigt: alter
+  Code gegen die migrierte Datenbank (Drill auf einer Kopie), nicht angenommen. Nur
+  was der Drill belegt, trägt Rollback-Stufe R1.
+- Ein älteres Compose-Overlay oder ein Tag wie `pre-s1` ist **allein kein
+  Rückrollnachweis**: Es sagt nichts darüber, welche Images tatsächlich liefen. Als
+  Rückweg zählen nur die vor dem Build angelegten Rollback-Tags auf die laufenden
+  Image-IDs (4.2) zusammen mit der gesicherten Compose-Datei, jeweils verifiziert.
+- „Container läuft“ belegt nicht, dass der `analysis-worker` (oder `worker`) Jobs
+  verarbeitet. Beleg ist ein Job im Zustand `COMPLETE` **und** eine zugehörige Zeile in
+  `llm_generations` (Abnahme, Punkt „Worker-Pfad“).
+
+### 1. Pre-Flight (lesend)
+
+1. Drift-Check gegen die letzte Bestandsaufnahme: Checkout-HEAD und Marker
+   `/var/lib/numra/deployed_sha` == `<S_ALT>`, sha256 der Host-Compose-Datei, Image-IDs
+   aller laufenden Produktionscontainer, `alembic current`, Flag-Werte samt
+   `updated_at`, Readiness, Zählstände (Nutzer, Analysen, Jobs). Abweichung: STOPP und
+   klären.
+2. Kandidat: `<S2>` == Audit-Abnahme-SHA == `origin/main`-HEAD zum Freeze; CI auf
+   `<S2>` vollständig grün; Reviews vorhanden.
+3. Backup-Gate: letzter Dump jünger als 26 h und sha256 geprüft; Restore-Drill der
+   laufenden Woche bestanden.
+4. Freigabe-Check: keine offenen Issues mit Label `uptime-alert`; ausreichend freier
+   Plattenplatz (Richtwert 50 GB).
+
+### 2. Sicherungen (vor jeder Änderung)
+
+1. `sudo install -d -m 0700 /var/lib/numra/release-backups/<TS>`; dorthin sichern:
+   `/opt/numra/compose.production.yml`, `/etc/numra/numra.env` (nur root lesbar,
+   0600), systemd-Units und `/usr/local/bin/numra-*.sh`, die Marker-Dateien,
+   `git rev-parse HEAD`, die Image-IDs aus `docker ps`, ein Dump der Tabelle
+   `feature_flags`.
+2. Rollback-Tags auf die **laufenden** Image-IDs setzen, nicht auf `:latest` (ein Tag
+   kann von der laufenden ID abweichen): für jeden zu ersetzenden Dienst
+   `docker tag <image-id> numra-prod-<dienst>:rollback-<TS>`. Prüfen: `docker image
+   inspect` je Rollback-Tag == ID aus `docker inspect <container>`. Scheitert das
+   Tagging per ID (containerd-Store), das Image per `docker save` sichern.
+3. Dienste, die im Release unverändert bleiben (z. B. `pdf`), werden nicht neu gebaut
+   oder neu gestartet.
+
+### 3. Vorbereiten ohne Downtime
+
+1. `git -C /opt/numra/repo fetch` und `git -C /opt/numra/repo checkout --detach <S2>`
+   (Eigentümer des Checkouts beibehalten; fremde Untracked-Dateien unberührt lassen).
+2. `diff` zwischen Repo-`deploy/compose.production.yml` bei `<S2>` und der Host-Datei:
+   nur erwartete Unterschiede. Die neue Datei in `<SCRATCH>` mit `$DC config --quiet`
+   (mit `-f <SCRATCH>/compose.production.yml`) validieren; die Host-Datei dabei **nicht**
+   überschreiben.
+3. Build mit der Scratch-Datei, niedrige Priorität: `nice -n 19 docker compose -p
+   numra-prod --env-file /etc/numra/numra.env -f <SCRATCH>/compose.production.yml build
+   <geänderte Dienste>`. Laufende Container bleiben unberührt. Build-Log sichern.
+   Erfolg anhand der neuen Image-IDs prüfen, nicht mit `pgrep` auf den Build-Prozess
+   warten.
+
+### 4. Wartungsfenster (Schreibpause)
+
+1. Nutzer vorab informieren (kurze Fehler/Ausfall von Minuten); Fenster mit geringer
+   Nutzung wählen.
+2. Schreiber stoppen: `$DC stop web api worker analysis-worker`. Postgres, Redis und
+   unveränderte Dienste laufen weiter.
+3. Dump **während** der Pause: `sudo systemctl start numra-backup.service`; neuen Dump
+   und sha256 prüfen, Größe plausibel (nicht kleiner als der letzte Dump ohne
+   Erklärung). Dieser Dump ist die Basis für R2.
+4. Neue Compose-Datei installieren: Sicherung liegt bereits in
+   `release-backups/<TS>`; dann `sudo cp -p <SCRATCH>/compose.production.yml
+   /opt/numra/compose.production.yml`.
+5. Migration: `$DC run --rm migrate` mit Exit 0; danach `alembic current == heads ==
+   <ZIEL_REV>` (Schritt 2 des Verifikations-Runbooks).
+6. Falls der Ziel-Stand einen `flags-init`-Job enthält: `$DC run --rm flags-init`
+   (Exit 0, erwartet No-op bei bestehender Datenbank); danach Flag-Werte samt
+   `updated_at` identisch zum Pre-Flight und keine neuen `FEATURE_FLAG_CHANGED`-Einträge
+   in `admin_audit_events`.
+7. `$DC up -d`. Erwartete Reihenfolge: Postgres/Redis healthy, `migrate`, `flags-init`,
+   dann `api`/`worker`/`analysis-worker`/`web`. Auf `healthy` warten, Zeitlimit 5 min.
+
+### 5. Abnahme (minimal, mit synthetischem Konto)
+
+Nur synthetisches Konto (`prod-smoke-<zufall>@example.com`), keine echten Nutzerdaten.
+Vorher belegen, dass die Registrierung keine E-Mail auslöst. Am Ende
+`POST /v1/account/delete-all` (204); Login danach 401.
+
+- Readiness 200/healthy.
+- Register, Login, `me`, `sessions`.
+- CSRF: mutierender Request ohne Token → 403.
+- Zugriffsschutz: Admin-Route als normaler Nutzer → 403; fremde oder nicht
+  existierende Workspace-IDs → 404.
+- Flag-Verhalten: ein ausgeschaltetes Feature liefert 503 `V2_PHASE_DISABLED`.
+- Origin-Guard wie Schritt 7 oben (fremde Origin 403 `ORIGIN_NOT_ALLOWED`, eigene
+  Origin nicht 403); Proxy-Weiterleitung von Set-Cookie/CSRF über die öffentliche URL.
+- **Worker-Pfad (Pflicht):** Profil anlegen → Report-Job → Worker verarbeitet → Job
+  `COMPLETE` → PDF-Export lesbar (Textextraktion) → `llm_generations`-Zeile mit
+  `source='report'` und gefüllten Tokens. Ein laufender Container ersetzt diesen
+  Beleg nicht. (Echter LLM-Aufruf, geringe Kosten.)
+- Queue/Fehler: keine `QUEUED`-Jobs älter als 2 min, Zähler fehlgeschlagener Jobs
+  unverändert, Health-JSON unauffällig.
+- Pfade, die verifizierte Konten mit echtem Mailversand brauchen (z. B. Einladungen,
+  Consent), werden nicht in Produktion getestet; sie sind Gegenstand der
+  Audit-Abnahme auf identischer SHA. In Produktion nur als Zugriffsschutz (404/403).
+- Aufräumen: Smoke-Konto samt Daten löschen; Nutzerzahl == Pre-Flight.
+
+### 6. Marker (nur nach bestandener Abnahme, atomar)
+
+```bash
+printf '%s\n' "<S2>" | sudo tee /var/lib/numra/deployed_sha.new >/dev/null \
+  && sudo mv -f /var/lib/numra/deployed_sha.new /var/lib/numra/deployed_sha
+```
+
+Der Marker wird erst nach vollständig bestandener Abnahme geschrieben und per
+`mv` im selben Verzeichnis ersetzt (kein halb geschriebener Marker); Eigentümer
+beibehalten. Ein abgebrochener oder zurückgerollter Versuch hinterlässt **keinen**
+Erfolgsmarker: der Marker bleibt `<S_ALT>`.
+
+### 7. Abbruchkriterien
+
+- Migration Exit ≠ 0 oder `alembic current` ≠ `<ZIEL_REV>`: STOPP, Dienste **nicht**
+  starten; mit den Rollback-Tags starten (R1).
+- `flags-init` ist kein No-op, oder Flag-Werte/`updated_at` haben sich geändert: STOPP.
+- Readiness nicht 200/healthy 5 min nach dem Start; `api` oder `worker` im
+  Restart-Loop; Log-Fehler mit `column`, `relation` oder `Traceback`.
+- Fehler bei Login, CSRF, Zugriffsschutz, Worker-Pfad, Report oder PDF in der Abnahme.
+- Aktion: R1 ausführen, Ergebnis kontrollieren (Readiness, laufende Image-IDs ==
+  Rollback-Tags, Login), Marker unverändert lassen, Bericht schreiben.
+
+### 8. Rollback-Stufen
+
+| Stufe | Wann | Vorgehen |
+|---|---|---|
+| R1 Code-Rollback (bevorzugt) | Fehler im neuen Code, Daten intakt | Gesicherte Compose-Datei aus `release-backups/<TS>` zurückspielen, `$DC up -d --no-build` mit den `rollback-<TS>`-Tags; Marker nicht ändern. Die Datenbank bleibt auf `<ZIEL_REV>`; das trägt nur, wenn der Vorab-Drill (alter Code gegen migrierte DB) bestanden war. Richtwert 2 bis 5 min. |
+| R2 Datenrestore | nur bei Datenkorruption | Schreiber stoppen, `pg_restore` aus dem Dump der Schreibpause (4.3). Daten nach dem Wiederanlauf gehen verloren; daher nur vor Freigabe des Zugangs oder mit ausdrücklicher Verlust-Entscheidung. |
+| R3 Notfall | nur nach ausdrücklicher Freigabe | `alembic downgrade`. Nicht Teil des Regelwegs (Datenverlust möglich). |
+
+Nach jedem Rollback: Readiness, Image-IDs gegen die Rollback-Tags, Login, Marker
+unverändert `<S_ALT>`.
+
+### 9. Nach dem Wechsel
+
+- Host-Healthcheck-Skript auf den neuen Stand prüfen, Timer-Lauf beobachten; 24 h
+  beobachten (Readiness, Jobfehler, Backup-Frische, `uptime-alert`-Issues).
+- Statuskopf in `docs/planning/avenyth-pwa-execution-state.md` aktualisieren
+  (Repository-, Audit-, Produktions-Stand, Messzeitpunkt, Belege).
+- Abhängigkeiten des Release dokumentieren, die Nutzer betreffen (z. B. Konten, die
+  erst nach E-Mail-Verifizierung einladen können).
+
 
 ## Betriebsentscheidung: `GET /v1/health/ready` bleibt DB-hart (2026-09-24)
 
