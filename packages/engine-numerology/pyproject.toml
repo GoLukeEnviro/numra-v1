@@ -3,7 +3,7 @@ name = "numra-numerology"
 version = "1.0.0"
 description = "NUMRA deterministic numerology calculation engine — pure, no network/DB/LLM."
 requires-python = ">=3.11"
-dependencies = ["pydantic>=2.6"]
+dependencies = ["pydantic>=2.13.5"]
 
 [build-system]
 requires = ["hatchling"]
