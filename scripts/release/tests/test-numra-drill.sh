@@ -13,7 +13,7 @@ ok() { PASS_N=$((PASS_N + 1)); printf 'ok   - %s\n' "$1"; }
 bad() { FAIL_N=$((FAIL_N + 1)); printf 'FAIL - %s\n' "$1"; }
 expect() { if [ "$2" -eq 0 ]; then ok "$1"; else bad "$1"; fi; }
 b() { if "$@"; then echo 0; else echo 1; fi; }
-only_image_inspect() { ! grep -qv '^docker image inspect' "$W/calls.log"; }
+only_image_inspect() { [ ! -e "$W/calls.log" ] || ! grep -qv '^docker image inspect' "$W/calls.log"; }
 rc_is() { [ "$RC" -eq "$1" ]; }
 
 new_world() {
