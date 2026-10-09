@@ -15,7 +15,13 @@ const PAGE_SIZE = 25;
 
 // Mirrors the backend's `AuditAction` enum. These are internal codes and are shown
 // verbatim — an audit trail that renames its own actions is not an audit trail.
-const ACTIONS = ["USER_DISABLED", "USER_ENABLED", "USER_SESSIONS_REVOKED", "ADMIN_PROMOTED"] as const;
+const ACTIONS = [
+  "USER_DISABLED",
+  "USER_ENABLED",
+  "USER_SESSIONS_REVOKED",
+  "ADMIN_PROMOTED",
+  "AGE_CONFIRMED",
+] as const;
 
 function shortId(id: string | null): string {
   if (!id) return "—";

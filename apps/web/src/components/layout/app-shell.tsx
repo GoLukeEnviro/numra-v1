@@ -1,6 +1,7 @@
 "use client";
 
 import { Logo } from "@/components/brand/logo";
+import { AgeConfirmationBanner } from "@/components/layout/age-confirmation-banner";
 import { EmailVerificationBanner } from "@/components/layout/email-verification-banner";
 import { RequireAuth } from "@/components/layout/require-auth";
 import { Button } from "@/components/ui/button";
@@ -323,6 +324,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
           className="flex-1 p-4 pb-[max(6rem,calc(env(safe-area-inset-bottom,0px)+5rem))] sm:p-6 md:pb-6 lg:p-10"
         >
           <div className="mx-auto max-w-6xl">
+            <AgeConfirmationBanner />
             <EmailVerificationBanner />
             {children}
           </div>
