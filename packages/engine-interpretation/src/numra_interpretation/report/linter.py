@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import re
 
+from numra_interpretation.llm.rendering_guard import find_unresolved_template_token
 from numra_interpretation.llm.validator import (
     build_metric_display_value_index,
     build_special_claim_index,
@@ -35,8 +36,6 @@ _UNSUPPORTED_CLAIM_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
         r"psychiatrisch\w* diagnos\w*",
     )
 )
-
-_PLACEHOLDER_PATTERN = re.compile(r"\{\{\s*(?:metric|special)\s*:\s*[a-zA-Z0-9_]+\s*\}\}")
 
 
 class ReportLintResult:
@@ -118,10 +117,16 @@ def _check_word_counts(
 def _check_placeholder_resolution(sections: tuple[StructuredReportSection, ...]) -> list[str]:
     errors = []
     for section in sections:
-        if _PLACEHOLDER_PATTERN.search(section.text):
-            errors.append(
-                f"PlaceholderResolution: unresolved placeholder in {section.section_id!r}"
-            )
+        for field_name, value in (
+            ("text", section.text),
+            ("summary", section.summary),
+            ("title", section.title),
+        ):
+            if find_unresolved_template_token(value, strict_braces=False) is not None:
+                errors.append(
+                    f"PlaceholderResolution: unresolved template token in "
+                    f"{section.section_id!r} {field_name}"
+                )
     return errors
 
 

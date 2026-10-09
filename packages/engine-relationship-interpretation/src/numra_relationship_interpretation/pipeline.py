@@ -14,13 +14,19 @@ chooses which knowledge entry or which shadow-interaction rule applies.
 from __future__ import annotations
 
 import re
-import unicodedata
 from collections.abc import Iterable
 
 from pydantic import BaseModel, ConfigDict
 
 from numra_interpretation.knowledge_loader import KnowledgeBase
-from numra_interpretation.llm.rendering_guard import contains_prompt_scaffolding, grounding_prose
+from numra_interpretation.llm.rendering_guard import (
+    canonical_for_check as _canonical_for_check,
+)
+from numra_interpretation.llm.rendering_guard import (
+    contains_prompt_scaffolding,
+    find_unresolved_template_token,
+    grounding_prose,
+)
 from numra_interpretation.llm.types import ContextBlock, StructuredGenerationRequest
 from numra_interpretation.llm.types import LLMProvider as LLMProviderProtocol
 from numra_interpretation.llm.validator import (
@@ -67,7 +73,22 @@ __all__ = ["generate_relationship_analysis", "generate_shadow_dynamics"]
 #: *instead of the label*) and `_render` resolves a label that still slips through
 #: when it names exactly one `profile_fact` block of the request
 #: (`_repair_profile_fact_labels`); everything else stays rejected.
-PROMPT_VERSION = "numra-relationship-v3"
+#:
+#: v4 states the placeholder syntax literally. Until v3 the instructions only said "the
+#: metric-placeholder syntax you were given" -- but the syntax was never given, so the
+#: model improvised from the only bracketed pattern it had seen and abbreviated the block
+#: label ``[profile_fact:a:life_path]`` to ``[a:life_path]`` (audit 2026-10-09, 4 of 6
+#: analyses). The shortened form is now also repaired when it names exactly one fact of
+#: the request (`_repair_short_form_labels`) and rejected otherwise.
+PROMPT_VERSION = "numra-relationship-v4"
+
+_PLACEHOLDER_SYNTAX_INSTRUCTION = (
+    "The metric-placeholder syntax is exactly this: two opening curly braces, the word "
+    "metric (or special for a non-scalar fact), a colon, the person letter a or b, a "
+    "colon, the id, two closing curly braces. For Person A's life path write "
+    "{{metric:a:life_path}}, for Person B's expression number write "
+    "{{metric:b:expression}}. Square brackets never appear in your answer."
+)
 
 _RELATIONSHIP_SYSTEM_INSTRUCTIONS = (
     "You are rendering a non-diagnostic, symbolic numerology relationship reflection "
@@ -75,11 +96,13 @@ _RELATIONSHIP_SYSTEM_INSTRUCTIONS = (
     "context you were given. Do not invent a Life Path, Expression, or any other "
     "numerology value. Do not calculate or derive an alternative value. All "
     "numerological claims must be grounded in the provided profile facts. Reference "
-    "every numeric fact using the metric-placeholder syntax you were given, naming a "
+    "every numeric fact using the metric-placeholder syntax defined below, naming a "
     "known metric id for a single scalar fact or a known special id for a non-scalar "
     "fact such as hidden passion or karmic lessons, always prefixed with which person "
     "the fact belongs to (a for Person A, b for Person B), rather than typing digits "
-    "yourself. Never type a numerology value as a literal digit. Never reproduce the "
+    "yourself. Never type a numerology value as a literal digit. "
+    + _PLACEHOLDER_SYNTAX_INSTRUCTION
+    + " Never reproduce the "
     "bracketed context-block labels you were given (things like '[profile_fact:a:...]', "
     "'[knowledge:...]' or '[system]') anywhere in your answer — those labels are "
     "prompt framing addressed to you, and the only citation syntax that belongs in "
@@ -99,11 +122,13 @@ _SHADOW_SYSTEM_INSTRUCTIONS = (
     "which shadow theme or interaction pattern applies, only explain the one given to "
     "you in natural German prose. All numerological claims must be grounded in the "
     "provided profile facts. Reference every numeric fact using the metric-placeholder "
-    "syntax you were given, naming a known metric id for a single scalar fact or a "
+    "syntax defined below, naming a known metric id for a single scalar fact or a "
     "known special id for a non-scalar fact such as hidden passion or karmic lessons, "
     "always prefixed with which person the fact belongs to (a for Person A, b for "
     "Person B), rather than typing digits yourself. Never type a numerology value as "
-    "a literal digit. Never reproduce the bracketed context-block labels you were given "
+    "a literal digit. "
+    + _PLACEHOLDER_SYNTAX_INSTRUCTION
+    + " Never reproduce the bracketed context-block labels you were given "
     "(things like '[profile_fact:a:...]', '[knowledge:...]' or '[system]') anywhere in "
     "your answer — those labels are prompt framing addressed to you; to refer to a "
     "profile fact, write its metric placeholder with the same a:/b: id instead of the "
@@ -122,74 +147,6 @@ _SHADOW_SYSTEM_INSTRUCTIONS = (
 _PLACEHOLDER_PATTERN = re.compile(
     r"\{\{\s*(metric|special)\s*:\s*([ab])\s*:\s*([a-zA-Z0-9_]+)\s*\}\}"
 )
-
-#: Anything that still looks like placeholder syntax after `_resolve_placeholders` has
-#: run is, by construction, malformed (e.g. ``{{a:life_path}}`` without the namespace,
-#: ``[metric:a:life_path]`` with the wrong brackets, unbalanced braces): the correct
-#: form was already substituted. Such markers must never reach persisted prose.
-_LEFTOVER_MARKER_PATTERN = re.compile(
-    r"[{}]"  # any brace is template syntax: {{...}}, {partner_a}, {metric:...}
-    r"|[\[<]\s*(?:metric|special)\s*:"
-    r"|%\(\w+\)s"
-    r"|<\s*[a-z]+_[a-z_]+\s*>"  # <partner_a>
-    # prompt-framing labels in a spelling the exact-match guard does not cover
-    r"|\[\s*(?:profile_fact|knowledge|system|instruction_supplement"
-    r"|untrusted_user_content|user_instructions)\b",
-    re.IGNORECASE,
-)
-
-#: Latin look-alikes that NFKC does not fold (it only folds compatibility forms such as
-#: full-width brackets and colons). Used for *checking* only, see `_canonical_for_check`.
-_CONFUSABLES = str.maketrans(
-    {
-        "а": "a",
-        "е": "e",
-        "о": "o",
-        "р": "p",
-        "с": "c",
-        "у": "y",
-        "х": "x",
-        "і": "i",
-        "ѕ": "s",
-        "ј": "j",
-        "ԁ": "d",
-        "ӏ": "l",
-        "к": "k",
-        "т": "t",
-        "м": "m",
-        "ԝ": "w",
-        "ο": "o",
-        "ν": "v",
-        "ι": "i",
-        "α": "a",
-        "ε": "e",
-        "ρ": "p",
-        "κ": "k",
-        "τ": "t",
-        "υ": "u",
-    }
-)
-
-
-#: Unicode categories dropped from the check form: format characters and all combining marks.
-_IGNORED_CATEGORIES = frozenset({"Cf", "Mn", "Mc", "Me"})
-
-
-def _canonical_for_check(text: str) -> str:
-    """The form of ``text`` the scaffolding guard and the leftover check look at: NFKD
-    (full-width ``［profile_fact：a:x］`` -> ``[profile_fact:a:x]``, ``é`` -> ``e`` + U+0301),
-    case-folded (so upper-case Cyrillic/Greek look-alikes such as ``Ѕ`` or ``К`` reach the
-    lower-case `_CONFUSABLES` table), then invisible format characters (Cf) and combining
-    marks (Mn/Mc/Me; ``[prof\u0301ile_fact:a]``, U+034F inside a marker) removed and the
-    common Cyrillic/Greek look-alikes folded to Latin. Only ever used to *detect*; the text
-    that is stored is never rewritten with it, so ordinary German (umlauts, ß, typographic
-    quotes, accents in names) is unaffected apart from being checked with ``ä`` read as
-    ``a``. ``casefold`` can itself emit combining characters (``İ``), hence the second
-    NFKD before the filter."""
-    folded = unicodedata.normalize("NFKD", unicodedata.normalize("NFKD", text).casefold())
-    visible = "".join(ch for ch in folded if unicodedata.category(ch) not in _IGNORED_CATEGORIES)
-    return visible.translate(_CONFUSABLES)
-
 
 #: ``[profile_fact:a:expression]`` -- the exact framing the provider put in front of one
 #: grounding fact. The label part may not contain whitespace or brackets, so a nested or
@@ -222,6 +179,39 @@ def _repair_profile_fact_labels(text: str, context_blocks: tuple[ContextBlock, .
     return _PROFILE_FACT_LABEL_PATTERN.sub(_replace, text)
 
 
+#: ``[a:life_path]`` -- the block label with its ``profile_fact:`` role dropped, as a
+#: generative model writes it (audit 2026-10-09). Person letter and id are captured
+#: case-insensitively and with optional blanks; the lookarounds keep a nested or decorated
+#: occurrence (``[[a:x]]``, ``[a:[a:x]]``) from matching, so it stays for the leftover
+#: check to reject.
+_SHORT_FORM_LABEL_PATTERN = re.compile(
+    r"(?<![\[:])\[\s*([abAB])\s*:\s*([A-Za-z][A-Za-z0-9_]*)\s*\](?!\])"
+)
+
+
+def _repair_short_form_labels(text: str, context_blocks: tuple[ContextBlock, ...]) -> str:
+    """Rewrites a shortened ``[a:<metric>]``/``[b:<metric>]`` into the sanctioned
+    ``{{metric:a:<metric>}}`` placeholder -- but only when ``a:<metric>`` is the label of
+    a `profile_fact` block this very request carried. Same contract as
+    `_repair_profile_fact_labels`: the placeholder is resolved to that fact's canonical
+    display value by `_resolve_placeholders`, never to anything the model said.
+
+    An unknown id, a person letter/metric combination the prompt did not contain (a
+    metric of the other person's profile that was not sent), and a nested or decorated
+    form are returned untouched and fail closed in the leftover check
+    (`rendering_guard.find_unresolved_template_token`). A special fact that does have a
+    `profile_fact` block is rewritten to ``{{metric:a:<id>}}`` like any other label; the
+    resolver then does not find it in the metric index and raises
+    `InvalidAnalysisSection`, so it fails closed there instead."""
+    known = {block.label for block in context_blocks if block.role == "profile_fact"}
+
+    def _replace(match: re.Match[str]) -> str:
+        label = f"{match.group(1).lower()}:{match.group(2).lower()}"
+        return "{{metric:" + label + "}}" if label in known else match.group(0)
+
+    return _SHORT_FORM_LABEL_PATTERN.sub(_replace, text)
+
+
 def _assert_no_unresolved_tokens(texts: Iterable[str]) -> None:
     """Last line of defence over everything that is about to become a result: no text
     may still carry prompt scaffolding or an unresolved template token. The per-statement
@@ -234,8 +224,7 @@ def _assert_no_unresolved_tokens(texts: Iterable[str]) -> None:
     from the exception class (always ``ANALYSIS_GENERATION_ERROR``, see
     `numra_api.services.relationship_analysis_service`)."""
     for text in texts:
-        checked = _canonical_for_check(text)
-        if contains_prompt_scaffolding(checked) or _LEFTOVER_MARKER_PATTERN.search(checked):
+        if find_unresolved_template_token(text) is not None:
             raise AnalysisGenerationError(
                 f"ANALYSIS_VALIDATION_FAILED: result text carries an unresolved token: "
                 f"{text[:80]!r}"
@@ -337,11 +326,11 @@ def _validate_and_resolve_text(
                 "not referenced via a metric/special placeholder"
             )
     resolved = _resolve_placeholders(text, profile_a=profile_a, profile_b=profile_b)
-    leftover = _LEFTOVER_MARKER_PATTERN.search(_canonical_for_check(resolved))
-    if leftover:
+    leftover = find_unresolved_template_token(resolved)
+    if leftover is not None:
         raise InvalidAnalysisSection(
             f"MalformedPlaceholder: text contains unresolved or malformed placeholder "
-            f"marker {leftover.group(0)!r} (expected {{{{metric|special:a|b:ID}}}})"
+            f"marker {leftover!r} (expected {{{{metric|special:a|b:ID}}}})"
         )
     return resolved
 
@@ -365,7 +354,8 @@ def _valid_placeholder_ids_block(
             "The only valid ids in the special placeholder namespace are: "
             f"{', '.join(valid_special_ids)}. "
             "Each id already carries which person it describes as an 'a:' or 'b:' "
-            "prefix. Never invent an id outside these two lists, even if it seems "
+            "prefix; cite it with that prefix, e.g. {{metric:a:life_path}}. Never invent "
+            "an id outside these two lists, even if it seems "
             "descriptive."
         ),
     )
@@ -413,7 +403,8 @@ async def _render(
     assert isinstance(result, _GeneratedText)
     if is_mock_provider:
         return mock_fallback
-    return _repair_profile_fact_labels(result.text, context_blocks)
+    repaired = _repair_profile_fact_labels(result.text, context_blocks)
+    return _repair_short_form_labels(repaired, context_blocks)
 
 
 async def _generate_dimension_statement(

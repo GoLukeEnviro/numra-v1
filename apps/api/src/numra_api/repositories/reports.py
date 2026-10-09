@@ -182,6 +182,8 @@ async def mark_job_status(
         job.progress = progress
     if error_code is not None:
         job.error_code = error_code
+    if status == ReportJobStatus.COMPLETE:
+        job.error_code = None  # see repositories.analysis.mark_job_status
     if status in (ReportJobStatus.COMPLETE, ReportJobStatus.FAILED, ReportJobStatus.CANCELLED):
         job.lease_until = None
     await db.flush()

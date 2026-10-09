@@ -218,6 +218,7 @@ async def test_job_succeeds_after_one_retry(client, sessionmaker, lukas_payload)
     assert claimed_2 is True
     job_after_second = await _load_job(sessionmaker, job_id)
     assert job_after_second.status == ReportJobStatus.COMPLETE
+    assert job_after_second.error_code is None
     assert job_after_second.attempt_count == 2
     assert provider.calls > 1
 
@@ -312,3 +313,100 @@ async def test_unexpected_exception_does_not_crash_worker_loop(
     # The worker loop itself must still be alive: the next cycle runs cleanly.
     claimed_again = await run_one_cycle(sessionmaker, llm=provider)
     assert claimed_again is False
+
+
+class _SummaryProvider:
+    """Ein *echter* Provider mit sauberem Abschnittstext, dessen ``summary`` ``summary`` ist
+    (Audit 2026-10-09: ``{{metric:maturity}}`` im Summary-Feld eines COMPLETE-Reports)."""
+
+    def __init__(self, summary: str) -> None:
+        self.summary = summary
+        self._mock = MockLLMProvider()
+
+    async def health(self):
+        from numra_interpretation.llm.types import ProviderHealth
+
+        return ProviderHealth(
+            status="healthy", provider="ollama_cloud", checked_at=dt.datetime.now(dt.UTC)
+        )
+
+    async def generate(self, request):
+        return await self._mock.generate(request)
+
+    async def generate_structured(self, request, schema):
+        from numra_interpretation.report.schemas import GeneratedSectionContent
+
+        if schema is not GeneratedSectionContent:
+            return schema()
+        section_id = request.metadata["section_id"]
+        target = int(request.metadata["target_word_count"])
+        words = (f"platzhaltertext für {section_id}".split() * (target // 3 + 1))[:target]
+        return schema(
+            text=" ".join(words),
+            numeric_claims=request.numeric_claims,
+            summary=self.summary,
+        )
+
+
+async def test_summary_placeholder_is_resolved_before_the_report_is_stored(
+    client, sessionmaker, lukas_payload
+) -> None:
+    from numra_api.models import Report, ReportSection
+
+    _headers, job_id = await _create_report_job(
+        client, sessionmaker, lukas_payload, email="retry-summary-ok@example.com"
+    )
+
+    assert (
+        await run_one_cycle(
+            sessionmaker, llm=_SummaryProvider("Die Reifezahl {{metric:maturity}} traegt.")
+        )
+        is True
+    )
+
+    job = await _load_job(sessionmaker, job_id)
+    assert job.status == ReportJobStatus.COMPLETE
+    async with sessionmaker() as db:
+        sections = (
+            (
+                await db.execute(
+                    select(ReportSection).where(ReportSection.report_id == job.report_id)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        report = await db.get(Report, job.report_id)
+    assert sections and report is not None and report.status == "COMPLETE"
+    for section in sections:
+        summary = section.content_json["summary"]
+        assert summary.startswith("Die Reifezahl ") and summary.endswith(" traegt.")
+        assert "{" not in summary and "}" not in summary
+
+
+@pytest.mark.parametrize(
+    ("slug", "summary"),
+    [
+        ("truncated", "Die Reifezahl {{metric:maturit"),
+        ("tail-only", "maturity}} verbindet."),
+        ("short-label", "Die Reifezahl [a:maturity] traegt."),
+    ],
+)
+async def test_summary_with_a_token_remnant_never_completes_the_report(
+    client, sessionmaker, lukas_payload, slug, summary
+) -> None:
+    from numra_api.models import Report
+
+    _headers, job_id = await _create_report_job(
+        client, sessionmaker, lukas_payload, email=f"retry-summary-bad-{slug}@example.com"
+    )
+
+    assert await run_one_cycle(sessionmaker, llm=_SummaryProvider(summary)) is True
+
+    job = await _load_job(sessionmaker, job_id)
+    assert job.status == ReportJobStatus.QUEUED  # retrybar, nie COMPLETE
+    assert job.error_code == "REPORT_GENERATION_ERROR"
+    async with sessionmaker() as db:
+        report = await db.get(Report, job.report_id)
+    assert report is not None and report.status == "PENDING"
+    assert report.content_json is None
