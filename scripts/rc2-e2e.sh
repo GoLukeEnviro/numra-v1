@@ -6,6 +6,7 @@
 #   scripts/rc2-e2e.sh test          # run the Playwright journey (desktop + mobile)
 #   scripts/rc2-e2e.sh audit         # up + reset-limits + test + down -- one automated pass
 #   scripts/rc2-e2e.sh reset-limits  # clear the API's per-IP rate-limit counters
+#   scripts/rc2-e2e.sh verify-email <email>  # verify a journey account via the real /verify-email
 #   scripts/rc2-e2e.sh logs          # dump compose logs
 #   scripts/rc2-e2e.sh down          # tear down ONLY this project, incl. its volumes
 #
@@ -64,6 +65,38 @@ reset_limits() {
   # Never touch other namespaces: admin:* and friends are not rate-limit state.
 }
 
+verify_email() {
+  # Gate G3 (#294): creating/redeeming an invitation requires a verified e-mail. The
+  # stack runs EMAIL_BACKEND=logging, and LoggingEmailSender deliberately redacts the
+  # ?token= of every recovery link, while the DB only stores sha256(token) -- so the
+  # real token of a mailed link is unobtainable here by design. Instead we mint a
+  # one-time verification token for the account, store ONLY its hash in this
+  # throwaway stack's email_verification_tokens (the same row request-email-
+  # verification would write) and redeem it through the REAL POST /v1/auth/verify-email
+  # endpoint. email_verified_at is therefore set by production code, not by SQL, and
+  # G3 itself is never relaxed.
+  local email="${1:?usage: $0 verify-email <email>}" token out
+  token=$(openssl rand -hex 24)
+  out=$("${COMPOSE[@]}" exec -T postgres psql -U numra -d numra -v ON_ERROR_STOP=1     -v email="$email" -v token="$token" <<'SQL'
+INSERT INTO email_verification_tokens (id, user_id, token_hash, expires_at)
+SELECT gen_random_uuid(), id, encode(sha256(convert_to(:'token', 'UTF8')), 'hex'),
+       now() + interval '1 hour'
+FROM users WHERE lower(email) = lower(:'email');
+SQL
+  )
+  if ! printf '%s' "$out" | grep -q 'INSERT 0 1'; then
+    echo "verify-email: no unique account found for the given address" >&2
+    return 1
+  fi
+  local status
+  status=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:58080/v1/auth/verify-email     -H 'content-type: application/json' -d "{\"token\":\"$token\"}")
+  if [ "$status" != "204" ]; then
+    echo "verify-email: /v1/auth/verify-email answered HTTP $status (expected 204)" >&2
+    return 1
+  fi
+  echo "verify-email: account verified via the real endpoint"
+}
+
 wait_healthy() {
   echo "waiting for api liveness/readiness + web ..."
   for i in $(seq 1 90); do curl -sf http://127.0.0.1:58080/v1/health/live >/dev/null && break; sleep 2; done
@@ -103,7 +136,11 @@ case "${1:-}" in
   reset-limits)
     reset_limits
     ;;
+  verify-email)
+    shift
+    verify_email "$@"
+    ;;
   logs) "${COMPOSE[@]}" logs --no-color ;;
   down) "${COMPOSE[@]}" down -v --remove-orphans ;;
-  *) echo "usage: $0 {up|test|audit|reset-limits|logs|down}" >&2; exit 2 ;;
+  *) echo "usage: $0 {up|test|audit|reset-limits|verify-email|logs|down}" >&2; exit 2 ;;
 esac

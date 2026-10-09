@@ -1,4 +1,5 @@
 import { test, expect, type Browser, type BrowserContext, type Locator, type Page } from "@playwright/test";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -215,6 +216,46 @@ async function registerViaApi(page: Page, email: string) {
   expect(res.status(), await res.text()).toBe(201);
 }
 
+/**
+ * Gate G3 (#294): creating and redeeming an invitation requires a verified e-mail
+ * (403 EMAIL_VERIFICATION_REQUIRED), and self-registered accounts start unverified.
+ *
+ * The isolated stack mails through EMAIL_BACKEND=logging, which redacts the token of
+ * every recovery link on purpose, so a mailed token cannot be read back. The default
+ * hook (`scripts/rc2-e2e.sh verify-email`) therefore mints a one-time token for the
+ * account and redeems it through the REAL POST /v1/auth/verify-email endpoint --
+ * `email_verified_at` is set by production code, G3 itself stays untouched.
+ *
+ * A remote stack (RC2_BASE_URL) has no local compose project: point RC2_VERIFY_CMD at
+ * an executable that takes the e-mail address as its only argument and verifies it.
+ */
+function verifyEmailViaStackHook(email: string) {
+  const custom = process.env.RC2_VERIFY_CMD;
+  const [cmd, args] = custom
+    ? [custom, [email]]
+    : ["bash", [path.resolve(process.cwd(), "../../scripts/rc2-e2e.sh"), "verify-email", email]];
+  execFileSync(cmd, args, { stdio: "pipe", timeout: 60_000 });
+}
+
+/** Negative case of G3: an UNverified account must not be able to create an invitation,
+ * neither through the UI (guidance shown, no invitation) nor through the API (403). */
+async function assertUnverifiedAccountCannotInvite(page: Page) {
+  await page.goto("/connections/invite");
+  await page.getByRole("button", { name: "Weiter" }).click();
+  await expect(
+    page.getByText("Bestätige zuerst deine E-Mail-Adresse, bevor du eine Einladung erstellst."),
+  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Einladung erstellt" })).toHaveCount(0);
+
+  const csrf = (await page.context().cookies()).find((c) => c.name === "numra_csrf")?.value ?? "";
+  const res = await page.request.post("/api/v1/connections/invitations", {
+    headers: { "x-csrf-token": csrf },
+    data: { method: "LINK" },
+  });
+  expect(res.status(), await res.text()).toBe(403);
+  expect((await res.json()).code).toBe("EMAIL_VERIFICATION_REQUIRED");
+}
+
 async function loginViaUi(page: Page, email: string) {
   await page.goto("/login");
   await page.getByLabel("E-Mail").fill(email);
@@ -314,6 +355,13 @@ test("RC2 two-account journey: connections/consent/dual-profile/type/dissolve ov
 
     await createSelfProfileViaUi(A, NAME_A.first, NAME_A.last, "1986-07-18");
     await createSelfProfileViaUi(B, NAME_B.first, NAME_B.last, "1990-03-14");
+
+    // --- G3 negative case: both accounts are still unverified -> no invitation ---
+    await assertUnverifiedAccountCannotInvite(A);
+
+    // --- API-SETUP: verify both accounts through the real verification endpoint ---
+    verifyEmailViaStackHook(emailA);
+    verifyEmailViaStackHook(emailB);
 
     // --- A creates a LINK invitation via the UI, reads the real redeem_url ---
     await A.goto("/connections/invite");
