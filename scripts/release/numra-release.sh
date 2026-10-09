@@ -250,8 +250,8 @@ untouched_ok() {
 }
 
 wait_healthy() {
-  local i n
-  for i in $(seq 1 "$HEALTHY_WAIT_ROUNDS"); do
+  local n
+  for _ in $(seq 1 "$HEALTHY_WAIT_ROUNDS"); do
     n=$(docker ps --filter "name=${PROJECT}-" --format '{{.Status}}' | awk '/unhealthy|starting/ { c++ } END { print c + 0 }')
     [ "$n" = "0" ] && return 0
     sleep "$HEALTHY_WAIT_S"
@@ -559,7 +559,8 @@ phase_rollback() {
   install_compose "$rb/compose.yml" || die "Compose zurueck"
   git -C "$REPO_DIR" checkout -q --detach "$OLD_SHA" || die "checkout old-sha"
   if [ "$(cat "$MARKER_FILE")" != "$OLD_SHA" ]; then
-    priv cp -p "$rb/marker" "$MARKER_FILE.new" && priv mv -f "$MARKER_FILE.new" "$MARKER_FILE" || die "Marker zuruecksetzen"
+    priv cp -p "$rb/marker" "$MARKER_FILE.new" || die "Marker zuruecksetzen"
+    priv mv -f "$MARKER_FILE.new" "$MARKER_FILE" || die "Marker zuruecksetzen"
     chk INFO marker "Marker auf old-sha zurueckgesetzt"
   fi
   # shellcheck disable=SC2086
@@ -572,7 +573,11 @@ phase_rollback() {
     [ "$got" = "$want" ] || die "$svc: laufendes Image ${got:0:19} != Rollback-Tag-ID ${want:0:19}"
     chk PASS "rollback-image:$svc" "laufendes Image == Rollback-Tag-ID ${want:0:19}"
   done
-  untouched_ok && chk PASS untouched "$UNTOUCHED_SERVICES unveraendert" || chk FAIL untouched "$UNTOUCHED_SERVICES weichen von der Baseline ab"
+  if untouched_ok; then
+    chk PASS untouched "$UNTOUCHED_SERVICES unveraendert"
+  else
+    die "$UNTOUCHED_SERVICES weichen von der Baseline ab"
+  fi
   [ "$(git -C "$REPO_DIR" rev-parse HEAD)" = "$OLD_SHA" ] || die "HEAD != old-sha"
   [ "$(ready_code)" = "200" ] || die "Readiness != 200 nach rollback"
   chk PASS ready "Readiness 200"

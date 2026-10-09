@@ -262,7 +262,7 @@ t_usage_refusals() {
   expect "prod prep ohne Schutzschalter: Exit 2" $((RC == 2 ? 0 : 1))
   release --target prod --config "$T/release.env" --phase prep --old-sha "$OLD" --new-sha "$NEW" --i-am-sure-prod --confirm-sha deadbeef
   expect "prod prep mit falschem --confirm-sha: Exit 2" $((RC == 2 ? 0 : 1))
-  expect "Verweigerung mutiert nichts" $(b log_empty)
+  expect "Verweigerung mutiert nichts" "$(b log_empty)"
   release --target prod --config "$T/release.env" --phase switch --old-sha "$OLD" --new-sha "$NEW"
   expect "switch ohne --expect-revision: Exit 2" $((RC == 2 ? 0 : 1))
 }
@@ -274,6 +274,7 @@ t_pre_report() {
   phase pre
   expect "pre: Exit 0" $((RC == 0 ? 0 : 1))
   local json
+  # shellcheck disable=SC2012
   json=$(ls "$REPORTS"/release-audit-pre-*.json)
   python3 - "$json" "$NEW" <<'PY'
 import json, sys
@@ -289,7 +290,7 @@ PY
   expect "pre: Markdown-Bericht vorhanden" $?
   grep -q "Einschraenkungen" "$REPORTS"/release-audit-pre-*.md
   expect "pre: Markdown nennt Einschraenkungen" $?
-  expect "pre mutiert nichts" $(b log_empty)
+  expect "pre mutiert nichts" "$(b log_empty)"
 }
 
 t_pre_failures() {
@@ -331,15 +332,15 @@ t_dry_run() {
     phase "$p" --dry-run --expect-revision "$REV_NEW" --smoke-report "$T/none.json"
     expect "dry-run $p: Exit 0" $((RC == 0 ? 0 : 1))
   done
-  expect "dry-run: kein mutierender docker/git/sudo/systemctl-Aufruf" $(b log_empty)
+  expect "dry-run: kein mutierender docker/git/sudo/systemctl-Aufruf" "$(b log_empty)"
   snap_after=$(snapshot_fs)
-  expect "dry-run: Dateisystem ausserhalb REPORT_DIR unveraendert" $(b test "$snap_before" = "$snap_after")
-  grep -q '"dry_run": true' "$(ls "$REPORTS"/release-audit-prep-*.json | head -n 1)"
+  expect "dry-run: Dateisystem ausserhalb REPORT_DIR unveraendert" "$(b test "$snap_before" = "$snap_after")"
+  grep -q '"dry_run": true' "$REPORTS"/release-audit-prep-*.json
   expect "dry-run: Bericht ist als Dry-Run gekennzeichnet" $?
   # Negativkontrolle: derselbe Detektor schlaegt bei echter Mutation an
   : > "$MUT_LOG"
   phase prep
-  expect "Negativkontrolle: echtes prep wird vom Mutationsprotokoll erfasst" $(b log_nonempty)
+  expect "Negativkontrolle: echtes prep wird vom Mutationsprotokoll erfasst" "$(b log_nonempty)"
 }
 
 t_dry_run_detector_catches_broken_guard() {
@@ -355,7 +356,7 @@ t_dry_run_detector_catches_broken_guard() {
   cmp -s "$RELEASE" "$T/release/numra-release.sh" && { bad "Mutationstest: Mutation wurde nicht angewendet"; return; }
   RC=0
   OUT=$(bash "$T/release/numra-release.sh" --config "$T/release.env" --target audit --old-sha "$OLD" --new-sha "$NEW" --phase prep --dry-run 2>&1) || RC=$?
-  expect "Mutationstest: kaputte Dry-Run-Absicherung fuehrt zu Mutation (Detektor schlaegt an)" $(b log_nonempty)
+  expect "Mutationstest: kaputte Dry-Run-Absicherung fuehrt zu Mutation (Detektor schlaegt an)" "$(b log_nonempty)"
 }
 
 t_full_cycle() {
@@ -363,7 +364,7 @@ t_full_cycle() {
   full_to_switch
   expect "baseline->pre->prep->switch: Exit 0" $((RC == 0 ? 0 : 1))
   [ "$RC" -eq 0 ] || { echo "$OUT" | tail -n 15; }
-  expect "switch: Marker noch NICHT gesetzt" $(b marker_is "$OLD")
+  expect "switch: Marker noch NICHT gesetzt" "$(b marker_is "$OLD")"
   python3 - "$REPORTS" <<'PY'
 import glob, json, sys
 r = json.load(open(glob.glob(sys.argv[1] + "/release-audit-switch-*.json")[0]))
@@ -375,20 +376,20 @@ PY
   make_smoke "$T/smoke.json" PASS "$NEW"
   phase marker --smoke-report "$T/smoke.json"
   expect "marker mit PASS-Bericht: Exit 0" $((RC == 0 ? 0 : 1))
-  expect "marker: Datei enthaelt new-sha" $(b marker_is "$NEW")
-  expect "marker: atomar (temp-Datei, mv -f, keine Reste)" $(b marker_atomic)
+  expect "marker: Datei enthaelt new-sha" "$(b marker_is "$NEW")"
+  expect "marker: atomar (temp-Datei, mv -f, keine Reste)" "$(b marker_atomic)"
 }
 
 t_marker_refusals() {
   new_world; full_to_switch
   make_smoke "$T/s.json" FAIL "$NEW"; phase marker --smoke-report "$T/s.json"
-  expect "marker: FAIL-Bericht -> Exit 1, Marker unveraendert" $(b rc_marker 1 "$OLD")
+  expect "marker: FAIL-Bericht -> Exit 1, Marker unveraendert" "$(b rc_marker 1 "$OLD")"
   make_smoke "$T/s.json" PASS "$OLD"; phase marker --smoke-report "$T/s.json"
-  expect "marker: Bericht fuer andere SHA -> Exit 1" $(b rc_marker 1 "$OLD")
+  expect "marker: Bericht fuer andere SHA -> Exit 1" "$(b rc_marker 1 "$OLD")"
   make_smoke "$T/s.json" PASS "$NEW" dry; phase marker --smoke-report "$T/s.json"
-  expect "marker: Dry-Run-Bericht -> Exit 1" $(b rc_marker 1 "$OLD")
+  expect "marker: Dry-Run-Bericht -> Exit 1" "$(b rc_marker 1 "$OLD")"
   : > "$T/s.json"; phase marker --smoke-report "$T/s.json"
-  expect "marker: unlesbarer Bericht -> Exit 1" $(b rc_marker 1 "$OLD")
+  expect "marker: unlesbarer Bericht -> Exit 1" "$(b rc_marker 1 "$OLD")"
   python3 - "$T/stale.json" <<'PY'
 import datetime as dt, json, sys
 old = (dt.datetime.now(dt.UTC) - dt.timedelta(hours=5)).isoformat(timespec="seconds")
@@ -396,7 +397,7 @@ json.dump({"schema_version": 1, "dry_run": False, "result": "PASS", "summary": {
            "target": "audit", "target_sha": "2" * 40, "finished": old}, open(sys.argv[1], "w"))
 PY
   phase marker --smoke-report "$T/stale.json"
-  expect "marker: veralteter Bericht -> Exit 1" $(b rc_marker 1 "$OLD")
+  expect "marker: veralteter Bericht -> Exit 1" "$(b rc_marker 1 "$OLD")"
 }
 
 t_switch_failures() {
@@ -404,7 +405,7 @@ t_switch_failures() {
   phase baseline; phase pre; phase prep
   FAKE_MIGRATE_TO=wrong_rev phase switch --expect-revision "$REV_NEW"
   expect "switch: alembic != erwartet -> Exit 1" $((RC == 1 ? 0 : 1))
-  expect "switch-Abbruch: Marker unveraendert" $(b marker_is "$OLD")
+  expect "switch-Abbruch: Marker unveraendert" "$(b marker_is "$OLD")"
   new_world
   phase baseline; phase pre; phase prep
   FAKE_MIGRATE_TO=$REV_NEW FAKE_UP_WRONG_IMAGE=1 phase switch --expect-revision "$REV_NEW"
@@ -416,7 +417,7 @@ t_switch_failures() {
   new_world
   phase baseline; phase pre
   FAKE_DRYRUN_TOUCHES_PG=1 phase prep
-  expect "prep: compose --dry-run beruehrt postgres -> Exit 1, Checkout zurueck auf old-sha" $(b rc_head 1 "$OLD")
+  expect "prep: compose --dry-run beruehrt postgres -> Exit 1, Checkout zurueck auf old-sha" "$(b rc_head 1 "$OLD")"
   new_world
   phase baseline; phase pre
   printf 'volumes:\n  data: {}\n' > "$W/compose.new"
@@ -435,7 +436,7 @@ steps = {s["id"]: s for s in r["steps"]}
 assert all(steps[f"rollback-image:{s}"]["status"] == "PASS" for s in ("api", "web", "worker", "analysis-worker"))
 PY
   expect "rollback: laufendes Image == Rollback-Tag-ID je Dienst (im Bericht)" $?
-  expect "rollback: HEAD zurueck auf old-sha" $(b head_is "$OLD")
+  expect "rollback: HEAD zurueck auf old-sha" "$(b head_is "$OLD")"
   new_world; full_to_switch
   FAKE_UP_WRONG_IMAGE=1 phase rollback
   expect "rollback: abweichendes laufendes Image -> Exit 1" $((RC == 1 ? 0 : 1))
@@ -456,7 +457,7 @@ t_no_secrets() {
 t_static() {
   grep -q '^set -euo pipefail' "$RELEASE"
   expect "statisch: set -euo pipefail" $?
-  ! grep -n '|| true' "$RELEASE"
+  if grep -n '|| true' "$RELEASE"; then false; else true; fi
   expect "statisch: kein '|| true' im Release-Skript" $?
   grep -q '^set +x' "$RELEASE"
   expect "statisch: xtrace abgeschaltet" $?
