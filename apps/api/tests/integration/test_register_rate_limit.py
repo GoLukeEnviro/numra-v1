@@ -46,13 +46,21 @@ async def test_register_limit_allows_five_then_rejects_the_sixth(signup_client) 
     for index in range(REGISTER_LIMIT):
         response = await signup_client.post(
             "/v1/auth/register",
-            json={"email": f"reg-limit-{index}@example.com", "password": "password12345"},
+            json={
+                "email": f"reg-limit-{index}@example.com",
+                "password": "password12345",
+                "age_confirmed": True,
+            },
         )
         assert response.status_code == 201, f"attempt {index + 1} must be allowed: {response.text}"
 
     blocked = await signup_client.post(
         "/v1/auth/register",
-        json={"email": "reg-limit-blocked@example.com", "password": "password12345"},
+        json={
+            "email": "reg-limit-blocked@example.com",
+            "password": "password12345",
+            "age_confirmed": True,
+        },
     )
     assert blocked.status_code == 429
     body = blocked.json()
@@ -77,13 +85,21 @@ async def test_register_limit_does_not_consume_the_login_limit(signup_client) ->
     for index in range(REGISTER_LIMIT + 1):
         await signup_client.post(
             "/v1/auth/register",
-            json={"email": f"reg-sep-{index}@example.com", "password": "password12345"},
+            json={
+                "email": f"reg-sep-{index}@example.com",
+                "password": "password12345",
+                "age_confirmed": True,
+            },
         )
 
     # The register window is exhausted...
     exhausted = await signup_client.post(
         "/v1/auth/register",
-        json={"email": "reg-sep-late@example.com", "password": "password12345"},
+        json={
+            "email": "reg-sep-late@example.com",
+            "password": "password12345",
+            "age_confirmed": True,
+        },
     )
     assert exhausted.status_code == 429
 

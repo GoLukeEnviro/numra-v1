@@ -211,7 +211,7 @@ async function assertMeasuredViewport(page: Page, expected: Vp) {
 
 async function registerViaApi(page: Page, email: string) {
   // ===== API-SETUP STEP: account creation (no self-signup UI on this build) =====
-  const res = await page.request.post("/api/v1/auth/register", { data: { email, password: PASSWORD } });
+  const res = await page.request.post("/api/v1/auth/register", { data: { email, password: PASSWORD, age_confirmed: true } });
   expect(res.status(), await res.text()).toBe(201);
 }
 
