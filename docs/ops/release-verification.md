@@ -207,7 +207,7 @@ Wiederverwendbare Vorlage für einen geplanten Produktionsrelease. Platzhalter:
 `<S_ALT>` = bisheriger Produktionsstand (Checkout und Marker), `<S2>` = vollständige
 Kandidaten-SHA, `<TS>` = Zeitstempel der Sicherung, `<ZIEL_REV>` = erwartete
 Alembic-Revision nach dem Release, `<SCRATCH>` = temporäres Verzeichnis außerhalb des
-Deployment-Checkouts. Konkrete Werte (SHAs, Hashes, Image-IDs, Zählerstände) gehören in
+Deployment-Checkouts (z. B. `/home/hermes/release-<TS>`). Konkrete Werte (SHAs, Hashes, Image-IDs, Zählerstände) gehören in
 das Protokoll des jeweiligen Release, nicht in diese Vorlage.
 
 `DC` ist wie in Schritt 2 definiert (`docker compose -p numra-prod --env-file
@@ -306,29 +306,49 @@ und 2) als unabhängige Gegenprobe.
    <geänderte Dienste>`. Laufende Container bleiben unberührt. Build-Log sichern.
    Erfolg anhand der neuen Image-IDs prüfen, nicht mit `pgrep` auf den Build-Prozess
    warten.
-4. Vorab-Gate „Welche Container würde Compose neu erzeugen?“, ausgeführt gegen die
-   **neue** Compose-Datei, nicht gegen die Host-Datei (ein Dry-run gegen die Host-Datei
-   sagt nichts über Image-, Umgebungs- oder Abhängigkeitsänderungen der neuen Datei).
-   Das Gate ist die Variante **ohne Dienstliste**, ohne `--force-recreate` und ohne
-   `--no-deps`:
+4. Vorab-Gate „Würde ein `up -d` pdf, postgres oder redis neu erzeugen?“, ausgeführt
+   gegen die **neue** Compose-Datei, nicht gegen die Host-Datei. Hintergrund (gemessen
+   2026-10-09, nach dem Release): Compose entscheidet über ein Recreate nach dem
+   Config-Hash (Label `com.docker.compose.config-hash` am Container gegen
+   `docker compose config --hash <dienst>`), **nicht** nach der Image-ID des Tags. `pdf`
+   lief auf einem Image, das nicht mehr `:latest` entsprach, und der Dry-run zeigte
+   trotzdem `pdf Running`; die Config-Hashes von `pdf`, `postgres`, `redis` und `api`
+   waren laufend gleich dem aus der Compose berechneten. Eine reine Image-Drift löst
+   also kein Recreate aus; ein Recreate droht nur, wenn die neue Compose-Datei die
+   Konfiguration dieser Dienste ändert.
+
+   **Primäres Gate: Config-Hash.** Für `pdf`, `postgres`, `redis` müssen beide Hashes
+   gleich sein, sonst würde ein `up -d` ohne Dienstliste sie neu erzeugen: STOPP.
 
    ```bash
-   $DC_NEU --dry-run up -d
+   for s in pdf postgres redis; do
+     echo $s $(docker inspect -f '{{index .Config.Labels "com.docker.compose.config-hash"}}' numra-prod-$s-1) \
+       $($DC_NEU config --hash $s | awk '{print $2}')
+   done   # je Zeile müssen die beiden Hashes gleich sein
+   ```
+
+   **Ergänzend: Dry-run, mit hartem Zeitlimit.** Ohne Dienstliste, ohne
+   `--force-recreate`, ohne `--no-deps`, Ausgabe in eine Datei:
+
+   ```bash
+   timeout 40 $DC_NEU --dry-run up -d > <SCRATCH>/dryrun.txt 2>&1; echo "exit $?"
+   head -40 <SCRATCH>/dryrun.txt
    ```
 
    `--dry-run` ist ein globales Flag vor dem Unterbefehl; ab welcher Compose-Version es
-   verfügbar ist, vorab prüfen. Erlaubt sind nur die vier Dienste `api`, `web`, `worker`,
-   `analysis-worker` sowie die Einmaljobs `migrate` und `flags-init` als Start (sie sind
-   `run --rm`-Einmaljobs und laufen im Release über 4.5 und 4.6). Erscheint `pdf`,
-   `postgres` oder `redis` als Recreate oder Create, ist das ein STOPP: Dann würde eine
-   Konfigurationsänderung oder ein Image-Tag-Drift dieses Dienstes bei einem `up -d` ein
-   Recreate auslösen. Eine Variante mit Dienstliste und `--no-deps` kann diese Dienste nie
-   nennen und prüft deshalb nichts; sie ersetzt das Gate nicht. Ersatz ohne `--dry-run`:
-   je Dienst die ID des laufenden Containers (`docker inspect -f '{{.Image}}'
-   <container>`) mit der ID von `numra-prod-<dienst>:latest` vergleichen.
+   verfügbar ist, vorab prüfen. Der Befehl **endet nicht sauber**: Er wartet auf die
+   Bedingungen der Einmaljobs und hängt (gemessen: Abbruch durch `timeout` nach 40 s,
+   Exit 124; ohne Timeout länger als 136 s). Deshalb immer mit `timeout` laufen lassen
+   und nur die ersten Zeilen bis zum Warten auswerten. Erwartung: `pdf`, `postgres`,
+   `redis` zeigen `Running`, nie Create/Recreate (sonst STOPP). `api`, `web`, `worker`,
+   `analysis-worker` zeigen vor dem Release `Running`, wenn ihre Konfiguration unverändert
+   ist. Die Einmaljobs `migrate` und `flags-init` zeigen Recreate/Create/Start; das ist
+   normal (`run --rm`-Einmaljobs, sie laufen im Release über 4.5 und 4.6) und **kein**
+   Fehlalarm. Eine Variante mit Dienstliste und `--no-deps` kann `pdf`, `postgres` und
+   `redis` nie nennen und prüft deshalb nichts.
 
-   **Zusätzlich immer:** Baseline der unveränderten Dienste vor dem Fenster festhalten
-   und danach vergleichen (Schritt 4.7). Diese Nachprüfung ist unabhängig vom Dry-run:
+   **Zusätzlich immer (Pflicht):** Baseline der unveränderten Dienste vor dem Fenster
+   festhalten und danach vergleichen (Schritt 4.7):
 
    ```bash
    for s in pdf postgres redis; do
@@ -368,11 +388,12 @@ und 2) als unabhängige Gegenprobe.
 7. Nach `run --rm migrate` und `run --rm flags-init` die Dienste **explizit neu erzeugen**:
    `$DC up -d --force-recreate --no-deps api worker analysis-worker web`. `stop` gefolgt
    von `up -d` erzeugt einen Container nicht zwingend neu (im Audit-Stack blieb `web`
-   dabei auf dem alten Image); erst `--force-recreate` mit expliziter Dienstliste
-   garantiert den Wechsel auf die neuen Images. Ein `$DC up -d` ohne Dienstliste erzeugt
-   jeden Dienst neu, dessen Konfiguration oder Image von der Compose-Datei abweicht;
-   das trifft z. B. `pdf`, wenn es auf einem Image läuft, das nicht mehr der aktuellen
-   `:latest`-ID entspricht, obwohl es im Release unverändert bleiben soll. Ohne
+   dabei auf dem alten Image): Compose entscheidet nach dem Config-Hash, nicht nach der
+   Image-ID des Tags, und übernimmt neu gebaute Images ohne geänderte Konfiguration
+   nicht. Erst `--force-recreate` mit expliziter Dienstliste garantiert den Wechsel auf
+   die neuen Images. Ein `$DC up -d` ohne Dienstliste erzeugt dagegen jeden Dienst neu,
+   dessen Config-Hash von der Compose-Datei abweicht (Gate in 3.4); das darf `pdf`,
+   `postgres` und `redis` nicht treffen. Ohne
    `--no-deps` würde `--force-recreate` auch die Abhängigkeiten (`postgres`, `redis`)
    neu erzeugen; mit `--no-deps` entfällt zugleich das automatische Warten auf
    `service_healthy`, daher **manuell** auf `healthy` warten, Zeitlimit 5 min. Danach
@@ -581,19 +602,25 @@ Fehlerabbruch mitten in der Migration wurde auch hier nicht geübt.
 unverifiziert und können weder einladen noch einlösen, bis sie ihre E-Mail verifizieren.
 
 **Lehre zum Dry-run-Gate (ehrlich):** Das im Release vom 2026-10-09 ausgeführte Skript
-benutzte beim Dry-run die Variante **mit** Dienstliste und `--no-deps`. Diese kann
+benutzte beim Dry-run nur die Variante **mit** Dienstliste und `--no-deps`. Diese kann
 `pdf`, `postgres` und `redis` nie nennen und deckt deshalb nichts auf. Das tatsächlich
 wirksame Sicherheitsnetz war die Nachprüfung „unverändert“ (Image-ID und `StartedAt` von
-`pdf`/`postgres`/`redis` gegen die Baseline vor und nach dem Fenster). Die Vorlage
-verlangt deshalb das Gate ohne Dienstliste (3.4) und zusätzlich immer die Nachprüfung
-(4.7).
+`pdf`/`postgres`/`redis` gegen die Baseline vor und nach dem Fenster). Die Messung des
+Dry-runs ohne Dienstliste und des Config-Hash-Vergleichs (3.4) erfolgte **erst nach dem
+Release**, lesend gegen die laufende Produktion: Der Dry-run hängt (Timeout nach 40 s,
+Exit 124), zeigt `pdf`, `postgres`, `redis` und die vier Dienste als `Running` und
+nennt nur die Einmaljobs `migrate`/`flags-init` als Recreate/Create. Gleichzeitig zeigte
+sich, dass eine reine Image-Drift (`pdf` nicht auf `:latest`) kein Recreate auslöst. Die
+Vorlage verlangt deshalb den Config-Hash-Vergleich als primäres Gate, den Dry-run mit
+Zeitlimit als ergänzende Sicht und immer die Nachprüfung (4.7).
 
 **Erkenntnisse und wo sie oben stehen:**
 
-1. `stop` plus `up -d` erzeugt Container nicht zwingend neu → 4.7 (`--force-recreate`,
-   Image-ID-Vergleich).
-2. Vorab-Gate per `--dry-run up -d` (ohne Dienstliste) gegen die neue Datei, `pdf`/`postgres`/`redis` dürfen nicht
-   genannt werden → 3.4.
+1. `stop` plus `up -d` erzeugt Container nicht zwingend neu (Entscheidung nach
+   Config-Hash, nicht nach Image-ID) → 4.7 (`--force-recreate`, Image-ID-Vergleich).
+2. Vorab-Gate: Config-Hash-Vergleich (primär) und `--dry-run up -d` ohne Dienstliste
+   mit `timeout` (ergänzend) gegen die neue Datei; `pdf`/`postgres`/`redis` müssen
+   `Running` zeigen → 3.4.
 3. Einmaljobs als `run --rm --no-deps -T` → 4.5, 4.6.
 4. Healthcheck-Timer vor dem Fenster stoppen, danach starten → 4.2, 4.7, Abbruchkriterien.
 5. Bei Abbruch der Vorbereitung Checkout zurück auf die alte SHA → 3.5.
