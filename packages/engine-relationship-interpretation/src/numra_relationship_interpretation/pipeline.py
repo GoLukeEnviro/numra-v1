@@ -154,25 +154,40 @@ _CONFUSABLES = str.maketrans(
         "ј": "j",
         "ԁ": "d",
         "ӏ": "l",
+        "к": "k",
+        "т": "t",
+        "м": "m",
+        "ԝ": "w",
         "ο": "o",
         "ν": "v",
         "ι": "i",
         "α": "a",
         "ε": "e",
         "ρ": "p",
+        "κ": "k",
+        "τ": "t",
+        "υ": "u",
     }
 )
 
 
+#: Unicode categories dropped from the check form: format characters and all combining marks.
+_IGNORED_CATEGORIES = frozenset({"Cf", "Mn", "Mc", "Me"})
+
+
 def _canonical_for_check(text: str) -> str:
-    """The form of ``text`` the scaffolding guard and the leftover check look at: NFKC
-    (full-width ``［profile_fact：a:x］`` -> ``[profile_fact:a:x]``), invisible format
-    characters removed (zero-width joiners inside a marker), common Cyrillic/Greek
-    look-alikes folded to Latin. Only ever used to *detect*; the text that is stored is
-    never rewritten with it, so ordinary German (umlauts, ß, typographic quotes) is
-    unaffected apart from being checked in its normalised spelling."""
-    normalised = unicodedata.normalize("NFKC", text)
-    visible = "".join(ch for ch in normalised if unicodedata.category(ch) != "Cf")
+    """The form of ``text`` the scaffolding guard and the leftover check look at: NFKD
+    (full-width ``［profile_fact：a:x］`` -> ``[profile_fact:a:x]``, ``é`` -> ``e`` + U+0301),
+    case-folded (so upper-case Cyrillic/Greek look-alikes such as ``Ѕ`` or ``К`` reach the
+    lower-case `_CONFUSABLES` table), then invisible format characters (Cf) and combining
+    marks (Mn/Mc/Me; ``[prof\u0301ile_fact:a]``, U+034F inside a marker) removed and the
+    common Cyrillic/Greek look-alikes folded to Latin. Only ever used to *detect*; the text
+    that is stored is never rewritten with it, so ordinary German (umlauts, ß, typographic
+    quotes, accents in names) is unaffected apart from being checked with ``ä`` read as
+    ``a``. ``casefold`` can itself emit combining characters (``İ``), hence the second
+    NFKD before the filter."""
+    folded = unicodedata.normalize("NFKD", unicodedata.normalize("NFKD", text).casefold())
+    visible = "".join(ch for ch in folded if unicodedata.category(ch) not in _IGNORED_CATEGORIES)
     return visible.translate(_CONFUSABLES)
 
 

@@ -241,6 +241,20 @@ _LOOKALIKES = (
     "Homoglyph [syst\u0435m] im Satz.",  # kyrillisch e
     "Zero-Width [profile\u200b_fact:a:expression] im Satz.",
     "Gemischt \uff3bkn\u043ewledge\uff1ax\uff3d im Satz.",
+    "Gross [\u0405ystem] im Satz.",  # kyrillisch S (Grossbuchstabe)
+    "Gross [\u041aNOWLEDGE:x] im Satz.",  # kyrillisch K (Grossbuchstabe)
+    "Gemischt [\u0405\u0443\u0455t\u0435m] im Satz.",  # Ѕуѕtеm
+    "Combining [prof\u0301ile_fact:a] im Satz.",  # U+0301 im Rollennamen
+    "Combining [prof\u034file_fact:a] im Satz.",  # U+034F (Mn) im Rollennamen
+    "Combining [profile_fact\u0301:a:x] im Satz.",  # vor dem Doppelpunkt
+    "Combining [profile_fact:\u0301a:x] im Satz.",  # hinter dem Doppelpunkt
+    "Combining [sys\u0301tem] im Satz.",
+    "Combining [\u0301system] im Satz.",  # direkt hinter der Klammer
+    "Combining [system\u0301] im Satz.",  # vor der schliessenden Klammer
+    "Combining [user_instructions\u0301] im Satz.",
+    "Combining {\u0301metric:a:life_path} im Satz.",
+    "Combining [\u0301metric:a:life_path] im Satz.",
+    "Kombi [\u041aNOWLEDGE\u0301:x] im Satz.",  # Gross + Combining
     "Voll {metric:a:life_path} im Satz.".replace("{", "\uff5b").replace("}", "\uff5d"),
     "Voll \uff5b\uff5bpartner_a\uff5d\uff5d im Satz.",
 )
@@ -257,7 +271,10 @@ def test_unicode_lookalike_tokens_are_rejected(
         )
 
 
-async def test_unicode_lookalike_in_a_whole_analysis_fails_closed(profile_a, profile_b) -> None:
+@pytest.mark.parametrize("text", _LOOKALIKES)
+async def test_unicode_lookalike_in_a_whole_analysis_fails_closed(
+    text, profile_a, profile_b
+) -> None:
     frame = load_relationship_frame(KNOWLEDGE_ROOT, "PARTNER")
     assert frame is not None
     with pytest.raises(AnalysisGenerationError):
@@ -266,9 +283,30 @@ async def test_unicode_lookalike_in_a_whole_analysis_fails_closed(profile_a, pro
             profile_b=profile_b,
             relationship_type="PARTNER",
             frame_knowledge=frame,
-            llm=_FixedTextProvider(_LOOKALIKES[0]),
+            llm=_FixedTextProvider(text),
             knowledge_version="0.1.0",
         )
+
+
+@pytest.mark.parametrize("text", _LOOKALIKES)
+def test_lookalike_tokens_are_rejected_by_the_final_backstop(text) -> None:
+    with pytest.raises(AnalysisGenerationError, match="ANALYSIS_VALIDATION_FAILED"):
+        pipeline._assert_no_unresolved_tokens([text])
+
+
+@pytest.mark.parametrize("text", _LOOKALIKES)
+def test_lookalike_labels_are_never_repaired(text, blocks_ab) -> None:
+    assert _repair_profile_fact_labels(text, blocks_ab) == text
+
+
+def test_check_form_is_linear_in_the_input_length() -> None:
+    import time
+
+    sample = "Über José: [Anmerkung] \u0405ystem pro\u0301file straße. " * 22_000  # ~1 Mio.
+    assert len(sample) > 1_000_000
+    start = time.perf_counter()
+    pipeline._canonical_for_check(sample)
+    assert time.perf_counter() - start < 5.0
 
 
 _GERMAN_PROSE = (
@@ -276,6 +314,9 @@ _GERMAN_PROSE = (
     "behutsamer. Straße, Maß, Äußerung, Ärger, Öl und Übung; 25/7 … fast 100 % ehrlich.",
     "Он сказал «да» (русский текст ist kein Marker), und α, β, γ bleiben erlaubt.",
     "Klammern (wie hier) und [Anmerkung der Redaktion] sind normale Prosa.",
+    "Gespräch mit José, Zoë und Renée: „Café“ und \u201eNaïve Künstler\u201c, ‚Fjörd‘ – fertig.",
+    "Decomposed Jose\u0301 und Zoe\u0308: [Anmerkung der Redaktion, Jose\u0301].",
+    "Ѕtraße und КОНТАКТ: Großbuchstaben bleiben Prosa, ebenso ΣΟΦΙΑ und İstanbul.",
 )
 
 
@@ -285,6 +326,7 @@ def test_ordinary_german_prose_is_not_a_false_positive(text, profile_a, profile_
         text, profile_a=profile_a, profile_b=profile_b, is_mock_provider=True
     )
     assert resolved == text  # geprueft, nie umgeschrieben
+    pipeline._assert_no_unresolved_tokens([text])
 
 
 # --------------------------------------------------------------------------- Pipeline
