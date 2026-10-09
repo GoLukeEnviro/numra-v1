@@ -304,3 +304,99 @@ def test_generate_sends_configured_top_p_sampling_option(monkeypatch) -> None:
     asyncio.run(provider.generate(GenerationRequest(system_instructions="x")))
 
     assert captured["payload"]["options"]["top_p"] == 1.0
+
+
+def _chat_provider(body: dict) -> OllamaCloudProvider:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=body)
+
+    return OllamaCloudProvider(
+        base_url="https://ollama.example.invalid",
+        api_key="test-key",
+        client=_client_with_transport(handler),
+    )
+
+
+_STRUCTURED_REQUEST = StructuredGenerationRequest(
+    system_instructions="sys", target_schema_name="_StructuredSection"
+)
+_CONTENT = json.dumps({"text": "hallo", "metric_id": "life_path"})
+
+
+def test_generate_reads_usage_from_prompt_eval_count_and_eval_count() -> None:
+    provider = _chat_provider(
+        {
+            "message": {"role": "assistant", "content": "hi"},
+            "done": True,
+            "prompt_eval_count": 26,
+            "eval_count": 298,
+        }
+    )
+    result = asyncio.run(provider.generate(GenerationRequest(system_instructions="sys")))
+    assert result.usage is not None
+    assert (result.usage.prompt_tokens, result.usage.completion_tokens) == (26, 298)
+    assert result.usage.total_tokens == 324
+
+
+def test_generate_usage_is_none_when_the_response_has_no_token_fields() -> None:
+    provider = _chat_provider({"message": {"role": "assistant", "content": "hi"}, "done": True})
+    result = asyncio.run(provider.generate(GenerationRequest(system_instructions="sys")))
+    assert result.usage is None
+
+
+def test_generate_partial_usage_keeps_missing_side_and_total_none() -> None:
+    provider = _chat_provider(
+        {"message": {"role": "assistant", "content": "hi"}, "done": True, "eval_count": 7}
+    )
+    result = asyncio.run(provider.generate(GenerationRequest(system_instructions="sys")))
+    assert result.usage is not None
+    assert result.usage.prompt_tokens is None
+    assert result.usage.completion_tokens == 7
+    assert result.usage.total_tokens is None
+
+
+@pytest.mark.parametrize("bad", [None, "12", -1, 1.5, True])
+def test_generate_ignores_invalid_token_values_instead_of_inventing_numbers(bad) -> None:
+    provider = _chat_provider(
+        {
+            "message": {"role": "assistant", "content": "hi"},
+            "done": True,
+            "prompt_eval_count": bad,
+            "eval_count": bad,
+        }
+    )
+    result = asyncio.run(provider.generate(GenerationRequest(system_instructions="sys")))
+    assert result.usage is None
+
+
+def test_generate_structured_with_usage_returns_parsed_model_and_counts() -> None:
+    provider = _chat_provider(
+        {
+            "message": {"role": "assistant", "content": _CONTENT},
+            "done": True,
+            "prompt_eval_count": 100,
+            "eval_count": 40,
+        }
+    )
+    parsed, usage = asyncio.run(
+        provider.generate_structured_with_usage(_STRUCTURED_REQUEST, _StructuredSection)
+    )
+    assert isinstance(parsed, _StructuredSection)
+    assert usage is not None
+    assert (usage.prompt_tokens, usage.completion_tokens, usage.total_tokens) == (100, 40, 140)
+
+
+def test_generate_structured_still_returns_only_the_model() -> None:
+    provider = _chat_provider(
+        {"message": {"role": "assistant", "content": _CONTENT}, "done": True, "eval_count": 3}
+    )
+    parsed = asyncio.run(provider.generate_structured(_STRUCTURED_REQUEST, _StructuredSection))
+    assert isinstance(parsed, _StructuredSection)
+
+
+def test_generate_structured_with_usage_has_no_usage_without_token_fields() -> None:
+    provider = _chat_provider({"message": {"role": "assistant", "content": _CONTENT}})
+    _parsed, usage = asyncio.run(
+        provider.generate_structured_with_usage(_STRUCTURED_REQUEST, _StructuredSection)
+    )
+    assert usage is None

@@ -52,6 +52,7 @@ from numra_interpretation.llm.errors import (
 from numra_interpretation.llm.types import (
     GenerationRequest,
     GenerationResult,
+    LLMUsage,
     ProviderHealth,
     StructuredGenerationRequest,
 )
@@ -103,6 +104,25 @@ class OllamaInternalError(OllamaProviderError, LLMProviderInternalError):
 
 class OllamaInvalidStructuredResponseError(OllamaProviderError, LLMInvalidStructuredResponse):
     pass
+
+
+def _token_count(data: dict[str, Any], key: str) -> int | None:
+    value = data.get(key)
+    if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
+        return value
+    return None
+
+
+def _usage_from_response(data: dict[str, Any]) -> LLMUsage | None:
+    """Liest ``prompt_eval_count``/``eval_count`` der (nicht gestreamten) Chat-Antwort.
+    Fehlt ein Feld (oder ist es ungueltig), bleibt es None; ohne beide Felder gibt es
+    gar keine Usage."""
+    prompt = _token_count(data, "prompt_eval_count")
+    completion = _token_count(data, "eval_count")
+    if prompt is None and completion is None:
+        return None
+    total = prompt + completion if prompt is not None and completion is not None else None
+    return LLMUsage(prompt_tokens=prompt, completion_tokens=completion, total_tokens=total)
 
 
 def _read_env_float(name: str, default: float) -> float:
@@ -387,11 +407,20 @@ class OllamaCloudProvider:
             provider=_PROVIDER_NAME,
             model=model,
             finish_reason=data.get("done_reason"),
+            usage=_usage_from_response(data),
         )
 
     async def generate_structured(
         self, request: StructuredGenerationRequest, schema: type[BaseModel]
     ) -> BaseModel:
+        parsed, _usage = await self.generate_structured_with_usage(request, schema)
+        return parsed
+
+    async def generate_structured_with_usage(
+        self, request: StructuredGenerationRequest, schema: type[BaseModel]
+    ) -> tuple[BaseModel, LLMUsage | None]:
+        """Wie `generate_structured`, liefert zusaetzlich die vom Provider gemeldete Usage
+        (None, wenn die Antwort keine Tokenfelder enthaelt)."""
         model = self._model_premium
         payload = {
             "model": model,
@@ -422,7 +451,7 @@ class OllamaCloudProvider:
             ) from exc
 
         try:
-            return schema.model_validate(parsed)
+            return schema.model_validate(parsed), _usage_from_response(data)
         except ValidationError as exc:
             raise OllamaInvalidStructuredResponseError(
                 f"Ollama structured response did not match {schema.__name__}: {exc}"

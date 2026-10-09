@@ -55,6 +55,7 @@ from numra_interpretation.llm.types import (
     GenerationRequest,
     GenerationResult,
     LLMProvider,
+    LLMUsage,
     ProviderHealth,
     StructuredGenerationRequest,
 )
@@ -177,24 +178,38 @@ class RecordingLLMProvider:
         return await self._inner.health()
 
     async def generate(self, request: GenerationRequest) -> GenerationResult:
-        return await self._logged(request, "fast_model", lambda: self._inner.generate(request))
+        async def call() -> tuple[GenerationResult, LLMUsage | None]:
+            result = await self._inner.generate(request)
+            return result, result.usage
+
+        return await self._logged(request, "fast_model", call)
 
     async def generate_structured(
         self, request: StructuredGenerationRequest, schema: type[BaseModel]
     ) -> BaseModel:
-        return await self._logged(
-            request, "premium_model", lambda: self._inner.generate_structured(request, schema)
-        )
+        async def call() -> tuple[BaseModel, LLMUsage | None]:
+            with_usage = getattr(self._inner, "generate_structured_with_usage", None)
+            if with_usage is None:
+                return await self._inner.generate_structured(request, schema), None
+            parsed, usage = await with_usage(request, schema)
+            return parsed, usage
+
+        return await self._logged(request, "premium_model", call)
 
     async def _logged(
-        self, request: GenerationRequest, model_attr: str, call: Callable[[], Awaitable[_T]]
+        self,
+        request: GenerationRequest,
+        model_attr: str,
+        call: Callable[[], Awaitable[tuple[_T, LLMUsage | None]]],
     ) -> _T:
         prompt_hash = _safe_prompt_hash(request)
         started = time.perf_counter()
         status: GenerationStatus = "ok"
         error_code: str | None = None
+        usage: LLMUsage | None = None
         try:
-            return await call()
+            result, usage = await call()
+            return result
         except Exception as exc:
             will_retry = (
                 isinstance(exc, LLMProviderError)
@@ -219,4 +234,7 @@ class RecordingLLMProvider:
                 chat_message_id=self._chat_message_id,
                 section_id=request.metadata.get("section_id"),
                 error_code=error_code,
+                prompt_tokens=usage.prompt_tokens if usage else None,
+                completion_tokens=usage.completion_tokens if usage else None,
+                total_tokens=usage.total_tokens if usage else None,
             )
