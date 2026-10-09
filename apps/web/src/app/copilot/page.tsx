@@ -7,6 +7,7 @@ import { api } from "@/api/client";
 import { AppShell } from "@/components/layout/app-shell";
 import { PersonalCopilotContent } from "@/components/copilot/personal-copilot-content";
 import { Card, CardContent } from "@/components/ui/card";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { LinkButton } from "@/components/ui/link-button";
 import { EmptyState, ErrorState, LoadingState, PhaseDisabledState, isPhaseDisabledError, type PhaseErrorCode } from "@/components/ui/states";
 import { useLocale } from "@/i18n/context";
@@ -27,8 +28,18 @@ function RelationshipWorkspaceIndex() {
   const workspaces = useAsync(() => api.workspaces.list(), []);
   const connections = useAsync(() => api.connections.list(), []);
   if (workspaces.status === "loading" || connections.status === "loading") return <LoadingState label={t("app.copilot.indexLoading")} />;
-  if (workspaces.status === "error") return <ErrorState error={workspaces.error} onRetry={workspaces.reload} />;
-  if (connections.status === "error") return <ErrorState error={connections.error} onRetry={connections.reload} />;
+  if (workspaces.status === "error") {
+    if (isPhaseDisabledError(workspaces.error)) {
+      return <PhaseDisabledState code={workspaces.error.code} title={t("app.copilot.disabled")} description={t("app.copilot.disabledBody")} />;
+    }
+    return <ErrorState error={workspaces.error} onRetry={workspaces.reload} />;
+  }
+  if (connections.status === "error") {
+    if (isPhaseDisabledError(connections.error)) {
+      return <PhaseDisabledState code={connections.error.code} title={t("app.copilot.disabled")} description={t("app.copilot.disabledBody")} />;
+    }
+    return <ErrorState error={connections.error} onRetry={connections.reload} />;
+  }
   const active = workspaces.data.filter((workspace) => workspace.status === "ACTIVE");
   if (!active.length) return <EmptyState title={t("app.copilot.indexEmptyTitle")} description={t("app.copilot.indexEmptyBody")} action={<LinkButton variant="secondary" href="/connections">{t("app.relationshipWorkspace.listEmptyCta")}</LinkButton>} />;
   const names = buildCounterpartNameMap(connections.data, workspaces.data);
@@ -47,7 +58,7 @@ function CopilotContent() {
     </header>
     {personalDisabledCode
       ? <PhaseDisabledState code={personalDisabledCode} title={t("app.copilot.disabled")} description={t("app.copilot.disabledBody")} />
-      : <PersonalCopilotContent onPhaseDisabled={setPersonalDisabledCode} />}
+      : <ErrorBoundary><PersonalCopilotContent onPhaseDisabled={setPersonalDisabledCode} /></ErrorBoundary>}
     <section aria-labelledby="relationship-copilot-index-heading">
       <h2 id="relationship-copilot-index-heading" className="mb-4 font-serif text-2xl text-ivory">{t("app.copilot.indexWorkspacesTitle")}</h2>
       <RelationshipWorkspaceIndex />

@@ -50,6 +50,7 @@ from numra_api.services.copilot_context_builder import (
     build_shared_context,
 )
 from numra_api.services.errors import ApplicationError, NotFoundError, ThreadArchiveForbidden
+from numra_api.services.llm_generation_log import RecordingLLMProvider
 from numra_api.services.workspace_guard import assert_workspace_active_by_id
 from numra_interpretation.llm.errors import LLMProviderError
 from numra_interpretation.llm.types import LLMProvider
@@ -308,6 +309,11 @@ async def archive_personal_thread_route(
     return await archive_thread(db, thread=thread, now=dt.datetime.now(dt.UTC))
 
 
+#: Der Copilot antwortet synchron und ohne Job-Wiederholung (der Nutzer sendet neu):
+#: genau ein Versuch, `llm_generations` kennt dort nie den Status `retry`.
+_COPILOT_MAX_ATTEMPTS = 1
+
+
 async def post_personal_message(
     db: AsyncSession,
     *,
@@ -431,7 +437,14 @@ async def _persist_message_pair(
 
         result = await generate_copilot_reply(
             request=built.request,
-            llm=llm,
+            llm=RecordingLLMProvider(
+                llm,
+                db,
+                source="copilot",
+                chat_message_id=assistant_message.id,
+                attempt=1,
+                max_attempts=_COPILOT_MAX_ATTEMPTS,
+            ),
             knowledge_version=built.knowledge_version,
             grounding_profiles=built.grounding_profiles,
         )

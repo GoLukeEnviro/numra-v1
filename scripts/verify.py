@@ -66,21 +66,34 @@ def main() -> int:
     )
     results.append(
         run(
-            "engine coverage gate (>=90%)",
+            "engine tests (incl. Hypothesis property tests) with coverage report",
             [
                 "uv",
                 "run",
                 "pytest",
                 "packages/engine-numerology/tests",
+                "packages/engine-interpretation/tests",
+                "packages/engine-relationship-interpretation/tests",
                 "-q",
                 "--cov=packages/engine-numerology/src/numra_numerology",
-                "--cov-fail-under=90",
+                "--cov-report=term-missing",
             ],
         )
     )
     results.append(
-        run("full python test suite", ["uv", "run", "pytest", "packages", "apps/api/tests", "-q"])
+        run(
+            "engine coverage gate (>=90%)",
+            [
+                "uv",
+                "run",
+                "coverage",
+                "report",
+                "--include=packages/engine-numerology/src/numra_numerology/*",
+                "--fail-under=90",
+            ],
+        )
     )
+    results.append(run("api integration suite", ["uv", "run", "pytest", "apps/api/tests", "-q"]))
     results.append(
         run("openapi drift check", ["uv", "run", "python3", "scripts/export_openapi.py", "--check"])
     )

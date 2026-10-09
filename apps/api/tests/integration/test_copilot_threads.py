@@ -21,6 +21,7 @@ Security-critical priority order (see PR blueprint):
 
 from __future__ import annotations
 
+import datetime as dt
 import logging
 import uuid
 
@@ -30,7 +31,7 @@ from sqlalchemy import select, update
 from numra_api.auth.passwords import hash_password
 from numra_api.models import ChatThread, ThreadContextSnapshot, ThreadSummary, WorkspaceMember
 from numra_api.models.enums import ThreadScope, WorkspaceMemberStatus
-from numra_api.repositories.users import create_user
+from numra_api.repositories.users import create_user, mark_email_verified
 from numra_api.services.copilot_context_builder import (
     _PRIVATE_SYSTEM_INSTRUCTIONS,
     _SHARED_SYSTEM_INSTRUCTIONS,
@@ -59,7 +60,8 @@ def _person_payload(first_name: str) -> dict:
 
 async def _signup(client, sessionmaker, email: str) -> dict:
     async with sessionmaker() as db:
-        await create_user(db, email=email, password_hash=hash_password("password12345"))
+        user = await create_user(db, email=email, password_hash=hash_password("password12345"))
+        await mark_email_verified(db, user=user, verified_at=dt.datetime.now(dt.UTC))
         await db.commit()
     return await _switch_user(client, email)
 

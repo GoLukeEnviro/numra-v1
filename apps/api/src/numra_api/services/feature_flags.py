@@ -1,33 +1,43 @@
 """AVENYTH V2 Runtime-Feature-Flags (specs/v2/architecture.md "Feature flags").
 
 Router-level FastAPI-Dependency-Factories, analog zum `assert_workspace_active`-Guard-
-Idiom aus `services/workspace_guard.py` (PR-V2-10), hier aber sync und einmal PRO
+Idiom aus `services/workspace_guard.py` (PR-V2-10), hier aber async und einmal PRO
 ROUTER-KONSTRUKTION an `APIRouter(dependencies=[...])` angehaengt -- nicht Route-fuer-
 Route wiederholt. In der Dependencies-Liste des jeweiligen Routers MUSS die Flag-
 Dependency VOR jeder Auth-Dependency stehen, damit ein deaktiviertes Feature nicht mal
 die "authenticated vs. nicht authenticated"-Unterscheidung leakt.
+
+Datenquelle ist ausschliesslich die `feature_flags`-DB-Tabelle (ueber den gecachten
+`FeatureFlagCache`, siehe `services/feature_flag_cache.py`), NICHT `Settings`/Env-Vars
+(die frueheren `AVENYTH_*_ENABLED`-Variablen existieren nicht mehr). Die
+Erstbefuellung einer neuen Umgebung erledigt der einmalige Init-Schritt
+`python -m numra_api.cli flags init --profile <name>` (siehe
+`services/feature_flag_bootstrap.py`); danach aendert nur noch `/admin/flags` Werte.
 """
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Literal
+from collections.abc import Callable, Coroutine
+from typing import Any, Literal
 
 from fastapi import Depends
 
-from numra_api.config import Settings
-from numra_api.deps import get_settings_dep
+from numra_api.deps import get_feature_flag_cache
 from numra_api.services.errors import V2Disabled, V2PhaseDisabled
+from numra_api.services.feature_flag_cache import FeatureFlagCache
 
 __all__ = ["require_v2_master", "require_v2_phase"]
 
 
-def require_v2_master() -> Callable[..., None]:
-    """Router-level FastAPI-Dependency. Prueft NUR den Master-Switch
-    `AVENYTH_V2_ENABLED`. Siehe `workspace_guard.py` als analoges Guard-Idiom."""
+def require_v2_master() -> Callable[..., Coroutine[Any, Any, None]]:
+    """Router-level FastAPI-Dependency. Prueft NUR den Master-Switch (DB-Flag
+    `v2_master`). Siehe `workspace_guard.py` als analoges Guard-Idiom."""
 
-    def _dependency(settings: Settings = Depends(get_settings_dep)) -> None:
-        if not settings.avenyth_v2_enabled:
+    async def _dependency(
+        cache: FeatureFlagCache = Depends(get_feature_flag_cache),
+    ) -> None:
+        flags = await cache.get_all()
+        if not flags.get("v2_master", False):
             raise V2Disabled()
 
     return _dependency
@@ -42,14 +52,17 @@ def require_v2_phase(
         "copilot",
         "evidence_layer",
     ],
-) -> Callable[..., None]:
+) -> Callable[..., Coroutine[Any, Any, None]]:
     """Router-level FastAPI-Dependency. Prueft Master-Switch UND den Einzel-Flag
     (UND-Verknuepfung, Master gewinnt zuerst -- siehe Precedence-Test)."""
 
-    def _dependency(settings: Settings = Depends(get_settings_dep)) -> None:
-        if not settings.avenyth_v2_enabled:
+    async def _dependency(
+        cache: FeatureFlagCache = Depends(get_feature_flag_cache),
+    ) -> None:
+        flags = await cache.get_all()
+        if not flags.get("v2_master", False):
             raise V2Disabled()
-        if not getattr(settings, f"avenyth_{flag_name}_enabled"):
+        if not flags.get(flag_name, False):
             raise V2PhaseDisabled(flag_name)
 
     return _dependency

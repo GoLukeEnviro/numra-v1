@@ -16,7 +16,7 @@ import time
 from typing import Any, Literal
 
 import httpx
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Response, status
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -108,15 +108,25 @@ def _overall_status(states: dict[str, HealthState]) -> Literal["healthy", "unhea
     return "healthy" if states["database"] == "healthy" else "unhealthy"
 
 
+def _apply_status_code(response: Response, payload: dict[str, Any]) -> None:
+    # Orchestrators and `curl --fail` only look at the HTTP status; the full payload
+    # stays in the body so callers can still see which dependency failed.
+    if payload["status"] == "unhealthy":
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+
+
 @router.get("/ready")
 async def ready(
-    request: Request, db: AsyncSession = Depends(get_db, scope="function")
+    request: Request,
+    response: Response,
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> dict[str, Any]:
     settings: Settings = request.app.state.settings
 
     cache: dict[str, Any] | None = getattr(request.app.state, "health_ready_cache", None)
     now = time.monotonic()
     if cache is not None and cache["expires_at"] > now:
+        _apply_status_code(response, cache["payload"])
         return dict(cache["payload"])
 
     timeout_seconds = settings.health_check_timeout_seconds
@@ -139,4 +149,5 @@ async def ready(
         "expires_at": now + settings.health_ready_cache_ttl_seconds,
         "payload": payload,
     }
+    _apply_status_code(response, payload)
     return payload

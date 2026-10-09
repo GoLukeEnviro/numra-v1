@@ -182,6 +182,18 @@ class ConnectionAlreadyExists(ApplicationError):
     status_code = 409
 
 
+class EmailVerificationRequired(ApplicationError):
+    """Creating and redeeming connection invitations requires a verified email
+    (docs/planning/2026-09-26-p0-agent-work-orders.md A3, ops gate G3). An invitation
+    is a claim about *who* the inviter connects to; without a verified address an
+    attacker could pre-register the invitee's address and redeem an EMAIL invitation
+    as themselves, or mint invitations from throwaway accounts. 403 (not 404): it
+    concerns the caller's own account, so it is no IDOR signal."""
+
+    code = "EMAIL_VERIFICATION_REQUIRED"
+    status_code = 403
+
+
 class AdultAccountRequired(ApplicationError):
     """Never raised in PR-V2-03 -- every existing account is structurally adult per
     ADR-012. Defined now so PR-V2-04 (`person_account_mode`/minor profiles) can raise
@@ -416,12 +428,12 @@ class EvidenceStatementLintFailed(ApplicationError):
 class V2Disabled(ApplicationError):
     """AVENYTH V2 Runtime-Feature-Flags (specs/v2/architecture.md "Feature flags") --
     ausgeloest von `services/feature_flags.py::require_v2_master`, wenn der Master-
-    Switch `AVENYTH_V2_ENABLED` aus ist. 503, nicht 404: ein deaktivierter V2-Rollout
-    ist ein deployment-weites, oeffentlich dokumentiertes Faktum (die Flag-Namen
-    stehen bereits in specs/v2/architecture.md), kein IDOR-Fall -- ein 404 wuerde
-    legitimen API-Konsumenten (z.B. dem Web-Frontend) aktiv schaden, weil sie
-    "Endpoint existiert nicht" nicht von "Endpoint ist temporaer aus" unterscheiden
-    koennten."""
+    Flag `v2_master` (DB-Tabelle `feature_flags`) aus ist. 503, nicht 404: ein
+    deaktivierter V2-Rollout ist ein deployment-weites, oeffentlich dokumentiertes
+    Faktum (die Flag-Namen stehen bereits in specs/v2/architecture.md), kein
+    IDOR-Fall -- ein 404 wuerde legitimen API-Konsumenten (z.B. dem Web-Frontend)
+    aktiv schaden, weil sie "Endpoint existiert nicht" nicht von "Endpoint ist
+    temporaer aus" unterscheiden koennten."""
 
     code = "V2_DISABLED"
     status_code = 503
@@ -430,7 +442,7 @@ class V2Disabled(ApplicationError):
 class V2PhaseDisabled(ApplicationError):
     """AVENYTH V2 Runtime-Feature-Flags -- ausgeloest von
     `services/feature_flags.py::require_v2_phase`, wenn der Master-Switch zwar an
-    ist, aber die einzelne Phase (z.B. `AVENYTH_CHECKINS_ENABLED`) noch aus ist.
+    ist, aber die einzelne Phase (z.B. `checkins` in der DB-Tabelle `feature_flags`) noch aus ist.
     Gleiche 503-Begruendung wie `V2Disabled`."""
 
     code = "V2_PHASE_DISABLED"

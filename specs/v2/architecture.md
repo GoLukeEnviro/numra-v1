@@ -99,8 +99,9 @@ Web/PWA (existing Next.js app) first and complete for V2 Core. Native mobile
 
 ## Feature flags
 
-`AVENYTH_V2_ENABLED`, `AVENYTH_CONNECTIONS_ENABLED`,
-`AVENYTH_RELATIONSHIP_WORKSPACES_ENABLED`, `AVENYTH_CHECKINS_ENABLED`,
-`AVENYTH_TASKS_ENABLED`, `AVENYTH_COPILOT_ENABLED`,
-`AVENYTH_EVIDENCE_LAYER_ENABLED`. New phases stay disabled in production until their
+The seven V2 flags (`v2_master`, `connections`, `relationship_workspaces`, `checkins`,
+`tasks`, `copilot`, `evidence_layer`) live in the DB table `feature_flags` and are
+toggled via `/admin/flags`; initial values come from `flags init`
+(`docs/ops/numra-topology.md`). The former `AVENYTH_*_ENABLED` environment variables are
+deprecated and have no effect. New phases stay disabled in production until their
 phase's acceptance gate (`specs/v2/roadmap-spec.md`) passes.

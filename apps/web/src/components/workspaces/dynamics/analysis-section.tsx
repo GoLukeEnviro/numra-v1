@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ApiError } from "@/api/client";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 import {
   asRelationshipAnalysisResult,
   asShadowDynamicsResult,
@@ -171,7 +172,7 @@ export function AnalysisSection({
         <h2 className="font-serif text-2xl text-ivory">{t(copy.title)}</h2>
         <p className="mt-1 max-w-reading text-sm text-muted">{t(copy.intro)}</p>
       </div>
-      {body()}
+      <ErrorBoundary>{body()}</ErrorBoundary>
     </section>
   );
 }

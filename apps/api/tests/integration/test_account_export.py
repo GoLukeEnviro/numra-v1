@@ -41,7 +41,7 @@ from numra_api.models import (
     User,
     WorkspaceMember,
 )
-from numra_api.repositories.users import create_user
+from numra_api.repositories.users import create_user, mark_email_verified
 from numra_api.services.account_export_service import (
     FILENAME_PREFIX,
     FORMAT,
@@ -102,7 +102,8 @@ async def _switch(client, email: str) -> dict[str, str]:
 
 async def _signup(client, sessionmaker, email: str) -> dict[str, str]:
     async with sessionmaker() as db:
-        await create_user(db, email=email, password_hash=hash_password(_PASSWORD))
+        user = await create_user(db, email=email, password_hash=hash_password(_PASSWORD))
+        await mark_email_verified(db, user=user, verified_at=dt.datetime.now(dt.UTC))
         await db.commit()
     return await _switch(client, email)
 
@@ -583,7 +584,9 @@ async def test_export_never_contains_credentials_or_internals(client, sessionmak
                 report_job_id=job.id,
                 provider="mock",
                 model="m",
-                status="OK",
+                source="report",
+                status="ok",
+                attempt=1,
                 prompt_hash=_SECRET_SENTINELS["LLM prompt hash"],
             )
         )

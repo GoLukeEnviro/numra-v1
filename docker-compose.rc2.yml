@@ -11,10 +11,11 @@
 # host port is remapped off the defaults so a parallel `numra-v1` stack keeps its
 # 5432 / 6379 / 4300 / 8000 / 3000.
 #
-# The V2 feature flags and ALLOW_SELF_SIGNUP / EMAIL_BACKEND=logging live here
-# only -- never in docker-compose.yml, .env.example or any committed production
-# default. ENVIRONMENT=test (set by the wrapper) is what permits EMAIL_BACKEND=
-# logging, so no real verification/invite mail is ever sent.
+# The V2 feature flags (via the flags-init job, profile audit-all-on) and
+# ALLOW_SELF_SIGNUP / EMAIL_BACKEND=logging live here only -- never in
+# docker-compose.yml, .env.example or any committed production default.
+# ENVIRONMENT=test (set by the wrapper) is what permits EMAIL_BACKEND=logging,
+# so no real verification/invite mail is ever sent.
 
 services:
   postgres:
@@ -31,20 +32,37 @@ services:
     ports: !override
       - "44300:4300"
 
+  # Einmaliger Flag-Bootstrap (PR #271): Feature-Flags kommen aus der DB, nicht mehr aus
+  # AVENYTH_*_ENABLED. Die frische RC2-DB hat nur die Seed-Werte von Migration 04d4
+  # (checkins/tasks/evidence_layer aus); die Journey braucht alle sieben V2-Flags an
+  # (Check-ins, Aufgaben, Copilot, Evidence-Layer), also Profil audit-all-on --
+  # wie der numra-audit-Stack.
+  flags-init:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+      target: api
+    command: ["python", "-m", "numra_api.cli", "flags", "init", "--profile", "audit-all-on"]
+    working_dir: /app/apps/api
+    restart: "no"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://numra:${POSTGRES_PASSWORD}@postgres:5432/numra
+      SESSION_SECRET: ${SESSION_SECRET}
+      ENVIRONMENT: ${ENVIRONMENT}
+      RATE_LIMIT_BACKEND: ${RATE_LIMIT_BACKEND}
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
   api:
+    depends_on:
+      flags-init:
+        condition: service_completed_successfully
     environment:
       EMAIL_BACKEND: logging
-      AVENYTH_V2_ENABLED: "true"
-      AVENYTH_CONNECTIONS_ENABLED: "true"
-      AVENYTH_RELATIONSHIP_WORKSPACES_ENABLED: "true"
-      AVENYTH_CHECKINS_ENABLED: "true"
-      AVENYTH_TASKS_ENABLED: "true"
-      # PWA-04 (automated acceptance): the relationship Copilot and the evidence
-      # layer are part of the audited V2 surface -- the RC2 journey exercises
-      # both, so the isolated RC2 stack force-enables all seven flags, exactly
-      # like the numra-audit stack does.
-      AVENYTH_COPILOT_ENABLED: "true"
-      AVENYTH_EVIDENCE_LAYER_ENABLED: "true"
       # redeem_url the API mints for LINK/EMAIL invitations, and the browser
       # Origin allowlist for state-changing /api/* calls -- both the remapped web
       # port, not the 3000 default.

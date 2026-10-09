@@ -579,6 +579,8 @@ export const deApp = {
   "app.connectionsInvite.copiedFeedback": "Kopiert!",
   "app.connectionsInvite.doneButton": "Fertig",
   "app.connectionsInvite.submitError": "Einladung konnte nicht erstellt werden",
+  "app.connectionsInvite.verifyEmailError": "Bestätige zuerst deine E-Mail-Adresse, bevor du eine Einladung erstellst.",
+  "app.connectionsInvite.verifyEmailCta": "Zu den Einstellungen",
 
   "app.connectionsRedeem.title": "Einladung einlösen",
   "app.connectionsRedeem.previewing": "Einladung wird geprüft…",
@@ -594,6 +596,8 @@ export const deApp = {
   "app.connectionsRedeem.toDashboard": "Zum Dashboard",
   "app.connectionsRedeem.acceptError": "Einladung konnte nicht angenommen werden",
   "app.connectionsRedeem.declineError": "Einladung konnte nicht abgelehnt werden",
+  "app.connectionsRedeem.verifyEmailError": "Bestätige zuerst deine E-Mail-Adresse, bevor du diese Einladung annimmst.",
+  "app.connectionsRedeem.verifyEmailCta": "Zu den Einstellungen",
 
   "app.consent.sharedByMeTitle": "Von mir geteilt",
   "app.consent.sharedByMeHintPrefix": "Was du mit",
@@ -1049,4 +1053,6 @@ export const deApp = {
   "app.evidence.saveAnalysis": "Analyse speichern",
   "app.evidence.saveAnalysisError": "Die Analyse konnte nicht gespeichert werden.",
   "app.evidence.savedTitle": "Gespeicherte Analysen",
+  "app.ai.disclosureChat": "Du sprichst hier mit einem KI-System (Copilot), nicht mit einem Menschen. Antworten werden automatisiert erzeugt und können Fehler enthalten.",
+  "app.ai.disclosureGenerated": "Dieser Inhalt wurde automatisiert von einem KI-System erzeugt und kann Fehler enthalten.",
 } as const;

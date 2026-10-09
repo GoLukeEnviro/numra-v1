@@ -14,6 +14,8 @@ chooses which knowledge entry or which shadow-interaction rule applies.
 from __future__ import annotations
 
 import re
+import unicodedata
+from collections.abc import Iterable
 
 from pydantic import BaseModel, ConfigDict
 
@@ -60,7 +62,12 @@ __all__ = ["generate_relationship_analysis", "generate_shadow_dynamics"]
 #: copied those labels into its own sentences, where they rendered as internal tokens;
 #: the fail-closed guard in `_validate_and_resolve_text` rejects that, and this
 #: instruction removes the temptation in the first place.
-PROMPT_VERSION = "numra-relationship-v2"
+#:
+#: v3 additionally names the replacement (cite the placeholder for the same id
+#: *instead of the label*) and `_render` resolves a label that still slips through
+#: when it names exactly one `profile_fact` block of the request
+#: (`_repair_profile_fact_labels`); everything else stays rejected.
+PROMPT_VERSION = "numra-relationship-v3"
 
 _RELATIONSHIP_SYSTEM_INSTRUCTIONS = (
     "You are rendering a non-diagnostic, symbolic numerology relationship reflection "
@@ -76,7 +83,8 @@ _RELATIONSHIP_SYSTEM_INSTRUCTIONS = (
     "bracketed context-block labels you were given (things like '[profile_fact:a:...]', "
     "'[knowledge:...]' or '[system]') anywhere in your answer — those labels are "
     "prompt framing addressed to you, and the only citation syntax that belongs in "
-    "your prose is the placeholder syntax. Do not state or "
+    "your prose is the placeholder syntax: to refer to a profile fact, write its "
+    "metric placeholder with the same a:/b: id instead of the label. Do not state or "
     "imply a compatibility score, match percentage, or numeric rating of the "
     "relationship. Never use psychiatric, clinical, or personality-disorder language, "
     "and never frame an attachment style as a diagnosis — only as a descriptive, "
@@ -97,7 +105,9 @@ _SHADOW_SYSTEM_INSTRUCTIONS = (
     "Person B), rather than typing digits yourself. Never type a numerology value as "
     "a literal digit. Never reproduce the bracketed context-block labels you were given "
     "(things like '[profile_fact:a:...]', '[knowledge:...]' or '[system]') anywhere in "
-    "your answer — those labels are prompt framing addressed to you. Do not state or "
+    "your answer — those labels are prompt framing addressed to you; to refer to a "
+    "profile fact, write its metric placeholder with the same a:/b: id instead of the "
+    "label. Do not state or "
     "imply a compatibility score or match "
     "percentage. Never use psychiatric, clinical, or personality-disorder language, "
     "and never frame an attachment style as a diagnosis. Write 2-4 sentences for the "
@@ -112,6 +122,124 @@ _SHADOW_SYSTEM_INSTRUCTIONS = (
 _PLACEHOLDER_PATTERN = re.compile(
     r"\{\{\s*(metric|special)\s*:\s*([ab])\s*:\s*([a-zA-Z0-9_]+)\s*\}\}"
 )
+
+#: Anything that still looks like placeholder syntax after `_resolve_placeholders` has
+#: run is, by construction, malformed (e.g. ``{{a:life_path}}`` without the namespace,
+#: ``[metric:a:life_path]`` with the wrong brackets, unbalanced braces): the correct
+#: form was already substituted. Such markers must never reach persisted prose.
+_LEFTOVER_MARKER_PATTERN = re.compile(
+    r"[{}]"  # any brace is template syntax: {{...}}, {partner_a}, {metric:...}
+    r"|[\[<]\s*(?:metric|special)\s*:"
+    r"|%\(\w+\)s"
+    r"|<\s*[a-z]+_[a-z_]+\s*>"  # <partner_a>
+    # prompt-framing labels in a spelling the exact-match guard does not cover
+    r"|\[\s*(?:profile_fact|knowledge|system|instruction_supplement"
+    r"|untrusted_user_content|user_instructions)\b",
+    re.IGNORECASE,
+)
+
+#: Latin look-alikes that NFKC does not fold (it only folds compatibility forms such as
+#: full-width brackets and colons). Used for *checking* only, see `_canonical_for_check`.
+_CONFUSABLES = str.maketrans(
+    {
+        "а": "a",
+        "е": "e",
+        "о": "o",
+        "р": "p",
+        "с": "c",
+        "у": "y",
+        "х": "x",
+        "і": "i",
+        "ѕ": "s",
+        "ј": "j",
+        "ԁ": "d",
+        "ӏ": "l",
+        "к": "k",
+        "т": "t",
+        "м": "m",
+        "ԝ": "w",
+        "ο": "o",
+        "ν": "v",
+        "ι": "i",
+        "α": "a",
+        "ε": "e",
+        "ρ": "p",
+        "κ": "k",
+        "τ": "t",
+        "υ": "u",
+    }
+)
+
+
+#: Unicode categories dropped from the check form: format characters and all combining marks.
+_IGNORED_CATEGORIES = frozenset({"Cf", "Mn", "Mc", "Me"})
+
+
+def _canonical_for_check(text: str) -> str:
+    """The form of ``text`` the scaffolding guard and the leftover check look at: NFKD
+    (full-width ``［profile_fact：a:x］`` -> ``[profile_fact:a:x]``, ``é`` -> ``e`` + U+0301),
+    case-folded (so upper-case Cyrillic/Greek look-alikes such as ``Ѕ`` or ``К`` reach the
+    lower-case `_CONFUSABLES` table), then invisible format characters (Cf) and combining
+    marks (Mn/Mc/Me; ``[prof\u0301ile_fact:a]``, U+034F inside a marker) removed and the
+    common Cyrillic/Greek look-alikes folded to Latin. Only ever used to *detect*; the text
+    that is stored is never rewritten with it, so ordinary German (umlauts, ß, typographic
+    quotes, accents in names) is unaffected apart from being checked with ``ä`` read as
+    ``a``. ``casefold`` can itself emit combining characters (``İ``), hence the second
+    NFKD before the filter."""
+    folded = unicodedata.normalize("NFKD", unicodedata.normalize("NFKD", text).casefold())
+    visible = "".join(ch for ch in folded if unicodedata.category(ch) not in _IGNORED_CATEGORIES)
+    return visible.translate(_CONFUSABLES)
+
+
+#: ``[profile_fact:a:expression]`` -- the exact framing the provider put in front of one
+#: grounding fact. The label part may not contain whitespace or brackets, so a nested or
+#: decorated label (``[profile_fact:[profile_fact:a:x]]``, ``[profile_fact:a:x = 5]``)
+#: never matches as a whole and stays for the guard to reject.
+_PROFILE_FACT_LABEL_PATTERN = re.compile(r"\[profile_fact:([^\[\]\s]+)\]")
+
+
+def _repair_profile_fact_labels(text: str, context_blocks: tuple[ContextBlock, ...]) -> str:
+    """Rewrites a copied ``[profile_fact:<label>]`` into the sanctioned
+    ``{{metric:<label>}}`` placeholder -- but only when ``<label>`` is the label of a
+    `profile_fact` block this very request carried, i.e. it names exactly one canonical
+    fact the model was shown. The placeholder is then resolved to that fact's canonical
+    display value by `_resolve_placeholders`, exactly like a correctly cited one, so
+    nothing the model said ends up as the value.
+
+    Anything else is returned untouched and fails closed in `_validate_and_resolve_text`
+    (`rendering_guard.contains_prompt_scaffolding`, which this does not weaken): an
+    unprefixed label (matches both persons), an unknown id, a label of a fact that was
+    not part of this prompt, a nested or decorated label, and every other block role
+    (``[knowledge:...]`` would paste a whole paragraph into a sentence, ``[system]`` and
+    ``[instruction_supplement:...]`` are instructions, never facts).
+    """
+    known = {block.label for block in context_blocks if block.role == "profile_fact"}
+
+    def _replace(match: re.Match[str]) -> str:
+        label = match.group(1)
+        return "{{metric:" + label + "}}" if label in known else match.group(0)
+
+    return _PROFILE_FACT_LABEL_PATTERN.sub(_replace, text)
+
+
+def _assert_no_unresolved_tokens(texts: Iterable[str]) -> None:
+    """Last line of defence over everything that is about to become a result: no text
+    may still carry prompt scaffolding or an unresolved template token. The per-statement
+    gate already guarantees this for rendered prose; this also covers the deterministic
+    parts (micro tasks) and makes "never assembled, never persisted" independent of the
+    order of the gates above.
+
+    The ``ANALYSIS_VALIDATION_FAILED`` prefix is the log category shared with every other
+    pipeline rejection; the stored job ``error_code`` is not taken from the message but
+    from the exception class (always ``ANALYSIS_GENERATION_ERROR``, see
+    `numra_api.services.relationship_analysis_service`)."""
+    for text in texts:
+        checked = _canonical_for_check(text)
+        if contains_prompt_scaffolding(checked) or _LEFTOVER_MARKER_PATTERN.search(checked):
+            raise AnalysisGenerationError(
+                f"ANALYSIS_VALIDATION_FAILED: result text carries an unresolved token: "
+                f"{text[:80]!r}"
+            )
 
 
 def _resolve_placeholders(
@@ -190,10 +318,11 @@ def _validate_and_resolve_text(
     `MockLLMProvider`, exactly like
     `numra_interpretation.report.pipeline._generate_section` — its deterministic
     filler echoes raw grounding facts by design, which is not "the model inventing a
-    claim"), then placeholder resolution against the real profile data. Raises
+    claim"), then placeholder resolution against the real profile data, then a check that no
+    malformed/unresolved placeholder marker is left over. Raises
     `InvalidAnalysisSection` on any of them — the caller's existing one-repair-attempt
     pattern catches it."""
-    if contains_prompt_scaffolding(text):
+    if contains_prompt_scaffolding(text) or contains_prompt_scaffolding(_canonical_for_check(text)):
         raise InvalidAnalysisSection(
             "PromptScaffoldingRejected: provider returned its own prompt scaffolding "
             "instead of rendered text (never rendered or persisted)"
@@ -207,7 +336,14 @@ def _validate_and_resolve_text(
                 f"UnauthorizedNumericLiteral: text contains bare digit(s) {unauthorized!r} "
                 "not referenced via a metric/special placeholder"
             )
-    return _resolve_placeholders(text, profile_a=profile_a, profile_b=profile_b)
+    resolved = _resolve_placeholders(text, profile_a=profile_a, profile_b=profile_b)
+    leftover = _LEFTOVER_MARKER_PATTERN.search(_canonical_for_check(resolved))
+    if leftover:
+        raise InvalidAnalysisSection(
+            f"MalformedPlaceholder: text contains unresolved or malformed placeholder "
+            f"marker {leftover.group(0)!r} (expected {{{{metric|special:a|b:ID}}}})"
+        )
+    return resolved
 
 
 def _valid_placeholder_ids_block(
@@ -263,8 +399,9 @@ async def _render(
     back (system instructions + every grounding block), which is internal prompt
     scaffolding and must never become product text -- so for the mock the
     deterministic `mock_fallback` replaces the returned text. A real provider's
-    own output is returned unchanged and is checked for scaffolding by the
-    caller's validation gate.
+    own output is checked for scaffolding by the caller's validation gate; the one
+    thing done before that is `_repair_profile_fact_labels` (an unambiguous copied
+    fact label becomes the canonical value, everything else is left for the gate).
     """
     request = StructuredGenerationRequest(
         system_instructions=system_instructions,
@@ -274,7 +411,9 @@ async def _render(
     )
     result = await llm.generate_structured(request, _GeneratedText)
     assert isinstance(result, _GeneratedText)
-    return mock_fallback if is_mock_provider else result.text
+    if is_mock_provider:
+        return mock_fallback
+    return _repair_profile_fact_labels(result.text, context_blocks)
 
 
 async def _generate_dimension_statement(
@@ -385,6 +524,9 @@ async def generate_relationship_analysis(
                 ) from retry_exc
         dimensions.append(DimensionThemes(dimension_id=dimension_id, statements=(statement,)))
 
+    _assert_no_unresolved_tokens(
+        statement.text for dimension in dimensions for statement in dimension.statements
+    )
     health = await llm.health()
     return RelationshipAnalysisResult(
         relationship_type=relationship_type,
@@ -602,6 +744,17 @@ async def generate_shadow_dynamics(
         is_mock_provider=is_mock_provider,
     )
 
+    micro_tasks = _recommended_micro_tasks(shadow_context)
+    _assert_no_unresolved_tokens(
+        (
+            user_a_statement.text,
+            user_b_statement.text,
+            interaction_statement.text,
+            escalation_statement.text,
+            deescalation_statement.text,
+            *micro_tasks,
+        )
+    )
     health = await llm.health()
     return ShadowDynamicsResult(
         user_a_shadow_themes=(user_a_statement,),
@@ -610,7 +763,7 @@ async def generate_shadow_dynamics(
         escalation_loop=escalation_statement,
         deescalation_opportunities=(deescalation_statement,),
         pattern_intensity=_pattern_intensity(shadow_context),
-        recommended_micro_tasks=_recommended_micro_tasks(shadow_context),
+        recommended_micro_tasks=micro_tasks,
         calculation_version=profile_a.calculation_version,
         knowledge_version=knowledge_version,
         prompt_version=PROMPT_VERSION,

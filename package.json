@@ -3,7 +3,7 @@
   "private": true,
   "packageManager": "pnpm@9.15.0",
   "engines": {
-    "node": ">=20"
+    "node": ">=22.19.0"
   },
   "scripts": {
     "generate-schema": "pnpm --filter @numra/schema generate",
@@ -23,10 +23,14 @@
   },
   "pnpm": {
     "overrides": {
+      "minimatch@10.2.6>brace-expansion": "^5.0.12",
       "js-yaml": "4.3.2",
       "postcss": "^8.5.23",
+      "proxy-addr": "^2.0.8",
       "qs": "6.16.0",
-      "sharp": "^0.35.0"
+      "sharp": "^0.35.5",
+      "shell-quote": "^1.12.0",
+      "source-map-js": "^1.2.2"
     }
   }
 }

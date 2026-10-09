@@ -8,36 +8,66 @@ on:
 env:
   UV_VERSION: "0.5.11"
   PYTHON_VERSION: "3.11"
-  NODE_VERSION: "20"
+  NODE_VERSION: "22"
+
+permissions:
+  contents: read
+  actions: write
 
 jobs:
   lint-python:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.UV_VERSION }}
+          enable-cache: true
       - run: uv python install ${{ env.PYTHON_VERSION }}
-      - run: uv sync --all-packages --all-groups
-      - run: uv run ruff format --check .
-      - run: uv run ruff check .
+      - run: uv sync --locked --all-packages --all-groups
+      - run: uv run --locked ruff format --check .
+      - run: uv run --locked ruff check .
 
   python-typecheck:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.UV_VERSION }}
+          enable-cache: true
       - run: uv python install ${{ env.PYTHON_VERSION }}
-      - run: uv sync --all-packages --all-groups
+      - run: uv sync --locked --all-packages --all-groups
       - run: |
-          uv run mypy apps/api/src packages/engine-numerology/src \
+          uv run --locked mypy apps/api/src packages/engine-numerology/src \
             packages/engine-interpretation/src packages/engine-relationship-interpretation/src \
             packages/engine-astrology/src
 
-  unit-and-property-tests:
+  engine-unit-property:
+    # Pure-Python engine packages -- no DB, no Redis, no PDF service, no pnpm/Playwright.
+    # Kept separate from api-integration below so this path stays fast: it's what
+    # "unit and property tests" means for the engines, and it should never pay for the
+    # PDF/Postgres/Redis setup that only apps/api/tests needs.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+      - run: uv python install ${{ env.PYTHON_VERSION }}
+      - run: uv sync --locked --all-packages --all-groups
+      - name: Engine + interpretation tests, incl. Hypothesis property tests, with coverage gate (>=90%)
+        run: |
+          uv run --locked pytest packages/engine-numerology/tests packages/engine-interpretation/tests \
+            packages/engine-relationship-interpretation/tests -q \
+            --cov=packages/engine-numerology/src/numra_numerology \
+            --cov-report=term-missing --cov-report=xml
+          uv run --locked coverage report \
+            --include="packages/engine-numerology/src/numra_numerology/*" \
+            --fail-under=90
+
+  api-integration:
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -61,12 +91,13 @@ jobs:
       TEST_PDF_URL: http://127.0.0.1:4300
       TEST_PDF_TOKEN: ci-only-pdf-token
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.UV_VERSION }}
+          enable-cache: true
       - run: uv python install ${{ env.PYTHON_VERSION }}
-      - run: uv sync --all-packages --all-groups
+      - run: uv sync --locked --all-packages --all-groups
       # apps/api/tests exercises a REAL apps/pdf instance (export creation, health
       # checks) rather than mocking the PDF service -- see specs/evidence/phase-4.md
       # and the export/PDF product integration work.
@@ -75,7 +106,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile --filter @numra/pdf...
       - run: pnpm --filter @numra/pdf exec playwright install --with-deps chromium
       - name: Start apps/pdf in the background
         run: |
@@ -86,47 +117,124 @@ jobs:
             sleep 1
           done
           curl -sf http://127.0.0.1:4300/health/ready || (cat /tmp/pdf-service.log && exit 1)
-      - name: Engine coverage gate (>=90%)
-        run: |
-          uv run pytest packages/engine-numerology/tests -q \
-            --cov=packages/engine-numerology/src/numra_numerology --cov-fail-under=90
-      - name: Full suite (engine + interpretation + api, incl. Hypothesis property tests)
-        run: uv run pytest packages apps/api/tests -q
+      - name: API integration suite
+        run: uv run --locked pytest apps/api/tests -q
 
   no-golden-leakage:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.UV_VERSION }}
+          enable-cache: true
       - run: uv python install ${{ env.PYTHON_VERSION }}
-      - run: uv sync --all-packages --all-groups
-      - run: uv run pytest packages/engine-numerology/tests/unit/test_no_golden_leakage.py -q
+      - run: uv sync --locked --all-packages --all-groups
+      - run: uv run --locked pytest packages/engine-numerology/tests/unit/test_no_golden_leakage.py -q
 
-  dependency-security:
-    # Explicit release gate (not just a local `pnpm audit`/`pip-audit` run someone might
-    # forget): Critical or High-with-an-available-fix in production dependencies fails
-    # the build. --audit-level=high intentionally does not hard-fail on moderate/low
-    # findings that may have no upstream fix yet -- see specs/evidence/final-release-closure.md
-    # for the Next.js 14->15 migration this gate was added to guard against regressing.
+  # Security-Gate: vier getrennte Audit-Jobs + ein Sammel-Job `security-gate`.
+  # Als Required Check ist nur `security-gate` vorgesehen; er ist rot, sobald einer der
+  # vier Audit-Jobs nicht `success` meldet (failure, cancelled oder skipped).
+  # `pnpm audit` kennt keinen Workspace-Filter; scripts/ci/node_audit_gate.py wertet die
+  # JSON-Ausgabe deshalb pro Workspace-Pfad aus (produktiv inkl. transitiv, High/Critical,
+  # fail-closed bei unlesbarer Ausgabe). Self-Test: scripts/ci/test_node_audit_gate.py.
+  node-audit-web:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: pnpm audit (production dependencies across the workspace, fail on high/critical)
-        run: pnpm audit --prod --audit-level=high
+      # Ohne Install liefert pnpm audit keine Abhaengigkeitspfade (Workspace-Zuordnung unmoeglich).
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: pnpm audit (Workspace-Audit als JSON)
+        run: pnpm audit --prod --json > "$RUNNER_TEMP/audit.json" || true
+      - name: apps/web -- High/Critical in produktiven Abhaengigkeiten (inkl. transitiv)
+        run: python3 scripts/ci/node_audit_gate.py --audit-json "$RUNNER_TEMP/audit.json" --workspace apps/web
+
+  node-audit-pdf:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      # Ohne Install liefert pnpm audit keine Abhaengigkeitspfade (Workspace-Zuordnung unmoeglich).
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: pnpm audit (Workspace-Audit als JSON)
+        run: pnpm audit --prod --json > "$RUNNER_TEMP/audit.json" || true
+      - name: apps/pdf -- High/Critical in produktiven Abhaengigkeiten (inkl. transitiv)
+        run: python3 scripts/ci/node_audit_gate.py --audit-json "$RUNNER_TEMP/audit.json" --workspace apps/pdf
+
+  node-audit-mobile:
+    # Ausnahmen nur ueber .github/security-exceptions.yml (Advisory-ID, Pfad, Begruendung,
+    # Ablaufdatum). Neuer High/Critical-Befund oder abgelaufene Ausnahme => Job rot.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.UV_VERSION }}
-      - run: uv python install ${{ env.PYTHON_VERSION }}
-      - name: pip-audit (Python dependencies)
-        run: uvx pip-audit
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Self-Test des Audit-Gates
+        run: uv run --no-project --with pyyaml==6.0.2 python -m unittest discover -s scripts/ci -p "test_node_audit_gate.py"
+      # Ohne Install liefert pnpm audit keine Abhaengigkeitspfade (Workspace-Zuordnung unmoeglich).
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: pnpm audit (Workspace-Audit als JSON)
+        run: pnpm audit --prod --json > "$RUNNER_TEMP/audit.json" || true
+      - name: apps/mobile -- High/Critical gegen Ausnahmeliste
+        run: |
+          uv run --no-project --with pyyaml==6.0.2 python scripts/ci/node_audit_gate.py \
+            --audit-json "$RUNNER_TEMP/audit.json" --workspace apps/mobile \
+            --exceptions .github/security-exceptions.yml
+
+  python-audit:
+    # Eingabe ist der Export von uv.lock (Runtime-Abhaengigkeiten aller Workspace-Pakete,
+    # mit Hashes). Semantik der Flags (pip-audit 2.10.1 --help / Doku):
+    #   --disable-pip + --require-hashes: kein Resolver, nur die gelockten, gehashten Versionen.
+    #   --strict: scheitert, wenn die Abhaengigkeits-Erfassung fuer ein Paket fehlschlaegt
+    #             (Eingabe nicht auditierbar) -- KEIN Severity-Filter.
+    # pip-audit selbst beendet mit Exit 1 bei JEDEM bekannten Advisory (jede Severity, auch
+    # ohne verfuegbaren Fix); es gibt hier bewusst keine Ausnahme-Mechanik. Das ist strenger
+    # als die Node-Jobs (nur High/Critical).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ env.UV_VERSION }}
+      - name: uv.lock exportieren
+        run: uv export --locked --all-packages --no-dev --no-emit-workspace --format requirements-txt -o "$RUNNER_TEMP/requirements.txt"
+      - name: pip-audit (pinned 2.10.1)
+        run: uvx pip-audit@2.10.1 --require-hashes --disable-pip --strict -r "$RUNNER_TEMP/requirements.txt"
+
+  security-gate:
+    # Einziger vorgesehener Required Check fuer die Audits. `always()` damit der Job auch
+    # bei failure/cancelled/skipped der Vorgaenger laeuft; ohne explizite success-Pruefung
+    # wuerde ein uebersprungener Audit-Job das Gate stillschweigend gruen lassen.
+    if: always()
+    needs: [node-audit-web, node-audit-pdf, node-audit-mobile, python-audit]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Alle vier Audit-Jobs muessen success melden
+        env:
+          NODE_AUDIT_WEB: ${{ needs.node-audit-web.result }}
+          NODE_AUDIT_PDF: ${{ needs.node-audit-pdf.result }}
+          NODE_AUDIT_MOBILE: ${{ needs.node-audit-mobile.result }}
+          PYTHON_AUDIT: ${{ needs.python-audit.result }}
+        run: |
+          status=0
+          for pair in "node-audit-web=$NODE_AUDIT_WEB" "node-audit-pdf=$NODE_AUDIT_PDF" \
+                      "node-audit-mobile=$NODE_AUDIT_MOBILE" "python-audit=$PYTHON_AUDIT"; do
+            echo "$pair"
+            [ "${pair#*=}" = "success" ] || status=1
+          done
+          exit $status
 
   sast:
     # PWA-08 hardening (#140): pinned static analysis for the Python surface. `-ll`
@@ -140,27 +248,29 @@ jobs:
     # -> job fails -> fixture removed -> green): docs/audits/2026-09-21-pwa-08-sast.md.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.UV_VERSION }}
+          enable-cache: true
       - run: uv python install ${{ env.PYTHON_VERSION }}
-      - run: uv sync --all-packages --all-groups
+      - run: uv sync --locked --all-packages --all-groups
       - name: bandit (pinned 1.8.6, MEDIUM and above)
-        run: uv run --with bandit==1.8.6 bandit -q -r apps/api/src packages -ll
+        run: uv run --locked --with bandit==1.8.6 bandit -q -r apps/api/src packages -ll
 
   schema-and-openapi-drift:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.UV_VERSION }}
+          enable-cache: true
       - run: uv python install ${{ env.PYTHON_VERSION }}
-      - run: uv sync --all-packages --all-groups
+      - run: uv sync --locked --all-packages --all-groups
       - name: profile.schema.json validates the golden fixture
         run: |
-          uv run python3 -c "
+          uv run --locked python3 -c "
           import json, jsonschema
           schema = json.load(open('specs/profile.schema.json'))
           fixture = json.load(open('fixtures/canonical/lukas-springer.v1.json'))
@@ -168,7 +278,7 @@ jobs:
           print('OK')
           "
       - name: OpenAPI export has no drift
-        run: uv run python3 scripts/export_openapi.py --check
+        run: uv run --locked python3 scripts/export_openapi.py --check
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v7
         with:
@@ -183,7 +293,7 @@ jobs:
   web-lint-typecheck-build-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v7
         with:
@@ -203,7 +313,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: web-lint-typecheck-build-test
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v7
         with:
@@ -216,7 +326,7 @@ jobs:
   pdf-service-tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v7
         with:
@@ -268,19 +378,20 @@ jobs:
       CORS_ALLOWED_ORIGINS: '["http://127.0.0.1:4180"]'
       SYSTEM_E2E_WEB_PORT: "4180"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.UV_VERSION }}
+          enable-cache: true
       - run: uv python install ${{ env.PYTHON_VERSION }}
-      - run: uv sync --all-packages --all-groups
+      - run: uv sync --locked --all-packages --all-groups
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: uv run --directory apps/api alembic upgrade head
+      - run: uv run --locked --directory apps/api alembic upgrade head
       - run: pnpm --filter @numra/pdf exec playwright install --with-deps chromium
       - name: Start the real PDF service in the background
         run: |
@@ -293,7 +404,7 @@ jobs:
           curl -sf http://127.0.0.1:4300/health/ready || (cat /tmp/pdf-service.log && exit 1)
       - name: Start a real FastAPI instance in the background
         run: |
-          nohup uv run --directory apps/api uvicorn numra_api.app:app \
+          nohup uv run --locked --directory apps/api uvicorn numra_api.app:app \
             --host 127.0.0.1 --port 8010 > /tmp/api.log 2>&1 &
           for i in $(seq 1 30); do
             curl -sf http://127.0.0.1:8010/v1/health/live && break
@@ -301,7 +412,7 @@ jobs:
           done
           curl -sf http://127.0.0.1:8010/v1/health/ready || (cat /tmp/api.log && exit 1)
       - name: Start a real report worker in the background
-        run: nohup uv run --directory apps/api python -m numra_api.worker > /tmp/worker.log 2>&1 &
+        run: nohup uv run --locked --directory apps/api python -m numra_api.worker > /tmp/worker.log 2>&1 &
       - run: pnpm --filter @numra/web exec playwright install --with-deps chromium
       - name: Run the real system journey
         working-directory: apps/web
@@ -349,8 +460,8 @@ jobs:
   docker-build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
       - run: docker compose config --quiet
         env:
           SESSION_SECRET: ci-only-secret
@@ -379,8 +490,8 @@ jobs:
       ALLOW_SELF_SIGNUP: "true"
       RATE_LIMIT_BACKEND: redis
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
       - run: docker compose build
       - run: docker compose up -d
       - name: Poll API liveness/readiness and web availability

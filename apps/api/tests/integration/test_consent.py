@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import datetime as dt
+
 import pytest
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from numra_api.auth.passwords import hash_password
-from numra_api.models import ConsentEvent, ConsentGrant
-from numra_api.repositories.users import create_user
+from numra_api.models import ConsentEvent, ConsentGrant, User
+from numra_api.repositories.users import create_user, mark_email_verified
 from numra_api.services.consent_service import assert_consent
 from numra_api.services.errors import ConsentNotGranted
 
@@ -17,7 +19,8 @@ async def _signup(client, sessionmaker, email: str) -> dict:
     re-activate an already-created user's session (the test `client` fixture has one
     shared cookie jar, so only one user is "logged in" at a time)."""
     async with sessionmaker() as db:
-        await create_user(db, email=email, password_hash=hash_password("password12345"))
+        user = await create_user(db, email=email, password_hash=hash_password("password12345"))
+        await mark_email_verified(db, user=user, verified_at=dt.datetime.now(dt.UTC))
         await db.commit()
     return await _switch_user(client, email)
 
@@ -294,3 +297,143 @@ async def test_only_grantor_can_revoke(client, sessionmaker) -> None:
     )
     assert response.status_code == 403
     assert response.json()["code"] == "CONSENT_NOT_GRANTED"
+
+
+async def _dissolve(client, headers: dict) -> None:
+    connection_id = (await client.get("/v1/connections", headers=headers)).json()[0]["id"]
+    dissolve = await client.post(f"/v1/connections/{connection_id}/dissolve", headers=headers)
+    assert dissolve.status_code == 200
+
+
+async def _active_grant_count(sessionmaker, workspace_id: str) -> int:
+    async with sessionmaker() as db:
+        grants = (
+            (
+                await db.execute(
+                    select(ConsentGrant).where(ConsentGrant.workspace_id == workspace_id)
+                )
+            )
+            .scalars()
+            .all()
+        )
+    return sum(1 for g in grants if g.revoked_at is None)
+
+
+@pytest.mark.parametrize("scope", ["CORE_NUMEROLOGY", "PRIVATE_JOURNAL"])
+async def test_grant_after_dissolve_is_409_and_creates_no_active_grant(
+    client, sessionmaker, scope: str
+) -> None:
+    email_a = f"consent-diss-{scope.lower()}-a@example.com"
+    email_b = f"consent-diss-{scope.lower()}-b@example.com"
+    workspace_id = await _connect(client, sessionmaker, email_a, email_b)
+    headers_b = await _switch_user(client, email_b)
+    await _dissolve(client, headers_b)
+    assert await _active_grant_count(sessionmaker, workspace_id) == 0
+
+    grant = await client.post(
+        f"/v1/workspaces/{workspace_id}/consent/grant", json={"scope": scope}, headers=headers_b
+    )
+    assert grant.status_code == 409
+    assert grant.json()["code"] == "WORKSPACE_DISSOLVED"
+    assert await _active_grant_count(sessionmaker, workspace_id) == 0
+
+
+async def test_grant_after_dissolve_keeps_partner_core_numbers_hidden(
+    client, sessionmaker, lukas_payload
+) -> None:
+    email_a, email_b = "consent-diss-ov-a@example.com", "consent-diss-ov-b@example.com"
+    workspace_id = await _connect(client, sessionmaker, email_a, email_b)
+    headers_b = await _switch_user(client, email_b)
+    person_b = (await client.post("/v1/people", json=lukas_payload, headers=headers_b)).json()
+    await client.post(
+        f"/v1/people/{person_b['id']}/calculations",
+        json={"as_of_date": "2026-01-01"},
+        headers=headers_b,
+    )
+    async with sessionmaker() as db:
+        user_b_id = str(
+            (await db.execute(select(User.id).where(User.email == email_b))).scalar_one()
+        )
+
+    async def partner_core_numbers(headers: dict):
+        overview = await client.get(f"/v1/workspaces/{workspace_id}", headers=headers)
+        assert overview.status_code == 200
+        return next(m for m in overview.json()["dual_profile"] if m["user_id"] == user_b_id)[
+            "core_numbers"
+        ]
+
+    headers_a = await _switch_user(client, email_a)
+    assert await partner_core_numbers(headers_a) is not None
+
+    headers_b = await _switch_user(client, email_b)
+    await _dissolve(client, headers_b)
+    grant = await client.post(
+        f"/v1/workspaces/{workspace_id}/consent/grant",
+        json={"scope": "CORE_NUMEROLOGY"},
+        headers=headers_b,
+    )
+    assert grant.status_code == 409
+
+    headers_a = await _switch_user(client, email_a)
+    assert await partner_core_numbers(headers_a) is None
+
+
+async def test_grant_in_active_workspace_still_works(client, sessionmaker) -> None:
+    workspace_id = await _connect(
+        client, sessionmaker, "consent-act-a@example.com", "consent-act-b@example.com"
+    )
+    headers_b = await _switch_user(client, "consent-act-b@example.com")
+    grant = await client.post(
+        f"/v1/workspaces/{workspace_id}/consent/grant",
+        json={"scope": "PRIVATE_JOURNAL"},
+        headers=headers_b,
+    )
+    assert grant.status_code == 201
+    assert grant.json()["revoked_at"] is None
+
+
+async def test_revoke_after_dissolve_is_not_a_dissolved_error(client, sessionmaker) -> None:
+    """Dissolution revokes every grant already, so a later revoke finds nothing active.
+    Revoke only narrows access, hence it stays unguarded (no WORKSPACE_DISSOLVED) and
+    behaves like any revoke of a not-granted scope."""
+    workspace_id = await _connect(
+        client, sessionmaker, "consent-diss-rev-a@example.com", "consent-diss-rev-b@example.com"
+    )
+    headers_b = await _switch_user(client, "consent-diss-rev-b@example.com")
+    await _dissolve(client, headers_b)
+
+    async with sessionmaker() as db:
+        events_before = (
+            await db.execute(select(func.count()).select_from(ConsentEvent))
+        ).scalar_one()
+
+    revoke = await client.post(
+        f"/v1/workspaces/{workspace_id}/consent/revoke",
+        json={"scope": "CORE_NUMEROLOGY"},
+        headers=headers_b,
+    )
+    assert revoke.status_code == 403
+    assert revoke.json()["code"] == "CONSENT_NOT_GRANTED"
+    assert await _active_grant_count(sessionmaker, workspace_id) == 0
+    async with sessionmaker() as db:
+        events_after = (
+            await db.execute(select(func.count()).select_from(ConsentEvent))
+        ).scalar_one()
+    assert events_after == events_before
+
+
+async def test_grant_by_non_member_on_dissolved_workspace_is_404(client, sessionmaker) -> None:
+    workspace_id = await _connect(
+        client, sessionmaker, "consent-diss-nm-a@example.com", "consent-diss-nm-b@example.com"
+    )
+    headers_b = await _switch_user(client, "consent-diss-nm-b@example.com")
+    await _dissolve(client, headers_b)
+
+    headers_stranger = await _signup(client, sessionmaker, "consent-diss-nm-x@example.com")
+    grant = await client.post(
+        f"/v1/workspaces/{workspace_id}/consent/grant",
+        json={"scope": "CORE_NUMEROLOGY"},
+        headers=headers_stranger,
+    )
+    assert grant.status_code == 404
+    assert grant.json()["code"] == "NOT_FOUND"

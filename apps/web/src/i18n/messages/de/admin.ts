@@ -6,6 +6,7 @@ export const deAdmin = {
   "admin.nav.overview": "Übersicht",
   "admin.nav.users": "Benutzer",
   "admin.nav.audit": "Audit-Log",
+  "admin.nav.flags": "Feature-Flags",
   "admin.nav.backToApp": "Zurück zur App",
 
   // Guard
@@ -38,6 +39,12 @@ export const deAdmin = {
   "admin.stats.totalPeople": "Profile",
   "admin.stats.totalCalculations": "Berechnungen",
   "admin.stats.totalReports": "Berichte",
+  "admin.dashboard.v2Title": "V2-Status",
+  "admin.stats.invitationsPending": "Offene Einladungen",
+  "admin.stats.connectionsActive": "Aktive Verbindungen",
+  "admin.stats.workspacesActive": "Aktive Workspaces",
+  "admin.stats.analysisQueuedWarning": "Analysen > 15 Min in Warteschlange",
+  "admin.stats.analysisFailed24h": "Fehlgeschlagene Analysen (24h)",
 
   // Benutzerliste
   "admin.users.title": "Benutzer",
@@ -123,6 +130,31 @@ export const deAdmin = {
   "admin.audit.noMetadata": "Keine",
   "admin.audit.empty": "Keine Ereignisse gefunden",
   "admin.audit.emptyHint": "Für diese Filter wurde nichts protokolliert.",
+
+  // Feature-Flags
+  "admin.flags.title": "Feature-Flags",
+  "admin.flags.subtitle": "AVENYTH-V2-Funktionsumfang live umschalten -- wirkt beim nächsten Request, kein Neustart nötig.",
+  "admin.flags.loading": "Flags werden geladen \u2026",
+  "admin.flags.lastChanged": "Zuletzt geändert",
+  "admin.flags.lastChangedBy": "von",
+  "admin.flags.never": "Noch nie geändert",
+  "admin.flags.toggleError": "Die Änderung konnte nicht gespeichert werden.",
+  "admin.flags.refreshError": "Gespeichert, Ansicht konnte nicht aktualisiert werden.",
+  "admin.flags.reload": "Neu laden",
+  "admin.flags.name.v2_master": "V2-Hauptschalter",
+  "admin.flags.desc.v2_master": "Persönlicher Workspace (Private Notizen, Reflexionen, Aufgaben). Voraussetzung für alle anderen Flags.",
+  "admin.flags.name.connections": "Verbindungen",
+  "admin.flags.desc.connections": "Einladungen (Link/Code/E-Mail), Verbindungen und Consent-Verwaltung.",
+  "admin.flags.name.relationship_workspaces": "Beziehungs-Workspaces",
+  "admin.flags.desc.relationship_workspaces": "Gemeinsamer Workspace: Übersicht, Dual-Profil, Dynamiken, geteilte Reflexionen.",
+  "admin.flags.name.checkins": "Check-ins",
+  "admin.flags.desc.checkins": "Konfigurierbare Beziehungs-Check-ins.",
+  "admin.flags.name.tasks": "Workspace-Aufgaben",
+  "admin.flags.desc.tasks": "Gemeinsame Aufgaben und Roadmaps innerhalb eines Workspace.",
+  "admin.flags.name.copilot": "Copilot",
+  "admin.flags.desc.copilot": "Persönlicher und gemeinsamer KI-Copilot.",
+  "admin.flags.name.evidence_layer": "Evidence Layer",
+  "admin.flags.desc.evidence_layer": "Life Tracking / Evidenzbasierte Beobachtungen.",
 
   // Gemeinsam
   "admin.common.retry": "Erneut versuchen",

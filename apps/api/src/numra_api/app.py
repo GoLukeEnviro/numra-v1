@@ -20,6 +20,7 @@ from numra_api.middleware.security import (
     SecurityHeadersMiddleware,
 )
 from numra_api.rate_limit import InMemoryRateLimiter, RateLimiter, RedisRateLimiter
+from numra_api.repositories.feature_flags import get_all_flags
 from numra_api.routes import (
     account,
     admin,
@@ -52,6 +53,7 @@ from numra_api.routes import (
 )
 from numra_api.services.email_factory import build_email_sender
 from numra_api.services.errors import ApplicationError
+from numra_api.services.feature_flag_cache import FeatureFlagCache
 from numra_api.services.llm_factory import build_llm_provider
 from numra_api.services.pdf_client import PdfServiceClient
 from numra_api.storage.exports import LocalExportStorage
@@ -75,6 +77,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.engine = engine
         app.state.sessionmaker = build_sessionmaker(engine)
         app.state.settings = resolved_settings
+
+        async def _load_feature_flags() -> dict[str, bool]:
+            async with app.state.sessionmaker() as session:
+                return await get_all_flags(session)
+
+        app.state.feature_flag_cache = FeatureFlagCache(loader=_load_feature_flags)
         yield
         await engine.dispose()
 

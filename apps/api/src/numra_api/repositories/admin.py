@@ -8,8 +8,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from numra_api.models import Calculation, Person, RelationshipComparison, Report, User
 from numra_api.models import Session as SessionModel
-from numra_api.models.enums import UserRole
-from numra_api.schemas.admin import AdminStatsOut, AdminUserOut
+from numra_api.models.enums import (
+    AnalysisJobStatus,
+    ConnectionStatus,
+    InvitationState,
+    UserRole,
+    WorkspaceStatus,
+)
+from numra_api.models.tables import (
+    AnalysisJob,
+    ConnectionInvitation,
+    RelationshipWorkspace,
+    UserConnection,
+)
+from numra_api.schemas.admin import AdminStatsOut, AdminUserOut, V2HealthOut
 
 
 async def _to_admin_user_out(db: AsyncSession, *, user: User, now: dt.datetime) -> AdminUserOut:
@@ -147,6 +159,8 @@ async def compute_admin_stats(db: AsyncSession, *, now: dt.datetime) -> AdminSta
     ).scalar_one()
     total_reports = (await db.execute(select(func.count()).select_from(Report))).scalar_one()
 
+    v2 = await _compute_v2_health(db, now=now)
+
     return AdminStatsOut(
         total_users=total_users,
         active_users=active_users,
@@ -157,4 +171,62 @@ async def compute_admin_stats(db: AsyncSession, *, now: dt.datetime) -> AdminSta
         total_people=total_people,
         total_calculations=total_calculations,
         total_reports=total_reports,
+        v2=v2,
+    )
+
+
+async def _compute_v2_health(db: AsyncSession, *, now: dt.datetime) -> V2HealthOut:
+    """Same five counters as the manual SQL run during the Stufe-2 activation
+    (docs/ops/2026-09-26-v2-activation-connections-workspaces.md Sec.6)."""
+    fifteen_min_ago = now - dt.timedelta(minutes=15)
+    twenty_four_h_ago = now - dt.timedelta(hours=24)
+
+    invitations_pending = (
+        await db.execute(
+            select(func.count())
+            .select_from(ConnectionInvitation)
+            .where(ConnectionInvitation.state == InvitationState.PENDING)
+        )
+    ).scalar_one()
+    connections_active = (
+        await db.execute(
+            select(func.count())
+            .select_from(UserConnection)
+            .where(UserConnection.status == ConnectionStatus.ACTIVE)
+        )
+    ).scalar_one()
+    workspaces_active = (
+        await db.execute(
+            select(func.count())
+            .select_from(RelationshipWorkspace)
+            .where(RelationshipWorkspace.status == WorkspaceStatus.ACTIVE)
+        )
+    ).scalar_one()
+    analysis_queued_gt_15min = (
+        await db.execute(
+            select(func.count())
+            .select_from(AnalysisJob)
+            .where(
+                AnalysisJob.status == AnalysisJobStatus.QUEUED,
+                AnalysisJob.created_at < fifteen_min_ago,
+            )
+        )
+    ).scalar_one()
+    analysis_failed_24h = (
+        await db.execute(
+            select(func.count())
+            .select_from(AnalysisJob)
+            .where(
+                AnalysisJob.status == AnalysisJobStatus.FAILED,
+                AnalysisJob.updated_at > twenty_four_h_ago,
+            )
+        )
+    ).scalar_one()
+
+    return V2HealthOut(
+        invitations_pending=invitations_pending,
+        connections_active=connections_active,
+        workspaces_active=workspaces_active,
+        analysis_queued_gt_15min=analysis_queued_gt_15min,
+        analysis_failed_24h=analysis_failed_24h,
     )

@@ -51,7 +51,7 @@ from numra_api.models import (
     WorkspaceMember,
 )
 from numra_api.models.enums import ConnectionStatus, WorkspaceMemberStatus
-from numra_api.repositories.users import create_user
+from numra_api.repositories.users import create_user, mark_email_verified
 
 pytestmark = pytest.mark.integration
 
@@ -125,6 +125,9 @@ MAY_BE_RETAINED = [
     # Der Admin-Audit-Pfad wird von diesem Seed nicht ausgeloest.
     ("admin_audit_events", "actor_user_id"),
     ("admin_audit_events", "target_user_id"),
+    # Gleicher Grund: dieser Seed loest keinen Admin-Flag-Toggle aus (siehe
+    # repositories/feature_flags.py::set_flag). ON DELETE SET NULL, keine PII.
+    ("feature_flags", "updated_by_user_id"),
 ]
 
 
@@ -137,7 +140,8 @@ async def _switch(client, email: str) -> dict:
 
 async def _signup(client, sessionmaker, email: str) -> dict:
     async with sessionmaker() as db:
-        await create_user(db, email=email, password_hash=hash_password(_PASSWORD))
+        user = await create_user(db, email=email, password_hash=hash_password(_PASSWORD))
+        await mark_email_verified(db, user=user, verified_at=dt.datetime.now(dt.UTC))
         await db.commit()
     return await _switch(client, email)
 

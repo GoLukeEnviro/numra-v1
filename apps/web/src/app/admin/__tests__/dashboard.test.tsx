@@ -19,6 +19,13 @@ const stats: AdminStatsOut = {
   total_people: 130,
   total_calculations: 260,
   total_reports: 8,
+  v2: {
+    invitations_pending: 1,
+    connections_active: 3,
+    workspaces_active: 3,
+    analysis_queued_gt_15min: 0,
+    analysis_failed_24h: 0,
+  },
 };
 
 function renderPage() {
@@ -53,5 +60,25 @@ describe("Admin dashboard", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("boom");
     expect(screen.queryByText("Benutzer gesamt")).not.toBeInTheDocument();
+  });
+
+  it("renders the V2 health block", async () => {
+    vi.mocked(api.admin.stats).mockResolvedValue(stats);
+    renderPage();
+
+    expect(await screen.findByText("V2-Status")).toBeInTheDocument();
+    expect(screen.getByText("Aktive Verbindungen")).toBeInTheDocument();
+    expect(screen.getAllByText("3")).toHaveLength(2);
+  });
+
+  it("highlights stale queued analyses as a warning", async () => {
+    vi.mocked(api.admin.stats).mockResolvedValue({
+      ...stats,
+      v2: { ...stats.v2, analysis_queued_gt_15min: 4 },
+    });
+    renderPage();
+
+    const value = await screen.findByText("4");
+    expect(value).toHaveClass("text-danger");
   });
 });

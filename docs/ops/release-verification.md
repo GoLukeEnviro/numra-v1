@@ -90,6 +90,12 @@ $DC run --rm migrate alembic current
 # Ziel: current == heads == <erwartete Revision>
 ```
 
+Hinweis zu Migrationen mit Tabellen-Locks (z. B. `c5a9d3e72b16`, setzt
+`SET LOCAL lock_timeout = '5s'`): Worker und `analysis-worker` vor `alembic upgrade`
+stoppen, damit keine offene Job-Transaktion die Zeile/Tabelle hält. Bei einem
+Lock-Konflikt bricht die Migration kontrolliert ab (transaktional, nichts halb
+angewendet); nach Beheben der Ursache einfach erneut ausführen.
+
 ### 3. Optionaler DB-Aggregat-Check (kein PII)
 
 ```bash
@@ -214,3 +220,7 @@ auch für `numerology_engine`):
   rechenfähig" neu definiert werden (z. B. weil ein separater Health-Check-Prozess
   ohne die Engine denkbar wird), gehört das in einen eigenen PR mit eigenem Eintrag
   hier — nicht rückwirkend in diesen.
+
+Statuscode: `GET /v1/health/ready` liefert nur dann HTTP 503, wenn die Datenbank
+`unhealthy` ist; `unhealthy` bei `llm`/`pdf`/`numerology_engine` sowie `degraded`/`disabled`
+ändern den Statuscode nicht (200). Der Body bleibt in beiden Fällen vollständig.

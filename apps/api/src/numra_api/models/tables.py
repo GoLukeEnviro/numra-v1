@@ -339,20 +339,47 @@ class ReportJob(Base):
 
 
 class LLMGeneration(Base):
-    """PII-safe LLM call log — never stores the full prompt or report content by
-    default, only metadata (provider/model/status/latency/prompt_hash/section_id)."""
+    """PII-safe LLM call log (one row per provider call) -- never stores prompt, answer
+    or error text, only metadata. Token counts are filled exclusively from provider
+    usage data and stay NULL otherwise (never estimated). Each row hangs on exactly the
+    origin of the call with `ON DELETE CASCADE` -- `report_job_id` (report worker),
+    `analysis_job_id` (analysis worker), `chat_message_id` (the Copilot ASSISTANT
+    message) -- so it lives and dies with that artefact, see
+    docs/audits/2026-09-20-pwa-07-retention-matrix.md."""
 
     __tablename__ = "llm_generations"
+    __table_args__ = (
+        CheckConstraint(
+            "source IN ('report', 'analysis', 'copilot')", name="ck_llm_generations_source"
+        ),
+        CheckConstraint("status IN ('ok', 'error', 'retry')", name="ck_llm_generations_status"),
+        CheckConstraint("attempt >= 1", name="ck_llm_generations_attempt"),
+        CheckConstraint(
+            "num_nonnulls(report_job_id, analysis_job_id, chat_message_id) <= 1",
+            name="ck_llm_generations_single_ref",
+        ),
+    )
 
     id: Mapped[uuid.UUID] = _uuid_pk()
     report_job_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("report_jobs.id", ondelete="CASCADE"), nullable=True, index=True
     )
+    analysis_job_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("analysis_jobs.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    chat_message_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("chat_messages.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    source: Mapped[str] = mapped_column(String(20))
     provider: Mapped[str] = mapped_column(String(60))
     model: Mapped[str] = mapped_column(String(120))
     status: Mapped[str] = mapped_column(String(20))
+    #: Job-level retry attempt (1 = first try), not the pipeline-internal repair attempt.
+    attempt: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
     latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    token_usage: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    prompt_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    completion_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    total_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     prompt_hash: Mapped[str] = mapped_column(String(64))
     section_id: Mapped[str | None] = mapped_column(String(80), nullable=True)
     error_code: Mapped[str | None] = mapped_column(String(80), nullable=True)
@@ -1707,3 +1734,40 @@ class CheckinIdempotency(Base):
     checkin_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("relationship_checkins.id", ondelete="CASCADE")
     )
+
+
+class FeatureFlag(Base):
+    """AVENYTH V2 runtime feature flags, DB-backed so an admin toggle takes effect
+    without a container restart (see services/feature_flags.py). `name` is one of
+    the seven flag keys (v2_master, connections, relationship_workspaces, checkins,
+    tasks, copilot, evidence_layer)."""
+
+    __tablename__ = "feature_flags"
+    name: Mapped[str] = mapped_column(String(64), primary_key=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    updated_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+    updated_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+
+
+class FeatureFlagBootstrap(Base):
+    """Singleton-Status des einmaligen Flag-Bootstraps (`cli flags init`). Genau eine
+    Zeile (`id = 1`); ihre blosse Existenz entscheidet, ob Init noch wirken darf --
+    NICHT `feature_flags.updated_by_user_id IS NULL` (FK ON DELETE SET NULL)."""
+
+    __tablename__ = "feature_flag_bootstrap"
+    __table_args__ = (
+        CheckConstraint("id = 1", name="ck_feature_flag_bootstrap_singleton"),
+        CheckConstraint(
+            "source IN ('bootstrap', 'adopted')", name="ck_feature_flag_bootstrap_source"
+        ),
+    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+    initialized_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    profile: Mapped[str] = mapped_column(String(32), nullable=False)
+    source: Mapped[str] = mapped_column(String(16), nullable=False)

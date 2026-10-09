@@ -97,6 +97,17 @@ this list so nothing is added or renamed silently.
 - `calculation_version`, `knowledge_version`, `prompt_version`, `model_provider`,
   `model_name` are stored on every LLM-generated artifact (matches the existing
   `LLMGeneration` discipline).
+- `LLMGeneration` stores metadata only (no prompt, answer or error text): `source`,
+  `status`, `attempt >= 1`, `latency_ms`, nullable provider token counts and a keyed
+  (HMAC-SHA256) prompt hash. Each row names exactly one origin (CHECK `num_nonnulls(...) <= 1`),
+  all three `ON DELETE CASCADE`: `report_job_id` (report worker), `analysis_job_id`
+  (analysis worker), `chat_message_id` (the Copilot ASSISTANT message). A row therefore
+  lives exactly as long as the artefact it belongs to: private Copilot threads go with
+  account deletion, rows of retained shared artefacts (`analysis_jobs`, the SHARED
+  thread) stay. `CASCADE` instead of `SET NULL` is a deliberate privacy decision (no
+  origin-less rows with prompt hash after deletion); consequence: deleting an account
+  retroactively lowers sums over this table. If cost reporting (A7) needs a
+  deletion-proof history, a user-free aggregate must be secured separately before deletion.
 
 ## Row-Level Security
 

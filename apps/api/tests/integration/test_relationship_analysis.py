@@ -6,13 +6,17 @@ the `_connect` two-user helper pattern from test_relationship_workspaces.py and 
 
 from __future__ import annotations
 
+import datetime as dt
 import re
 
 import pytest
+from sqlalchemy import update
 
 from numra_api.analysis_worker import run_one_cycle
 from numra_api.auth.passwords import hash_password
-from numra_api.repositories.users import create_user
+from numra_api.models import AnalysisJob
+from numra_api.repositories.reports import MAX_ATTEMPTS
+from numra_api.repositories.users import create_user, mark_email_verified
 
 pytestmark = pytest.mark.integration
 
@@ -21,7 +25,8 @@ _COMPATIBILITY_PATTERN = re.compile(r"\d+\s*%.*(kompatib|match|übereinstimm)", 
 
 async def _signup(client, sessionmaker, email: str) -> dict:
     async with sessionmaker() as db:
-        await create_user(db, email=email, password_hash=hash_password("password12345"))
+        user = await create_user(db, email=email, password_hash=hash_password("password12345"))
+        await mark_email_verified(db, user=user, verified_at=dt.datetime.now(dt.UTC))
         await db.commit()
     return await _switch_user(client, email)
 
@@ -416,3 +421,134 @@ async def test_shadow_dynamics_e2e_missing_rule_fails_terminally(
     job_body = job.json()
     assert job_body["status"] == "FAILED"  # terminal, retryable=False -> no retry loop
     assert job_body["error_code"].startswith("ANALYSIS_GENERATION_ERROR")
+
+
+# ---------------------------------------------------------------------------
+# Kontextblock-Labels im Modelltext: aufloesen (eindeutig) oder ablehnen
+# ---------------------------------------------------------------------------
+
+
+class _StubProvider:
+    """A real (non-mock) provider that never calls a model: renders whatever
+    ``text_for(request)`` returns."""
+
+    def __init__(self, text_for) -> None:
+        self._text_for = text_for
+
+    async def health(self):
+        from numra_interpretation.llm.types import ProviderHealth
+
+        return ProviderHealth(
+            status="healthy", provider="ollama_cloud", checked_at=dt.datetime.now(dt.UTC)
+        )
+
+    async def generate(self, request):
+        raise AssertionError("not used")
+
+    async def generate_structured(self, request, schema):
+        return schema(text=self._text_for(request))
+
+
+def _cites_first_fact_label(request) -> str:
+    label = next(b.label for b in request.context_blocks if b.role == "profile_fact")
+    return f"Das ist gepraegt durch [profile_fact:{label}] im Alltag."
+
+
+def _strings(value):
+    """Every string value anywhere in a JSON-shaped result."""
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, dict):
+        for item in value.values():
+            yield from _strings(item)
+    elif isinstance(value, list):
+        for item in value:
+            yield from _strings(item)
+
+
+@pytest.mark.parametrize("kind", ["relationship-analysis", "shadow-dynamics"])
+async def test_copied_fact_label_is_resolved_and_the_analysis_completes(
+    client, sessionmaker, lukas_payload, kind
+) -> None:
+    workspace_id, headers_a, _headers_b = await _set_up_partner_workspace(
+        client,
+        sessionmaker,
+        lukas_payload,
+        f"lr-ok-{kind}-a@example.com",
+        f"lr-ok-{kind}-b@example.com",
+    )
+    create = await client.post(f"/v1/workspaces/{workspace_id}/{kind}", json={}, headers=headers_a)
+    assert create.status_code == 201
+
+    claimed = await run_one_cycle(sessionmaker, llm=_StubProvider(_cites_first_fact_label))
+    assert claimed is True
+
+    body = (await client.get(f"/v1/workspaces/{workspace_id}/{kind}", headers=headers_a)).json()
+    assert body["status"] == "COMPLETE"
+    strings = list(_strings(body["result"]))
+    assert any("gepraegt durch" in text for text in strings)
+    for text in strings:
+        for token in ("[", "]", "{", "}", "profile_fact"):
+            assert token not in text, f"{token!r} leaked into the stored result: {text!r}"
+    job = (
+        await client.get(f"/v1/analysis-jobs/{create.json()['job_id']}", headers=headers_a)
+    ).json()
+    assert job["status"] == "COMPLETE"
+    assert job["error_code"] is None
+
+
+@pytest.mark.parametrize("kind", ["relationship-analysis", "shadow-dynamics"])
+@pytest.mark.parametrize(
+    ("case", "unrepairable"),
+    [
+        ("knowledge", "Wissen [knowledge:communication:semantic_context] im Satz."),
+        ("ambiguous", "Mehrdeutig [profile_fact:life_path] im Satz."),
+        ("unknown", "Unbekannt [profile_fact:a:does_not_exist] im Satz."),
+        ("template", "Template {partner_a} im Satz."),
+        ("fullwidth", "Voll \uff3bprofile_fact\uff1aa:expression\uff3d im Satz."),
+    ],
+)
+async def test_unrepairable_token_never_completes_and_fails_with_one_error_code(
+    client, sessionmaker, lukas_payload, kind, case, unrepairable
+) -> None:
+    slug = f"{kind}-{case}"
+    workspace_id, headers_a, _headers_b = await _set_up_partner_workspace(
+        client,
+        sessionmaker,
+        lukas_payload,
+        f"lr-bad-{slug}-a@example.com",
+        f"lr-bad-{slug}-b@example.com",
+    )
+    create = await client.post(f"/v1/workspaces/{workspace_id}/{kind}", json={}, headers=headers_a)
+    assert create.status_code == 201
+    job_id = create.json()["job_id"]
+    llm = _StubProvider(lambda _request: unrepairable)
+
+    # Retryable: first attempt is re-queued, never COMPLETE.
+    assert await run_one_cycle(sessionmaker, llm=llm) is True
+    job = (await client.get(f"/v1/analysis-jobs/{job_id}", headers=headers_a)).json()
+    assert job["status"] == "QUEUED"
+    assert job["error_code"] == "ANALYSIS_GENERATION_ERROR"
+
+    # Last attempt: terminal FAILED with the very same code, nothing stored as result.
+    async with sessionmaker() as db:
+        await db.execute(
+            update(AnalysisJob)
+            .where(AnalysisJob.id == job_id)
+            .values(next_attempt_at=None, attempt_count=MAX_ATTEMPTS - 1)
+        )
+        await db.commit()
+    assert await run_one_cycle(sessionmaker, llm=llm) is True
+    job = (await client.get(f"/v1/analysis-jobs/{job_id}", headers=headers_a)).json()
+    assert job["status"] == "FAILED"
+    assert job["error_code"] == "ANALYSIS_GENERATION_ERROR"
+
+    stored = (
+        await client.get(
+            f"/v1/workspaces/{workspace_id}/{kind}/{create.json()['id']}", headers=headers_a
+        )
+    ).json()
+    assert stored["status"] == "FAILED"
+    assert stored["result"] is None
+    latest = await client.get(f"/v1/workspaces/{workspace_id}/{kind}", headers=headers_a)
+    assert latest.status_code == 404 or latest.json()["status"] != "COMPLETE"

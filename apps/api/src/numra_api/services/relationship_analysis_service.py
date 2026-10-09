@@ -4,6 +4,21 @@ Mirrors `services/report_service.py`'s job-creation/run-job split: `create_*_job
 validates preconditions and enqueues a job synchronously (callable without a worker
 running -- tests exercise generation directly via `run_*_job`), `run_*_job` is what
 `analysis_worker.py` calls once it has claimed a job.
+
+Stored ``analysis_jobs.error_code`` (shown verbatim in the progress UI, so a category,
+never a detail -- details go to the log):
+
+* ``ANALYSIS_GENERATION_ERROR`` -- the generated text was rejected after the one
+  repair attempt: prompt scaffolding or an unresolved/malformed template token that
+  could not be resolved unambiguously, forbidden language, a missing provenance, an
+  unknown placeholder id. Retryable (a new generation may pass), except a missing
+  shadow-interaction rule (knowledge gap, terminal). Every such rejection ends here,
+  whichever gate raised it -- never ``UNEXPECTED_ERROR``.
+* ``LLM_PROVIDER_ERROR`` -- the provider failed; retryable per the provider's verdict.
+* ``UNEXPECTED_ERROR`` -- a bug; terminal.
+
+An analysis that was rejected is never stored as COMPLETE (``finalize_*`` is only
+reached with a fully validated result).
 """
 
 from __future__ import annotations
@@ -53,6 +68,7 @@ from numra_api.services.errors import (
     RelationshipTypeNotSet,
     SelfProfileRequired,
 )
+from numra_api.services.llm_generation_log import RecordingLLMProvider
 from numra_api.services.workspace_guard import assert_workspace_active
 from numra_interpretation.knowledge_loader import load_knowledge_base
 from numra_interpretation.llm.errors import LLMProviderError
@@ -60,6 +76,7 @@ from numra_interpretation.llm.types import LLMProvider
 from numra_numerology.models.profile import CanonicalProfile
 from numra_relationship_interpretation.errors import (
     AnalysisGenerationError,
+    InvalidAnalysisSection,
     ShadowInteractionRuleMissing,
 )
 from numra_relationship_interpretation.knowledge_loader import (
@@ -318,11 +335,25 @@ async def _handle_job_failure(
         await fail_analysis()
 
 
+def _recorded(db: AsyncSession, llm: LLMProvider, job: AnalysisJob) -> LLMProvider:
+    """Protokolliert die Provider-Aufrufe dieses Job-Versuchs in `llm_generations` (im
+    SAVEPOINT der Job-Transaktion, siehe `services/llm_generation_log.py`)."""
+    return RecordingLLMProvider(
+        llm,
+        db,
+        source="analysis",
+        analysis_job_id=job.id,
+        attempt=job.attempt_count,
+        max_attempts=MAX_ATTEMPTS,
+    )
+
+
 async def run_relationship_analysis_job(
     db: AsyncSession, *, job: AnalysisJob, analysis: RelationshipAnalysis, llm: LLMProvider
 ) -> None:
     """Execute one relationship-analysis job end-to-end (assumes the caller already
     claimed ``job`` via `claim_next_analysis_job`)."""
+    llm = _recorded(db, llm, job)
     await mark_job_status(db, job=job, status=AnalysisJobStatus.GENERATING, progress=10)
 
     # `calculation_a_id`/`calculation_b_id` are snapshotted onto `analysis` at job
@@ -365,7 +396,7 @@ async def run_relationship_analysis_job(
         )
         await mark_job_status(db, job=job, status=AnalysisJobStatus.COMPLETE, progress=100)
 
-    except AnalysisGenerationError as exc:
+    except (AnalysisGenerationError, InvalidAnalysisSection) as exc:
         logger.warning("Analysis job %s failed during generation: %s", job.id, exc)
         await _handle_job_failure(
             db,
@@ -399,6 +430,7 @@ async def run_shadow_dynamics_job(
 ) -> None:
     """Execute one shadow-dynamics job end-to-end -- same structure as
     `run_relationship_analysis_job`."""
+    llm = _recorded(db, llm, job)
     await mark_job_status(db, job=job, status=AnalysisJobStatus.GENERATING, progress=10)
 
     calc_a = await db.get(Calculation, analysis.calculation_a_id)
@@ -446,7 +478,7 @@ async def run_shadow_dynamics_job(
             error_code="ANALYSIS_GENERATION_ERROR",
             retryable=False,
         )
-    except AnalysisGenerationError as exc:
+    except (AnalysisGenerationError, InvalidAnalysisSection) as exc:
         logger.warning("Analysis job %s failed during generation: %s", job.id, exc)
         await _handle_job_failure(
             db,

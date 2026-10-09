@@ -10,7 +10,14 @@ updates:
         update-types:
           - minor
           - patch
-  - package-ecosystem: pip
+    ignore:
+      # react-native 0.87.x breaks apps/mobile's `tsc --noEmit` (every
+      # StyleSheet.create object literal stops satisfying StyleProp<TextStyle>/
+      # StyleProp<ViewStyle> in App.tsx) independent of the @types/react
+      # version — see PR #227/#228. Re-enable once that's root-caused and fixed.
+      - dependency-name: "react-native"
+        versions: [">=0.87.0"]
+  - package-ecosystem: uv
     directory: /
     schedule:
       interval: weekly

@@ -86,6 +86,25 @@ max_workspaces
 Beta default: everything unlocked. Payment provider integration is explicitly
 out of scope for V2 Core (`specs/v2/architecture.md`).
 
+## Connection invitations require a verified email
+
+```
+POST /v1/connections/invitations          create (LINK | CODE | EMAIL)
+POST /v1/connections/invitations/redeem   redeem
+```
+
+Both routes require an account with a verified email (`users.email_verified_at`),
+for every invitation method. An unverified account receives
+`403 EMAIL_VERIFICATION_REQUIRED` (not 404: the error concerns the caller's own
+account, so it is no IDOR signal). On redeem the check runs before the invitation
+is read or claimed.
+
+`EMAIL` invitations stay bound to the addressed account: a different account, even
+a verified one, receives the same `400 INVITATION_EXPIRED_OR_INVALID` as for an
+unknown token, and the failed attempt does not consume the invitation (it stays
+`PENDING`). The routes declare no error responses in OpenAPI; this section is the
+reference for the 403.
+
 ## Primary navigation (Web/PWA)
 
 ```
@@ -134,6 +153,15 @@ llm_latency_ms
 llm_token_usage
 llm_estimated_cost
 ```
+
+`llm_latency_ms` and `llm_token_usage` are specified, not yet implemented: no metrics
+reader or endpoint exists as of 2026-10-08. The data source is `llm_generations` (one row per
+provider call: `source` report|analysis|copilot, `status` ok|error|retry, `attempt`,
+`latency_ms`, nullable `prompt_tokens`/`completion_tokens`/`total_tokens`). Token columns
+are filled only from provider usage data and stay NULL otherwise -- never estimated.
+All three sources are wired: `report` (report worker), `analysis` (analysis worker,
+relationship + shadow dynamics) and `copilot` (personal + relationship threads; no job
+retry, so never `retry`).
 
 Never logged: journal contents, chat text, private notes, raw birth profile
 content (`specs/v2/privacy-spec.md`).

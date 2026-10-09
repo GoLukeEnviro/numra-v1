@@ -38,6 +38,9 @@
           "total_users": {
             "title": "Total Users",
             "type": "integer"
+          },
+          "v2": {
+            "$ref": "#/components/schemas/V2HealthOut"
           }
         },
         "required": [
@@ -49,7 +52,8 @@
           "active_sessions",
           "total_people",
           "total_calculations",
-          "total_reports"
+          "total_reports",
+          "v2"
         ],
         "title": "AdminStatsOut",
         "type": "object"
@@ -246,7 +250,8 @@
           "USER_DISABLED",
           "USER_ENABLED",
           "USER_SESSIONS_REVOKED",
-          "ADMIN_PROMOTED"
+          "ADMIN_PROMOTED",
+          "FEATURE_FLAG_CHANGED"
         ],
         "title": "AuditAction",
         "type": "string"
@@ -2210,6 +2215,71 @@
         ],
         "title": "ExportType",
         "type": "string"
+      },
+      "FeatureFlagListOut": {
+        "properties": {
+          "flags": {
+            "items": {
+              "$ref": "#/components/schemas/FeatureFlagOut"
+            },
+            "title": "Flags",
+            "type": "array"
+          }
+        },
+        "required": [
+          "flags"
+        ],
+        "title": "FeatureFlagListOut",
+        "type": "object"
+      },
+      "FeatureFlagOut": {
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "updated_by_user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated By User Id"
+          }
+        },
+        "required": [
+          "name",
+          "enabled",
+          "updated_at",
+          "updated_by_user_id"
+        ],
+        "title": "FeatureFlagOut",
+        "type": "object"
+      },
+      "FeatureFlagUpdateIn": {
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "FeatureFlagUpdateIn",
+        "type": "object"
       },
       "ForgotPasswordRequest": {
         "additionalProperties": false,
@@ -5078,6 +5148,40 @@
         "title": "UserRole",
         "type": "string"
       },
+      "V2HealthOut": {
+        "description": "Same five counters as the manual SQL in\ndocs/ops/2026-09-26-v2-activation-connections-workspaces.md Sec.6, now computed\nvia SQLAlchemy and surfaced in the admin dashboard instead of a one-off query.",
+        "properties": {
+          "analysis_failed_24h": {
+            "title": "Analysis Failed 24H",
+            "type": "integer"
+          },
+          "analysis_queued_gt_15min": {
+            "title": "Analysis Queued Gt 15Min",
+            "type": "integer"
+          },
+          "connections_active": {
+            "title": "Connections Active",
+            "type": "integer"
+          },
+          "invitations_pending": {
+            "title": "Invitations Pending",
+            "type": "integer"
+          },
+          "workspaces_active": {
+            "title": "Workspaces Active",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "invitations_pending",
+          "connections_active",
+          "workspaces_active",
+          "analysis_queued_gt_15min",
+          "analysis_failed_24h"
+        ],
+        "title": "V2HealthOut",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -5914,6 +6018,104 @@
           }
         },
         "summary": "List Audit",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/v1/admin/flags": {
+      "get": {
+        "operationId": "list_flags_v1_admin_flags_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeatureFlagListOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Flags",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/v1/admin/flags/{name}": {
+      "patch": {
+        "operationId": "update_flag_v1_admin_flags__name__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-csrf-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_csrf",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Csrf"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeatureFlagUpdateIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Flag",
         "tags": [
           "admin"
         ]
@@ -12424,6 +12626,9 @@
               }
             },
             "description": "Successful Response"
+          },
+          "409": {
+            "description": "WORKSPACE_DISSOLVED or CONSENT_GRANT_CONFLICT"
           },
           "422": {
             "content": {

@@ -25,6 +25,7 @@ from numra_api.services.errors import (
     NotAuthenticated,
     RateLimitExceeded,
 )
+from numra_api.services.feature_flag_cache import FeatureFlagCache
 from numra_api.services.pdf_client import PdfServiceClient
 from numra_api.storage.exports import ExportStorage
 from numra_interpretation.llm.types import LLMProvider
@@ -77,6 +78,11 @@ async def get_db(request: Request) -> AsyncIterator[AsyncSession]:
 def get_settings_dep(request: Request) -> Settings:
     settings: Settings = request.app.state.settings
     return settings
+
+
+def get_feature_flag_cache(request: Request) -> FeatureFlagCache:
+    cache: FeatureFlagCache = request.app.state.feature_flag_cache
+    return cache
 
 
 def get_export_storage(request: Request) -> ExportStorage:
