@@ -41,7 +41,7 @@ case "$1" in
   exec)
     if [[ "$*" == *pg_restore* ]]; then cat > /dev/null
     elif [[ "$*" == *psql* ]]; then cat "$W/alembic"
-    elif [[ "$*" == *"python -"* ]]; then
+    elif [ "${!#}" = "-" ]; then
       cat > /dev/null
       echo "PROBE ready 200 200 PASS"
       if [ -n "${FAKE_PROBE_FAIL:-}" ]; then echo "PROBE login 500 200 FAIL"; exit 1; fi
