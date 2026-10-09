@@ -142,8 +142,8 @@ _NEW_FORMS = (
     "Ein Satz mit [profㅤile_fact:a:expression] im Text.",  # Hangul-Filler im Marker
     "Ein Satz mit [prof⠀ile_fact:a:expression] im Text.",  # Braille-Blank
     "Ein Satz mit [prof\x07ile_fact:a:expression] im Text.",  # Steuerzeichen
-    "Ein Satz mit [prof‮ile_fact:a:expression] im Text.",  # BiDi-Override
-    "Ein Satz mit [a:life_path] im Text.",  # Private Use im Bezeichner
+    "Ein Satz mit [prof\u202eile_fact:a:expression] im Text.",  # BiDi-Override
+    "Ein Satz mit [a:life_pa\ue000th] im Text.",  # Private Use im Bezeichner
     "Ein Satz mit [a:foo] im Text.",  # unbekannte ID ohne Unterstrich (streng)
     "Ein Satz mit {0} im Text.",
     "Ein Satz mit {name!r} im Text.",
@@ -161,7 +161,8 @@ async def test_new_token_forms_fail_closed_in_every_analysis(kind, text, profile
 
 _CLEAN_BUT_UNUSUAL = (
     "Ayşe sagt: ısı und İzmir sind wörtlich gemeint, Straße, Größe und Maß auch.",
-    "Zwischen Nähe \U0001f468‍\U0001f469‍\U0001f467 und Freiraum­ liegt Wort​Trenner.",
+    "Zwischen Nähe \U0001f468\u200d\U0001f469\u200d\U0001f467 und Freiraum\u00ad "
+    "liegt Wort\u200bTrenner.",
     "Он сказал «да», και ο Σωκράτης απάντησε: 日本語も大丈夫です。",
     "Ein Satz mit [Anmerkung der Redaktion] und (Klammern) und a:b als Verhältnis.",
     "Er sagte [A: Ich bin müde] und ging.",
@@ -249,7 +250,7 @@ async def _copilot(text: str):
         "Dein Lebenspfad wird durch [profile_faᴄt:requester] beschrieben.",
         "Dein Lebenspfad wird durch [a:life_path_ɡ] beschrieben.",
         "Dein Lebenspfad wird durch [a:life_pa\x1bth] beschrieben.",
-        "Dein Lebenspfad wird durch [b:life_path‍] beschrieben.",
+        "Dein Lebenspfad wird durch [b:life_path\u200d] beschrieben.",
         "Dein Lebenspfad wird durch [a:pinnacle_١] beschrieben.",
     ),
 )
