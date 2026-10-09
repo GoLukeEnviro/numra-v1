@@ -57,9 +57,9 @@ ohne Code- oder Konfigurationsänderung.)
 
 **In Produktion enthalten (S3, gemergt und deployed)** — relevante Code-,
 Konfigurations- und CI-PRs (keine Vollständigkeitsbehauptung): #249, #250, #251, #268,
-#271, #273, #274, #275, #282, #283, #284, #285, #286, #287, #288, #289, #290, #292,
-#293, #294, #296, #297, #298, #299, #307, #308 sowie die Dependabot-Bumps #276, #277,
-#278, #279. Zusätzlich gemergt, nur Dokumentation: #248.
+#271, #273, #274, #275, #282, #283, #284, #285, #286, #288, #289, #290, #292, #293,
+#294, #296, #297, #298, #307, #308 sowie die Dependabot-Bumps #276, #277, #278, #279.
+Gemergt, nur Dokumentation: #248, #287, #299.
 
 **Nicht in S3, offen:**
 

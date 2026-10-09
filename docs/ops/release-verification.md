@@ -276,10 +276,10 @@ und 2) als unabhängige Gegenprobe.
    ```bash
    for d in api web worker analysis-worker migrate; do
      docker image inspect -f '{{.Id}}' "numra-prod-$d:rollback-<TS>" >/dev/null \
-       || echo "FEHLT: Rollback-Tag $d"
+       || { echo "FEHLT: Rollback-Tag $d"; exit 1; }
    done
    sudo test -s /var/lib/numra/release-backups/<TS>/compose.production.yml \
-     || echo "FEHLT: Backup-Compose"
+     || { echo "FEHLT: Backup-Compose"; exit 1; }
    ```
 
 ### 3. Vorbereiten ohne Downtime
@@ -308,22 +308,34 @@ und 2) als unabhängige Gegenprobe.
    warten.
 4. Vorab-Gate „Welche Container würde Compose neu erzeugen?“, ausgeführt gegen die
    **neue** Compose-Datei, nicht gegen die Host-Datei (ein Dry-run gegen die Host-Datei
-   sagt nichts über Image-, Umgebungs- oder Abhängigkeitsänderungen der neuen Datei):
+   sagt nichts über Image-, Umgebungs- oder Abhängigkeitsänderungen der neuen Datei).
+   Das Gate ist die Variante **ohne Dienstliste**, ohne `--force-recreate` und ohne
+   `--no-deps`:
 
    ```bash
-   $DC_NEU --dry-run up -d --force-recreate --no-deps api web worker analysis-worker
+   $DC_NEU --dry-run up -d
    ```
 
    `--dry-run` ist ein globales Flag vor dem Unterbefehl; ab welcher Compose-Version es
-   verfügbar ist, vorab prüfen. Die Ausgabe darf nur die vier genannten Dienste nennen;
-   erscheinen `pdf`, `postgres` oder `redis`, ist das ein STOPP. Lässt man die
-   Dienstliste weg (`$DC_NEU --dry-run up -d`), zeigt Compose zusätzlich die Einmaljobs
-   `migrate` und `flags-init` als Start (sie sind `run --rm`-Einmaljobs und laufen im
-   Release über 4.5 und 4.6) und erzeugt jeden Dienst neu, dessen Konfiguration oder
-   Image abweicht, z. B. `pdf` auf einem Image, das nicht mehr `:latest` entspricht.
-   Diese Variante ist nur Diagnose, nie das Kommando des Release. Ersatz ohne
-   `--dry-run`: je Dienst die ID des laufenden Containers (`docker inspect -f
-   '{{.Image}}' <container>`) mit der ID von `numra-prod-<dienst>:latest` vergleichen.
+   verfügbar ist, vorab prüfen. Erlaubt sind nur die vier Dienste `api`, `web`, `worker`,
+   `analysis-worker` sowie die Einmaljobs `migrate` und `flags-init` als Start (sie sind
+   `run --rm`-Einmaljobs und laufen im Release über 4.5 und 4.6). Erscheint `pdf`,
+   `postgres` oder `redis` als Recreate oder Create, ist das ein STOPP: Dann würde eine
+   Konfigurationsänderung oder ein Image-Tag-Drift dieses Dienstes bei einem `up -d` ein
+   Recreate auslösen. Eine Variante mit Dienstliste und `--no-deps` kann diese Dienste nie
+   nennen und prüft deshalb nichts; sie ersetzt das Gate nicht. Ersatz ohne `--dry-run`:
+   je Dienst die ID des laufenden Containers (`docker inspect -f '{{.Image}}'
+   <container>`) mit der ID von `numra-prod-<dienst>:latest` vergleichen.
+
+   **Zusätzlich immer:** Baseline der unveränderten Dienste vor dem Fenster festhalten
+   und danach vergleichen (Schritt 4.7). Diese Nachprüfung ist unabhängig vom Dry-run:
+
+   ```bash
+   for s in pdf postgres redis; do
+     echo "$s $(docker inspect -f '{{.Image}} {{.State.StartedAt}}' "$($DC ps -q $s)")"
+   done > <SCRATCH>/baseline-unveraendert.txt
+   ```
+
 5. Abbruch in der Vorbereitung (vor dem ersten `stop`): Checkout in `/opt/numra/repo`
    zurück auf den alten Stand setzen (`git -C /opt/numra/repo checkout --detach
    <S_ALT>`), Host-Compose und Marker bleiben unberührt, Scratch-Dateien nicht in den
@@ -360,11 +372,11 @@ und 2) als unabhängige Gegenprobe.
    garantiert den Wechsel auf die neuen Images. Ein `$DC up -d` ohne Dienstliste erzeugt
    jeden Dienst neu, dessen Konfiguration oder Image von der Compose-Datei abweicht;
    das trifft z. B. `pdf`, wenn es auf einem Image läuft, das nicht mehr der aktuellen
-   `:latest`-ID entspricht, obwohl es im Release unverändert bleiben soll. `--no-deps`
-   verhindert zusätzlich, dass über `depends_on` weitere Dienste angefasst werden
-   (Postgres/Redis laufen, `migrate`/`flags-init` sind schon gelaufen). Auf `healthy`
-   warten, Zeitlimit 5 min. Danach die Image-ID des **laufenden** Containers mit
-   `:latest` vergleichen:
+   `:latest`-ID entspricht, obwohl es im Release unverändert bleiben soll. Ohne
+   `--no-deps` würde `--force-recreate` auch die Abhängigkeiten (`postgres`, `redis`)
+   neu erzeugen; mit `--no-deps` entfällt zugleich das automatische Warten auf
+   `service_healthy`, daher **manuell** auf `healthy` warten, Zeitlimit 5 min. Danach
+   die Image-ID des **laufenden** Containers mit `:latest` vergleichen:
 
    ```bash
    for d in api worker analysis-worker web; do
@@ -374,11 +386,29 @@ und 2) als unabhängige Gegenprobe.
    done
    ```
 
-   Jede Abweichung ist ein STOPP. Zuletzt den Healthcheck-Timer wieder starten
-   (`sudo systemctl start numra-healthcheck.timer`). Als `SWITCH_OK` gilt der
-   Umschalt-Schritt (4.4 bis 4.7) nur, wenn die Migration mit Exit 0 und `alembic
-   current == heads == <ZIEL_REV>` endete, `flags-init` ein No-op war, alle vier Dienste
-   `healthy` sind und alle Image-Vergleiche `OK` zeigen.
+   Jede Abweichung ist ein STOPP. Dann die Nachprüfung „`pdf`/`postgres`/`redis`
+   unverändert“ gegen die Baseline aus 3.4:
+
+   ```bash
+   for s in pdf postgres redis; do
+     echo "$s $(docker inspect -f '{{.Image}} {{.State.StartedAt}}' "$($DC ps -q $s)")"
+   done | diff - <SCRATCH>/baseline-unveraendert.txt && echo UNVERAENDERT
+   ```
+
+   Jede Differenz (Image-ID oder `StartedAt`) ist ein STOPP. Zuletzt den
+   Healthcheck-Timer wieder starten (`sudo systemctl start numra-healthcheck.timer`).
+
+   Als `SWITCH_OK` gilt der Umschalt-Schritt (4.4 bis 4.7) nur, wenn alle folgenden
+   Punkte erfüllt sind:
+
+   - Die Migration endete mit Exit 0 und `alembic current == heads == <ZIEL_REV>`.
+   - `flags-init` war ein No-op, definiert als: Flag-Hash über (`name`, `enabled`,
+     `updated_at`) identisch zum Wert vor dem Fenster, Bootstrap-Status `adopted` /
+     `pre-existing` bzw. unverändert, 0 neue `FEATURE_FLAG_CHANGED`-Einträge in
+     `admin_audit_events`. Enthält der Ziel-Stand keinen `flags-init`-Job, entfällt nur
+     der Jobschritt; der Hash-Vergleich bleibt Pflicht.
+   - Alle vier Dienste sind `healthy`, alle Image-Vergleiche zeigen `OK`, und
+     `pdf`/`postgres`/`redis` sind gegen die Baseline unverändert.
 
 ### 5. Abnahme (minimal, mit synthetischem Konto)
 
@@ -550,11 +580,19 @@ Fehlerabbruch mitten in der Migration wurde auch hier nicht geübt.
 **Folgen für Nutzer:** G3 (#294) wirkt seitdem in Produktion; 4 von 6 Konten sind
 unverifiziert und können weder einladen noch einlösen, bis sie ihre E-Mail verifizieren.
 
+**Lehre zum Dry-run-Gate (ehrlich):** Das im Release vom 2026-10-09 ausgeführte Skript
+benutzte beim Dry-run die Variante **mit** Dienstliste und `--no-deps`. Diese kann
+`pdf`, `postgres` und `redis` nie nennen und deckt deshalb nichts auf. Das tatsächlich
+wirksame Sicherheitsnetz war die Nachprüfung „unverändert“ (Image-ID und `StartedAt` von
+`pdf`/`postgres`/`redis` gegen die Baseline vor und nach dem Fenster). Die Vorlage
+verlangt deshalb das Gate ohne Dienstliste (3.4) und zusätzlich immer die Nachprüfung
+(4.7).
+
 **Erkenntnisse und wo sie oben stehen:**
 
 1. `stop` plus `up -d` erzeugt Container nicht zwingend neu → 4.7 (`--force-recreate`,
    Image-ID-Vergleich).
-2. Vorab-Gate per `--dry-run` gegen die neue Datei, `pdf`/`postgres`/`redis` dürfen nicht
+2. Vorab-Gate per `--dry-run up -d` (ohne Dienstliste) gegen die neue Datei, `pdf`/`postgres`/`redis` dürfen nicht
    genannt werden → 3.4.
 3. Einmaljobs als `run --rm --no-deps -T` → 4.5, 4.6.
 4. Healthcheck-Timer vor dem Fenster stoppen, danach starten → 4.2, 4.7, Abbruchkriterien.

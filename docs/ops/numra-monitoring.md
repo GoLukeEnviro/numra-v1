@@ -197,8 +197,14 @@ Statusdatei und die produktive Unit blieben unberührt.
 | `database` unhealthy | 3 | Alarm `database_unhealthy_3x` |
 | `database` wieder healthy | folgender Lauf | Erholung erkannt (`database_recovered`), Zähler 0 |
 | `llm=disabled` bei `required` | 1 | sofort Alarm `config_deviation:llm_required_but_disabled` |
-| Endpunkt antwortet 502 | 1 und 2 | noch kein Alarm (unter der Schwelle) |
-| Endpunkt antwortet 502 | 3 | Alarm; danach `unreachable` weiterhin Alarm |
+| Endpunkt antwortet 502 | 1 | Warnung `readiness_failed_1_of_3(http_502)` |
+| Endpunkt antwortet 502 | 2 | Warnung `readiness_failed_2_of_3(http_502)` |
+| Endpunkt antwortet 502 | 3 | Alarm `readiness_failed_3x(http_502)` |
+| Server aus (`unreachable`) | 4 | Alarm `readiness_failed_4x(unreachable)` |
+
+Im Test lief die Jobprüfung absichtlich ohne DB-Container; deshalb erscheint in allen
+Läufen zusätzlich `prod:jobs_unreadable`. Das ist ein Testartefakt und zeigt zugleich,
+dass unlesbare Job-Zähler als Alarm gelten.
 
 Dieser Test belegt die Bewertungslogik des Skripts mit den realen Soll-Werten, nicht die
 Zustellung eines Alarms an eine Person.
@@ -290,8 +296,10 @@ Das Test-Issue danach mit Hinweis „Kontrollierter Test“ schließen (nicht l�
 - Warnung → Alarm nach 3 Läufen, Erholung, sofortiger Alarm bei Konfigurationsabweichung
   und Alarm bei 502-Endpunkt (siehe „Kontrollierter Fehlertest“), jeweils in isolierter
   Umgebung.
-- Externer Uptime-Probe (#296): Cron-Läufe seit 2026-10-09 05:20 UTC erfolgreich;
-  Fehlerfall und Erholung am 2026-10-08 per `workflow_dispatch` belegt (Issue #295).
+- Externer Uptime-Probe (#296): erster Schedule-Lauf am 2026-10-08 gegen 21:28 UTC; bis
+  2026-10-09 15:00 CEST waren alle geprüften Schedule-Läufe erfolgreich (35 geprüft).
+  Die einzigen 2 Fehlläufe waren die absichtlichen `workflow_dispatch`-Tests vom
+  2026-10-08 (Fehlerfall und Erholung, Issue #295).
 - Der Host-Alarm ist lokal sichtbar: `systemctl --failed`, Journal, Statusdatei.
 
 **Nicht belegt bzw. nicht vorhanden:**
