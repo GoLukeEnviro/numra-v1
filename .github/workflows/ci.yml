@@ -150,7 +150,7 @@ jobs:
           bash scripts/release/tests/test-numra-drill.sh
       - name: Berichtsmodul, Smoke- und Acceptance-Skripte (Unit-Tests, PDF-Pruefung)
         run: |
-          uv run --no-project --python ${{ env.PYTHON_VERSION }} --with pytest \n            --with-requirements scripts/acceptance/requirements.txt \n            pytest scripts/ops_report scripts/acceptance -q
+          uv run --no-project --python ${{ env.PYTHON_VERSION }} --with pytest \n            --with "pypdf>=6.19.0" \n            pytest scripts/ops_report scripts/acceptance -q
 
   # Security-Gate: vier getrennte Audit-Jobs + ein Sammel-Job `security-gate`.
   # Als Required Check ist nur `security-gate` vorgesehen; er ist rot, sobald einer der

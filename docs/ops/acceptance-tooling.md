@@ -89,6 +89,6 @@ SHA, jünger als `MAX_SMOKE_AGE_S`. Berichte enthalten weder Secrets noch Mailad
 ## Tests
 
 ```bash
-uv run --no-project --with pytest --with-requirements scripts/acceptance/requirements.txt \
+uv run --no-project --with pytest --with "pypdf>=6.19.0" \
   pytest scripts/ops_report scripts/acceptance -q
 ```
