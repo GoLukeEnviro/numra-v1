@@ -121,7 +121,10 @@ case "$1" in
   image)
     f="$W/tags/${3//[:\/]/_}"
     [ -f "$f" ] && cat "$f" || exit 1 ;;
-  tag) mut "$@"; echo "$2" > "$W/tags/${3//[:\/]/_}" ;;
+  tag)
+    mut "$@"
+    src="$W/tags/${2//[:\/]/_}"
+    if [ -f "$src" ]; then cp "$src" "$W/tags/${3//[:\/]/_}"; else echo "$2" > "$W/tags/${3//[:\/]/_}"; fi ;;
   logs) echo "ok"; [ -z "${FAKE_TRACEBACK:-}" ] || echo "Traceback (most recent call last)" ;;
   exec)
     sql="${!#}"
