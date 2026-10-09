@@ -338,7 +338,9 @@ Vorher belegen, dass die Registrierung keine E-Mail auslöst. Am Ende
 - **Worker-Pfad (Pflicht):** Profil anlegen → Report-Job → Worker verarbeitet → Job
   `COMPLETE` → PDF-Export lesbar (Textextraktion) → `llm_generations`-Zeile mit
   `source='report'` und gefüllten Tokens. Ein laufender Container ersetzt diesen
-  Beleg nicht. (Echter LLM-Aufruf, geringe Kosten.)
+  Beleg nicht. (Echter LLM-Aufruf, geringe Kosten.) Tokenfelder sind `NULL` (nie 0),
+  wenn die Provider-Antwort keine `prompt_eval_count`/`eval_count` enthält; dann zählt
+  `latency_ms` als Beleg, und die fehlenden Tokens sind im Abnahmebericht zu vermerken.
 - Queue/Fehler: keine `QUEUED`-Jobs älter als 2 min, Zähler fehlgeschlagener Jobs
   unverändert, Health-JSON unauffällig.
 - Pfade, die verifizierte Konten mit echtem Mailversand brauchen (z. B. Einladungen,

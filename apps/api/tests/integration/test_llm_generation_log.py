@@ -28,7 +28,11 @@ from numra_api.services.llm_generation_log import RecordingLLMProvider, record
 from numra_api.worker import run_one_cycle
 from numra_interpretation.llm.errors import LLMProviderTimeout, LLMProviderUnavailable
 from numra_interpretation.llm.mock_provider import MockLLMProvider
-from numra_interpretation.llm.types import GenerationRequest, StructuredGenerationRequest
+from numra_interpretation.llm.types import (
+    GenerationRequest,
+    LLMUsage,
+    StructuredGenerationRequest,
+)
 from numra_interpretation.report.schemas import GeneratedSectionContent
 
 pytestmark = pytest.mark.integration
@@ -437,3 +441,67 @@ def test_prompt_hash_is_keyed_and_covers_the_user_instructions(monkeypatch) -> N
 
     assert len({plain, keyed_a, keyed_b, changed}) == 4
     assert re.fullmatch(r"[0-9a-f]{64}", keyed_a)
+
+
+class _UsageProvider(_CountingProvider):
+    """Wie der echte Ollama-Provider: `generate_structured_with_usage` meldet Usage."""
+
+    def __init__(self, usage: LLMUsage | None, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self._usage = usage
+
+    async def generate_structured_with_usage(self, request, schema):
+        return await self.generate_structured(request, schema), self._usage
+
+
+async def test_provider_usage_is_written_verbatim_per_row(
+    client, sessionmaker, lukas_payload
+) -> None:
+    await _create_report_job(client, sessionmaker, lukas_payload, email="g-use@x.de")
+    usage = LLMUsage(prompt_tokens=120, completion_tokens=30, total_tokens=150)
+    provider = _UsageProvider(usage)
+
+    await run_one_cycle(sessionmaker, llm=provider)
+
+    rows = await _rows(sessionmaker)
+    assert rows
+    for row in rows:
+        assert (row.prompt_tokens, row.completion_tokens, row.total_tokens) == (120, 30, 150)
+
+
+async def test_partial_usage_leaves_missing_columns_null(
+    client, sessionmaker, lukas_payload
+) -> None:
+    await _create_report_job(client, sessionmaker, lukas_payload, email="g-part@x.de")
+    provider = _UsageProvider(LLMUsage(completion_tokens=9))
+
+    await run_one_cycle(sessionmaker, llm=provider)
+
+    for row in await _rows(sessionmaker):
+        assert (row.prompt_tokens, row.completion_tokens, row.total_tokens) == (None, 9, None)
+
+
+async def test_failed_attempt_row_has_null_tokens_and_success_row_has_numbers(
+    client, sessionmaker, lukas_payload
+) -> None:
+    job_id = await _create_report_job(client, sessionmaker, lukas_payload, email="g-rtok@x.de")
+    provider = _UsageProvider(
+        LLMUsage(prompt_tokens=5, completion_tokens=6, total_tokens=11),
+        fail_times=1,
+        error=LLMProviderTimeout("boom"),
+    )
+
+    await run_one_cycle(sessionmaker, llm=provider)
+    await _clear_backoff(sessionmaker, job_id)
+    await run_one_cycle(sessionmaker, llm=provider)
+
+    rows = await _rows(sessionmaker)
+    failed = [r for r in rows if r.status == "retry"]
+    ok = [r for r in rows if r.status == "ok"]
+    assert len(failed) == 1 and ok
+    assert (failed[0].prompt_tokens, failed[0].completion_tokens, failed[0].total_tokens) == (
+        None,
+        None,
+        None,
+    )
+    assert all(r.total_tokens == 11 for r in ok)
