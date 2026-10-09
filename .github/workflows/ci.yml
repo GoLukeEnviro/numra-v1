@@ -132,6 +132,25 @@ jobs:
       - run: uv sync --locked --all-packages --all-groups
       - run: uv run --locked pytest packages/engine-numerology/tests/unit/test_no_golden_leakage.py -q
 
+  ops-scripts:
+    # Release-/Abnahme-Werkzeuge (scripts/release, scripts/ops_report): shellcheck, Attrappen-Tests
+    # ohne Docker/Host-Zugriff. Siehe docs/ops/release-tooling.md.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ env.UV_VERSION }}
+      - run: uv python install ${{ env.PYTHON_VERSION }}
+      - name: shellcheck
+        run: shellcheck scripts/release/numra-release.sh scripts/release/numra-drill.sh scripts/release/tests/*.sh
+      - name: Release- und Drill-Tests (Attrappen)
+        run: |
+          bash scripts/release/tests/test-numra-release.sh
+          bash scripts/release/tests/test-numra-drill.sh
+      - name: Berichtsmodul
+        run: uv run --no-project --python ${{ env.PYTHON_VERSION }} --with pytest pytest scripts/ops_report -q
+
   # Security-Gate: vier getrennte Audit-Jobs + ein Sammel-Job `security-gate`.
   # Als Required Check ist nur `security-gate` vorgesehen; er ist rot, sobald einer der
   # vier Audit-Jobs nicht `success` meldet (failure, cancelled oder skipped).
