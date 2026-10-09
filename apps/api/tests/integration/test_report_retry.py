@@ -410,3 +410,44 @@ async def test_summary_with_a_token_remnant_never_completes_the_report(
         report = await db.get(Report, job.report_id)
     assert report is not None and report.status == "PENDING"
     assert report.content_json is None
+
+
+async def test_a_field_no_pipeline_gate_checks_never_completes_the_report(
+    client, sessionmaker, lukas_payload, monkeypatch
+) -> None:
+    """Das Gate am Speicherpunkt prueft den kompletten Bericht. Der Rest steckt in einer
+    Wissensreferenz, die weder Pipeline noch Linter ansehen."""
+    from numra_api.models import Report, ReportSection
+    from numra_api.services import report_service
+
+    real = report_service.generate_report
+
+    async def _poisoned(**kwargs):
+        report = await real(**kwargs)
+        section = report.sections[0].model_copy(update={"knowledge_refs": ("{0}",)})
+        return report.model_copy(update={"sections": (section, *report.sections[1:])})
+
+    monkeypatch.setattr(report_service, "generate_report", _poisoned)
+    _headers, job_id = await _create_report_job(
+        client, sessionmaker, lukas_payload, email="retry-persist-gate@example.com"
+    )
+
+    assert await run_one_cycle(sessionmaker, llm=MockLLMProvider()) is True
+
+    job = await _load_job(sessionmaker, job_id)
+    assert job.status == ReportJobStatus.QUEUED
+    assert job.error_code == "REPORT_GENERATION_ERROR"
+    async with sessionmaker() as db:
+        report = await db.get(Report, job.report_id)
+        sections = (
+            (
+                await db.execute(
+                    select(ReportSection).where(ReportSection.report_id == job.report_id)
+                )
+            )
+            .scalars()
+            .all()
+        )
+    assert report is not None and report.status == "PENDING"
+    assert report.content_json is None
+    assert sections == []

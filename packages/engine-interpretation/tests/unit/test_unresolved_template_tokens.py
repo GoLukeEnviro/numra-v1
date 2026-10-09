@@ -15,6 +15,8 @@ import time
 import pytest
 
 from numra_interpretation.llm.rendering_guard import (
+    MAX_CHECKED_TEXT_CHARS,
+    OVERSIZE_TOKEN,
     PROMPT_SCAFFOLDING_MARKERS,
     canonical_for_check,
     contains_prompt_scaffolding,
@@ -150,11 +152,17 @@ def test_the_returned_token_is_short_and_never_carries_surrounding_prose() -> No
 
 
 def test_check_is_linear_in_the_input_length() -> None:
-    sample = "Über José: [Anmerkung] Ѕystem prófile straße a:b. " * 22_000
-    assert len(sample) > 1_000_000
+    sample = "Über José: [Anmerkung] Ѕystem prófile straße a:b. " * 3_800
+    assert 150_000 < len(sample) <= MAX_CHECKED_TEXT_CHARS
     start = time.perf_counter()
     assert find_unresolved_template_token(sample) is None
-    assert time.perf_counter() - start < 10.0
+    assert time.perf_counter() - start < 5.0
+
+
+def test_text_beyond_the_length_limit_is_rejected_not_scanned() -> None:
+    sample = "Über José: [Anmerkung] Ѕystem prófile straße a:b. " * 22_000
+    assert len(sample) > MAX_CHECKED_TEXT_CHARS
+    assert find_unresolved_template_token(sample) == OVERSIZE_TOKEN
 
 
 def test_canonical_form_folds_case_width_and_invisible_characters() -> None:

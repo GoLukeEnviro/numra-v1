@@ -519,6 +519,12 @@ async def test_copied_fact_label_is_resolved_and_the_analysis_completes(
         ("short-nested", "Verschachtelt [[a:life_path]] im Satz."),
         ("short-fullwidth", "Voll \uff3ba\uff1alife_path\uff3d im Satz."),
         ("metric-truncated", "Abgeschnitten {{metric:a:life_pa"),
+        ("short-unknown-plain", "Unbekannt [a:foo] im Satz."),
+        ("lookalike-id", "Unbekannt [a:does_not_exist_\u0261] im Satz."),
+        ("filler-in-marker", "Voll [prof\u3164ile_fact:a:expression] im Satz."),
+        ("control-in-marker", "Voll [prof\x07ile_fact:a:expression] im Satz."),
+        ("format-positional", "Platzhalter {0} im Satz."),
+        ("format-conversion", "Platzhalter {name!r} im Satz."),
     ],
 )
 async def test_unrepairable_token_never_completes_and_fails_with_one_error_code(
@@ -608,3 +614,54 @@ async def test_job_that_succeeds_after_a_rejected_attempt_keeps_no_error_code(
     async with sessionmaker() as db:
         stored = await db.get(AnalysisJob, uuid.UUID(job_id))
         assert stored is not None and stored.last_error_at is not None
+
+
+@pytest.mark.parametrize("kind", ["relationship-analysis", "shadow-dynamics"])
+async def test_a_field_no_pipeline_gate_checks_never_completes_the_analysis(
+    client, sessionmaker, lukas_payload, llm, monkeypatch, kind
+) -> None:
+    """Das Gate am Speicherpunkt (`persistence_gate`) prueft das komplette Ergebnis. Der
+    Rest steckt hier in einem Herkunftsfeld, das keine Pipeline-Pruefung kennt; er wird
+    erst nach der Pipeline eingefuegt, also muss das Service-Gate ihn fangen."""
+    from numra_api.services import relationship_analysis_service as service
+
+    name = {
+        "relationship-analysis": "generate_relationship_analysis",
+        "shadow-dynamics": "generate_shadow_dynamics",
+    }[kind]
+    real = getattr(service, name)
+
+    async def _poisoned(**kwargs):
+        result = await real(**kwargs)
+        if kind == "relationship-analysis":
+            dimension = result.dimensions[0]
+            statement = dimension.statements[0].model_copy(update={"canonical_refs": ("[a:foo]",)})
+            dimension = dimension.model_copy(update={"statements": (statement,)})
+            return result.model_copy(update={"dimensions": (dimension, *result.dimensions[1:])})
+        statement = result.interaction_pattern.model_copy(update={"knowledge_refs": ("{0}",)})
+        return result.model_copy(update={"interaction_pattern": statement})
+
+    monkeypatch.setattr(service, name, _poisoned)
+    workspace_id, headers_a, _headers_b = await _set_up_partner_workspace(
+        client,
+        sessionmaker,
+        lukas_payload,
+        f"lr-gate-{kind}-a@example.com",
+        f"lr-gate-{kind}-b@example.com",
+    )
+    create = await client.post(f"/v1/workspaces/{workspace_id}/{kind}", json={}, headers=headers_a)
+    assert create.status_code == 201
+    job_id = create.json()["job_id"]
+
+    assert await run_one_cycle(sessionmaker, llm=llm) is True
+
+    job = (await client.get(f"/v1/analysis-jobs/{job_id}", headers=headers_a)).json()
+    assert job["status"] == "QUEUED"
+    assert job["error_code"] == "ANALYSIS_GENERATION_ERROR"
+    stored = (
+        await client.get(
+            f"/v1/workspaces/{workspace_id}/{kind}/{create.json()['id']}", headers=headers_a
+        )
+    ).json()
+    assert stored["status"] != "COMPLETE"
+    assert stored["result"] is None
