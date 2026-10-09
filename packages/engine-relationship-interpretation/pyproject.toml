@@ -3,7 +3,7 @@ name = "numra-relationship-interpretation"
 version = "0.1.0"
 description = "NUMRA V2 rule-based, traceable relationship/shadow-dynamics interpretation composition (two Canonical Profiles + Relationship Frame Knowledge -> structured analysis). No calculation logic, no compatibility score."
 requires-python = ">=3.11"
-dependencies = ["pydantic>=2.6", "numra-numerology", "numra-interpretation", "pyyaml>=6.0"]
+dependencies = ["pydantic>=2.13.5", "numra-numerology", "numra-interpretation", "pyyaml>=6.0"]
 
 [build-system]
 requires = ["hatchling"]
