@@ -5,7 +5,7 @@ description = "NUMRA stateless FastAPI boundary: HTTP contracts, auth, persisten
 requires-python = ">=3.11"
 dependencies = [
   "fastapi>=0.115",
-  "uvicorn[standard]>=0.30",
+  "uvicorn[standard]>=0.54.0",
   "pydantic>=2.6",
   "email-validator>=2.1",
   "pydantic-settings>=2.4",
