@@ -235,7 +235,7 @@ und 2) als unabhängige Gegenprobe.
 - Ein älteres Compose-Overlay oder ein Tag wie `pre-s1` ist **allein kein
   Rückrollnachweis**: Es sagt nichts darüber, welche Images tatsächlich liefen. Als
   Rückweg zählen nur die vor dem Build angelegten Rollback-Tags auf die laufenden
-  Image-IDs (4.2) zusammen mit der gesicherten Compose-Datei, jeweils verifiziert.
+  Image-IDs (Release-Schritt 2.2) zusammen mit der gesicherten Compose-Datei, jeweils verifiziert.
 - „Container läuft“ belegt nicht, dass der `analysis-worker` (oder `worker`) Jobs
   verarbeitet. Beleg ist ein Job im Zustand `COMPLETE` **und** eine zugehörige Zeile in
   `llm_generations` (Abnahme, Punkt „Worker-Pfad“).
@@ -282,6 +282,14 @@ und 2) als unabhängige Gegenprobe.
    <geänderte Dienste>`. Laufende Container bleiben unberührt. Build-Log sichern.
    Erfolg anhand der neuen Image-IDs prüfen, nicht mit `pgrep` auf den Build-Prozess
    warten.
+4. Vorab-Prüfung „Welche Container würde Compose neu erzeugen?“: `$DC --dry-run up -d
+   --no-deps api worker analysis-worker web` (globales Flag vor dem Unterbefehl; ab
+   welcher Compose-Version verfügbar, ist vorab zu prüfen) und dieselbe Ausgabe ohne
+   Dienstliste (`$DC --dry-run up -d`) vergleichen: Nur die geplanten Dienste dürfen
+   „Recreate“ zeigen. Ohne `--dry-run`: `$DC config` und je Dienst die ID des
+   laufenden Containers (`docker inspect -f '{{.Image}}' <container>`) mit der ID von
+   `numra-prod-<dienst>:latest` vergleichen; ein Dienst mit abweichender ID würde bei
+   einem `up -d` ohne Dienstliste neu erzeugt.
 
 ### 4. Wartungsfenster (Schreibpause)
 
@@ -289,20 +297,29 @@ und 2) als unabhängige Gegenprobe.
    Nutzung wählen.
 2. Schreiber stoppen: `$DC stop web api worker analysis-worker`. Postgres, Redis und
    unveränderte Dienste laufen weiter.
-3. Dump **während** der Pause: `sudo systemctl start numra-backup.service`; neuen Dump
+3. Dump **während** der Pause: `sudo systemctl start numra-backup.service` (Host-
+   Konfiguration unter `/etc/systemd/system`, nicht im Repository belegt; vorher
+   prüfen, dass die Unit existiert); neuen Dump
    und sha256 prüfen, Größe plausibel (nicht kleiner als der letzte Dump ohne
    Erklärung). Dieser Dump ist die Basis für R2.
 4. Neue Compose-Datei installieren: Sicherung liegt bereits in
    `release-backups/<TS>`; dann `sudo cp -p <SCRATCH>/compose.production.yml
    /opt/numra/compose.production.yml`.
 5. Migration: `$DC run --rm migrate` mit Exit 0; danach `alembic current == heads ==
-   <ZIEL_REV>` (Schritt 2 des Verifikations-Runbooks).
+   <ZIEL_REV>` (Schritt 2 des Verifikations-Runbooks). Abbruch mittendrin: siehe
+   „Migrationsabbruch“ unten.
 6. Falls der Ziel-Stand einen `flags-init`-Job enthält: `$DC run --rm flags-init`
    (Exit 0, erwartet No-op bei bestehender Datenbank); danach Flag-Werte samt
    `updated_at` identisch zum Pre-Flight und keine neuen `FEATURE_FLAG_CHANGED`-Einträge
    in `admin_audit_events`.
-7. `$DC up -d`. Erwartete Reihenfolge: Postgres/Redis healthy, `migrate`, `flags-init`,
-   dann `api`/`worker`/`analysis-worker`/`web`. Auf `healthy` warten, Zeitlimit 5 min.
+7. Nach `run --rm migrate` und `run --rm flags-init` die Dienste **explizit** starten:
+   `$DC up -d --no-deps api worker analysis-worker web`. Ein `$DC up -d` ohne
+   Dienstliste erzeugt jeden Dienst neu, dessen Konfiguration oder Image von der
+   Compose-Datei abweicht; das trifft z. B. `pdf`, wenn es auf einem Image läuft, das
+   nicht mehr der aktuellen `:latest`-ID entspricht, obwohl es im Release unverändert
+   bleiben soll. `--no-deps` verhindert zusätzlich, dass über `depends_on` weitere
+   Dienste angefasst werden (Postgres/Redis laufen, `migrate`/`flags-init` sind schon
+   gelaufen). Auf `healthy` warten, Zeitlimit 5 min.
 
 ### 5. Abnahme (minimal, mit synthetischem Konto)
 
@@ -333,35 +350,90 @@ Vorher belegen, dass die Registrierung keine E-Mail auslöst. Am Ende
 
 ```bash
 printf '%s\n' "<S2>" | sudo tee /var/lib/numra/deployed_sha.new >/dev/null \
+  && sudo chown --reference=/var/lib/numra/deployed_sha /var/lib/numra/deployed_sha.new \
+  && sudo chmod --reference=/var/lib/numra/deployed_sha /var/lib/numra/deployed_sha.new \
   && sudo mv -f /var/lib/numra/deployed_sha.new /var/lib/numra/deployed_sha
 ```
 
 Der Marker wird erst nach vollständig bestandener Abnahme geschrieben und per
-`mv` im selben Verzeichnis ersetzt (kein halb geschriebener Marker); Eigentümer
-beibehalten. Ein abgebrochener oder zurückgerollter Versuch hinterlässt **keinen**
+`mv` im selben Verzeichnis ersetzt (kein halb geschriebener Marker). `sudo tee` legt die
+Datei als root an; `chown`/`chmod --reference` übernehmen Eigentümer und Rechte der
+bisherigen Marker-Datei. Ein abgebrochener oder zurückgerollter Versuch hinterlässt **keinen**
 Erfolgsmarker: der Marker bleibt `<S_ALT>`.
 
 ### 7. Abbruchkriterien
 
 - Migration Exit ≠ 0 oder `alembic current` ≠ `<ZIEL_REV>`: STOPP, Dienste **nicht**
-  starten; mit den Rollback-Tags starten (R1).
+  mit den neuen Images starten; weiter nach „Migrationsabbruch“ unten.
 - `flags-init` ist kein No-op, oder Flag-Werte/`updated_at` haben sich geändert: STOPP.
 - Readiness nicht 200/healthy 5 min nach dem Start; `api` oder `worker` im
   Restart-Loop; Log-Fehler mit `column`, `relation` oder `Traceback`.
 - Fehler bei Login, CSRF, Zugriffsschutz, Worker-Pfad, Report oder PDF in der Abnahme.
-- Aktion: R1 ausführen, Ergebnis kontrollieren (Readiness, laufende Image-IDs ==
-  Rollback-Tags, Login), Marker unverändert lassen, Bericht schreiben.
+- Aktion: R1 ausführen, Ergebnis kontrollieren (Readiness, Login, Image-ID der
+  laufenden Container == ID des Rollback-Tags, nach R1 (a) und (c) erfüllbar), Marker
+  unverändert lassen, Bericht schreiben.
+
+#### Migrationsabbruch
+
+Befund im Repository (Stand `main` bei der Erstellung): `apps/api/alembic/env.py` setzt
+`transaction_per_migration` nirgends (kein Treffer im Verzeichnis `apps/api`) und
+führt `context.run_migrations()` in genau einem `with context.begin_transaction():`
+aus (`env.py:48-49`, offline `env.py:41-42`); Alembic schreibt die Versionstabelle
+dabei in derselben Transaktion fort. `_record_starting_heads()` (`env.py:24-29,47`)
+liest nur die Startrevisionen und committet nichts. In den Migrationen unter
+`apps/api/alembic/versions/` gibt es keinen `autocommit_block`, kein `CONCURRENTLY`
+und kein explizites `commit`. Mit PostgreSQL (transaktionales DDL) gilt damit für
+alle in einem Lauf anstehenden Revisionen (z. B. eine Kette über mehrere Revisionen)
+alles oder nichts: Scheitert eine Revision, wird die gesamte Kette zurückgerollt und
+`alembic current` bleibt auf der Startrevision. Das ist aus dem Code abgeleitet, nicht
+durch einen Fehlerabbruch-Drill belegt; bei jedem Ziel-Stand `<S2>` erneut prüfen
+(Migrationen mit `autocommit_block`/`CONCURRENTLY` heben diese Aussage auf).
+
+- **`alembic current` unverändert (Startrevision):** Datenbank unverändert. Dienste
+  mit den Rollback-Tags starten (R1), Ursache beheben, danach `$DC run --rm migrate`
+  erneut. Das ist der erwartete Fall.
+- **`alembic current` auf einer Zwischenrevision** (nach obigem Befund nicht zu
+  erwarten, z. B. bei manuellem Eingriff oder abweichender Migration): nicht
+  blind erneut `upgrade` ausführen. Sicherer Weg ist R2, der Restore des in der
+  Schreibpause gezogenen Dumps (Schritt 4.3). Erneutes `upgrade` nur, wenn jede
+  Revision bis zur Zielrevision als wiederholbar geprüft ist.
+- Stand des Nachweises: Gezeigt wurde bisher der Weg Dump → Migration bis zur
+  Ziel-Revision. Ein Fehlerabbruch mitten in der Migration (und der Restore danach)
+  wurde **nicht** geübt.
 
 ### 8. Rollback-Stufen
 
 | Stufe | Wann | Vorgehen |
 |---|---|---|
-| R1 Code-Rollback (bevorzugt) | Fehler im neuen Code, Daten intakt | Gesicherte Compose-Datei aus `release-backups/<TS>` zurückspielen, `$DC up -d --no-build` mit den `rollback-<TS>`-Tags; Marker nicht ändern. Die Datenbank bleibt auf `<ZIEL_REV>`; das trägt nur, wenn der Vorab-Drill (alter Code gegen migrierte DB) bestanden war. Richtwert 2 bis 5 min. |
+| R1 Code-Rollback (bevorzugt) | Fehler im neuen Code, Daten intakt | Schritte (a) bis (d) unten; Marker nicht ändern. Die Datenbank bleibt auf `<ZIEL_REV>`; das trägt nur, wenn der Vorab-Drill (alter Code gegen migrierte DB) bestanden war. Richtwert 2 bis 5 min. |
 | R2 Datenrestore | nur bei Datenkorruption | Schreiber stoppen, `pg_restore` aus dem Dump der Schreibpause (4.3). Daten nach dem Wiederanlauf gehen verloren; daher nur vor Freigabe des Zugangs oder mit ausdrücklicher Verlust-Entscheidung. |
 | R3 Notfall | nur nach ausdrücklicher Freigabe | `alembic downgrade`. Nicht Teil des Regelwegs (Datenverlust möglich). |
 
-Nach jedem Rollback: Readiness, Image-IDs gegen die Rollback-Tags, Login, Marker
-unverändert `<S_ALT>`.
+#### R1 im Detail
+
+`deploy/compose.production.yml` definiert für die selbst gebauten Dienste nur
+`build:`, keine `image:`-Namen. Compose verwendet daher `numra-prod-<dienst>:latest`;
+ein `up -d --no-build` startet nach dem Build die **neuen** Images, auch wenn
+`rollback-<TS>`-Tags existieren. Die Tags wirken erst, wenn `:latest` zurückgesetzt ist.
+
+a. Optional die neuen Images zur Analyse sichern: `docker tag numra-prod-<dienst>:latest
+   numra-prod-<dienst>:failed-<TS>`. Dann `:latest` zurücksetzen, für jeden Dienst der
+   alten Compose-Datei (`api`, `web`, `worker`, `analysis-worker`, `migrate`):
+   `docker tag numra-prod-<dienst>:rollback-<TS> numra-prod-<dienst>:latest`.
+b. Die alte Compose-Datei aus `/var/lib/numra/release-backups/<TS>/compose.production.yml`
+   mit `-f` verwenden (`DC_ALT` = `DC` mit diesem `-f`) und danach mit `sudo cp -p`
+   auf `/opt/numra/compose.production.yml` zurückkopieren, damit die Host-Datei zum
+   laufenden Stand passt.
+c. Explizit starten: `$DC_ALT up -d --no-build --no-deps api worker analysis-worker web`.
+   Keine Dienstliste ohne `--no-deps`, damit `pdf`, Postgres und Redis unberührt
+   bleiben.
+d. Prüfen, je Dienst: ID des laufenden Containers (`docker inspect -f '{{.Image}}'
+   $($DC_ALT ps -q <dienst>)`) == ID des Rollback-Tags (`docker image inspect -f
+   '{{.Id}}' numra-prod-<dienst>:rollback-<TS>`). Diese Gleichheit ist erst nach (a)
+   und (c) erfüllbar; vorher zeigt sie die neuen Images.
+
+Nach jedem Rollback: Readiness, Image-IDs gemäß (d), Login, Marker unverändert
+`<S_ALT>`.
 
 ### 9. Nach dem Wechsel
 

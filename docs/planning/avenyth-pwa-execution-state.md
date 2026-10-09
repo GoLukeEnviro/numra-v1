@@ -14,7 +14,7 @@ Wo etwas nicht belegt ist, steht „offen“ bzw. „nicht belegt“.
 
 | Feld | Wert |
 |---|---|
-| `main` | `9167c98af786325b7f11d6215998d4957f1b88fe` |
+| `main` | `98148b58afbc750fd59fcb889bf2113c2e8d73a0` (Merge von #297) |
 | Datum | 2026-10-09 |
 | Required Checks | 14, darunter `api-integration` und `security-gate` (seit E1, 2026-10-08) |
 | Required Approvals | 0 |
@@ -42,9 +42,10 @@ Produktion steht damit weiterhin auf dem Stand vor allen unter 4 genannten PRs.
 
 ## 4. Auf `main` gemergt, in Produktion nicht deployed
 
+Relevante Code-, Konfigurations- und CI-PRs (keine Vollständigkeitsbehauptung):
 #249, #250, #251, #268, #271, #273, #274, #275, #282, #283, #284, #285, #286, #287,
-#288, #289, #290, #292, #293, #294, #296 sowie die Dependabot-Bumps. #297 und #298
-sind offen (nicht gemergt) und gehören nicht in diese Liste.
+#288, #289, #290, #292, #293, #294, #296, #297, #298 sowie die Dependabot-Bumps.
+Zusätzlich gemergt, nur Dokumentation: #248.
 
 ## 5. Abnahmezeitpunkt und Belege
 
