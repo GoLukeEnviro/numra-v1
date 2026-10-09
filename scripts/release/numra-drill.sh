@@ -62,6 +62,7 @@ command -v python3 > /dev/null 2>&1 || usage_error "python3 fehlt"
 mkdir -p "$REPORT_DIR"
 RECORDS=$(mktemp "$REPORT_DIR/.records.XXXXXX")
 STARTED=$(date -u +%Y-%m-%dT%H:%M:%S+00:00)
+ENV_CREATED=0
 RUN="drill-$(date -u +%Y%m%d%H%M%S)"
 NET="$RUN-net"
 D="$DRILL_WORKDIR/$RUN"
@@ -80,7 +81,7 @@ priv() { if [ -n "$SUDO_CMD" ]; then $SUDO_CMD "$@"; else "$@"; fi; }
 cleanup() {
   local rc=$?
   trap - EXIT
-  if [ "$DRY_RUN" = 0 ]; then
+  if [ "$ENV_CREATED" = 1 ]; then
     docker rm -f "$RUN-api-old" "$RUN-api-new" "$RUN-pg" "$RUN-redis" > /dev/null 2>&1 || say "Hinweis: Container waren bereits entfernt"
     docker network rm "$NET" > /dev/null 2>&1 || say "Hinweis: Netzwerk war bereits entfernt"
     if [ -d "$D" ]; then
@@ -130,6 +131,7 @@ fi
 # ------------------------------------------------------------------ Drill
 
 umask 077
+ENV_CREATED=1
 mkdir -p "$D"
 chmod 700 "$D"
 priv cp "$dump" "$D/prod.dump"

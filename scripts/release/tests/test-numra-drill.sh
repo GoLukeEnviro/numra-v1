@@ -13,6 +13,8 @@ ok() { PASS_N=$((PASS_N + 1)); printf 'ok   - %s\n' "$1"; }
 bad() { FAIL_N=$((FAIL_N + 1)); printf 'FAIL - %s\n' "$1"; }
 expect() { if [ "$2" -eq 0 ]; then ok "$1"; else bad "$1"; fi; }
 b() { if "$@"; then echo 0; else echo 1; fi; }
+only_image_inspect() { ! grep -qv '^docker image inspect' "$W/calls.log"; }
+rc_is() { [ "$RC" -eq "$1" ]; }
 
 new_world() {
   T=$(mktemp -d)
@@ -87,7 +89,7 @@ t_dry_run() {
   new_world
   drill --target audit --dry-run
   expect "dry-run: Exit 0" $((RC == 0 ? 0 : 1))
-  expect "dry-run: nur 'docker image inspect', nichts anderes" "$(b bash -c "! grep -v '^docker image inspect' '$W/calls.log'")"
+  expect "dry-run: nur 'docker image inspect', nichts anderes" "$(b only_image_inspect)"
   expect "dry-run: kein Arbeitsverzeichnis angelegt" "$(b test -z "$(ls -A "$T/work")")"
   FAKE_MISSING_IMAGE=1 drill --target audit --dry-run
   expect "dry-run: fehlendes Image -> Exit 1" $((RC == 1 ? 0 : 1))
@@ -130,7 +132,8 @@ t_failures() {
   new_world
   touch -d '3 days ago' "$T/backups/numra-1.dump"
   drill --target audit
-  expect "Dump zu alt -> Exit 1 ohne Docker-Mutation" "$(b bash -c "[ $RC -eq 1 ] && ! grep -v '^docker image' '$W/calls.log' 2>/dev/null")"
+  expect "Dump zu alt -> Exit 1 ohne Docker-Mutation" "$(b rc_is 1)"
+  expect "Dump zu alt: nur Image-Pruefungen, kein Cleanup-/Mutationsaufruf" "$(b only_image_inspect)"
 }
 
 t_static() {
