@@ -54,6 +54,10 @@ DEFAULT_ATTEMPTS = 3
 DEFAULT_PAUSE_SECONDS = 20
 DEFAULT_TIMEOUT_SECONDS = 15
 DEFAULT_REMIND_HOURS = 6
+# Wie der Host-Healthcheck (FAIL_THRESHOLD): ein einzelner Fehllauf ist nur eine Warnung,
+# der Alarm braucht den Fehllauf auch im Vorlauf. Sofort alarmieren Konfigurationsabweichung
+# (Host: ebenfalls sofort) und Fehler des Monitors selbst.
+IMMEDIATE_CATEGORIES = ("config_deviation", "monitor_error", "monitor_stale")
 DEFAULT_STALE_MINUTES = 120
 
 
@@ -181,6 +185,7 @@ def decide(
     category: str,
     issue_open: bool,
     warn: bool = False,
+    prev_failed: bool = True,
     last_activity: str,
     last_text: str,
     now: dt.datetime,
@@ -192,7 +197,7 @@ def decide(
         # zwischen degraded und unhealthy flatternder Dienst im Minutentakt Issues.
         return "close" if issue_open and not warn else "none"
     if not issue_open:
-        return "create"
+        return "create" if prev_failed or category in IMMEDIATE_CATEGORIES else "none"
     match = CATEGORY_PATTERN.search(last_text)
     if match is None or match.group(1) != category:
         return "comment"
@@ -257,10 +262,17 @@ def cmd_probe() -> int:
 
 
 def cmd_decide() -> int:
+    # Fehlende oder unbekannte Probe-Ausgabe (Absturz, Checkout-/Allowlist-Fehler) ist ein
+    # Monitorfehler und alarmiert, nie "ok".
+    probe_ok = os.environ.get("PROBE_OK")
+    category = os.environ.get("PROBE_CATEGORY", "")
+    if probe_ok not in ("true", "false"):
+        probe_ok, category = "false", "monitor_error"
     action = decide(
-        ok=os.environ.get("PROBE_OK") == "true",
+        ok=probe_ok == "true",
         warn=os.environ.get("PROBE_WARN") == "true",
-        category=os.environ.get("PROBE_CATEGORY", ""),
+        prev_failed=os.environ.get("PREV_FAILED", "true") != "false",
+        category=category,
         issue_open=bool(os.environ.get("ISSUE_NUMBER")),
         last_activity=os.environ.get("ISSUE_LAST_ACTIVITY", ""),
         last_text=os.environ.get("ISSUE_LAST_TEXT", ""),
@@ -268,8 +280,13 @@ def cmd_decide() -> int:
         remind_hours=float(os.environ.get("REMIND_HOURS") or DEFAULT_REMIND_HOURS),
     )
     print(f"Aktion: {action}")
-    category = os.environ.get("PROBE_CATEGORY", "")
-    _output({"action": action, "label": CATEGORY_LABELS.get(category, "unbekannt")})
+    _output(
+        {
+            "action": action,
+            "category": category,
+            "label": CATEGORY_LABELS.get(category, "unbekannt"),
+        }
+    )
     return 0
 
 

@@ -33,10 +33,11 @@ jobs:
     timeout-minutes: 10
     env:
       TARGET_URL: ${{ inputs.target_url || 'https://avenyth.de/api/v1/health/ready' }}
-      ALERT_TITLE: "ALARM: avenyth.de Readiness nicht erreichbar/unhealthy"
+      ALERT_TITLE: "ALARM: Oeffentliche Readiness gestoert"
       ALERT_LABEL: uptime-alert
     steps:
       - uses: actions/checkout@v7
+        id: checkout
         with:
           sparse-checkout: scripts/ops
           persist-credentials: false
@@ -47,7 +48,24 @@ jobs:
         id: probe
         run: python3 scripts/ops/uptime_probe.py probe
 
+      # Alarm erst, wenn auch der Vorlauf rot war (wie FAIL_THRESHOLD=3 im Host-Healthcheck:
+      # ein einzelner Aussetzer ist nur eine Warnung). Nicht abrufbar -> true (fail-safe).
+      - name: Vorlauf-Status
+        id: prev
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -uo pipefail
+          conclusion="$(gh api "repos/$GH_REPO/actions/workflows/uptime-probe.yml/runs?status=completed&per_page=1"             --jq '.workflow_runs[0].conclusion // ""' 2>/dev/null)" || conclusion=failure
+          if [ "$conclusion" = "failure" ]; then echo "failed=true" >> "$GITHUB_OUTPUT"; else echo "failed=false" >> "$GITHUB_OUTPUT"; fi
+
+      # always(): ein abgestuerzter oder uebersprungener Probe-Schritt liefert keine
+      # Ausgaben; das Skript wertet das als Monitorfehler (Alarm), nie als "ok".
       - name: Alarm-Issue pflegen
+        id: alert
+        if: always() && steps.checkout.outcome == 'success'
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -55,13 +73,33 @@ jobs:
           PROBE_WARN: ${{ steps.probe.outputs.warn }}
           PROBE_CODE: ${{ steps.probe.outputs.code }}
           PROBE_CATEGORY: ${{ steps.probe.outputs.category }}
+          PREV_FAILED: ${{ steps.prev.outputs.failed }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: bash scripts/ops/uptime_alert.sh
+
+      # Ohne Checkout fehlen die Skripte: Minimal-Alarm ohne Skriptabhaengigkeit.
+      - name: Alarm bei Checkout-Fehler
+        if: always() && steps.checkout.outcome != 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          if gh api --paginate "repos/$GH_REPO/issues?state=open&per_page=100"             | jq -e -s --arg t "$ALERT_TITLE" 'add // [] | any(.[]; .title == $t)' >/dev/null; then
+            exit 0
+          fi
+          gh label create "$ALERT_LABEL" --color B60205 --description "Externer Uptime-Probe: Alarm" || true
+          gh issue create --title "$ALERT_TITLE" --label "$ALERT_LABEL"             --body "Der externe Uptime-Probe konnte nicht starten.
+
+          Zeitpunkt (UTC): $(date -u +%Y-%m-%dT%H:%M:%SZ)
+          Kategorie: monitor_error (Fehler im Monitor selbst)
+          Lauf: $RUN_URL"
 
       - name: Warnung kennzeichnen
         if: steps.probe.outputs.ok == 'true' && steps.probe.outputs.warn == 'true'
         run: echo "::warning::Ein Dienst meldet degraded (kein Alarm)."
 
       - name: Lauf bei Fehlschlag rot markieren
-        if: steps.probe.outputs.ok != 'true'
+        if: always() && steps.probe.outputs.ok != 'true'
         run: exit 1

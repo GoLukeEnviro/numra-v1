@@ -9,7 +9,9 @@
 # Hostnamen, Dienstnamen oder Diagnosedaten (oeffentliches Repository).
 set -euo pipefail
 
-: "${GH_REPO:?}" "${ALERT_TITLE:?}" "${PROBE_OK:?}" "${RUN_URL:?}"
+PROBE_OK=${PROBE_OK:-} # leer = Probe lieferte keine Ausgabe -> Monitorfehler (Alarm)
+PREV_FAILED=${PREV_FAILED:-true}
+: "${GH_REPO:?}" "${ALERT_TITLE:?}" "${RUN_URL:?}"
 ALERT_LABEL=${ALERT_LABEL:-uptime-alert}
 REMIND_HOURS=${REMIND_HOURS:-6}
 PROBE_WARN=${PROBE_WARN:-false}
@@ -19,7 +21,7 @@ PROBE_CATEGORY=${PROBE_CATEGORY:-}
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-issue="$(gh api --paginate "repos/$GH_REPO/issues?labels=$ALERT_LABEL&state=open&per_page=100" \
+issue="$(gh api --paginate "repos/$GH_REPO/issues?state=open&per_page=100" \
   | jq -s --arg t "$ALERT_TITLE" \
       'add // [] | map(select(.title == $t and (has("pull_request") | not))) | .[0] // empty')"
 num="$(jq -r '.number // empty' <<<"${issue:-}")"
@@ -40,10 +42,11 @@ out="$(mktemp)"
 trap 'rm -f "$out"' EXIT
 GITHUB_OUTPUT="$out" ISSUE_NUMBER="$num" ISSUE_LAST_ACTIVITY="$last_activity" \
   ISSUE_LAST_TEXT="$last_text" REMIND_HOURS="$REMIND_HOURS" \
-  PROBE_OK="$PROBE_OK" PROBE_WARN="$PROBE_WARN" PROBE_CATEGORY="$PROBE_CATEGORY" \
+  PROBE_OK="$PROBE_OK" PROBE_WARN="$PROBE_WARN" PROBE_CATEGORY="$PROBE_CATEGORY" PREV_FAILED="$PREV_FAILED" \
   python3 "$HERE/uptime_probe.py" decide
 action="$(sed -n 's/^action=//p' "$out")"
 label="$(sed -n 's/^label=//p' "$out")"
+PROBE_CATEGORY="$(sed -n 's/^category=//p' "$out")"
 
 details="Zeitpunkt (UTC): $ts
 HTTP-Status: $PROBE_CODE

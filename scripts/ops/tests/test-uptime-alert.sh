@@ -32,14 +32,16 @@ EOF
 chmod +x "$WORK/bin/gh" "$WORK/bin/python3"
 export PATH="$WORK/bin:$PATH" CALLS="$WORK/calls" FIX_ISSUES="$WORK/issues" FIX_COMMENTS="$WORK/comments"
 
-TITLE="ALARM: Test"
+# Der ECHTE Titel aus dem Workflow, nicht ein Platzhalter.
+TITLE="$(sed -n 's/^ *ALERT_TITLE: "\(.*\)"$/\1/p' "$HERE/../../../.github/workflows/uptime-probe.yml" | tr -d '\r')"
+[ -n "$TITLE" ] || { echo "FAIL Titel nicht gefunden"; exit 1; }
 NOW_ISO="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 OLD_ISO="2020-01-01T00:00:00Z"
 fail=0
 
-run() { # run <ok> <category> <code>
+run() { # run <ok> <category> <code> [prev_failed]
   : >"$CALLS"
-  GH_REPO=o/r ALERT_TITLE="$TITLE" PROBE_OK="$1" PROBE_CATEGORY="$2" PROBE_CODE="$3" \
+  GH_REPO=o/r ALERT_TITLE="$TITLE" PROBE_OK="$1" PROBE_CATEGORY="$2" PROBE_CODE="$3" PREV_FAILED="${4:-true}" \
     RUN_URL=https://example.invalid/run/1 bash "$SCRIPT" >/dev/null
 }
 expect() { # expect <name> <regex>
@@ -51,9 +53,13 @@ expect_none() {
 
 echo '[]' >"$FIX_ISSUES"
 echo '[]' >"$FIX_COMMENTS"
-run false database 503
-expect "kein Issue offen -> anlegen" '^issue create'
-if grep -Eiq 'avenyth|https?://[^ ]*avenyth|numerology|llm|pdf' "$CALLS"; then
+run false database 503 false
+expect_none "erster Fehllauf (Vorlauf gruen) -> noch kein Issue"
+run "" "" 0 false
+expect "Probe ohne Ausgabe -> sofort Monitorfehler-Issue" 'monitor_error'
+run false database 503 true
+expect "zweiter Fehllauf in Folge -> anlegen" '^issue create'
+if grep -Eiq 'avenyth|\.de|numerology|llm|pdf|postgres' "$CALLS"; then
   echo "FAIL Issue-Text enthaelt interne Details"; fail=1
 else echo "ok   Issue-Text generisch"; fi
 
@@ -61,6 +67,10 @@ printf '[{"number":7,"title":"%s","body":"x","created_at":"%s"}]' "$TITLE" "$OLD
 printf '[{"body":"Kategorie: database (x)","created_at":"%s"}]' "$NOW_ISO" >"$FIX_COMMENTS"
 run false database 503
 expect_none "gleiche Kategorie, frischer Kommentar -> kein Spam"
+
+# Issue ohne Label (Label entfernt) wird trotzdem gefunden: kein Duplikat.
+run false database 503
+expect_none "Issue ohne Label gefunden -> kein Duplikat"
 
 run false unreachable 0
 expect "Kategoriewechsel -> kommentieren" '^issue comment 7'

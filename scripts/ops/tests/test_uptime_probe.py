@@ -1,6 +1,7 @@
 import datetime as dt
 import importlib.util
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -179,6 +180,23 @@ def test_decide_closes_on_recovery() -> None:
     assert decide(ok=True, category="", issue_open=True) == "close"
 
 
+def test_decide_first_failure_alone_does_not_create_issue() -> None:
+    assert decide(prev_failed=False) == "none"
+
+
+def test_decide_second_consecutive_failure_creates_issue() -> None:
+    assert decide(prev_failed=True) == "create"
+
+
+@pytest.mark.parametrize("category", ["config_deviation", "monitor_error", "monitor_stale"])
+def test_decide_immediate_categories_skip_threshold(category: str) -> None:
+    assert decide(prev_failed=False, category=category) == "create"
+
+
+def test_decide_recovery_closes_even_without_prev_failure() -> None:
+    assert decide(ok=True, category="", issue_open=True, prev_failed=False) == "close"
+
+
 def test_decide_warning_keeps_open_issue_open() -> None:
     assert decide(ok=True, warn=True, category="", issue_open=True) == "none"
 
@@ -272,7 +290,11 @@ def test_cli_decide_reminder(tmp_path: Path) -> None:
         "ISSUE_LAST_ACTIVITY": (NOW - dt.timedelta(hours=2)).isoformat(),
         "ISSUE_LAST_TEXT": "Kategorie: database",
     }
-    assert cli(tmp_path, "decide", env) == {"action": "none", "label": "Datenbank nicht gesund"}
+    assert cli(tmp_path, "decide", env) == {
+        "action": "none",
+        "category": "database",
+        "label": "Datenbank nicht gesund",
+    }
 
 
 def test_cli_watchdog_unreadable_runs_is_monitor_error(tmp_path: Path) -> None:
@@ -288,3 +310,35 @@ def test_cli_watchdog_fresh_run(tmp_path: Path) -> None:
     runs = tmp_path / "runs.json"
     runs.write_text(json.dumps({"workflow_runs": [run(30, "success")]}), encoding="utf-8")
     assert cli(tmp_path, "watchdog", {"RUNS_FILE": str(runs)}) == {"ok": "true", "category": ""}
+
+
+def test_cli_decide_missing_probe_output_is_monitor_error(tmp_path: Path) -> None:
+    # Probe-Schritt abgestuerzt: keine Ausgaben. Muss alarmieren, auch ohne Vorlauf-Fehler.
+    result = cli(tmp_path, "decide", {"PREV_FAILED": "false"})
+    assert result["action"] == "create" and result["category"] == "monitor_error"
+
+
+def test_cli_decide_garbage_probe_output_is_monitor_error(tmp_path: Path) -> None:
+    result = cli(tmp_path, "decide", {"PROBE_OK": "vielleicht", "PREV_FAILED": "false"})
+    assert result["action"] == "create" and result["category"] == "monitor_error"
+
+
+# --- Workflow-Vertraege (statische Pruefung der echten Dateien) -------------------------
+
+WORKFLOWS = MODULE_PATH.parents[2] / ".github" / "workflows"
+
+
+def test_real_alert_titles_are_generic() -> None:
+    titles: list[str] = []
+    for name in ("uptime-probe.yml", "uptime-watchdog.yml"):
+        text = (WORKFLOWS / name).read_text(encoding="utf-8")
+        titles += re.findall(r'ALERT_TITLE: "([^"]+)"', text)
+    assert len(titles) == 2
+    for title in titles:
+        assert not re.search(r"avenyth|\.de|https?:|numerology|llm|pdf|postgres", title, re.I)
+
+
+def test_probe_alert_step_runs_even_after_failed_steps() -> None:
+    text = (WORKFLOWS / "uptime-probe.yml").read_text(encoding="utf-8")
+    block = text.split("- name: Alarm-Issue pflegen", 1)[1].split("- name:", 1)[0]
+    assert "if: always()" in block

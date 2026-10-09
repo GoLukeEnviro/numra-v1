@@ -239,11 +239,26 @@ Der Actions-Tab ist deshalb im Betriebsablauf regelmäßig zu prüfen, ob der Wo
 aktiv ist und zuletzt gelaufen ist.
 
 **Alarmweg.** Bei Fehlschlag legt der Lauf ein Issue mit Label `uptime-alert` und dem
-festen Titel `ALARM: avenyth.de Readiness nicht erreichbar/unhealthy` an und endet rot. Der
+festen, generischen Titel `ALARM: Oeffentliche Readiness gestoert` an (bewusst ohne Hostnamen; Watchdog-Issue: `ALARM: Uptime-Probe laeuft nicht (Monitor veraltet)`) und endet rot. Der
 Issue-Text ist bewusst generisch (Repository ist öffentlich): Zeitpunkt (UTC), HTTP-Status,
 Kategorie (`unreachable`, `http_error`, `invalid_response`, `readiness`, `database`,
 `dependency`, `config_deviation`) und Link auf den Lauf. Keine Hostnamen, Dienstnamen,
 Bodies oder Diagnosedaten.
+
+*Flatterschutz:* wie beim Host-Healthcheck (`FAIL_THRESHOLD`) alarmiert ein einzelner
+Fehllauf nicht. Das Issue entsteht erst, wenn auch der **vorherige abgeschlossene Lauf**
+rot war (Schritt „Vorlauf-Status“; nicht abrufbar zählt als rot). Die 3 Versuche innerhalb
+eines Laufs dauern nur etwa 40 s und zählen deshalb nicht als Wiederholung über Zeit. Bei
+der tatsächlichen Taktung von etwa 30 Minuten (Cron 15) entsteht der Alarm daher nach
+rund 30 bis 60 Minuten. Sofort alarmieren Konfigurationsabweichung (`disabled` bei einem
+Pflichtdienst, wie im Host-Healthcheck) und Monitorfehler. Ein manueller Testlauf zählt
+als Vorlauf: für einen Fehlertest (siehe unten) sind zwei Fehl-Dispatches nacheinander nötig.
+
+*Absturz des Probes:* Der Alarm-Schritt läuft mit `if: always()`. Fehlende oder
+unbekannte Ausgaben des Probe-Schritts (Absturz, nicht erlaubte URL) gelten als
+`monitor_error` und alarmieren sofort, nie als „ok“. Scheitert schon der Checkout, legt ein
+Minimal-Schritt ohne Skripte das Issue an. Die Issue-Suche arbeitet ohne Label-Filter,
+damit ein entferntes Label nicht zu einem neuen Issue je Lauf führt.
 
 *Wiederholungen begrenzt:* es gibt höchstens ein offenes Issue je Titel. Ein weiterer
 Kommentar entsteht nur bei **Kategoriewechsel** oder wenn der letzte Kommentar älter als
@@ -259,9 +274,12 @@ schließt das Issue. Die Logik steckt in `scripts/ops/uptime_probe.py` (`decide`
 jüngste Lauf mit Ergebnis `success` oder `failure` länger als `STALE_MINUTES` (120)
 zurück, entsteht ein eigenes Issue `ALARM: Uptime-Probe laeuft nicht (Monitor veraltet)`
 (Label `uptime-alert`, Erinnerung alle 24 h, Schließen bei Erholung). Ein roter Probe-Lauf
-zählt als Lebenszeichen, sonst würde jeder Dienstausfall zusätzlich den Watchdog auslösen.
+zählt als Lebenszeichen, sonst würde jeder Dienstausfall zusätzlich den Watchdog auslösen;
+ein abgestürzter Probe-Lauf wird dagegen vom Alarm-Schritt selbst gemeldet (`monitor_error`).
 Ein nicht lesbarer Lauf-Index oder ein Skriptfehler im Probe wird als `monitor_error`
-gemeldet, nie als „alles gut“. Die 120 Minuten folgen der beobachteten Taktung (35 Läufe in
+gemeldet, nie als „alles gut“. Beim allerersten Lauf des Watchdogs ohne jede Probe-Historie (leerer Lauf-Index) meldet er
+ein falsches `monitor_stale`; im Repository besteht die Historie seit 2026-10-08, der Fall
+tritt hier nicht auf. Die 120 Minuten folgen der beobachteten Taktung (35 Läufe in
 rund 17,5 Stunden, also etwa alle 30 Minuten statt 15); die Erkennungszeit liegt damit bei
 bis zu etwa drei Stunden. *Restrisiko:* Watchdog und Probe sind Schedules desselben
 Repositories. Deaktiviert GitHub Schedules (60 Tage ohne Repository-Aktivität), stehen beide
@@ -282,8 +300,8 @@ Empfängerliste ist im Workflow bewusst nicht hinterlegt.
   Sicherungen (siehe „Backup-Frische und Jobfehler“).
 - Die öffentliche Readiness kann kurzzeitig zwischengespeichert sein (serverseitiger
   Cache); sehr kurze Ausfälle bleiben unsichtbar.
-- Ein einzelner fehlgeschlagener Lauf (nach 3 Versuchen) alarmiert sofort; es gibt hier
-  keinen Schwellwert über mehrere Läufe wie beim Host-Healthcheck.
+- Der Schwellwert ist fest 2 aufeinanderfolgende Fehlläufe (siehe „Flatterschutz“), nicht
+  konfigurierbar wie `FAIL_THRESHOLD` im Host-Healthcheck.
 - Ein manueller Lauf mit abweichender `target_url` nutzt dasselbe Alarm-Issue: ein
   erfolgreicher Testlauf schließt ein offenes, echtes Alarm-Issue.
 - Einen manuellen Dispatch darf nur auslösen, wer Schreibrechte im Repository hat. Ein
@@ -304,7 +322,7 @@ Workflows sauber durchgelaufen.
 als Proxy für andere Ziele dient.
 
 ```bash
-# Fehlerfall: 404 -> Alarm-Issue wird erstellt, Lauf ist rot
+# Fehlerfall (zweimal nacheinander, da Schwellwert 2): 404 -> Alarm-Issue, Läufe sind rot
 gh workflow run uptime-probe.yml -f target_url=https://avenyth.de/api/v1/health/does-not-exist
 # Erholung/Normalfall: Standard-URL -> Kommentar "Wiederhergestellt", Issue geschlossen
 gh workflow run uptime-probe.yml
