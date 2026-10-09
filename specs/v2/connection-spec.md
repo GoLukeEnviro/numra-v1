@@ -55,6 +55,19 @@ follow the existing password-reset token model (ADR-consistent with
 `specs/v2/api-contract.md` §Auth): random cryptographically secure token, only the
 hash persisted, single use, expiry, replay protection, rate limiting.
 
+## Verified email requirement
+
+Creating and redeeming an invitation requires an account whose email is verified
+(`users.email_verified_at` set). This applies to every method (`LINK`, `CODE`,
+`EMAIL`). An unverified account receives `403 EMAIL_VERIFICATION_REQUIRED`; the
+check runs before any invitation is read or claimed, so the response says nothing
+about the token.
+
+An `EMAIL` invitation can additionally only be redeemed by the account whose email
+matches `invitee_email` (case-insensitive, trimmed). A mismatch is answered exactly
+like an unknown or expired token (`400 INVITATION_EXPIRED_OR_INVALID`). A rejected
+redeem attempt never consumes the invitation; it stays `PENDING`.
+
 ## Workspace creation gate
 
 A `RelationshipWorkspace` is created **only when all of the following hold**:

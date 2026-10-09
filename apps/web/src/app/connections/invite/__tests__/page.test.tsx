@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import ConnectionsInvitePage from "@/app/connections/invite/page";
 import { LocaleProvider } from "@/i18n/context";
 import { useAuth } from "@/lib/auth-context";
-import { api } from "@/api/client";
+import { api, ApiError } from "@/api/client";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
@@ -65,6 +65,22 @@ describe("ConnectionsInvitePage", () => {
 
     expect(api.connections.invite).toHaveBeenCalledWith({ method: "LINK" });
     expect(screen.getByDisplayValue(/redeem\?token=plaintext-token/)).toBeInTheDocument();
+  });
+
+  it("shows the verify-email guidance and a settings link when the inviter's email isn't verified", async () => {
+    vi.mocked(api.connections.invite).mockRejectedValue(
+      new ApiError("verify your email before creating an invitation", "EMAIL_VERIFICATION_REQUIRED", 403),
+    );
+    renderPage();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Weiter" }));
+    });
+
+    expect(
+      await screen.findByText("Bestätige zuerst deine E-Mail-Adresse, bevor du eine Einladung erstellst."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Zu den Einstellungen" })).toHaveAttribute("href", "/settings");
   });
 
   it("creates an EMAIL invitation with the entered address", async () => {

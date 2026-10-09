@@ -72,6 +72,8 @@ async def create_invitation(
     hash). `settings` is accepted for symmetry with the other token-issuing flows
     (auth_recovery_service.py) even though this PR's link is built by the route, not
     here."""
+    if inviter.email_verified_at is None:
+        raise EmailVerificationRequired("verify your email before creating an invitation")
     # Self-invite is rejected distinctly (never a signal about a *different* account)
     # -- anti-enumeration for a genuinely foreign email is enforced by the route
     # always returning the same 201 shape regardless of match.
@@ -153,6 +155,10 @@ async def accept_invitation(
     """The one atomic multi-table flow: claim invitation -> UserConnection ->
     RelationshipWorkspace -> 2x WorkspaceMember -> 6x default ConsentGrant, all in this
     request's single `AsyncSession` (see module docstring)."""
+    # Checked before anything is read or claimed, for every method: an unverified
+    # account never touches an invitation, so this reveals nothing about the token.
+    if redeeming_user.email_verified_at is None:
+        raise EmailVerificationRequired("verify your email before accepting an invitation")
     now = dt.datetime.now(dt.UTC)
     invitation = await claim_invitation_by_token_hash(
         db, token_hash=hash_token(token), redeemed_by_user_id=redeeming_user.id, now=now
@@ -160,25 +166,21 @@ async def accept_invitation(
     if invitation is None:
         raise InvitationExpiredOrInvalid("invitation is expired, used, or invalid")
 
-    if invitation.method == InvitationMethod.EMAIL:
-        # Bind EMAIL invitations to the addressed account: the inviter chose *that*
-        # person, not whoever happens to hold the token. A plain string match isn't
-        # enough on its own -- it only means something once the account has proven
-        # control of the mailbox, otherwise an attacker could pre-register the
-        # invitee's address first and redeem as themselves. Raising
-        # `InvitationExpiredOrInvalid` here (never a distinct error) keeps this
-        # indistinguishable from any other dead token -- same anti-enumeration
-        # rationale as `decline_own_invitation` above. The claim above already
-        # marked the invitation ACCEPTED; raising here rolls that back (see
-        # `deps.get_db`: the session is only committed if this function returns
-        # normally), so a rejected attempt never burns the invitation.
-        if (
-            invitation.invitee_email is None
-            or invitation.invitee_email.strip().lower() != redeeming_user.email.strip().lower()
-        ):
-            raise InvitationExpiredOrInvalid("invitation is expired, used, or invalid")
-        if redeeming_user.email_verified_at is None:
-            raise EmailVerificationRequired("verify your email before accepting this invitation")
+    # Bind EMAIL invitations to the addressed account: the inviter chose *that*
+    # person, not whoever happens to hold the token. The string match only means
+    # something because the redeeming account is verified (checked above), otherwise
+    # an attacker could pre-register the invitee's address first and redeem as
+    # themselves. Raising `InvitationExpiredOrInvalid` (never a distinct error) keeps
+    # this indistinguishable from any other dead token -- same anti-enumeration
+    # rationale as `decline_own_invitation` above. The claim above already marked the
+    # invitation ACCEPTED; raising here rolls that back (see `deps.get_db`: the session
+    # is only committed if this function returns normally), so a rejected attempt
+    # never burns the invitation.
+    if invitation.method == InvitationMethod.EMAIL and (
+        invitation.invitee_email is None
+        or invitation.invitee_email.strip().lower() != redeeming_user.email.strip().lower()
+    ):
+        raise InvitationExpiredOrInvalid("invitation is expired, used, or invalid")
 
     if invitation.inviter_user_id == redeeming_user.id:
         raise CannotInviteSelf("cannot accept your own invitation")

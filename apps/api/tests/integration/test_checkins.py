@@ -6,20 +6,22 @@ privacy-critical block at the bottom (specs/v2/privacy-spec.md).
 
 from __future__ import annotations
 
+import datetime as dt
 import re
 import uuid
 
 import pytest
 
 from numra_api.auth.passwords import hash_password
-from numra_api.repositories.users import create_user
+from numra_api.repositories.users import create_user, mark_email_verified
 
 pytestmark = pytest.mark.integration
 
 
 async def _signup(client, sessionmaker, email: str) -> dict:
     async with sessionmaker() as db:
-        await create_user(db, email=email, password_hash=hash_password("password12345"))
+        user = await create_user(db, email=email, password_hash=hash_password("password12345"))
+        await mark_email_verified(db, user=user, verified_at=dt.datetime.now(dt.UTC))
         await db.commit()
     return await _switch_user(client, email)
 
