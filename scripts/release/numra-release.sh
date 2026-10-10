@@ -3,7 +3,7 @@
 #
 #   numra-release.sh --target audit|prod --config FILE --phase PHASE \
 #       --old-sha SHA [--new-sha SHA] [--expect-revision REV] [--smoke-report FILE] \
-#       [--dry-run] [--i-am-sure-prod --confirm-sha SHA8]
+#       [--dry-run] [--rebaseline] [--i-am-sure-prod --confirm-sha SHA8]
 #
 # Phases (each aborts on the first failed check, nothing continues silently):
 #   baseline  write the state fingerprint (containers, image IDs, alembic, invariant)
@@ -38,6 +38,7 @@ readonly SCRIPT_VERSION="1.0.0"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPORT_PY="$SCRIPT_DIR/../ops_report/report.py"
 
+REBASELINE=0
 TARGET="" CONFIG="" PHASE="" NEW_SHA="" OLD_SHA="" EXPECT_REV="" SMOKE_REPORT=""
 DRY_RUN=0 SURE_PROD=0 CONFIRM_SHA=""
 
@@ -58,6 +59,7 @@ while [ $# -gt 0 ]; do
     --confirm-sha) CONFIRM_SHA=${2:-}; shift 2 ;;
     --i-am-sure-prod) SURE_PROD=1; shift ;;
     --dry-run) DRY_RUN=1; shift ;;
+    --rebaseline) REBASELINE=1; shift ;;
     *) usage_error "unbekannter Parameter: $1" ;;
   esac
 done
@@ -81,6 +83,15 @@ esac
 if [ "$PHASE" = "switch" ] && [ -z "$EXPECT_REV" ]; then usage_error "--expect-revision ist fuer switch Pflicht"; fi
 if [ "$PHASE" = "marker" ] && [ -z "$SMOKE_REPORT" ]; then usage_error "--smoke-report ist fuer marker Pflicht"; fi
 
+# Die Konfiguration wird als Shell gelesen (= Codeausfuehrung): nur eigene oder root-eigene
+# Dateien ohne Schreibrecht fuer Gruppe/Andere. Werte aus der Umgebung gelten nie; insbesondere
+# SUDO_CMD kommt ausschliesslich aus der Konfigurationsdatei.
+cfg_mode=$(stat -c %a "$CONFIG")
+cfg_owner=$(stat -c %u "$CONFIG")
+if [ $((8#$cfg_mode & 8#022)) -ne 0 ] || { [ "$cfg_owner" != "$(id -u)" ] && [ "$cfg_owner" != "0" ]; }; then
+  usage_error "Konfig $CONFIG muss dem aufrufenden Benutzer oder root gehoeren und darf fuer Gruppe/Andere nicht schreibbar sein (empfohlen 0600)"
+fi
+unset SUDO_CMD DC_FILE
 # shellcheck source=/dev/null
 . "$CONFIG"
 
@@ -96,6 +107,9 @@ require_cfg CONFIG_TARGET PROJECT COMPOSE_FILE ENV_FILE REPO_DIR WRITER_SERVICES
 [ "$CONFIG_TARGET" = "$TARGET" ] || usage_error "Konfig gehoert zu CONFIG_TARGET=$CONFIG_TARGET, aufgerufen mit --target $TARGET"
 
 SUDO_CMD=${SUDO_CMD-sudo}
+REDACT_ENV=${REDACT_ENV:-PGPASSWORD}
+MIN_SMOKE_PASS=${MIN_SMOKE_PASS:-10}
+POST_SWITCH_WAIT_S=${POST_SWITCH_WAIT_S:-20}
 PROJECT_DIR=${PROJECT_DIR:-}
 COMPOSE_SRC_IN_REPO=${COMPOSE_SRC_IN_REPO:-}
 COMPOSE_EXTRA_FILES=${COMPOSE_EXTRA_FILES:-}
@@ -132,7 +146,11 @@ RUN_TS=$(date -u +%Y%m%d-%H%M%S)
 
 # ------------------------------------------------------------------ Ausgabe / Bericht
 
-say() { printf '[%s] %s\n' "$(date -u +%FT%TZ)" "$*" | tee -a "$REPORT_DIR/release.log"; }
+redact_args=()
+for _v in $REDACT_ENV; do redact_args+=(--redact-env "$_v"); done
+say() { # jede Zeile laeuft durch die zentrale Redaktion (Secrets, Mails, Tokens)
+  printf '[%s] %s\n' "$(date -u +%FT%TZ)" "$*" | python3 "$REPORT_PY" redact ${redact_args[@]+"${redact_args[@]}"} | tee -a "$REPORT_DIR/release.log"
+}
 chk() { # chk STATUS ID DETAIL
   printf '%s\t%s\t%s\n' "$1" "$2" "$3" >> "$RECORDS"
   say "$1 $2 $3"
@@ -141,18 +159,9 @@ chk() { # chk STATUS ID DETAIL
 PREP_CHECKED_OUT=0
 die() {
   chk FAIL abort "$*"
-  case "$PHASE" in
-    switch) say "HINWEIS: Dienste evtl. gestoppt, Health-Timer evtl. gestoppt. Entscheidung: switch nach Fehlerbehebung wiederholen oder rollback ausfuehren." ;;
-    prep)
-      if [ "$PREP_CHECKED_OUT" = 1 ]; then
-        if git -C "$REPO_DIR" checkout -q --detach "$OLD_SHA"; then
-          say "Checkout zurueck auf OLD (prep-Abbruch)"
-        else
-          say "WARNUNG: Checkout konnte nicht auf OLD zurueckgesetzt werden"
-        fi
-      fi
-      ;;
-  esac
+  if [ "$PHASE" = "switch" ]; then
+    say "HINWEIS: Dienste evtl. gestoppt, Health-Timer evtl. gestoppt. Entscheidung: switch nach Fehlerbehebung wiederholen oder rollback ausfuehren."
+  fi
   exit 1
 }
 
@@ -161,6 +170,14 @@ finish_report() {
   trap - EXIT
   if [ "$rc" -ne 0 ] && ! grep -q '^FAIL' "$RECORDS"; then
     printf 'FAIL\tunexpected-exit\texit=%s\n' "$rc" >> "$RECORDS"
+  fi
+  if [ "$rc" -ne 0 ] && [ "$PHASE" = "prep" ] && [ "$PREP_CHECKED_OUT" = 1 ] && [ "$DRY_RUN" = 0 ]; then
+    # jeder Abbruch nach dem Checkout (auch set -e) stellt den alten Stand wieder her
+    if git -C "$REPO_DIR" checkout -q --detach "$OLD_SHA"; then
+      printf 'INFO\tcheckout-restore\tzurueck auf old-sha\n' >> "$RECORDS"
+    else
+      printf 'FAIL\tcheckout-restore\tCheckout konnte nicht auf old-sha zurueckgesetzt werden\n' >> "$RECORDS"
+    fi
   fi
   local scope limits dry=() sha=${DEPLOY_SHA:--}
   scope=$(mktemp "$REPORT_DIR/.scope.XXXXXX")
@@ -175,7 +192,7 @@ finish_report() {
     --target "$TARGET" --target-sha "$sha" --script numra-release.sh --script-version "$SCRIPT_VERSION" \
     --started "$STARTED" --scope-file "$scope" --limitations-file "$limits" \
     --extra "phase=$PHASE" --extra "old_sha=${OLD_SHA:--}" --extra "run=$RUN_TS" \
-    "${dry[@]}" || rc=1
+    ${redact_args[@]+"${redact_args[@]}"} "${dry[@]}" || rc=1
   rm -f "$RECORDS" "$scope" "$limits"
   exit "$rc"
 }
@@ -229,13 +246,30 @@ get_state() {
 }
 set_state() { printf '%s=%s\n' "$1" "$2" >> "$STATE_FILE"; }
 
-fingerprint() {
-  docker ps --format '{{.Names}}' | awk -v p="^${PROJECT}-" '$0 ~ p' | sort | while IFS= read -r c; do
-    printf 'container %s %s\n' "$c" "$(docker inspect -f '{{.Image}} {{.State.StartedAt}}' "$c")"
+fingerprint() { # Zuweisungen zuerst: Fehler im Substitut brechen ab, leere Werte sind Fehler
+  local names c info svc sum rev inv
+  names=$(docker ps --format '{{.Names}}')
+  for svc in $WRITER_SERVICES $UNTOUCHED_SERVICES; do
+    c=$(container "$svc")
+    if ! grep -qx "$c" <<< "$names"; then die "fingerprint: Container $c laeuft nicht"; fi
   done
-  printf 'compose sha=%s\n' "$(sha256sum "$COMPOSE_FILE" | cut -c1-16)"
-  printf 'db alembic=%s\n' "$(alembic_rev)"
-  if [ -n "$INVARIANT_SQL" ]; then printf 'db invariant=%s\n' "$(pgq "$INVARIANT_SQL")"; fi
+  while IFS= read -r c; do
+    [ -n "$c" ] || continue
+    info=$(docker inspect -f '{{.Image}} {{.State.StartedAt}}' "$c")
+    [ -n "$info" ] || die "fingerprint: keine Image-Info fuer $c"
+    printf 'container %s %s\n' "$c" "$info"
+  done < <(awk -v p="^${PROJECT}-" '$0 ~ p' <<< "$names" | sort)
+  sum=$(sha256sum "$COMPOSE_FILE" | cut -c1-16)
+  [ -n "$sum" ] || die "fingerprint: Compose-Hash leer"
+  printf 'compose sha=%s\n' "$sum"
+  rev=$(alembic_rev)
+  [ -n "$rev" ] || die "fingerprint: alembic-Revision leer"
+  printf 'db alembic=%s\n' "$rev"
+  if [ -n "$INVARIANT_SQL" ]; then
+    inv=$(pgq "$INVARIANT_SQL")
+    [ -n "$inv" ] || die "fingerprint: Invariante leer"
+    printf 'db invariant=%s\n' "$inv"
+  fi
 }
 comparable() { awk '/^(container|compose|db) /' "$1"; }
 
@@ -269,6 +303,8 @@ drift_check() { # Baseline == jetzt (Container, Compose-Hash, alembic, Invariant
   local tmp
   tmp=$(mktemp "$REPORT_DIR/.fp.XXXXXX")
   fingerprint > "$tmp"
+  [ -n "$(awk '/^container /' "$tmp")" ] || die "Drift-Pruefung: aktueller Zustand ohne Container"
+  [ -n "$(awk '/^container /' "$BASELINE_FILE")" ] || die "Drift-Pruefung: Baseline ohne Container"
   if diff -q <(comparable "$BASELINE_FILE") <(comparable "$tmp") > /dev/null; then
     chk PASS drift "Ziel entspricht der Baseline"
     rm -f "$tmp"
@@ -284,6 +320,12 @@ plan() { chk SKIP "plan:$1" "Dry-Run: nicht ausgefuehrt"; }
 
 phase_baseline() {
   [ -f "$COMPOSE_FILE" ] || die "COMPOSE_FILE nicht vorhanden"
+  if [ -f "$BASELINE_FILE" ] && [ "$REBASELINE" = 0 ]; then
+    die "Baseline existiert bereits ($BASELINE_FILE); Ueberschreiben nur mit --rebaseline"
+  fi
+  if [ -f "$BASELINE_FILE" ] && [ "$TARGET" = "prod" ] && [ "$SURE_PROD" = 0 ] && [ "$DRY_RUN" = 0 ]; then
+    die "--rebaseline gegen prod braucht --i-am-sure-prod"
+  fi
   if [ "$DRY_RUN" = 1 ]; then
     plan "Baseline $BASELINE_FILE schreiben"
     return 0
@@ -332,10 +374,12 @@ phase_pre() {
   chk PASS pre "Pre-Flight bestanden"
 }
 
-compose_diff_forbidden() { # $1 = alte, $2 = neue Compose
-  local re
+compose_diff_forbidden() { # $1 = alte, $2 = neue Compose; 0 = verboten, 1 = ok, 2 = diff-Fehler
+  local re out rc=0
   re="network|volume|^[<>] *($(echo "$UNTOUCHED_SERVICES" | tr ' ' '|')):"
-  diff_lines "$1" "$2" | awk -v re="$re" '/^[<>]/ && tolower($0) ~ re { f = 1 } END { exit f ? 0 : 1 }'
+  out=$(diff "$1" "$2") || rc=$?
+  [ "$rc" -le 1 ] || return 2
+  printf '%s\n' "$out" | awk -v re="$re" '/^[<>]/ && tolower($0) ~ re { f = 1 } END { exit f ? 0 : 1 }'
 }
 
 phase_prep() {
@@ -352,6 +396,8 @@ phase_prep() {
   mkdir -p "$STATE_DIR"
   : > "$STATE_FILE"
   set_state TS "$ts"
+  set_state OLD_SHA "$OLD_SHA"
+  set_state NEW_SHA "$NEW_SHA"
   set_state ALEMBIC_BEFORE "$(alembic_rev)"
   priv install -d -m 0700 "$rb" || die "Sicherungsverzeichnis"
   priv cp -p "$COMPOSE_FILE" "$rb/compose.yml" || die "Sicherung Compose"
@@ -372,8 +418,8 @@ phase_prep() {
     chk PASS "rollback-tag:$MIGRATE_SERVICE" "Tag == :latest ${cid:0:19}"
   fi
   git -C "$REPO_DIR" fetch -q origin || die "git fetch"
-  git -C "$REPO_DIR" checkout -q --detach "$NEW_SHA" || die "git checkout"
   PREP_CHECKED_OUT=1
+  git -C "$REPO_DIR" checkout -q --detach "$NEW_SHA" || die "git checkout"
   [ "$(git -C "$REPO_DIR" rev-parse HEAD)" = "$NEW_SHA" ] || die "HEAD != new-sha"
   chk PASS checkout "HEAD == ${NEW_SHA:0:8}"
   local stage="$STATE_DIR/release-$ts"
@@ -381,10 +427,16 @@ phase_prep() {
     mkdir -p "$stage"
     git -C "$REPO_DIR" show "$NEW_SHA:$COMPOSE_SRC_IN_REPO" > "$stage/compose.new.yml" || die "neue Compose nicht im Repo"
     set_state COMPOSE_NEW "$stage/compose.new.yml"
-    chk INFO compose-diff "$(diff_lines "$COMPOSE_FILE" "$stage/compose.new.yml" | awk '/^[<>]/ { c++ } END { print c + 0 }') geaenderte Zeilen"
-    if compose_diff_forbidden "$COMPOSE_FILE" "$stage/compose.new.yml"; then
-      die "Compose-Diff beruehrt volumes/networks/unveraenderliche Dienste - manuell pruefen"
-    fi
+    local diff_out
+    diff_out=$(diff_lines "$COMPOSE_FILE" "$stage/compose.new.yml") || die "Compose-Diff fehlgeschlagen"
+    chk INFO compose-diff "$(awk '/^[<>]/ { c++ } END { print c + 0 }' <<< "$diff_out") geaenderte Zeilen"
+    local forbidden=0
+    compose_diff_forbidden "$COMPOSE_FILE" "$stage/compose.new.yml" || forbidden=$?
+    case "$forbidden" in
+      0) die "Compose-Diff beruehrt volumes/networks/unveraenderliche Dienste - manuell pruefen" ;;
+      1) ;;
+      *) die "Compose-Diff konnte nicht berechnet werden" ;;
+    esac
     DC_FILE="$stage/compose.new.yml" dc config --quiet > /dev/null || die "neue Compose ungueltig"
     local out u
     # shellcheck disable=SC2086
@@ -393,7 +445,18 @@ phase_prep() {
     for u in $UNTOUCHED_SERVICES; do
       if grep -Eiq "(^|[^a-z])${u}([^a-z]|$)" <<< "$out"; then die "compose --dry-run beruehrt $u"; fi
     done
-    chk PASS compose-new "neue Compose valide, nur $WRITER_SERVICES betroffen"
+    if [ -n "$MIGRATE_SERVICE" ]; then
+      # Wie im bewaehrten Host-Skript: `run --rm --no-deps` startet/erstellt keine Abhaengigkeiten.
+      # migrate braucht die bereits laufende Datenbank; `--no-deps` verhindert, dass Compose
+      # postgres/redis/pdf anfasst. Der Trockenlauf belegt das vor dem Fenster.
+      out=$(DC_FILE="$stage/compose.new.yml" dc --dry-run run --rm --no-deps -T "$MIGRATE_SERVICE" true 2>&1) \
+        || die "compose --dry-run (migrate) fehlgeschlagen"
+      for u in $UNTOUCHED_SERVICES; do
+        if [ "$u" != "$PG_SERVICE" ] && grep -Eiq "(^|[^a-z])${u}([^a-z]|$)" <<< "$out"; then die "migrate-Trockenlauf beruehrt $u"; fi
+      done
+      if grep -Eiq 'recreat' <<< "$out"; then die "migrate-Trockenlauf wuerde Dienste neu erstellen"; fi
+    fi
+    chk PASS compose-new "neue Compose valide, nur $WRITER_SERVICES betroffen, migrate-Trockenlauf unkritisch"
   fi
   DC_FILE=${COMPOSE_SRC_IN_REPO:+$stage/compose.new.yml} build_dca
   # shellcheck disable=SC2086
@@ -435,6 +498,7 @@ phase_switch() {
     die "kein prep-State ($STATE_FILE)"
   fi
   rb="$RELEASE_BACKUP_ROOT/$ts"
+  { [ "$(get_state NEW_SHA)" = "$NEW_SHA" ] && [ "$(get_state OLD_SHA)" = "$OLD_SHA" ]; } || die "prep-State gehoert zu anderen SHAs als --old-sha/--new-sha"
   [ "$(git -C "$REPO_DIR" rev-parse HEAD)" = "$NEW_SHA" ] || die "Checkout != new-sha"
   for svc in $WRITER_SERVICES $MIGRATE_SERVICE; do
     docker image inspect "${IMAGE_PREFIX}${svc}:rollback-$ts" > /dev/null 2>&1 || die "Rollback-Tag fehlt: $svc"
@@ -449,15 +513,21 @@ phase_switch() {
     plan "Recreate $WRITER_SERVICES, Image-Gleichheit pruefen, Readiness"
     return 0
   fi
-  local t0 before dump age
+  local t0 before dump age t_stop dump_mtime
   t0=$(date +%s)
   before=$(alembic_rev)
   timer stop
   # shellcheck disable=SC2086
   dc stop $WRITER_SERVICES >> "$REPORT_DIR/release.log" 2>&1 || die "Schreiber stoppen"
+  t_stop=$(date +%s)
   chk PASS writers-stopped "Schreiber gestoppt, Readiness jetzt $(ready_code)"
-  if [ -n "$BACKUP_SERVICE" ]; then priv systemctl start "$BACKUP_SERVICE" || die "Backup-Service"; fi
+  [ -n "$BACKUP_SERVICE" ] || die "BACKUP_SERVICE fehlt: ohne Pre-Deploy-Dump nach dem Schreiber-Stopp kein switch"
+  # `systemctl start` einer Type=oneshot-Unit kehrt erst nach Abschluss zurueck (synchron).
+  priv systemctl start "$BACKUP_SERVICE" || die "Backup-Service"
   dump=$(newest_dump)
+  [ -n "$dump" ] || die "kein Dump nach dem Backup-Service"
+  dump_mtime=$(priv stat -c %Y "$dump")
+  [ "$dump_mtime" -ge "$t_stop" ] || die "Dump ist aelter als der Schreiber-Stopp (kein Pre-Deploy-Dump)"
   age=$(dump_age "$dump")
   [ "$age" -lt "$FRESH_DUMP_MAX_AGE_S" ] || die "kein frischer Pre-Deploy-Dump (alter_s=$age)"
   dump_sha_ok "$dump" || die "Pre-Deploy-Dump sha256"
@@ -497,13 +567,18 @@ phase_switch() {
   chk PASS untouched "$UNTOUCHED_SERVICES unveraendert (Image-ID + StartedAt)"
   [ "$(ready_code)" = "200" ] || die "Readiness != 200 nach switch"
   chk PASS ready "Readiness 200"
-  local tb
+  local tb restarts
+  sleep "$POST_SWITCH_WAIT_S"
   for svc in $WRITER_SERVICES; do
     tb=$(docker logs --since 3m "$(container "$svc")" 2>&1 | awk '/Traceback/ { c++ } END { print c + 0 }')
-    if [ "$tb" -eq 0 ]; then chk PASS "log:$svc" "0 Tracebacks (3 min)"; else die "$svc: $tb Tracebacks in den letzten 3 min"; fi
+    restarts=$(docker inspect -f '{{.RestartCount}}' "$(container "$svc")")
+    if [ "$tb" -ne 0 ]; then die "$svc: $tb Tracebacks in den letzten 3 min"; fi
+    if [ "$restarts" != "0" ]; then die "$svc: RestartCount=$restarts"; fi
+    chk PASS "log:$svc" "0 Tracebacks (3 min), RestartCount 0"
   done
   timer start
   set_state ALEMBIC_AFTER "$after"
+  set_state SWITCH_DONE_AT "$(date -u +%Y-%m-%dT%H:%M:%S+00:00)"
   set_state SWITCH_OK 1
   chk PASS switch "switch ok, Fenster s=$(($(date +%s) - t0)); Marker NICHT gesetzt"
 }
@@ -513,10 +588,19 @@ phase_marker() {
     if [ "$DRY_RUN" = 1 ]; then plan "marker (switch nicht abgeschlossen)"; return 0; fi
     die "switch nicht erfolgreich abgeschlossen"
   fi
+  { [ "$(get_state NEW_SHA)" = "$NEW_SHA" ] && [ "$(get_state OLD_SHA)" = "$OLD_SHA" ]; } || die "State gehoert zu anderen SHAs als --old-sha/--new-sha"
   [ "$(git -C "$REPO_DIR" rev-parse HEAD)" = "$NEW_SHA" ] || die "Checkout != new-sha"
+  [ "$(cat "$MARKER_FILE")" = "$OLD_SHA" ] || die "Marker != old-sha: wurde bereits gesetzt oder veraendert"
+  local svc
+  for svc in $WRITER_SERVICES; do
+    [ "$(image_of "$(container "$svc")")" = "$(get_state "IMG_NEW_$svc")" ] || die "$svc laeuft nicht (mehr) auf dem in prep gebauten Image"
+  done
+  chk PASS marker-pre "State, Checkout, Marker (== old-sha) und laufende Images passen zu diesem Lauf"
   [ "$(ready_code)" = "200" ] || die "Readiness != 200"
-  local verdict
-  verdict=$(python3 "$REPORT_PY" check-smoke --report "$SMOKE_REPORT" --target "$TARGET" --sha "$NEW_SHA" --max-age-s "$MAX_SMOKE_AGE_S") \
+  local verdict kinds=smoke
+  [ "$TARGET" = "prod" ] || kinds=smoke,acceptance
+  verdict=$(python3 "$REPORT_PY" check-smoke --report "$SMOKE_REPORT" --target "$TARGET" --sha "$NEW_SHA" \
+    --max-age-s "$MAX_SMOKE_AGE_S" --kinds "$kinds" --min-pass "$MIN_SMOKE_PASS" --after "$(get_state SWITCH_DONE_AT)") \
     || die "Abnahmebericht abgelehnt: $verdict"
   chk PASS smoke-report "$verdict"
   if [ "$DRY_RUN" = 1 ]; then
@@ -529,6 +613,7 @@ phase_marker() {
   priv chmod --reference="$MARKER_FILE" "$tmp"
   priv mv -f "$tmp" "$MARKER_FILE"
   [ "$(cat "$MARKER_FILE")" = "$NEW_SHA" ] || die "Marker nach Schreiben != new-sha"
+  set_state MARKER_SET 1
   chk PASS marker "Marker == ${NEW_SHA:0:8}"
 }
 
@@ -550,6 +635,7 @@ phase_rollback() {
     plan "Recreate --no-build, laufendes Image == Rollback-Tag-ID pruefen"
     return 0
   fi
+  set_state SWITCH_OK 0
   timer stop
   # shellcheck disable=SC2086
   dc stop $WRITER_SERVICES >> "$REPORT_DIR/release.log" 2>&1 || die "Schreiber stoppen"
@@ -583,6 +669,7 @@ phase_rollback() {
   chk PASS ready "Readiness 200"
   timer start
   chk INFO alembic-after-rollback "$(alembic_rev) (DB wird nicht zurueckgerollt)"
+  set_state ROLLED_BACK 1
   chk PASS rollback "Rollback abgeschlossen"
 }
 
