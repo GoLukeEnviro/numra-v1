@@ -7,8 +7,9 @@ from pathlib import Path
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from numra_api.config import Settings
 from numra_api.models import Report, ReportJob
-from numra_api.models.enums import ReportJobStatus, ReportType
+from numra_api.models.enums import BetaFeature, ReportJobStatus, ReportType
 from numra_api.repositories.calculations import get_calculation_for_user
 from numra_api.repositories.reports import (
     MAX_ATTEMPTS,
@@ -24,6 +25,7 @@ from numra_api.repositories.reports import (
 )
 from numra_api.services.errors import NotFoundError
 from numra_api.services.llm_generation_log import RecordingLLMProvider
+from numra_api.services.usage_quota import reserve
 from numra_interpretation.errors import InvalidReportSection
 from numra_interpretation.knowledge_loader import load_knowledge_base
 from numra_interpretation.llm.errors import LLMProviderError
@@ -49,6 +51,7 @@ async def create_report_job(
     calculation_id: uuid.UUID,
     report_type: ReportType,
     idempotency_key: str | None,
+    settings: Settings,
 ) -> tuple[Report, ReportJob]:
     if idempotency_key is not None:
         existing_job = await get_report_job_by_idempotency_key(
@@ -82,6 +85,8 @@ async def create_report_job(
         report_schema_version=REPORT_SCHEMA_VERSION,
         idempotency_key=idempotency_key,
     )
+    # After the idempotency early-return above: a retry with the same key never gets here.
+    await reserve(db, settings=settings, user_id=user_id, feature=BetaFeature.REPORT, ref_id=job.id)
     return report, job
 
 

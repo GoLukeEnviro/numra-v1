@@ -31,10 +31,12 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from numra_api.config import Settings
 from numra_api.models import AnalysisJob, Calculation, RelationshipAnalysis, ShadowDynamicsAnalysis
 from numra_api.models.enums import (
     AnalysisJobStatus,
     AnalysisType,
+    BetaFeature,
     ConsentScope,
     WorkspaceMemberStatus,
 )
@@ -69,6 +71,7 @@ from numra_api.services.errors import (
     SelfProfileRequired,
 )
 from numra_api.services.llm_generation_log import RecordingLLMProvider
+from numra_api.services.usage_quota import reserve
 from numra_api.services.workspace_guard import assert_workspace_active
 from numra_interpretation.knowledge_loader import load_knowledge_base
 from numra_interpretation.llm.errors import LLMProviderError
@@ -190,6 +193,7 @@ async def create_relationship_analysis_job(
     workspace_id: uuid.UUID,
     requester_user_id: uuid.UUID,
     idempotency_key: str | None,
+    settings: Settings,
 ) -> tuple[AnalysisJob, RelationshipAnalysis]:
     if idempotency_key is not None:
         existing = await get_analysis_job_by_idempotency_key(
@@ -239,6 +243,13 @@ async def create_relationship_analysis_job(
         analysis_type=AnalysisType.RELATIONSHIP_INTERPRETATION,
         idempotency_key=idempotency_key,
     )
+    await reserve(
+        db,
+        settings=settings,
+        user_id=requester_user_id,
+        feature=BetaFeature.ANALYSIS,
+        ref_id=job.id,
+    )
     analysis = await create_pending_relationship_analysis(
         db,
         workspace_id=workspace_id,
@@ -259,6 +270,7 @@ async def create_shadow_dynamics_job(
     workspace_id: uuid.UUID,
     requester_user_id: uuid.UUID,
     idempotency_key: str | None,
+    settings: Settings,
 ) -> tuple[AnalysisJob, ShadowDynamicsAnalysis]:
     if idempotency_key is not None:
         existing = await get_analysis_job_by_idempotency_key(
@@ -303,6 +315,13 @@ async def create_shadow_dynamics_job(
         requested_by_user_id=requester_user_id,
         analysis_type=AnalysisType.SHADOW_DYNAMICS,
         idempotency_key=idempotency_key,
+    )
+    await reserve(
+        db,
+        settings=settings,
+        user_id=requester_user_id,
+        feature=BetaFeature.ANALYSIS,
+        ref_id=job.id,
     )
     analysis = await create_pending_shadow_dynamics_analysis(
         db,

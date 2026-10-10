@@ -5,7 +5,14 @@ import uuid
 from fastapi import APIRouter, Depends, Header, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from numra_api.deps import get_current_user, get_db, rate_limit_by_user, require_csrf
+from numra_api.config import Settings
+from numra_api.deps import (
+    get_current_user,
+    get_db,
+    get_settings_dep,
+    rate_limit_by_user,
+    require_csrf,
+)
 from numra_api.models import Person, Report, ReportJob, User
 from numra_api.models.enums import BetaFeature
 from numra_api.repositories.reports import (
@@ -91,6 +98,7 @@ async def create_report_route(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db, scope="function"),
     idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+    settings: Settings = Depends(get_settings_dep),
 ) -> ReportOut:
     report, job = await create_report_job(
         db,
@@ -98,6 +106,7 @@ async def create_report_route(
         calculation_id=uuid.UUID(body.calculation_id),
         report_type=body.report_type,
         idempotency_key=idempotency_key,
+        settings=settings,
     )
     return _report_to_out(report, job.id)
 

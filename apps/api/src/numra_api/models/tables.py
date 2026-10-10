@@ -1654,6 +1654,30 @@ class PatternAnalysis(Base):
     )
 
 
+class UsageReservation(Base):
+    """D4 quota ledger: one row per unit of cost-intensive work (report job, analysis
+    job, Copilot message, saved pattern analysis). ``ref_id`` is the job/message id the
+    unit belongs to; ``UNIQUE (feature, ref_id)`` is what makes a retry of the same job
+    or idempotency key consume nothing a second time. Counting happens under a per
+    (user, feature) advisory lock in services/usage_quota.py. No content, no PII."""
+
+    __tablename__ = "usage_reservations"
+    __table_args__ = (
+        UniqueConstraint("feature", "ref_id", name="uq_usage_reservations_feature_ref_id"),
+        Index("ix_usage_reservations_user_feature_created", "user_id", "feature", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    feature: Mapped[str] = mapped_column(String(20))
+    ref_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
+    state: Mapped[str] = mapped_column(String(12), default="active")
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    finished_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 __all__ = [
     "AdminAuditEvent",
     "AnalysisJob",
@@ -1699,6 +1723,7 @@ __all__ = [
     "TaskAcceptance",
     "ThreadContextSnapshot",
     "ThreadSummary",
+    "UsageReservation",
     "User",
     "UserConnection",
     "WorkspaceMember",

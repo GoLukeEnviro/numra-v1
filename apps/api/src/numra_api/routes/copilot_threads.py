@@ -13,10 +13,12 @@ import uuid
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from numra_api.config import Settings
 from numra_api.deps import (
     get_current_user,
     get_db,
     get_llm_provider,
+    get_settings_dep,
     rate_limit_by_user,
     require_csrf,
 )
@@ -159,6 +161,7 @@ async def post_message_route(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db, scope="function"),
     llm: LLMProvider = Depends(get_llm_provider),
+    settings: Settings = Depends(get_settings_dep),
 ) -> MessagePairOut:
     user_message, assistant_message = await post_message(
         db,
@@ -167,6 +170,7 @@ async def post_message_route(
         requester_user_id=user.id,
         content=body.content,
         llm=llm,
+        settings=settings,
     )
     return MessagePairOut(
         user_message=_message_out(user_message), assistant_message=_message_out(assistant_message)

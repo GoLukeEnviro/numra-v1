@@ -48,7 +48,7 @@ und wird vom Gate nicht gelesen; beide Prüfungen sind unabhängig testbar
 | HTTP | Code | Bedeutung |
 |---|---|---|
 | 403 | `BETA_ACCESS_REQUIRED` | Gate erzwungen, Konto ohne Freigabe |
-| 429 | `QUOTA_EXCEEDED` | Limit erreicht (siehe Limits-Dokument, PR 2) |
+| 429 | `QUOTA_EXCEEDED` | Limit erreicht, mit `Retry-After` (siehe `2026-10-10-d4-limits-and-budget.md`) |
 
 Reihenfolge der Prüfungen: Flag (Router) -> Authentifizierung -> CSRF -> Beta-Gate ->
 Rate-Limit -> Fachlogik. Im Frontend ersetzt `api/client.ts` den englischen

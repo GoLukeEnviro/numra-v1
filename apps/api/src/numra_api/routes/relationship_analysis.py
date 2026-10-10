@@ -5,7 +5,14 @@ import uuid
 from fastapi import APIRouter, Depends, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from numra_api.deps import get_current_user, get_db, rate_limit_by_user, require_csrf
+from numra_api.config import Settings
+from numra_api.deps import (
+    get_current_user,
+    get_db,
+    get_settings_dep,
+    rate_limit_by_user,
+    require_csrf,
+)
 from numra_api.models import AnalysisJob, RelationshipAnalysis, ShadowDynamicsAnalysis, User
 from numra_api.models.enums import BetaFeature
 from numra_api.repositories.analysis import (
@@ -113,9 +120,14 @@ async def create_relationship_analysis_route(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db, scope="function"),
     idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+    settings: Settings = Depends(get_settings_dep),
 ) -> RelationshipAnalysisOut:
     _job, analysis = await create_relationship_analysis_job(
-        db, workspace_id=workspace_id, requester_user_id=user.id, idempotency_key=idempotency_key
+        db,
+        workspace_id=workspace_id,
+        requester_user_id=user.id,
+        idempotency_key=idempotency_key,
+        settings=settings,
     )
     return _relationship_analysis_to_out(analysis)
 
@@ -169,9 +181,14 @@ async def create_shadow_dynamics_route(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db, scope="function"),
     idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+    settings: Settings = Depends(get_settings_dep),
 ) -> ShadowDynamicsAnalysisOut:
     _job, analysis = await create_shadow_dynamics_job(
-        db, workspace_id=workspace_id, requester_user_id=user.id, idempotency_key=idempotency_key
+        db,
+        workspace_id=workspace_id,
+        requester_user_id=user.id,
+        idempotency_key=idempotency_key,
+        settings=settings,
     )
     return _shadow_dynamics_to_out(analysis)
 
