@@ -203,6 +203,9 @@ Kein Golden-Canon/Calculation-Code angefasst YES
 
 ## Produktionsauslieferung: Ablauf, Marker, Rollback
 
+> Skriptgestützte Umsetzung dieses Ablaufs (explizites `--target`, Dry-Run, verifizierte
+> Rollback-Image-IDs, atomarer Marker nach Abnahmebericht): [release-tooling.md](release-tooling.md).
+
 Wiederverwendbare Vorlage für einen geplanten Produktionsrelease. Platzhalter:
 `<S_ALT>` = bisheriger Produktionsstand (Checkout und Marker), `<S2>` = vollständige
 Kandidaten-SHA, `<TS>` = Zeitstempel der Sicherung, `<ZIEL_REV>` = erwartete
