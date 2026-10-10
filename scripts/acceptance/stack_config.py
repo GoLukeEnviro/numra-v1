@@ -74,3 +74,34 @@ def check_mail_backend(backend: str, allow_smtp: bool) -> str:
         f"EMAIL_BACKEND={value} im Zielcontainer: Lauf wuerde reale Mails ausloesen koennen "
         "(smtp nur mit --allow-smtp-synthetic und ausschliesslich synthetischen Adressen)"
     )
+
+
+PROXY_SECRET_KEY = "INTERNAL_PROXY_SHARED_SECRET"
+
+
+def read_env_value(path: str | Path, key: str) -> str:
+    """Liest genau einen Wert aus einer Env-Datei (Quotes entfernt), ohne Auswertung und ohne Ausgabe."""
+    try:
+        lines = Path(path).read_text(encoding="utf-8").splitlines()
+    except OSError as exc:
+        raise StackRefusalError(f"Env-Datei nicht lesbar: {type(exc).__name__}") from exc
+    for line in lines:
+        name, sep, raw = line.partition("=")
+        if sep and name.strip() == key:
+            value = raw.strip()
+            if value[:1] in ("'", '"') and value[-1:] == value[:1]:
+                value = value[1:-1]
+            return value
+    return ""
+
+
+def proxy_secret(stack: dict[str, str]) -> str:
+    """Secret fuer X-Numra-Proxy-Auth aus `ENV_FILE` der Stack-Konfig. Fehlt es, Refusal: unter
+    PROXY_SECRET_ENFORCED=true wuerde jeder Cookie-Request an die API mit 403 scheitern."""
+    env_file = stack.get("ENV_FILE", "")
+    if not env_file:
+        raise StackRefusalError("--send-proxy-secret braucht ENV_FILE in der Stack-Konfig")
+    value = read_env_value(env_file, PROXY_SECRET_KEY)
+    if not value:
+        raise StackRefusalError(f"{PROXY_SECRET_KEY} in ENV_FILE nicht gesetzt")
+    return value

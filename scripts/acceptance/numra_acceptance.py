@@ -54,6 +54,7 @@ CONTAINERS: dict[str, str] = {}
 DRY = {"on": False}
 ZERO = "00000000-0000-0000-0000-000000000000"
 UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+PROXY_SECRET = {"v": ""}  # X-Numra-Proxy-Auth fuer direkte API-Requests (nur mit --send-proxy-secret)
 SECRETS = set()  # bekannte Geheimnisse, werden aus jeder Ausgabe entfernt
 
 # ---------------------------------------------------------------- Sicherheit / Helfer
@@ -168,6 +169,8 @@ class Client:
         elif isinstance(csrf, str):
             h["x-csrf-token"] = csrf
         h.update(headers or {})
+        if PROXY_SECRET["v"] and not self.prefix:
+            h.setdefault("X-Numra-Proxy-Auth", PROXY_SECRET["v"])
         c = http.client.HTTPConnection(self.host, self.port, timeout=timeout)
         try:
             c.request(method, self.prefix + path, body=data, headers=h)
@@ -1669,6 +1672,11 @@ def build_parser():
     ap.add_argument("--report-dir", required=True)
     ap.add_argument("--repo-dir", required=True, help="Checkout; HEAD muss --target-sha sein")
     ap.add_argument("--allow-smtp-synthetic", action="store_true")
+    ap.add_argument(
+        "--send-proxy-secret",
+        action="store_true",
+        help="sendet INTERNAL_PROXY_SHARED_SECRET (aus ENV_FILE der Stack-Konfig) als X-Numra-Proxy-Auth an die API; noetig bei PROXY_SECRET_ENFORCED=true",
+    )
     ap.add_argument("--skip-llm", action="store_true")
     ap.add_argument(
         "--reset-ratelimit",
@@ -1692,7 +1700,11 @@ def configure(args):
     for url in (API, WEB):
         Client(url)
     try:
-        p = stack_config.bind(args.target, API, stack_config.load(args.stack_config))
+        stack = stack_config.load(args.stack_config)
+        p = stack_config.bind(args.target, API, stack)
+        if args.send_proxy_secret:
+            PROXY_SECRET["v"] = stack_config.proxy_secret(stack)
+            SECRETS.add(PROXY_SECRET["v"])
     except stack_config.StackRefusalError as e:
         raise SystemExit(f"VERWEIGERT: {e}") from e
     args.container_prefix = p
