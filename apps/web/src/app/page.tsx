@@ -1,6 +1,7 @@
 "use client";
 
 import { Logo } from "@/components/brand/logo";
+import { PublicFooter } from "@/components/layout/public-footer";
 import { NumericWheel } from "@/components/layout/numeric-wheel";
 import { LinkButton } from "@/components/ui/link-button";
 import { useLocale } from "@/i18n/context";
@@ -218,22 +219,7 @@ export default function LandingPage() {
         </section>
       </main>
 
-      <footer className="border-t border-white/10">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-8 sm:px-6">
-          <Logo markClassName="h-7 w-7" textClassName="text-base" />
-          <nav aria-label={t("public.landing.footerPrivacy")} className="flex flex-wrap gap-5 text-sm text-muted">
-            <Link href="/login" className="transition-colors hover:text-gold">
-              {t("public.landing.navSignIn")}
-            </Link>
-            <Link href="/register" className="transition-colors hover:text-gold">
-              {t("public.landing.navCreateAccount")}
-            </Link>
-            <Link href="/settings/privacy" className="transition-colors hover:text-gold">
-              {t("public.landing.footerPrivacy")}
-            </Link>
-          </nav>
-        </div>
-      </footer>
+      <PublicFooter />
     </div>
   );
 }

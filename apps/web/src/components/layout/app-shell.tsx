@@ -1,5 +1,6 @@
 "use client";
 
+import { LegalLinks } from "@/components/layout/public-footer";
 import { Logo } from "@/components/brand/logo";
 import { AgeConfirmationBanner } from "@/components/layout/age-confirmation-banner";
 import { EmailVerificationBanner } from "@/components/layout/email-verification-banner";
@@ -152,6 +153,7 @@ function MobileMoreSheet({
             <LogOut className="h-5 w-5" aria-hidden="true" />
             {t("nav.logout")}
           </button>
+          <LegalLinks className="mt-2 gap-4 px-3 text-xs" />
         </div>
       </div>
     </div>
@@ -317,6 +319,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
               <LogOut className="h-4 w-4" aria-hidden="true" />
               {t("nav.logout")}
             </Button>
+            <LegalLinks className="mt-3 gap-4 px-3 text-xs" />
           </div>
         </aside>
         <main

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { DeleteAccountPanel } from "@/components/settings/delete-account-panel";
 import { ExportAccountPanel } from "@/components/settings/export-account-panel";
 import { useLocale } from "@/i18n/context";
+import Link from "next/link";
 
 function PrivacyContent() {
   const { t } = useLocale();
@@ -13,6 +14,9 @@ function PrivacyContent() {
       <div className="mb-8">
         <h1 className="font-serif text-3xl text-ivory">{t("app.privacy.title")}</h1>
         <p className="mt-1 text-sm text-muted">{t("app.privacy.subtitle")}</p>
+        <Link href="/datenschutz" className="mt-2 inline-block text-sm text-gold underline-offset-4 hover:underline">
+          {t("public.legal.fullPrivacyPolicy")}
+        </Link>
       </div>
 
       <Card className="mb-4">
