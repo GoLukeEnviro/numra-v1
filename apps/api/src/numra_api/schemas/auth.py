@@ -1,8 +1,14 @@
 from __future__ import annotations
 
 import datetime as dt
+from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, BeforeValidator, ConfigDict, EmailStr, Field
+
+#: D2: nur ein echtes JSON-`true` zaehlt als Erklaerung. Jeder andere Wert (fehlend, `false`,
+#: `null`, `"true"`, `1`, ...) wird zu `False`, damit die Route in allen Faellen denselben
+#: Fehlercode AGE_CONFIRMATION_REQUIRED liefert statt eines generischen Schema-422.
+AgeDeclaration = Annotated[bool, BeforeValidator(lambda value: value is True)]
 
 
 class LoginRequest(BaseModel):
@@ -21,6 +27,19 @@ class RegisterRequest(BaseModel):
     #: rejected as INVALID_CREDENTIALS, not short-circuited by a schema-level 422 that
     #: would leak "this password is too short to even be real").
     password: str = Field(min_length=12)
+    #: D2: Erklaerung "mindestens 18 Jahre alt". Der Default `False` ist Absicht: ein
+    #: fehlendes Feld lehnt die Route mit AGE_CONFIRMATION_REQUIRED ab (klarer Fehlercode
+    #: statt generischem Schema-Fehler) -- der Direktaufruf ohne UI scheitert.
+    age_confirmed: AgeDeclaration = False
+
+
+class AgeConfirmRequest(BaseModel):
+    """D2: nachtraegliche Bestaetigung fuer Bestandskonten. `extra="forbid"`: weder
+    Geburtsdatum noch Alter werden angenommen."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    age_confirmed: AgeDeclaration = False
 
 
 class UserOut(BaseModel):
@@ -29,6 +48,10 @@ class UserOut(BaseModel):
     role: str
     is_active: bool
     email_verified_at: dt.datetime | None = None
+    #: D2: `None` = Alterserklaerung (18+) nicht abgegeben. Schnittstelle fuer spaetere
+    #: Gates (D4); Bestandskonten bleiben `None`, bis sie bestaetigen.
+    age_confirmed_at: dt.datetime | None = None
+    age_declaration_version: str | None = None
 
 
 class MobileSessionOut(BaseModel):

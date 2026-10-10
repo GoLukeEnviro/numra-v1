@@ -338,6 +338,15 @@ export const deApp = {
   "app.emailVerificationBanner.resendSent": "Ein neuer Bestätigungslink wurde gesendet.",
   "app.emailVerificationBanner.dismiss": "Ausblenden",
 
+  // 18+-Bestätigung für Bestandskonten (D2)
+  "app.ageBanner.title": "Bitte bestätige dein Alter",
+  "app.ageBanner.body":
+    "Eigene Konten sind erst ab 18 Jahren vorgesehen. Bitte bestätige, dass du mindestens 18 Jahre alt bist. Wir speichern nur diese Erklärung mit Zeitpunkt — kein Geburtsdatum, keine Ausweisdaten.",
+  "app.ageBanner.checkbox": "Ich bin mindestens 18 Jahre alt.",
+  "app.ageBanner.confirm": "Bestätigen",
+  "app.ageBanner.errorUnchecked": "Bitte setze zuerst das Häkchen.",
+  "app.ageBanner.errorFailed": "Die Bestätigung konnte nicht gespeichert werden. Bitte versuche es erneut.",
+
   // Einstellungen: Berechtigungen (Entitlements)
   "app.entitlements.title": "Berechtigungen",
   "app.entitlements.body": "Dein aktueller Funktionsumfang — rein informativ.",

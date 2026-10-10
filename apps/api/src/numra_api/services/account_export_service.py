@@ -86,6 +86,8 @@ async def _account_section(db: AsyncSession, *, user: User) -> dict[str, Any]:
         "role": user.role,
         "is_active": user.is_active,
         "email_verified_at": user.email_verified_at,
+        "age_confirmed_at": user.age_confirmed_at,
+        "age_declaration_version": user.age_declaration_version,
         "created_at": user.created_at,
         # Der Soft-Delete-Zustand als eigenes Feld: ein Konto kann sich nicht im
         # geloeschten Zustand exportieren (der Login-Gate blockiert das), aber ein

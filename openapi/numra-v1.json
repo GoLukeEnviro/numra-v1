@@ -162,6 +162,19 @@
         "title": "AdminUserOut",
         "type": "object"
       },
+      "AgeConfirmRequest": {
+        "additionalProperties": false,
+        "description": "D2: nachtraegliche Bestaetigung fuer Bestandskonten. `extra=\"forbid\"`: weder\nGeburtsdatum noch Alter werden angenommen.",
+        "properties": {
+          "age_confirmed": {
+            "default": false,
+            "title": "Age Confirmed",
+            "type": "boolean"
+          }
+        },
+        "title": "AgeConfirmRequest",
+        "type": "object"
+      },
       "AnalysisJobOut": {
         "properties": {
           "analysis_type": {
@@ -251,7 +264,8 @@
           "USER_ENABLED",
           "USER_SESSIONS_REVOKED",
           "ADMIN_PROMOTED",
-          "FEATURE_FLAG_CHANGED"
+          "FEATURE_FLAG_CHANGED",
+          "AGE_CONFIRMED"
         ],
         "title": "AuditAction",
         "type": "string"
@@ -3794,6 +3808,11 @@
       "RegisterRequest": {
         "additionalProperties": false,
         "properties": {
+          "age_confirmed": {
+            "default": false,
+            "title": "Age Confirmed",
+            "type": "boolean"
+          },
           "email": {
             "format": "email",
             "title": "Email",
@@ -5102,6 +5121,29 @@
       },
       "UserOut": {
         "properties": {
+          "age_confirmed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age Confirmed At"
+          },
+          "age_declaration_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age Declaration Version"
+          },
           "email": {
             "title": "Email",
             "type": "string"
@@ -6600,6 +6642,82 @@
           }
         },
         "summary": "Change Password",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/confirm-age": {
+      "post": {
+        "description": "D2: nachtraegliche 18+-Bestaetigung fuer Bestandskonten. Idempotent: eine bereits\nabgegebene Bestaetigung bleibt unveraendert (Zeitpunkt/Version werden nie\nueberschrieben, kein zweiter Audit-Eintrag) und wird mit 200 zurueckgegeben.",
+        "operationId": "confirm_age_v1_auth_confirm_age_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-csrf-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_csrf",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Csrf"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgeConfirmRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Confirm Age",
         "tags": [
           "auth"
         ]

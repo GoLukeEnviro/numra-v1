@@ -18,7 +18,7 @@ interface AuthState {
   user: UserOut | null;
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, ageConfirmed: boolean) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
 }
@@ -62,10 +62,10 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
   // (auto-login) — the returned UserOut is already the authenticated user. The
   // server stays authoritative for the role via GET /v1/auth/me; nothing about
   // the user is ever persisted client-side.
-  const register = useCallback(async (email: string, password: string) => {
+  const register = useCallback(async (email: string, password: string, ageConfirmed: boolean) => {
     setError(null);
     try {
-      const me = await api.auth.register({ email, password });
+      const me = await api.auth.register({ email, password, age_confirmed: ageConfirmed });
       setUser(me);
       setStatus("authenticated");
     } catch (err) {

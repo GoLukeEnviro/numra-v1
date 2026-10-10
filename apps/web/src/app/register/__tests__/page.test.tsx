@@ -51,12 +51,13 @@ function renderPage() {
   );
 }
 
-async function fillAndSubmit(password: string, confirm: string) {
+async function fillAndSubmit(password: string, confirm: string, checkAge = true) {
   fireEvent.change(await screen.findByLabelText("E-Mail"), {
     target: { value: "ada@example.com" },
   });
   fireEvent.change(screen.getByLabelText("Passwort"), { target: { value: password } });
   fireEvent.change(screen.getByLabelText("Passwort bestätigen"), { target: { value: confirm } });
+  if (checkAge) fireEvent.click(screen.getByLabelText("Ich bin mindestens 18 Jahre alt."));
   fireEvent.click(screen.getByRole("button", { name: "Konto erstellen" }));
 }
 
@@ -74,7 +75,7 @@ describe("Register page", () => {
     await fillAndSubmit("a-strong-password", "a-strong-password");
 
     await waitFor(() =>
-      expect(registerFn).toHaveBeenCalledWith("ada@example.com", "a-strong-password"),
+      expect(registerFn).toHaveBeenCalledWith("ada@example.com", "a-strong-password", true),
     );
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/onboarding"));
   });
@@ -113,6 +114,41 @@ describe("Register page", () => {
 
     expect(await screen.findByText("Die Passwörter stimmen nicht überein.")).toBeInTheDocument();
     expect(registerFn).not.toHaveBeenCalled();
+  });
+
+  it("renders the 18+ checkbox unchecked by default", async () => {
+    vi.mocked(api.publicConfig.get).mockResolvedValue(openConfig);
+    mockAuth();
+    renderPage();
+
+    const checkbox = await screen.findByLabelText("Ich bin mindestens 18 Jahre alt.");
+    expect(checkbox).toHaveAttribute("type", "checkbox");
+    expect(checkbox).not.toBeChecked();
+  });
+
+  it("blocks submission client-side when the 18+ checkbox is not ticked", async () => {
+    vi.mocked(api.publicConfig.get).mockResolvedValue(openConfig);
+    const registerFn = mockAuth();
+    renderPage();
+
+    await fillAndSubmit("a-strong-password", "a-strong-password", false);
+
+    expect(
+      await screen.findByText("Bitte bestätige, dass du mindestens 18 Jahre alt bist."),
+    ).toBeInTheDocument();
+    expect(registerFn).not.toHaveBeenCalled();
+  });
+
+  it("maps a server AGE_CONFIRMATION_REQUIRED to the localized age error", async () => {
+    vi.mocked(api.publicConfig.get).mockResolvedValue(openConfig);
+    mockAuth(vi.fn().mockRejectedValue(new ApiError("age", "AGE_CONFIRMATION_REQUIRED", 422)));
+    renderPage();
+
+    await fillAndSubmit("a-strong-password", "a-strong-password");
+
+    expect(
+      await screen.findByText("Bitte bestätige, dass du mindestens 18 Jahre alt bist."),
+    ).toBeInTheDocument();
   });
 
   it("exposes exactly one main landmark (PWA-10 a11y gate)", async () => {

@@ -249,6 +249,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/auth/confirm-age": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm Age
+         * @description D2: nachtraegliche 18+-Bestaetigung fuer Bestandskonten. Idempotent: eine bereits
+         *     abgegebene Bestaetigung bleibt unveraendert (Zeitpunkt/Version werden nie
+         *     ueberschrieben, kein zweiter Audit-Eintrag) und wird mit 200 zurueckgegeben.
+         */
+        post: operations["confirm_age_v1_auth_confirm_age_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/auth/forgot-password": {
         parameters: {
             query?: never;
@@ -1956,6 +1978,18 @@ export interface components {
             /** Role */
             role: string;
         };
+        /**
+         * AgeConfirmRequest
+         * @description D2: nachtraegliche Bestaetigung fuer Bestandskonten. `extra="forbid"`: weder
+         *     Geburtsdatum noch Alter werden angenommen.
+         */
+        AgeConfirmRequest: {
+            /**
+             * Age Confirmed
+             * @default false
+             */
+            age_confirmed: boolean;
+        };
         /** AnalysisJobOut */
         AnalysisJobOut: {
             analysis_type: components["schemas"]["AnalysisType"];
@@ -2006,7 +2040,7 @@ export interface components {
          * AuditAction
          * @enum {string}
          */
-        AuditAction: "USER_DISABLED" | "USER_ENABLED" | "USER_SESSIONS_REVOKED" | "ADMIN_PROMOTED" | "FEATURE_FLAG_CHANGED";
+        AuditAction: "USER_DISABLED" | "USER_ENABLED" | "USER_SESSIONS_REVOKED" | "ADMIN_PROMOTED" | "FEATURE_FLAG_CHANGED" | "AGE_CONFIRMED";
         /** AuditEventListOut */
         AuditEventListOut: {
             /** Items */
@@ -3481,6 +3515,11 @@ export interface components {
         /** RegisterRequest */
         RegisterRequest: {
             /**
+             * Age Confirmed
+             * @default false
+             */
+            age_confirmed: boolean;
+            /**
              * Email
              * Format: email
              */
@@ -4060,6 +4099,10 @@ export interface components {
         };
         /** UserOut */
         UserOut: {
+            /** Age Confirmed At */
+            age_confirmed_at?: string | null;
+            /** Age Declaration Version */
+            age_declaration_version?: string | null;
             /** Email */
             email: string;
             /** Email Verified At */
@@ -4708,6 +4751,43 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    confirm_age_v1_auth_confirm_age_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                numra_csrf?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgeConfirmRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserOut"];
+                };
             };
             /** @description Validation Error */
             422: {
