@@ -259,16 +259,16 @@ full_to_switch() {
   FAKE_MIGRATE_TO=$REV_NEW phase switch --expect-revision "$REV_NEW"
 }
 
-make_smoke() { # make_smoke FILE STATUS SHA [dry] [STARTED]
+make_smoke() { # make_smoke FILE STATUS SHA [dry] [STARTED]; KIND=smoke|acceptance, SMOKE_TARGET=audit|prod
   printf 'PASS\tcheck\tok\n' > "$T/rec"
   [ "$2" != FAIL ] || printf 'FAIL\tcheck2\tkaputt\n' >> "$T/rec"
   local extra=()
   [ "${4:-}" != dry ] || extra=(--dry-run)
-  python3 "$REPORT_PY" render --records "$T/rec" --out-dir "$T/smoke" --kind smoke --target audit \
-    --target-sha "$3" --script numra_smoke.py --script-version t \
+  python3 "$REPORT_PY" render --records "$T/rec" --out-dir "$T/smoke" --kind "${KIND:-smoke}" --target "${SMOKE_TARGET:-audit}" \
+    --target-sha "$3" --script "numra_${KIND:-smoke}.py" --script-version t \
     --started "${5:-$(date -u +%Y-%m-%dT%H:%M:%S+00:00)}" \
     "${extra[@]}" > /dev/null || true
-  cp "$T"/smoke/smoke-audit-*.json "$1"
+  cp "$T"/smoke/*.json "$1"
   rm -f "$T"/smoke/*
 }
 
@@ -724,6 +724,63 @@ t_state_binding_and_marker_readiness() {
   expect "rollback mit fremder --old-sha mutiert nichts" "$(b log_empty)"
 }
 
+prod_phase() { # prod_phase PHASE [extra...] : Prod-Lauf mit Schutzschaltern (Test-Welt, nur Attrappen)
+  local p=$1; shift
+  release --target prod --old-sha "$OLD" --new-sha "$NEW" --phase "$p" --i-am-sure-prod --confirm-sha "${NEW:0:8}" "$@"
+}
+
+t_marker_kind_mapping() {
+  # audit: acceptance-Bericht ist als Abnahme zulaessig
+  new_world; full_to_switch
+  KIND=acceptance make_smoke "$T/acc.json" PASS "$NEW"
+  phase marker --smoke-report "$T/acc.json"
+  expect "audit: acceptance-Bericht wird als Abnahme akzeptiert" "$(b marker_is "$NEW")"
+  # prod: nur smoke
+  new_world
+  sed -i 's/^CONFIG_TARGET=audit/CONFIG_TARGET=prod/' "$T/release.env"
+  release --target prod --old-sha "$OLD" --phase baseline
+  prod_phase pre; prod_phase prep
+  FAKE_MIGRATE_TO=$REV_NEW prod_phase switch --expect-revision "$REV_NEW"
+  expect "prod-Welt: switch ok" $((RC == 0 ? 0 : 1))
+  SMOKE_TARGET=prod KIND=acceptance make_smoke "$T/acc.json" PASS "$NEW"
+  prod_phase marker --smoke-report "$T/acc.json"
+  expect "prod: acceptance-Bericht wird NICHT akzeptiert (nur smoke)" "$(b rc_marker 1 "$OLD")"
+  grep -q "Berichtsart" <<< "$OUT"
+  expect "prod: Ablehnung nennt die Berichtsart" $?
+  # Mutationsgegenprobe: mit aufgeweichter Zuordnung wuerde derselbe Bericht akzeptiert -> der Test oben ist scharf
+  mkdir -p "$T/release"
+  cp -r "$SCRIPT_DIR/../../ops_report" "$T/ops_report" 2> /dev/null || true
+  # shellcheck disable=SC2016
+  sed 's/^  \[ "\$TARGET" = "prod" \] || kinds=smoke,acceptance/  kinds=smoke,acceptance/' "$RELEASE" > "$T/release/numra-release.sh"
+  cmp -s "$RELEASE" "$T/release/numra-release.sh" && { bad "Mutation der Abnahmeart nicht angewendet"; return; }
+  RC=0
+  bash "$T/release/numra-release.sh" --config "$T/release.env" --target prod --old-sha "$OLD" --new-sha "$NEW" --phase marker \
+    --smoke-report "$T/acc.json" --i-am-sure-prod --confirm-sha "${NEW:0:8}" > /dev/null 2>&1 || RC=$?
+  expect "Mutationsgegenprobe: mit aufgeweichter Zuordnung wuerde der acceptance-Bericht auf prod akzeptiert" "$(b marker_is "$NEW")"
+  new_world
+  sed -i 's/^CONFIG_TARGET=audit/CONFIG_TARGET=prod/' "$T/release.env"
+  release --target prod --old-sha "$OLD" --phase baseline
+  prod_phase pre; prod_phase prep
+  FAKE_MIGRATE_TO=$REV_NEW prod_phase switch --expect-revision "$REV_NEW"
+  SMOKE_TARGET=prod make_smoke "$T/smoke.json" PASS "$NEW"
+  prod_phase marker --smoke-report "$T/smoke.json"
+  expect "prod: smoke-Bericht wird akzeptiert" "$(b marker_is "$NEW")"
+}
+
+t_empty_invariant_warns() {
+  new_world
+  sed -i '/^INVARIANT_SQL=/d' "$T/release.env"
+  phase baseline; phase pre
+  expect "pre ohne INVARIANT_SQL: Exit 0" $((RC == 0 ? 0 : 1))
+  grep -q "WARNUNG: INVARIANT_SQL ist leer" <<< "$OUT"
+  expect "pre ohne INVARIANT_SQL: Warnung im Lauf" $?
+  grep -q "invariant-config" "$REPORTS"/release-audit-pre-*.json
+  expect "pre ohne INVARIANT_SQL: Warnung im Bericht" $?
+  new_world; phase baseline; phase pre
+  if grep -q "INVARIANT_SQL ist leer" <<< "$OUT"; then false; else true; fi
+  expect "pre mit INVARIANT_SQL: keine Warnung" $?
+}
+
 t_static() {
   grep -q '^set -euo pipefail' "$RELEASE"
   expect "statisch: set -euo pipefail" $?
@@ -746,7 +803,7 @@ for t in t_usage_refusals t_pre_report t_pre_failures t_dry_run t_dry_run_detect
   t_dry_run_detector_each_phase t_force_recreate_required t_fingerprint_and_drift t_baseline_overwrite \
   t_predeploy_dump t_prep_and_switch_hardening t_config_trust t_project_directory_for_staged_compose \
   t_no_deps_guard t_dump_taken_before_writer_stop t_invariant_and_untouched_after_switch \
-  t_state_binding_and_marker_readiness t_switch_failures t_rollback t_no_secrets t_static; do
+  t_state_binding_and_marker_readiness t_marker_kind_mapping t_empty_invariant_warns t_switch_failures t_rollback t_no_secrets t_static; do
   printf '# %s\n' "$t"
   "$t"
 done
