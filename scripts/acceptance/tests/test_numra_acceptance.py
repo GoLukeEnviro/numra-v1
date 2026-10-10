@@ -471,3 +471,39 @@ def test_pypdf_pinned_once_and_ci_uses_the_requirements_file():
 def test_unified_pdf_size_constant_is_used_by_both_scripts():
     for module in (acc, smoke):
         assert "content_checks.MIN_PDF_BYTES" in Path(module.__file__).read_text(encoding="utf-8")
+
+
+# ---------------------------------------------------------------- D2: Altersbestaetigung bei Registrierung
+
+
+class RecordingClient:
+    """Zeichnet den Registrierungs-Body auf und antwortet mit 422, damit der Abschnitt abbricht."""
+
+    bodies: list = []
+
+    def __init__(self, *args, **kwargs):
+        self.jar = {}
+
+    def post(self, path, body=None, **kwargs):
+        RecordingClient.bodies.append((path, body))
+        return smoke.R(422, b'{"code":"AGE_CONFIRMATION_REQUIRED"}', {}, [])
+
+
+def test_acceptance_register_sends_age_confirmed(monkeypatch):
+    RecordingClient.bodies = []
+    monkeypatch.setattr(acc, "Client", RecordingClient)
+    acc.ST["acct"].clear()
+    acc.register("a", "abcdef")
+    path, body = RecordingClient.bodies[0]
+    assert path == "/v1/auth/register"
+    assert body["age_confirmed"] is True
+    assert set(body) == {"email", "password", "age_confirmed"}
+
+
+def test_smoke_register_sends_age_confirmed(monkeypatch):
+    RecordingClient.bodies = []
+    monkeypatch.setattr(smoke, "Client", RecordingClient)
+    smoke.s2_auth(SimpleNamespace(api_base="http://127.0.0.1:1"))
+    path, body = RecordingClient.bodies[0]
+    assert path == "/v1/auth/register"
+    assert body["age_confirmed"] is True

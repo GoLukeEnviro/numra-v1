@@ -484,7 +484,11 @@ def s2_auth(cfg):
     ST["pw"] = secrets.token_urlsafe(18) + "Aa1!"
     SECRETS.add(ST["pw"])
     R0 = Client(cfg.api_base)
-    r = R0.post("/v1/auth/register", {"email": ST["email"], "password": ST["pw"]}, csrf=False)
+    r = R0.post(
+        "/v1/auth/register",
+        {"email": ST["email"], "password": ST["pw"], "age_confirmed": True},
+        csrf=False,
+    )
     ok = r.code == 201 and isinstance(r.json, dict) and UUID_RE.match(str(r.json.get("id", "")))
     check(
         "2.1",

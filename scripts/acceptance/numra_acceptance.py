@@ -249,7 +249,7 @@ def register(role, rand):
     pw = secrets.token_hex(12) + "Aa1!"
     SECRETS.add(pw)
     c = Client(API, label=role)
-    r = c.post("/v1/auth/register", {"email": email, "password": pw}, csrf=False)
+    r = c.post("/v1/auth/register", {"email": email, "password": pw, "age_confirmed": True}, csrf=False)
     ST["acct"][role] = {
         "email": email,
         "password": pw,
