@@ -40,7 +40,14 @@ from numra_api.repositories.usage_quota import (
 )
 from numra_api.services.errors import QuotaExceeded
 
-__all__ = ["GATED_RESPONSES", "QuotaLimits", "limits_for", "reserve"]
+__all__ = [
+    "GATED_RESPONSES",
+    "QuotaLimits",
+    "QuotaSnapshot",
+    "limits_for",
+    "reserve",
+    "snapshot",
+]
 
 #: OpenAPI `responses=` for every route that starts cost-intensive work.
 GATED_RESPONSES: dict[int | str, dict[str, str]] = {
@@ -73,6 +80,49 @@ def limits_for(settings: Settings, feature: BetaFeature) -> QuotaLimits:
         window_seconds=getattr(settings, f"{prefix}_window_seconds"),
         max_concurrent=getattr(settings, f"{prefix}_max_concurrent"),
     )
+
+
+@dataclass(frozen=True)
+class QuotaSnapshot:
+    """What a start would currently consume against; read-only, takes no lock."""
+
+    limits: QuotaLimits
+    used_in_window: int
+    active: int
+
+    @property
+    def would_exceed(self) -> bool:
+        over_window = (
+            self.limits.max_per_window is not None
+            and self.used_in_window >= self.limits.max_per_window
+        )
+        over_concurrent = (
+            self.limits.max_concurrent is not None and self.active >= self.limits.max_concurrent
+        )
+        return over_window or over_concurrent
+
+
+async def snapshot(
+    db: AsyncSession, *, settings: Settings, user_id: uuid.UUID, feature: BetaFeature
+) -> QuotaSnapshot | None:
+    """Current usage for the preview of a start. ``None`` while no limit is configured."""
+    limits = limits_for(settings, feature)
+    if not limits.enabled:
+        return None
+    now = dt.datetime.now(dt.UTC)
+    counted = await counted_created_at(
+        db,
+        user_id=user_id,
+        feature=feature,
+        since=now - dt.timedelta(seconds=limits.window_seconds),
+    )
+    active = await count_active(
+        db,
+        user_id=user_id,
+        feature=feature,
+        since=now - dt.timedelta(seconds=settings.quota_active_stale_seconds),
+    )
+    return QuotaSnapshot(limits=limits, used_in_window=len(counted), active=active)
 
 
 async def reserve(

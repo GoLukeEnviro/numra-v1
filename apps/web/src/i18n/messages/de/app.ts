@@ -190,6 +190,24 @@ export const deApp = {
     "Beim Erzeugen sind interne Platzhalter im Text stehen geblieben. Der Text wird unverändert angezeigt, du solltest dich aber nicht auf einzelne Stellen verlassen. Das Original bleibt erhalten.",
   "app.contentFlag.sectionBadge": "Enthält Platzhalter",
 
+  // D6: ausdrücklich ausgelöste, verknüpfte Neuerzeugung
+  "app.regenerate.action": "Neu erzeugen",
+  "app.regenerate.loading": "Vorschau wird geladen…",
+  "app.regenerate.previewLlm": "Es wird ein neuer Inhalt mit dem Sprachmodell erzeugt.",
+  "app.regenerate.previewUsage": "Das verbraucht eine Einheit deines Limits.",
+  "app.regenerate.previewQuota": "Bereits genutzt: {used} von {limit} im aktuellen Zeitraum.",
+  "app.regenerate.previewOriginal":
+    "Das Original bleibt unverändert und abrufbar; die neue Version wird damit verknüpft.",
+  "app.regenerate.exceeded": "Dein Limit ist aktuell erreicht. Bitte versuche es später erneut.",
+  "app.regenerate.confirm": "Jetzt neu erzeugen",
+  "app.regenerate.confirming": "Wird gestartet…",
+  "app.regenerate.cancel": "Abbrechen",
+  "app.regenerate.already": "Es gibt bereits eine neu erzeugte Version.",
+  "app.regenerate.openExisting": "Neue Version öffnen",
+  "app.regenerate.notFlagged": "Dieser Inhalt enthält keine technischen Platzhalter mehr.",
+  "app.regenerate.replaces": "Neu erzeugte Version. Das Original bleibt erhalten.",
+  "app.regenerate.openOriginal": "Original ansehen",
+
   // Analyse
   "app.analysis.eyebrow": "Berechnung",
   "app.analysis.asOf": "Zum Stichtag",

@@ -30,6 +30,7 @@ export type ReportOut = components["schemas"]["ReportOut"];
 export type ReportSummaryOut = components["schemas"]["ReportSummaryOut"];
 export type ReportJobOut = components["schemas"]["ReportJobOut"];
 export type ReportJobStatus = components["schemas"]["ReportJobStatus"];
+export type RegenerationPreviewOut = components["schemas"]["RegenerationPreviewOut"];
 export type ReportType = components["schemas"]["ReportType"];
 export type ExportCreateRequest = components["schemas"]["ExportCreateRequest"];
 export type ExportOut = components["schemas"]["ExportOut"];
@@ -593,6 +594,16 @@ export const api = {
         timeoutMs: JOB_LAUNCH_TIMEOUT_MS,
       }),
     get: (reportId: string) => request<ReportOut>(`/v1/reports/${reportId}`),
+    /** D6: what regenerating a flagged report would do. Starts nothing. */
+    regeneratePreview: (reportId: string) =>
+      request<RegenerationPreviewOut>(`/v1/reports/${reportId}/regenerate-preview`),
+    /** D6: explicit user action -- a new report linked to the flagged one. */
+    regenerate: (reportId: string, idempotencyKey: string) =>
+      request<ReportOut>(`/v1/reports/${reportId}/regenerate`, {
+        method: "POST",
+        headers: { "Idempotency-Key": idempotencyKey },
+        timeoutMs: JOB_LAUNCH_TIMEOUT_MS,
+      }),
     getJob: (jobId: string) => request<ReportJobOut>(`/v1/report-jobs/${jobId}`),
     /** The report library — server-authoritative, optionally filtered. */
     list: (filter?: { personId?: string; calculationId?: string; status?: string }) =>
@@ -765,6 +776,19 @@ export const api = {
           headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
           timeoutMs: JOB_LAUNCH_TIMEOUT_MS,
         }),
+      regeneratePreview: (workspaceId: string, analysisId: string) =>
+        request<RegenerationPreviewOut>(
+          `/v1/workspaces/${workspaceId}/relationship-analysis/${analysisId}/regenerate-preview`,
+        ),
+      regenerate: (workspaceId: string, analysisId: string, idempotencyKey: string) =>
+        request<RelationshipAnalysisOut>(
+          `/v1/workspaces/${workspaceId}/relationship-analysis/${analysisId}/regenerate`,
+          {
+            method: "POST",
+            headers: { "Idempotency-Key": idempotencyKey },
+            timeoutMs: JOB_LAUNCH_TIMEOUT_MS,
+          },
+        ),
     },
     shadowDynamics: {
       getLatest: (workspaceId: string) =>

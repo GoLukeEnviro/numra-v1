@@ -54,6 +54,8 @@ export interface UseAnalysisProgress {
   /** Start a generation (POST). No-op while one is already running. */
   launch: () => void;
   launching: boolean;
+  /** Follow an analysis that was started elsewhere (a regeneration): pending, then polled. */
+  track: (analysis: AnalysisOut) => void;
 }
 
 /**
@@ -85,9 +87,11 @@ export function useAnalysisProgress(
    *  re-hit that job instead of queueing a duplicate (see runLaunch's catch). */
   const idempotencyKeyRef = useRef<string | null>(null);
   const launchRef = useRef<() => void>(() => {});
+  const trackRef = useRef<(analysis: AnalysisOut) => void>(() => {});
 
   const reload = useCallback(() => setReloadTick((t) => t + 1), []);
   const launch = useCallback(() => launchRef.current(), []);
+  const track = useCallback((analysis: AnalysisOut) => trackRef.current(analysis), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -229,14 +233,20 @@ export function useAnalysisProgress(
     }
 
     launchRef.current = runLaunch;
+    trackRef.current = (analysis) => {
+      if (cancelled) return;
+      setProgress({ phase: "pending", analysis, job: null });
+      startPolling(analysis);
+    };
     void start();
 
     return () => {
       cancelled = true;
       clearTimer();
       launchRef.current = () => {};
+      trackRef.current = () => {};
     };
   }, [workspaceId, kind, reloadTick]);
 
-  return { ...progress, reload, launch, launching };
+  return { ...progress, reload, launch, launching, track };
 }

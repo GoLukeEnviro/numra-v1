@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { AiDisclosure } from "@/components/ui/ai-disclosure";
 import { NumericWheel } from "@/components/layout/numeric-wheel";
@@ -95,9 +95,12 @@ function SectionSources({ section }: { section: StructuredReportSection }) {
 export function ReportReader({
   report,
   content,
+  flagAction,
 }: {
   report: ReportOut;
   content: StructuredReport;
+  /** Rendered inside the placeholder notice (the explicit regenerate control). */
+  flagAction?: ReactNode;
 }) {
   const { t } = useLocale();
   const sections = orderedSections(content);
@@ -105,7 +108,7 @@ export function ReportReader({
 
   return (
     <article className="animate-fade-in">
-      <ContentFlagNotice flag={report.content_flag} className="mb-6" />
+      <ContentFlagNotice flag={report.content_flag} action={flagAction} className="mb-6" />
       <header className="relative overflow-hidden rounded-xl border border-white/10 bg-surface p-8 shadow-elevated sm:p-10">
         <NumericWheel className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 opacity-[0.14]" />
         <div className="relative">
