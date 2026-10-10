@@ -69,6 +69,7 @@ from numra_api.services.errors import (
     SelfProfileRequired,
 )
 from numra_api.services.llm_generation_log import RecordingLLMProvider
+from numra_api.services.persistence_gate import assert_no_unresolved_tokens
 from numra_api.services.workspace_guard import assert_workspace_active
 from numra_interpretation.knowledge_loader import load_knowledge_base
 from numra_interpretation.llm.errors import LLMProviderError
@@ -386,6 +387,12 @@ async def run_relationship_analysis_job(
         await mark_job_status(db, job=job, status=AnalysisJobStatus.VALIDATING, progress=80)
 
         result_json = result.model_dump(mode="json")
+        assert_no_unresolved_tokens(
+            result_json,
+            strict_braces=True,
+            error=AnalysisGenerationError,
+            code="ANALYSIS_VALIDATION_FAILED",
+        )
         await finalize_relationship_analysis(
             db,
             analysis=analysis,
@@ -457,6 +464,12 @@ async def run_shadow_dynamics_job(
         await mark_job_status(db, job=job, status=AnalysisJobStatus.VALIDATING, progress=80)
 
         result_json = result.model_dump(mode="json")
+        assert_no_unresolved_tokens(
+            result_json,
+            strict_braces=True,
+            error=AnalysisGenerationError,
+            code="ANALYSIS_VALIDATION_FAILED",
+        )
         await finalize_shadow_dynamics_analysis(
             db,
             analysis=analysis,

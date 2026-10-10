@@ -81,8 +81,6 @@ _ACCEPTED_BRACKET_TEXT = (
     "Er sagte leise [a: Nähe] und ging.",
     "[B: Das stimmt so nicht.] [A: Doch.]",
     "Dialog: [a: Wärme bedeutet für mich Ruhe] und weiter.",
-    "Satz [a:attitudes] ist ein anderes Wort.",
-    "Satz [a:foo] bleibt Prosa wie entschieden.",
     "[a: balanced und ruhig]",
     "Siehe [Text](https://example.org/a:b) im Anhang.",
     "Aufgabe [x] erledigt, Aufgabe [ ] offen.",
@@ -99,6 +97,19 @@ _ACCEPTED_BRACKET_TEXT = (
 @pytest.mark.parametrize("strict_braces", [True, False])
 def test_dialogue_links_and_checkboxes_stay_prose(text, strict_braces) -> None:
     assert find_unresolved_template_token(text, strict_braces=strict_braces) is None
+
+
+_LENIENT_ONLY_PROSE = (
+    "Satz [a:attitudes] ist ein anderes Wort.",
+    "Satz [a:foo] bleibt Prosa wie entschieden.",
+)
+
+
+@pytest.mark.parametrize("text", _LENIENT_ONLY_PROSE)
+def test_unknown_compact_labels_stay_prose_for_report_and_copilot(text) -> None:
+    """Fuer die Analyse gilt seit der Haertung das Gegenteil, siehe
+    ``test_token_detector_hardening.py`` (``[a:foo]`` ist dort ein Rest)."""
+    assert find_unresolved_template_token(text, strict_braces=False) is None
 
 
 # ------------------------------------------------------------------ Klammern: streng vs. locker
@@ -144,7 +155,7 @@ def test_isolated_braces_stay_rejected_for_analyses(text) -> None:
 
 # ------------------------------------------------------------------ Laufzeit (ReDoS)
 
-_PERF_SIZES = (20_000, 200_000)
+_PERF_SIZES = (20_000,)  # darueber: Scanner ohne Laengengrenze in test_token_detector_hardening
 _PERF_INPUTS = {
     "label-blanks-x": lambda n: "[a:" + " " * n + "x",
     "label-blanks": lambda n: "[a:" + " " * n,
