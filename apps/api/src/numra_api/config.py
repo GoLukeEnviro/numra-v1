@@ -4,7 +4,7 @@ import ipaddress
 from functools import lru_cache
 from typing import Annotated, Literal
 
-from pydantic import SecretStr, field_validator, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 _MIN_PROXY_SECRET_LENGTH = 32
@@ -91,6 +91,23 @@ class Settings(BaseSettings):
     #: behavior change on deploy; docs/ops/2026-10-09-d4-beta-transition.md fixes the
     #: order (deploy gate off -> inventory -> backfill -> enforce).
     beta_gate_enforced: bool = False
+
+    #: D4 quotas per user and feature group. Every limit defaults to None = unlimited, so
+    #: without configuration nothing is counted or written. ``*_max``: units per sliding
+    #: ``*_window_seconds``; ``*_max_concurrent``: units in flight (queued/running job or
+    #: Copilot message being answered). Recommendations: docs/ops/2026-10-10-d4-limits-and-budget.md
+    quota_report_max: int | None = Field(default=None, ge=1)
+    quota_report_window_seconds: int = Field(default=86_400, ge=1)
+    quota_report_max_concurrent: int | None = Field(default=None, ge=1)
+    quota_analysis_max: int | None = Field(default=None, ge=1)
+    quota_analysis_window_seconds: int = Field(default=86_400, ge=1)
+    quota_analysis_max_concurrent: int | None = Field(default=None, ge=1)
+    quota_copilot_max: int | None = Field(default=None, ge=1)
+    quota_copilot_window_seconds: int = Field(default=86_400, ge=1)
+    quota_copilot_max_concurrent: int | None = Field(default=None, ge=1)
+    #: A unit still "active" after this long is treated as abandoned (crashed process)
+    #: and stops blocking the concurrency limit. Must exceed the longest job lifetime.
+    quota_active_stale_seconds: int = Field(default=3_600, ge=60)
 
     request_body_max_bytes: int = 2 * 1024 * 1024
 

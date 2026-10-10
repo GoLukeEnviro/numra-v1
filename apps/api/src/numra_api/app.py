@@ -150,11 +150,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         retry_after_seconds = getattr(exc, "retry_after_seconds", None)
         if retry_after_seconds is not None:
             headers["Retry-After"] = str(retry_after_seconds)
-        return JSONResponse(
-            status_code=exc.status_code,
-            content={"code": exc.code, "message": str(exc)},
-            headers=headers,
-        )
+        content = {"code": exc.code, "message": str(exc), **getattr(exc, "response_extras", {})}
+        return JSONResponse(status_code=exc.status_code, content=content, headers=headers)
 
     app.include_router(health.router)
     app.include_router(public.router)
