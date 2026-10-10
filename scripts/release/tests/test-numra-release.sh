@@ -478,7 +478,7 @@ t_marker_gate_not_bypassable() {
   new_world; full_to_switch
   local own
   for own in switch prep pre; do
-    cp "$(ls "$REPORTS"/release-audit-"$own"-*.json | head -n 1)" "$T/own.json"
+    cp "$REPORTS"/release-audit-"$own"-*.json "$T/own.json"
     phase marker --smoke-report "$T/own.json"
     expect "marker: eigener $own-Release-Bericht wird NICHT als Abnahme akzeptiert" "$(b rc_marker 1 "$OLD")"
   done
