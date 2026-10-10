@@ -2693,6 +2693,14 @@ export interface components {
          */
         ConsentScope: "CORE_NUMEROLOGY" | "RELATIONSHIP_INSIGHTS" | "CURRENT_TIMING" | "PRIVATE_JOURNAL" | "PRIVATE_TASKS" | "PRIVATE_COPILOT" | "OTHER_RELATIONSHIPS" | "LIFE_TRACKING";
         /**
+         * ContentFlag
+         * @description D6: server-side verdict on a stored, generated text. ``unresolved_template_tokens``
+         *     means the strict detector finds an internal template token in it; the text itself is
+         *     never altered.
+         * @enum {string}
+         */
+        ContentFlag: "none" | "unresolved_template_tokens";
+        /**
          * CorrelationTarget
          * @description PR-V2-11 -- which canonical timing metric an `EvidenceResult`/
          *     `PatternAnalysis` correlates a Life Tracking metric against.
@@ -3583,6 +3591,8 @@ export interface components {
         RelationshipAnalysisOut: {
             /** Calculation Version */
             calculation_version: string;
+            /** @default none */
+            content_flag: components["schemas"]["ContentFlag"];
             /**
              * Created At
              * Format: date-time
@@ -3812,11 +3822,18 @@ export interface components {
             content: {
                 [key: string]: unknown;
             } | null;
+            /** @default none */
+            content_flag: components["schemas"]["ContentFlag"];
             /**
              * Created At
              * Format: date-time
              */
             created_at: string;
+            /**
+             * Flagged Section Ids
+             * @default []
+             */
+            flagged_section_ids: string[];
             /** Generated At */
             generated_at: string | null;
             /** Id */

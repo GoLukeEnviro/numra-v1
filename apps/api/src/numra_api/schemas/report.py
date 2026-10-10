@@ -5,7 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from numra_api.models.enums import ReportJobStatus, ReportType
+from numra_api.models.enums import ContentFlag, ReportJobStatus, ReportType
 from numra_api.schemas.person_ref import PersonRefOut
 
 
@@ -26,6 +26,10 @@ class ReportOut(BaseModel):
     generated_at: dt.datetime | None
     created_at: dt.datetime
     job_id: str
+    #: D6: read-time verdict of the strict detector over the stored content; the content
+    #: itself is returned unchanged.
+    content_flag: ContentFlag = ContentFlag.NONE
+    flagged_section_ids: list[str] = []
 
 
 class ReportSummaryOut(BaseModel):
