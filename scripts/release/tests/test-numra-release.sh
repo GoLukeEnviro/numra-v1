@@ -750,6 +750,7 @@ t_marker_kind_mapping() {
   # Mutationsgegenprobe: mit aufgeweichter Zuordnung wuerde derselbe Bericht akzeptiert -> der Test oben ist scharf
   mkdir -p "$T/release"
   cp -r "$SCRIPT_DIR/../../ops_report" "$T/ops_report" 2> /dev/null || true
+  # shellcheck disable=SC2016
   sed 's/^  \[ "\$TARGET" = "prod" \] || kinds=smoke,acceptance/  kinds=smoke,acceptance/' "$RELEASE" > "$T/release/numra-release.sh"
   cmp -s "$RELEASE" "$T/release/numra-release.sh" && { bad "Mutation der Abnahmeart nicht angewendet"; return; }
   RC=0
