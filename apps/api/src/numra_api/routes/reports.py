@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from numra_api.deps import get_current_user, get_db, rate_limit_by_user, require_csrf
 from numra_api.models import Person, Report, ReportJob, User
+from numra_api.models.enums import BetaFeature
 from numra_api.repositories.reports import (
     get_report_for_user,
     get_report_job_for_user,
@@ -19,6 +20,7 @@ from numra_api.schemas.report import (
     ReportOut,
     ReportSummaryOut,
 )
+from numra_api.services.beta_gate import require_beta_access
 from numra_api.services.errors import NotFoundError
 from numra_api.services.report_service import create_report_job
 
@@ -80,6 +82,7 @@ def _job_to_out(job: ReportJob) -> ReportJobOut:
     status_code=201,
     dependencies=[
         Depends(require_csrf),
+        Depends(require_beta_access(BetaFeature.REPORT)),
         Depends(rate_limit_by_user("reports:create", limit=30, window_seconds=3600)),
     ],
 )

@@ -62,6 +62,13 @@ class Forbidden(ApplicationError):
     status_code = 403
 
 
+class BetaAccessRequired(ApplicationError):
+    """D4: the feature flag is on, but the account has no individual beta grant."""
+
+    code = "BETA_ACCESS_REQUIRED"
+    status_code = 403
+
+
 class CsrfValidationFailed(ApplicationError):
     code = "CSRF_VALIDATION_FAILED"
     status_code = 403

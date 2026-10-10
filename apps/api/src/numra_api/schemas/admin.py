@@ -22,6 +22,16 @@ class AdminUserOut(BaseModel):
     calculation_count: int
     report_count: int
     relationship_count: int
+    beta_access: bool
+
+
+class BetaAccessOut(BaseModel):
+    """State of one account's individual beta grant. `changed` is true only on the
+    PUT/DELETE call that actually flipped it (false for an idempotent repeat)."""
+
+    user_id: str
+    granted: bool
+    changed: bool = False
 
 
 class AdminUserListOut(BaseModel):

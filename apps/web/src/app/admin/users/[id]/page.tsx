@@ -15,7 +15,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState, type ReactNode } from "react";
 
-type ActionId = "disable" | "enable" | "revoke";
+type ActionId = "disable" | "enable" | "revoke" | "betaGrant" | "betaRevoke";
 
 const ACTIONS: Record<
   ActionId,
@@ -38,6 +38,18 @@ const ACTIONS: Record<
     bodyKey: "admin.userDetail.revokeConfirmBody",
     successKey: "admin.userDetail.revokeSuccess",
     confirmKey: "admin.userDetail.revoke",
+  },
+  betaGrant: {
+    titleKey: "admin.userDetail.betaGrantConfirmTitle",
+    bodyKey: "admin.userDetail.betaGrantConfirmBody",
+    successKey: "admin.userDetail.betaGrantSuccess",
+    confirmKey: "admin.userDetail.betaGrant",
+  },
+  betaRevoke: {
+    titleKey: "admin.userDetail.betaRevokeConfirmTitle",
+    bodyKey: "admin.userDetail.betaRevokeConfirmBody",
+    successKey: "admin.userDetail.betaRevokeSuccess",
+    confirmKey: "admin.userDetail.betaRevoke",
   },
 };
 
@@ -70,6 +82,8 @@ function UserDetail({ user, onChanged }: { user: AdminUserOut; onChanged: () => 
       if (action === "disable") await api.admin.users.disable(user.id);
       if (action === "enable") await api.admin.users.enable(user.id);
       if (action === "revoke") await api.admin.users.revokeSessions(user.id);
+      if (action === "betaGrant") await api.admin.users.grantBetaAccess(user.id);
+      if (action === "betaRevoke") await api.admin.users.revokeBetaAccess(user.id);
       setFeedback(t(ACTIONS[action].successKey));
       onChanged();
     } catch (err) {
@@ -120,6 +134,9 @@ function UserDetail({ user, onChanged }: { user: AdminUserOut; onChanged: () => 
               {user.last_login_at ? formatDateTime(user.last_login_at) : t("admin.common.never")}
             </Row>
             <Row label={t("admin.users.colSessions")}>{user.active_session_count}</Row>
+            <Row label={t("admin.userDetail.betaAccess")}>
+              {user.beta_access ? t("admin.userDetail.betaOn") : t("admin.userDetail.betaOff")}
+            </Row>
           </dl>
         </section>
 
@@ -165,6 +182,15 @@ function UserDetail({ user, onChanged }: { user: AdminUserOut; onChanged: () => 
           <Button variant="secondary" onClick={() => setPending("revoke")}>
             {t("admin.userDetail.revoke")}
           </Button>
+          {user.beta_access ? (
+            <Button variant="secondary" onClick={() => setPending("betaRevoke")}>
+              {t("admin.userDetail.betaRevoke")}
+            </Button>
+          ) : (
+            <Button variant="primary" onClick={() => setPending("betaGrant")}>
+              {t("admin.userDetail.betaGrant")}
+            </Button>
+          )}
         </div>
         {isSelf && user.is_active && (
           <p className="mt-3 text-xs text-muted">{t("admin.userDetail.selfLockHint")}</p>
@@ -176,7 +202,7 @@ function UserDetail({ user, onChanged }: { user: AdminUserOut; onChanged: () => 
         title={pending ? t(ACTIONS[pending].titleKey) : ""}
         description={pending ? t(ACTIONS[pending].bodyKey) : ""}
         confirmLabel={pending ? t(ACTIONS[pending].confirmKey) : undefined}
-        danger={pending === "disable" || pending === "revoke"}
+        danger={pending === "disable" || pending === "revoke" || pending === "betaRevoke"}
         busy={busy}
         onConfirm={() => pending && void runAction(pending)}
         onCancel={() => setPending(null)}

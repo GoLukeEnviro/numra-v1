@@ -54,6 +54,16 @@ class AuditAction(StrEnum):
     ADMIN_PROMOTED = "ADMIN_PROMOTED"
     FEATURE_FLAG_CHANGED = "FEATURE_FLAG_CHANGED"
     AGE_CONFIRMED = "AGE_CONFIRMED"
+    BETA_ACCESS_GRANTED = "BETA_ACCESS_GRANTED"
+    BETA_ACCESS_REVOKED = "BETA_ACCESS_REVOKED"
+
+
+class BetaFeature(StrEnum):
+    """The cost-intensive feature groups behind the D4 beta gate and quotas."""
+
+    REPORT = "report"
+    ANALYSIS = "analysis"
+    COPILOT = "copilot"
 
 
 class PersonalTaskStatus(StrEnum):

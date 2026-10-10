@@ -77,6 +77,14 @@ class Settings(BaseSettings):
 
     cors_allowed_origins: list[str] = ["http://localhost:5173", "http://localhost:3000"]
 
+    #: D4 closed beta: when true, the cost-intensive features (report generation,
+    #: relationship/shadow/pattern analyses, Copilot messages) additionally require an
+    #: individual beta grant (an `EntitlementAssignment`, see
+    #: services/beta_gate.py) on top of the global feature flag. Default false = no
+    #: behavior change on deploy; docs/ops/2026-10-09-d4-beta-transition.md fixes the
+    #: order (deploy gate off -> inventory -> backfill -> enforce).
+    beta_gate_enforced: bool = False
+
     request_body_max_bytes: int = 2 * 1024 * 1024
 
     #: Deliberately a Settings field (unlike routes/public.py's former APP_NAME

@@ -96,6 +96,10 @@
             "title": "Active Session Count",
             "type": "integer"
           },
+          "beta_access": {
+            "title": "Beta Access",
+            "type": "boolean"
+          },
           "calculation_count": {
             "title": "Calculation Count",
             "type": "integer"
@@ -157,7 +161,8 @@
           "people_count",
           "calculation_count",
           "report_count",
-          "relationship_count"
+          "relationship_count",
+          "beta_access"
         ],
         "title": "AdminUserOut",
         "type": "object"
@@ -265,7 +270,9 @@
           "USER_SESSIONS_REVOKED",
           "ADMIN_PROMOTED",
           "FEATURE_FLAG_CHANGED",
-          "AGE_CONFIRMED"
+          "AGE_CONFIRMED",
+          "BETA_ACCESS_GRANTED",
+          "BETA_ACCESS_REVOKED"
         ],
         "title": "AuditAction",
         "type": "string"
@@ -353,6 +360,30 @@
           "created_at"
         ],
         "title": "AuditEventOut",
+        "type": "object"
+      },
+      "BetaAccessOut": {
+        "description": "State of one account's individual beta grant. `changed` is true only on the\nPUT/DELETE call that actually flipped it (false for an idempotent repeat).",
+        "properties": {
+          "changed": {
+            "default": false,
+            "title": "Changed",
+            "type": "boolean"
+          },
+          "granted": {
+            "title": "Granted",
+            "type": "boolean"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "granted"
+        ],
+        "title": "BetaAccessOut",
         "type": "object"
       },
       "BirthPlace": {
@@ -1986,10 +2017,18 @@
         "type": "object"
       },
       "EntitlementSetOut": {
-        "description": "The effective feature/limit bundle for the signed-in user (GET\n/v1/me/entitlements) -- either their explicit assignment or the seeded\n\"beta_default\" fallback (see repositories/entitlements.py). `max_connections`/\n`max_workspaces` of ``None`` means unlimited.",
+        "description": "The effective feature/limit bundle for the signed-in user (GET\n/v1/me/entitlements) -- either their explicit assignment or the seeded\n\"beta_default\" fallback (see repositories/entitlements.py). `max_connections`/\n`max_workspaces` of ``None`` means unlimited.\n\nD4: `relationship_copilot`, `advanced_relationship_analysis` and `premium_reports`\nare the EFFECTIVE values -- while `beta_gate_enforced` is true they are false for an\naccount without a beta grant. `beta_access` says whether the account holds one\n(independent of whether the gate is currently enforced).",
         "properties": {
           "advanced_relationship_analysis": {
             "title": "Advanced Relationship Analysis",
+            "type": "boolean"
+          },
+          "beta_access": {
+            "title": "Beta Access",
+            "type": "boolean"
+          },
+          "beta_gate_enforced": {
+            "title": "Beta Gate Enforced",
             "type": "boolean"
           },
           "connections": {
@@ -2053,7 +2092,9 @@
           "life_tracking",
           "premium_reports",
           "max_connections",
-          "max_workspaces"
+          "max_workspaces",
+          "beta_access",
+          "beta_gate_enforced"
         ],
         "title": "EntitlementSetOut",
         "type": "object"
@@ -6326,6 +6367,197 @@
           }
         },
         "summary": "Get User",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/v1/admin/users/{user_id}/beta-access": {
+      "delete": {
+        "description": "Idempotent: only the call that removes the grant writes an audit event.",
+        "operationId": "revoke_user_beta_access_v1_admin_users__user_id__beta_access_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-csrf-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_csrf",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Csrf"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BetaAccessOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Revoke User Beta Access",
+        "tags": [
+          "admin"
+        ]
+      },
+      "get": {
+        "operationId": "get_beta_access_v1_admin_users__user_id__beta_access_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BetaAccessOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Beta Access",
+        "tags": [
+          "admin"
+        ]
+      },
+      "put": {
+        "description": "Idempotent: only the call that creates the grant writes an audit event.",
+        "operationId": "grant_user_beta_access_v1_admin_users__user_id__beta_access_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-csrf-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "numra_csrf",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Numra Csrf"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BetaAccessOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Grant User Beta Access",
         "tags": [
           "admin"
         ]
