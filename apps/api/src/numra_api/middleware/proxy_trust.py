@@ -3,12 +3,12 @@ from __future__ import annotations
 import logging
 
 from starlette.datastructures import Headers
+from starlette.requests import cookie_parser
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from numra_api.proxy_trust import (
     FORWARDED_FOR_HEADER,
-    FORWARDING_CLAIM_HEADERS,
     PROXY_AUTH_HEADER,
     ProxyTrust,
 )
@@ -22,8 +22,8 @@ class ProxyTrustMiddleware:
     Hinweis in security.py).
 
     Übergangsmodus (`enforced=False`): ungültiger/fehlender Header → Peer-Adresse, nur
-    Warn-Log mit Grund (nie dem Header-Wert). `enforced=True`: behauptete Proxy-Identität
-    ohne gültiges Secret sowie Cookie-Sessions ohne gültiges Secret → 403. Mobile
+    Warn-Log mit Grund (nie dem Header-Wert). `enforced=True`: Cookie-Sessions und
+    Requests mit `X-Numra-Proxy-Auth` ohne gültiges Secret → 403. Mobile
     (Bearer) und `/v1/health/*` tragen weder Cookie noch Proxy-Header und bleiben frei."""
 
     def __init__(
@@ -71,10 +71,13 @@ class ProxyTrustMiddleware:
         await self.app(scope, receive, send)
 
     def _needs_proxy(self, headers: Headers) -> bool:
-        if any(name in headers for name in FORWARDING_CLAIM_HEADERS):
+        """Erzwingung nur für (a) Cookie-Sessions und (b) Requests, die sich per
+        `X-Numra-Proxy-Auth` als Proxy ausgeben. Forwarded-Header ohne gültiges Secret
+        (Mobile/Health hinter Cloudflare/tailscale-serve tragen sie) werden ignoriert,
+        nicht abgelehnt. Cookies werden exakt wie von Starlette geparst, damit
+        `numra_session =tok` oder Tab-Varianten nicht an der Prüfung vorbeikommen."""
+        if PROXY_AUTH_HEADER in headers:
             return True
-        cookie_header = headers.get("cookie", "")
         return any(
-            part.strip().startswith(f"{self.session_cookie_name}=")
-            for part in cookie_header.split(";")
+            self.session_cookie_name in cookie_parser(value) for value in headers.getlist("cookie")
         )

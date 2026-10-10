@@ -59,12 +59,15 @@ definiertes Fallback).
    **von rechts** angehängten Eintrag (linke Einträge sind client-kontrolliert). Standard
    `TRUSTED_PROXY_HOPS=0` = keine Client-IP (heutiges Verhalten).
 5. **`PROXY_SECRET_ENFORCED`**: `false` (Übergang): ungültiges/fehlendes Secret → Peer-IP,
-   Warn-Log ohne Secret, nichts wird abgelehnt. `true`: Requests, die eine Proxy-Identität
-   behaupten (`X-Forwarded-For`, `X-Real-IP`, `Forwarded`, `X-Numra-Proxy-Auth`) **oder** ein
-   Session-Cookie tragen, brauchen ein gültiges Secret, sonst `403 PROXY_AUTH_FAILED`
-   (generischer Text). Begründung für das Cookie: Cookie-Sessions sind nur über den BFF
-   vorgesehen (Origin-/CSRF-Modell). **Nicht betroffen** (bewusst): Mobile (Bearer),
-   `/v1/health/*`, `/v1/public/*`, Login/Registrierung ohne Cookie.
+   Warn-Log ohne Secret, nichts wird abgelehnt. `true`: erzwungen wird **nur** für
+   (a) Requests mit Session-Cookie und (b) Requests, die `X-Numra-Proxy-Auth` mitsenden; ohne
+   gültiges Secret → `403 PROXY_AUTH_FAILED` (generischer Text). Der Cookie-Name wird exakt wie
+   von Starlette geparst (`cookie_parser`; Varianten mit Leerzeichen/Tab/mehreren Cookies sind
+   getestet). `X-Forwarded-For`/`X-Real-IP`/`Forwarded` **ohne** gültiges Secret werden ignoriert
+   (Peer-IP zählt), nie abgelehnt – Mobile (Bearer) und Health-Probe hinter
+   Cloudflare/`tailscale serve` tragen diese Header. Begründung für das Cookie:
+   Cookie-Sessions sind nur über den BFF vorgesehen (Origin-/CSRF-Modell). **Nicht betroffen**
+   (bewusst): Mobile (Bearer), `/v1/health/*`, `/v1/public/*`, Login/Registrierung ohne Cookie.
 6. **Rotation/Rückroll** über zwei gleichzeitig gültige API-Secrets (Runbook
    `docs/ops/2026-10-10-proxy-secret-rollout.md`). Das Web sendet immer nur das aktuelle.
 7. **Nicht geändert:** Netzwerkisolation, Sessionprüfung, Origin-Validierung, CSRF.
@@ -75,6 +78,9 @@ definiertes Fallback).
 
 ## Folgen und Grenzen
 
+- **Der IP-Schutz greift erst nach Messung und `TRUSTED_PROXY_HOPS=1`.** Mit dem Default `0` (und
+  ohne gesetztes Secret/CIDRs) bleibt alles wie heute: alle Web-Nutzer teilen einen IP-Bucket.
+  Dieser PR liefert die Vertrauensgrenze, nicht allein die Verbesserung.
 - Zwei Annahmen sind **auf dem Host zu messen**, bevor `TRUSTED_PROXY_HOPS=1` gesetzt wird:
   dass sowohl der Cloudflare-Pfad als auch `tailscale serve` genau einen Eintrag rechts an
   `X-Forwarded-For` anhängen. Ist es falsch, entstehen schlimmstenfalls wieder gemeinsame

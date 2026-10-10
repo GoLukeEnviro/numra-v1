@@ -117,18 +117,68 @@ async def test_wrong_secret_transitional_ignores_forwarded_ip_but_serves(make_cl
     assert response.json() == {"ip": TRUSTED_PEER}
 
 
-async def test_enforced_rejects_missing_and_wrong_secret_on_proxy_claims(make_client) -> None:
+async def test_enforced_rejects_wrong_secret_but_ignores_forwarded_headers_without_one(
+    make_client,
+) -> None:
     async with make_client(internal_proxy_shared_secret=CURRENT, proxy_secret_enforced=True) as c:
-        missing = await c.get("/__test/ip", headers={"X-Forwarded-For": "203.0.113.9"})
+        forwarded_only = await c.get(
+            "/__test/ip",
+            headers={
+                "X-Forwarded-For": "203.0.113.9",
+                "X-Real-IP": "1.1.1.1",
+                "Forwarded": "for=2.2.2.2",
+            },
+        )
         wrong = await c.get("/__test/ip", headers={HEADER: "w" * 40})
-        cookie_only = await c.get("/v1/auth/me", headers={"Cookie": "numra_session=abc"})
         good = await c.get(
             "/__test/ip", headers={HEADER: CURRENT, "X-Forwarded-For": "203.0.113.9"}
         )
-    for rejected in (missing, wrong, cookie_only):
-        assert rejected.status_code == 403
-        assert rejected.json()["code"] == "PROXY_AUTH_FAILED"
+    # Ingress (Cloudflare/tailscale-serve) haengt XFF an: ignoriert, nicht abgelehnt.
+    assert forwarded_only.status_code == 200
+    assert forwarded_only.json() == {"ip": TRUSTED_PEER}
+    assert wrong.status_code == 403
+    assert wrong.json()["code"] == "PROXY_AUTH_FAILED"
     assert good.json() == {"ip": "203.0.113.9"}
+
+
+@pytest.mark.parametrize(
+    "cookie_headers",
+    [
+        ["numra_session=abc"],
+        ["numra_session =abc"],
+        ["numra_session	=abc"],
+        ["theme=dark; numra_session=abc"],
+        ["theme=dark;numra_session=abc; other=1"],
+        ["  numra_session=abc"],
+        ["a=1", "numra_session=abc"],
+    ],
+)
+async def test_enforced_rejects_session_cookie_in_every_parseable_form(
+    make_client, cookie_headers: list[str]
+) -> None:
+    async with make_client(internal_proxy_shared_secret=CURRENT, proxy_secret_enforced=True) as c:
+        response = await c.get("/v1/auth/me", headers=[("Cookie", v) for v in cookie_headers])
+    assert response.status_code == 403
+    assert response.json()["code"] == "PROXY_AUTH_FAILED"
+
+
+@pytest.mark.parametrize(
+    "cookie", ["xnumra_session=abc", "numra_session_x=abc", "theme=numra_session=abc"]
+)
+async def test_enforced_does_not_treat_lookalike_cookies_as_session(
+    make_client, cookie: str
+) -> None:
+    async with make_client(internal_proxy_shared_secret=CURRENT, proxy_secret_enforced=True) as c:
+        response = await c.get("/__test/ip", headers={"Cookie": cookie})
+    assert response.status_code == 200
+
+
+async def test_enforced_accepts_session_cookie_with_valid_secret(make_client) -> None:
+    async with make_client(internal_proxy_shared_secret=CURRENT, proxy_secret_enforced=True) as c:
+        response = await c.get(
+            "/__test/ip", headers={"Cookie": "numra_session =abc", HEADER: CURRENT}
+        )
+    assert response.status_code == 200
 
 
 async def test_rotation_current_previous_none_and_rollback(make_client) -> None:
@@ -159,13 +209,20 @@ async def test_rotation_current_previous_none_and_rollback(make_client) -> None:
 async def test_health_and_mobile_paths_work_without_secret_when_enforced(make_client) -> None:
     async with make_client(internal_proxy_shared_secret=CURRENT, proxy_secret_enforced=True) as c:
         await _seed_user(c, "mobile-proxy@example.com")
-        live = await c.get("/v1/health/live")
+        # Cloudflare/tailscale-serve haengen X-Forwarded-For an: darf nicht zu 403 fuehren.
+        via_ingress = {"X-Forwarded-For": "198.51.100.20", "X-Real-IP": "198.51.100.20"}
+        live = await c.get("/v1/health/live", headers=via_ingress)
+        ready = await c.get("/v1/health/ready", headers=via_ingress)
         login = await c.post(
             "/v1/auth/mobile/login",
             json={"email": "mobile-proxy@example.com", "password": PASSWORD},
+            headers=via_ingress,
         )
         token = login.json()["access_token"]
-        me = await c.get("/v1/auth/mobile/me", headers={"Authorization": f"Bearer {token}"})
+        me = await c.get(
+            "/v1/auth/mobile/me", headers={"Authorization": f"Bearer {token}", **via_ingress}
+        )
+    assert ready.status_code in (200, 503)
     assert live.status_code == 200
     assert login.status_code == 200
     assert me.status_code == 200
