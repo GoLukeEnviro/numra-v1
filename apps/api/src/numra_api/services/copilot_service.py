@@ -51,6 +51,7 @@ from numra_api.services.copilot_context_builder import (
 )
 from numra_api.services.errors import ApplicationError, NotFoundError, ThreadArchiveForbidden
 from numra_api.services.llm_generation_log import RecordingLLMProvider
+from numra_api.services.persistence_gate import assert_no_unresolved_tokens
 from numra_api.services.workspace_guard import assert_workspace_active_by_id
 from numra_interpretation.llm.errors import LLMProviderError
 from numra_interpretation.llm.types import LLMProvider
@@ -449,6 +450,12 @@ async def _persist_message_pair(
             grounding_profiles=built.grounding_profiles,
         )
 
+        assert_no_unresolved_tokens(
+            result.text,
+            strict_braces=False,
+            error=AnalysisGenerationError,
+            code="PROMPT_SCAFFOLDING_REJECTED",
+        )
         assistant_message = await update_message(
             db,
             message=assistant_message,

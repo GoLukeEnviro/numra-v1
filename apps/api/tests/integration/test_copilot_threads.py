@@ -627,3 +627,40 @@ async def test_no_chat_content_in_logs_on_generation_failure(client, sessionmake
 
     for record in caplog.records:
         assert secret_content not in record.getMessage()
+
+
+# ---------------------------------------------------------------------------
+# 14. Gate am Speicherpunkt: kein Template-Rest als COMPLETE
+# ---------------------------------------------------------------------------
+
+
+async def test_a_reply_with_a_token_remnant_is_never_stored_as_complete(
+    client, sessionmaker, monkeypatch
+) -> None:
+    """Kaeme ein Rest an der Pipeline vorbei (kuenftiger Pfad, andere Gate-Reihenfolge),
+    wird die Antwort am Speicherpunkt als FAILED gespeichert, nicht als COMPLETE."""
+    from numra_api.services import copilot_service
+    from numra_relationship_interpretation.copilot_pipeline import CopilotReplyResult
+
+    async def _poisoned(**_kwargs):
+        return CopilotReplyResult(
+            text="Dein Pfad ist {0} heute.",
+            basis_type="NUMEROLOGY_MODEL",
+            model_provider="scripted",
+            model_name="scripted",
+        )
+
+    monkeypatch.setattr(copilot_service, "generate_copilot_reply", _poisoned)
+    workspace_id, _ = await _connect(
+        client, sessionmaker, "persist-gate-a@example.com", "persist-gate-b@example.com"
+    )
+    headers_a = await _switch_user(client, "persist-gate-a@example.com")
+    thread = await _create_thread(client, workspace_id, headers_a, "RELATIONSHIP_SHARED")
+
+    post = await _post_message(client, workspace_id, thread["id"], headers_a, "Hallo")
+
+    assert post.status_code == 201
+    assistant = post.json()["assistant_message"]
+    assert assistant["status"] == "FAILED"
+    assert assistant["error_code"] == "ANALYSIS_GENERATION_ERROR"
+    assert "{0}" not in (assistant.get("content") or "")
