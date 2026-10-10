@@ -1383,6 +1383,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/reports/{report_id}/regenerate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Regenerate Report Route
+         * @description Explicit user action: a NEW report linked to a flagged one (the original stays as it
+         *     is). Same job path, beta gate and quota as a fresh report; repeated clicks return the
+         *     one existing version (200) instead of creating another.
+         */
+        post: operations["regenerate_report_route_v1_reports__report_id__regenerate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reports/{report_id}/regenerate-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Preview Report Regeneration Route
+         * @description What "regenerate" would do for this report: nothing is started. Owner only.
+         */
+        get: operations["preview_report_regeneration_route_v1_reports__report_id__regenerate_preview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/system-info": {
         parameters: {
             query?: never;
@@ -1714,6 +1756,49 @@ export interface paths {
         };
         /** Get Relationship Analysis Route */
         get: operations["get_relationship_analysis_route_v1_workspaces__workspace_id__relationship_analysis__analysis_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workspaces/{workspace_id}/relationship-analysis/{analysis_id}/regenerate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Regenerate Relationship Analysis Route
+         * @description Explicit user action: a NEW analysis linked to a flagged one (the original stays as
+         *     it is). Same job path, beta gate, consent checks and quota as a fresh analysis;
+         *     repeated clicks return the one existing version (200) instead of creating another.
+         */
+        post: operations["regenerate_relationship_analysis_route_v1_workspaces__workspace_id__relationship_analysis__analysis_id__regenerate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workspaces/{workspace_id}/relationship-analysis/{analysis_id}/regenerate-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Preview Relationship Regeneration Route
+         * @description What "regenerate" would do for this analysis: nothing is started. Needs workspace
+         *     membership and the current mutual consent, like starting an analysis.
+         */
+        get: operations["preview_relationship_regeneration_route_v1_workspaces__workspace_id__relationship_analysis__analysis_id__regenerate_preview_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2119,6 +2204,12 @@ export interface components {
             /** User Id */
             user_id: string;
         };
+        /**
+         * BetaFeature
+         * @description The cost-intensive feature groups behind the D4 beta gate and quotas.
+         * @enum {string}
+         */
+        BetaFeature: "report" | "analysis" | "copilot";
         /**
          * BirthPlace
          * @description METADATA_ONLY — no geocoding happens inside this package.
@@ -3562,6 +3653,24 @@ export interface components {
             /** Supported Ui Locales */
             supported_ui_locales: string[];
         };
+        /**
+         * QuotaPreviewOut
+         * @description The caller's current usage of the feature a start consumes.
+         */
+        QuotaPreviewOut: {
+            /** Active */
+            active: number;
+            /** Concurrent Limit */
+            concurrent_limit: number | null;
+            /** Used In Window */
+            used_in_window: number;
+            /** Window Limit */
+            window_limit: number | null;
+            /** Window Seconds */
+            window_seconds: number;
+            /** Would Exceed */
+            would_exceed: boolean;
+        };
         /** RedeemInvitationRequest */
         RedeemInvitationRequest: {
             /** Token */
@@ -3575,6 +3684,40 @@ export interface components {
              * Format: uuid
              */
             workspace_id: string;
+        };
+        /**
+         * RegenerationBlock
+         * @enum {string}
+         */
+        RegenerationBlock: "NOT_FLAGGED" | "ALREADY_REGENERATED";
+        /**
+         * RegenerationPreviewOut
+         * @description What "regenerate" would do. Nothing is started by reading it.
+         */
+        RegenerationPreviewOut: {
+            blocked_reason: components["schemas"]["RegenerationBlock"] | null;
+            /** Can Regenerate */
+            can_regenerate: boolean;
+            content_flag: components["schemas"]["ContentFlag"];
+            /** Existing Regeneration Id */
+            existing_regeneration_id: string | null;
+            feature: components["schemas"]["BetaFeature"];
+            /**
+             * Original Kept
+             * @default true
+             */
+            original_kept: boolean;
+            quota: components["schemas"]["QuotaPreviewOut"] | null;
+            /**
+             * Units
+             * @default 1
+             */
+            units: number;
+            /**
+             * Uses Llm
+             * @default true
+             */
+            uses_llm: boolean;
         };
         /** RegisterRequest */
         RegisterRequest: {
@@ -3622,6 +3765,8 @@ export interface components {
             model_provider: string | null;
             /** Prompt Version */
             prompt_version: string;
+            /** Regenerated From Id */
+            regenerated_from_id?: string | null;
             /** Relationship Type */
             relationship_type: string;
             /** Result */
@@ -3848,6 +3993,8 @@ export interface components {
             knowledge_version: string;
             /** Prompt Version */
             prompt_version: string;
+            /** Regenerated From Id */
+            regenerated_from_id?: string | null;
             report_type: components["schemas"]["ReportType"];
             /** Status */
             status: string;
@@ -7702,6 +7849,108 @@ export interface operations {
             };
         };
     };
+    regenerate_report_route_v1_reports__report_id__regenerate_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                report_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A regeneration of this report already exists (or the key was replayed) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportOut"];
+                };
+            };
+            /** @description BETA_ACCESS_REQUIRED: no individual beta grant (gate enforced) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description CONTENT_NOT_FLAGGED or IDEMPOTENCY_KEY_CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description QUOTA_EXCEEDED: per-user limit reached; see Retry-After and retry_after_seconds */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    preview_report_regeneration_route_v1_reports__report_id__regenerate_preview_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegenerationPreviewOut"];
+                };
+            };
+            /** @description BETA_ACCESS_REQUIRED: no individual beta grant (gate enforced) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_system_info_v1_system_info_get: {
         parameters: {
             query?: never;
@@ -8689,6 +8938,110 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["RelationshipAnalysisOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    regenerate_relationship_analysis_route_v1_workspaces__workspace_id__relationship_analysis__analysis_id__regenerate_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                workspace_id: string;
+                analysis_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A regeneration of this analysis already exists (or key replayed) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RelationshipAnalysisOut"];
+                };
+            };
+            /** @description BETA_ACCESS_REQUIRED: no individual beta grant (gate enforced) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description CONTENT_NOT_FLAGGED or IDEMPOTENCY_KEY_CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description QUOTA_EXCEEDED: per-user limit reached; see Retry-After and retry_after_seconds */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    preview_relationship_regeneration_route_v1_workspaces__workspace_id__relationship_analysis__analysis_id__regenerate_preview_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace_id: string;
+                analysis_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegenerationPreviewOut"];
+                };
+            };
+            /** @description BETA_ACCESS_REQUIRED: no individual beta grant (gate enforced) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

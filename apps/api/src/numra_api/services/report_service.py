@@ -8,8 +8,8 @@ from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from numra_api.config import Settings
-from numra_api.models import Report, ReportJob
-from numra_api.models.enums import BetaFeature, ReportJobStatus, ReportType
+from numra_api.models import Calculation, Report, ReportJob
+from numra_api.models.enums import BetaFeature, ContentFlag, ReportJobStatus, ReportType
 from numra_api.repositories.calculations import get_calculation_for_user
 from numra_api.repositories.reports import (
     MAX_ATTEMPTS,
@@ -17,16 +17,19 @@ from numra_api.repositories.reports import (
     fail_job_terminally,
     fail_report,
     finalize_report,
+    get_live_regeneration,
     get_report_for_user,
     get_report_job_by_idempotency_key,
     mark_job_status,
     persist_report_sections,
     requeue_job_for_retry,
 )
-from numra_api.services.errors import NotFoundError
+from numra_api.services.content_flag import report_flags
+from numra_api.services.errors import ContentNotFlagged, IdempotencyKeyConflict, NotFoundError
 from numra_api.services.llm_generation_log import RecordingLLMProvider
 from numra_api.services.persistence_gate import assert_no_unresolved_tokens
-from numra_api.services.usage_quota import reserve
+from numra_api.services.regeneration import RegenerationPreview
+from numra_api.services.usage_quota import reserve, snapshot
 from numra_interpretation.errors import InvalidReportSection
 from numra_interpretation.knowledge_loader import load_knowledge_base
 from numra_interpretation.llm.errors import LLMProviderError
@@ -68,7 +71,29 @@ async def create_report_job(
     calculation = await get_calculation_for_user(db, calculation_id=calculation_id, user_id=user_id)
     if calculation is None:
         raise NotFoundError(f"calculation {calculation_id} not found")
+    return await _enqueue_report(
+        db,
+        user_id=user_id,
+        calculation=calculation,
+        report_type=report_type,
+        idempotency_key=idempotency_key,
+        settings=settings,
+        regenerated_from_id=None,
+    )
 
+
+async def _enqueue_report(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    calculation: Calculation,
+    report_type: ReportType,
+    idempotency_key: str | None,
+    settings: Settings,
+    regenerated_from_id: uuid.UUID | None,
+) -> tuple[Report, ReportJob]:
+    """The part of a start that fresh generations and regenerations share: a PENDING
+    report with its QUEUED job and one reserved unit of quota."""
     # Read the knowledge package's own declared version rather than hardcoding it --
     # a stale literal here would silently mislabel every report once the knowledge
     # package is re-versioned (V1.5 Epic J).
@@ -85,10 +110,82 @@ async def create_report_job(
         profile_snapshot=calculation.canonical_profile_json,
         report_schema_version=REPORT_SCHEMA_VERSION,
         idempotency_key=idempotency_key,
+        regenerated_from_id=regenerated_from_id,
     )
     # After the idempotency early-return above: a retry with the same key never gets here.
     await reserve(db, settings=settings, user_id=user_id, feature=BetaFeature.REPORT, ref_id=job.id)
     return report, job
+
+
+async def preview_report_regeneration(
+    db: AsyncSession, *, user_id: uuid.UUID, report_id: uuid.UUID, settings: Settings
+) -> RegenerationPreview:
+    """Read-only: what regenerating this report would do. Only the owner sees it."""
+    original = await get_report_for_user(db, report_id=report_id, user_id=user_id)
+    if original is None:
+        raise NotFoundError(f"report {report_id} not found")
+    successor = await get_live_regeneration(db, report_id=original.id)
+    return RegenerationPreview(
+        content_flag=report_flags(original).content_flag,
+        feature=BetaFeature.REPORT,
+        existing_regeneration_id=None if successor is None else successor.id,
+        quota=await snapshot(db, settings=settings, user_id=user_id, feature=BetaFeature.REPORT),
+    )
+
+
+async def regenerate_report_job(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    report_id: uuid.UUID,
+    idempotency_key: str | None,
+    settings: Settings,
+) -> tuple[Report, ReportJob, bool]:
+    """Start a NEW report linked to a flagged one (``regenerated_from_id``); the original
+    is never changed. Returns ``(report, job, created)``; ``created`` is False when the
+    call only returned something that already exists (same Idempotency-Key, or a live
+    regeneration of this original) -- so a double click yields one version, one quota
+    unit and one LLM call. The original row is locked for the duration of the check, which
+    serialises concurrent clicks; the partial unique index backs that up in the database.
+    """
+    original = await get_report_for_user(db, report_id=report_id, user_id=user_id, for_update=True)
+    if original is None:
+        raise NotFoundError(f"report {report_id} not found")
+
+    if idempotency_key is not None:
+        existing_job = await get_report_job_by_idempotency_key(
+            db, user_id=user_id, idempotency_key=idempotency_key
+        )
+        if existing_job is not None:
+            replayed = await get_report_for_user(
+                db, report_id=existing_job.report_id, user_id=user_id
+            )
+            if replayed is None or replayed.regenerated_from_id != original.id:
+                raise IdempotencyKeyConflict("Idempotency-Key belongs to a different request")
+            return replayed, existing_job, False
+
+    successor = await get_live_regeneration(db, report_id=original.id)
+    if successor is not None:
+        return successor, successor.jobs[0], False
+
+    if report_flags(original).content_flag is ContentFlag.NONE:
+        raise ContentNotFlagged(f"report {report_id} has no unresolved template tokens")
+
+    calculation = await get_calculation_for_user(
+        db, calculation_id=original.calculation_id, user_id=user_id
+    )
+    if calculation is None:
+        raise NotFoundError(f"calculation {original.calculation_id} not found")
+    report, job = await _enqueue_report(
+        db,
+        user_id=user_id,
+        calculation=calculation,
+        report_type=ReportType(original.report_type),
+        idempotency_key=idempotency_key,
+        settings=settings,
+        regenerated_from_id=original.id,
+    )
+    return report, job, True
 
 
 async def _handle_job_failure(

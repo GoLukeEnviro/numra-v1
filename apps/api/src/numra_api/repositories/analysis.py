@@ -193,6 +193,7 @@ async def create_pending_relationship_analysis(
     calculation_version: str,
     knowledge_version: str,
     prompt_version: str,
+    regenerated_from_id: uuid.UUID | None = None,
 ) -> RelationshipAnalysis:
     analysis = RelationshipAnalysis(
         workspace_id=workspace_id,
@@ -204,6 +205,7 @@ async def create_pending_relationship_analysis(
         knowledge_version=knowledge_version,
         prompt_version=prompt_version,
         status="PENDING",
+        regenerated_from_id=regenerated_from_id,
     )
     db.add(analysis)
     await db.flush()
@@ -236,6 +238,36 @@ async def create_pending_shadow_dynamics_analysis(
     db.add(analysis)
     await db.flush()
     return analysis
+
+
+async def get_relationship_analysis_in_workspace(
+    db: AsyncSession,
+    *,
+    analysis_id: uuid.UUID,
+    workspace_id: uuid.UUID,
+    for_update: bool = False,
+) -> RelationshipAnalysis | None:
+    """Not user-scoped: the caller has passed the membership gate for ``workspace_id``.
+    ``for_update`` serialises concurrent regenerations of the same analysis."""
+    stmt = select(RelationshipAnalysis).where(
+        RelationshipAnalysis.id == analysis_id, RelationshipAnalysis.workspace_id == workspace_id
+    )
+    if for_update:
+        stmt = stmt.with_for_update()
+    result = await db.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def get_live_relationship_regeneration(
+    db: AsyncSession, *, analysis_id: uuid.UUID
+) -> RelationshipAnalysis | None:
+    """The regeneration of ``analysis_id`` that is pending or complete."""
+    stmt = select(RelationshipAnalysis).where(
+        RelationshipAnalysis.regenerated_from_id == analysis_id,
+        RelationshipAnalysis.status != "FAILED",
+    )
+    result = await db.execute(stmt)
+    return result.scalar_one_or_none()
 
 
 async def get_relationship_analysis_for_job(

@@ -91,6 +91,20 @@ class CsrfValidationFailed(ApplicationError):
     status_code = 403
 
 
+class ContentNotFlagged(ApplicationError):
+    """D6: regeneration is only offered for results the detector actually flags."""
+
+    code = "CONTENT_NOT_FLAGGED"
+    status_code = 409
+
+
+class IdempotencyKeyConflict(ApplicationError):
+    """The Idempotency-Key was already used for a different request."""
+
+    code = "IDEMPOTENCY_KEY_CONFLICT"
+    status_code = 409
+
+
 class ReportNotReady(ApplicationError):
     code = "REPORT_NOT_READY"
     status_code = 409

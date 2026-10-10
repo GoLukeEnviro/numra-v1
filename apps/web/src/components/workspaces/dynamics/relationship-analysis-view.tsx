@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { ContentFlagNotice } from "@/components/ui/content-flag-notice";
 import type { RelationshipAnalysisResult } from "@/api/analysis-content";
@@ -20,15 +21,17 @@ import { AnalysisMetaFooter } from "@/components/workspaces/dynamics/analysis-me
 export function RelationshipAnalysisView({
   result,
   contentFlag,
+  flagAction,
 }: {
   result: RelationshipAnalysisResult;
   contentFlag?: string;
+  flagAction?: ReactNode;
 }) {
   const { t } = useLocale();
 
   return (
     <div className="animate-fade-in">
-      <ContentFlagNotice flag={contentFlag} className="mb-6" />
+      <ContentFlagNotice flag={contentFlag} action={flagAction} className="mb-6" />
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant="master">{humanizeSnakeCase(result.relationship_type)}</Badge>
         <Badge variant="neutral">

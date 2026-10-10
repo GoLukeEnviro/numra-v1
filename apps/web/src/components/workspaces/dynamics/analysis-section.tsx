@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ApiError } from "@/api/client";
+import { api, ApiError } from "@/api/client";
+import { RegenerateControl } from "@/components/ui/regenerate-control";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import {
   asRelationshipAnalysisResult,
@@ -164,6 +165,30 @@ export function AnalysisSection({
         <RelationshipAnalysisView
           result={result}
           contentFlag={"content_flag" in progress.analysis ? progress.analysis.content_flag : undefined}
+          flagAction={
+            <RegenerateControl
+              loadPreview={() =>
+                api.workspaces.relationshipAnalysis.regeneratePreview(
+                  workspaceId,
+                  progress.analysis.id,
+                )
+              }
+              start={(key) =>
+                api.workspaces.relationshipAnalysis.regenerate(
+                  workspaceId,
+                  progress.analysis.id,
+                  key,
+                )
+              }
+              onStarted={progress.track}
+              onOpenExisting={(id) =>
+                void api.workspaces.relationshipAnalysis
+                  .get(workspaceId, id)
+                  .then(progress.track)
+                  .catch(() => progress.reload())
+              }
+            />
+          }
         />
       ) : (
         unreadable

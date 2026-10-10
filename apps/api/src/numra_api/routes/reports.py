@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, Header, Query
+from fastapi import APIRouter, Depends, Header, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from numra_api.config import Settings
@@ -21,6 +21,7 @@ from numra_api.repositories.reports import (
     list_reports_for_user,
 )
 from numra_api.schemas.person_ref import PersonRefOut, person_display_name
+from numra_api.schemas.regeneration import RegenerationPreviewOut
 from numra_api.schemas.report import (
     ReportCreateRequest,
     ReportJobOut,
@@ -30,7 +31,11 @@ from numra_api.schemas.report import (
 from numra_api.services.beta_gate import require_beta_access
 from numra_api.services.content_flag import report_flags
 from numra_api.services.errors import NotFoundError
-from numra_api.services.report_service import create_report_job
+from numra_api.services.report_service import (
+    create_report_job,
+    preview_report_regeneration,
+    regenerate_report_job,
+)
 from numra_api.services.usage_quota import GATED_RESPONSES
 
 router = APIRouter(prefix="/v1", tags=["reports"])
@@ -52,6 +57,9 @@ def _report_to_out(report: Report, job_id: uuid.UUID) -> ReportOut:
         job_id=str(job_id),
         content_flag=flags.content_flag,
         flagged_section_ids=list(flags.flagged_section_ids),
+        regenerated_from_id=(
+            None if report.regenerated_from_id is None else str(report.regenerated_from_id)
+        ),
     )
 
 
@@ -150,6 +158,65 @@ async def get_report_route(
         raise NotFoundError(f"report {report_id} not found")
     job_id = report.jobs[0].id if report.jobs else report.id
     return _report_to_out(report, job_id)
+
+
+@router.get(
+    "/reports/{report_id}/regenerate-preview",
+    response_model=RegenerationPreviewOut,
+    responses={403: GATED_RESPONSES[403]},
+    dependencies=[Depends(require_beta_access(BetaFeature.REPORT))],
+)
+async def preview_report_regeneration_route(
+    report_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db, scope="function"),
+    settings: Settings = Depends(get_settings_dep),
+) -> RegenerationPreviewOut:
+    """What "regenerate" would do for this report: nothing is started. Owner only."""
+    preview = await preview_report_regeneration(
+        db, user_id=user.id, report_id=report_id, settings=settings
+    )
+    return RegenerationPreviewOut.from_preview(preview)
+
+
+@router.post(
+    "/reports/{report_id}/regenerate",
+    response_model=ReportOut,
+    status_code=201,
+    responses={
+        **GATED_RESPONSES,
+        200: {
+            "description": "A regeneration of this report already exists (or the key was replayed)"
+        },
+        409: {"description": "CONTENT_NOT_FLAGGED or IDEMPOTENCY_KEY_CONFLICT"},
+    },
+    dependencies=[
+        Depends(require_csrf),
+        Depends(require_beta_access(BetaFeature.REPORT)),
+        Depends(rate_limit_by_user("reports:regenerate", limit=30, window_seconds=3600)),
+    ],
+)
+async def regenerate_report_route(
+    report_id: uuid.UUID,
+    response: Response,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db, scope="function"),
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+    settings: Settings = Depends(get_settings_dep),
+) -> ReportOut:
+    """Explicit user action: a NEW report linked to a flagged one (the original stays as it
+    is). Same job path, beta gate and quota as a fresh report; repeated clicks return the
+    one existing version (200) instead of creating another."""
+    report, job, created = await regenerate_report_job(
+        db,
+        user_id=user.id,
+        report_id=report_id,
+        idempotency_key=idempotency_key,
+        settings=settings,
+    )
+    if not created:
+        response.status_code = 200
+    return _report_to_out(report, job.id)
 
 
 @router.get("/report-jobs/{job_id}", response_model=ReportJobOut)

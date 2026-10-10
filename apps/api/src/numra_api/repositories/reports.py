@@ -52,6 +52,7 @@ async def create_report_with_job(
     profile_snapshot: dict[str, Any],
     report_schema_version: str,
     idempotency_key: str | None,
+    regenerated_from_id: uuid.UUID | None = None,
 ) -> tuple[Report, ReportJob]:
     report = Report(
         user_id=user_id,
@@ -63,6 +64,7 @@ async def create_report_with_job(
         profile_snapshot=profile_snapshot,
         report_schema_version=report_schema_version,
         status="PENDING",
+        regenerated_from_id=regenerated_from_id,
     )
     db.add(report)
     await db.flush()
@@ -79,11 +81,27 @@ async def create_report_with_job(
 
 
 async def get_report_for_user(
-    db: AsyncSession, *, report_id: uuid.UUID, user_id: uuid.UUID
+    db: AsyncSession, *, report_id: uuid.UUID, user_id: uuid.UUID, for_update: bool = False
 ) -> Report | None:
+    """``for_update`` locks the report row until the transaction ends -- the regeneration
+    path uses it so that two clicks on "regenerate" are serialised."""
     stmt = (
         select(Report)
         .where(Report.id == report_id, Report.user_id == user_id)
+        .options(selectinload(Report.jobs))
+    )
+    if for_update:
+        stmt = stmt.with_for_update(of=Report)
+    result = await db.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def get_live_regeneration(db: AsyncSession, *, report_id: uuid.UUID) -> Report | None:
+    """The regeneration of ``report_id`` that is pending or complete (a FAILED one does not
+    count -- the owner may try again)."""
+    stmt = (
+        select(Report)
+        .where(Report.regenerated_from_id == report_id, Report.status != "FAILED")
         .options(selectinload(Report.jobs))
     )
     result = await db.execute(stmt)

@@ -436,6 +436,9 @@ und 2) als unabhängige Gegenprobe.
 
 ### 5. Abnahme (minimal, mit synthetischem Konto)
 
+> Automatisiert und mit Bericht (Markdown+JSON): [acceptance-tooling.md](acceptance-tooling.md)
+> (`numra_smoke.py`, für Audit zusätzlich `numra_acceptance.py` inkl. PDF-Inhaltsprüfung).
+
 Nur synthetisches Konto (`prod-smoke-<zufall>@example.com`), keine echten Nutzerdaten.
 Vorher belegen, dass die Registrierung keine E-Mail auslöst. Am Ende
 `POST /v1/account/delete-all` (204); Login danach 401.

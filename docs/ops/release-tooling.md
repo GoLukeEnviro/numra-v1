@@ -32,6 +32,7 @@ Prüfungen wiederholbar, abbrechend und nachweisbar.
   übergibt sie per `--env-file`, nicht als Argument. xtrace ist abgeschaltet; nicht mit
   `bash -x` starten. Berichte laufen durch `redact` (Mails, UUID-Reste, lange Tokens).
 - **Konfigurationsvertrauen:** Die Konfigurationsdatei wird als Shell gelesen. Sie muss dem aufrufenden Benutzer oder root gehören und darf für Gruppe/Andere nicht schreibbar sein (Exit 2). `SUDO_CMD` gilt nur aus dieser Datei, nie aus der Umgebung. `release.log` und Berichte werden redigiert (zusätzlich Werte der in `REDACT_ENV` genannten Umgebungsvariablen).
+- **Invarianten-Warnung:** Ist `INVARIANT_SQL` leer, meldet der Lauf `WARNUNG: INVARIANT_SQL ist leer` (Konsole, Log, Bericht): dann entfällt die Daten-Invariante vor/nach der Migration.
 - **Dry-Run:** `--dry-run` führt nur die lesenden Voraussetzungen aus, gibt den Plan als
   `SKIP plan:...` aus und mutiert nichts. Geschrieben wird ausschließlich `REPORT_DIR`
   (Bericht, Log).
@@ -93,7 +94,8 @@ Ein Hash allein gilt nicht als Nachweis. Berichte enthalten keine Secrets oder P
 1. `baseline` einmal nach dem letzten stabilen Zustand, danach `pre --dry-run`, dann `pre`.
 2. `prep` ohne Downtime; Bericht und Rollback-Tags ansehen.
 3. `switch` im Wartungsfenster mit der vorab festgelegten Ziel-Revision.
-4. Abnahme gegen das Ziel (Smoke bzw. Acceptance-Lauf mit `--target-sha`), Bericht aufbewahren.
+4. Abnahme gegen das Ziel (Smoke bzw. Acceptance-Lauf mit `--target-sha`, siehe
+   [acceptance-tooling.md](acceptance-tooling.md)), Bericht aufbewahren.
 5. `marker` mit genau diesem Bericht. Bei Fehlschlag oder Abweichung `rollback`, danach
    Bericht prüfen.
 6. Beobachtungsfenster; die Entscheidung über einen DB-Restore (R2) bleibt eine manuelle
@@ -114,5 +116,6 @@ Ein Hash allein gilt nicht als Nachweis. Berichte enthalten keine Secrets oder P
 ```bash
 bash scripts/release/tests/test-numra-release.sh
 bash scripts/release/tests/test-numra-drill.sh
-uv run --no-project --with pytest pytest scripts/ops_report -q
+uv run --no-project --with pytest --with "$(cat scripts/acceptance/requirements.txt)" \
+  pytest scripts/ops_report scripts/acceptance -q
 ```

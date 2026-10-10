@@ -317,6 +317,12 @@ drift_check() { # Baseline == jetzt (Container, Compose-Hash, alembic, Invariant
   fi
 }
 
+warn_no_invariant() {
+  if [ -z "$INVARIANT_SQL" ]; then
+    chk INFO invariant-config "WARNUNG: INVARIANT_SQL ist leer - Daten-Invariante (z. B. Flag-Fingerabdruck) wird weder vor noch nach der Migration geprueft"
+  fi
+}
+
 plan() { chk SKIP "plan:$1" "Dry-Run: nicht ausgefuehrt"; }
 
 # ------------------------------------------------------------------ Phasen
@@ -345,6 +351,7 @@ common_pre() {
   [ -f "$BASELINE_FILE" ] || die "Baseline fehlt ($BASELINE_FILE): zuerst --phase baseline"
   dc config --quiet > /dev/null 2>&1 || die "Compose/env nicht lesbar oder ungueltig"
   chk PASS compose-config "docker compose config ok"
+  warn_no_invariant
   drift_check
   local marker head
   marker=$(cat "$MARKER_FILE") || die "Marker nicht lesbar"

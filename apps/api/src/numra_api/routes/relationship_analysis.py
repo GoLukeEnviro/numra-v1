@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, Header
+from fastapi import APIRouter, Depends, Header, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from numra_api.config import Settings
@@ -23,6 +23,7 @@ from numra_api.repositories.analysis import (
     get_shadow_dynamics_analysis_for_user,
 )
 from numra_api.repositories.workspaces import get_workspace_member
+from numra_api.schemas.regeneration import RegenerationPreviewOut
 from numra_api.schemas.relationship_analysis import (
     AnalysisJobOut,
     RelationshipAnalysisOut,
@@ -35,6 +36,8 @@ from numra_api.services.feature_flags import require_v2_phase
 from numra_api.services.relationship_analysis_service import (
     create_relationship_analysis_job,
     create_shadow_dynamics_job,
+    preview_relationship_regeneration,
+    regenerate_relationship_analysis_job,
 )
 from numra_api.services.usage_quota import GATED_RESPONSES
 
@@ -87,6 +90,7 @@ def _relationship_analysis_to_out(analysis: RelationshipAnalysis) -> Relationshi
         generated_at=analysis.generated_at,
         created_at=analysis.created_at,
         content_flag=analysis_flag(analysis),
+        regenerated_from_id=analysis.regenerated_from_id,
     )
 
 
@@ -167,6 +171,73 @@ async def get_relationship_analysis_route(
     )
     if analysis is None:
         raise NotFoundError(f"relationship analysis {analysis_id} not found")
+    return _relationship_analysis_to_out(analysis)
+
+
+@router.get(
+    "/workspaces/{workspace_id}/relationship-analysis/{analysis_id}/regenerate-preview",
+    response_model=RegenerationPreviewOut,
+    responses={403: GATED_RESPONSES[403]},
+    dependencies=[Depends(require_beta_access(BetaFeature.ANALYSIS))],
+)
+async def preview_relationship_regeneration_route(
+    workspace_id: uuid.UUID,
+    analysis_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db, scope="function"),
+    settings: Settings = Depends(get_settings_dep),
+) -> RegenerationPreviewOut:
+    """What "regenerate" would do for this analysis: nothing is started. Needs workspace
+    membership and the current mutual consent, like starting an analysis."""
+    preview = await preview_relationship_regeneration(
+        db,
+        workspace_id=workspace_id,
+        analysis_id=analysis_id,
+        requester_user_id=user.id,
+        settings=settings,
+    )
+    return RegenerationPreviewOut.from_preview(preview)
+
+
+@router.post(
+    "/workspaces/{workspace_id}/relationship-analysis/{analysis_id}/regenerate",
+    response_model=RelationshipAnalysisOut,
+    status_code=201,
+    responses={
+        **GATED_RESPONSES,
+        200: {"description": "A regeneration of this analysis already exists (or key replayed)"},
+        409: {"description": "CONTENT_NOT_FLAGGED or IDEMPOTENCY_KEY_CONFLICT"},
+    },
+    dependencies=[
+        Depends(require_csrf),
+        Depends(require_beta_access(BetaFeature.ANALYSIS)),
+        Depends(
+            rate_limit_by_user("relationship-analysis:regenerate", limit=30, window_seconds=3600)
+        ),
+    ],
+)
+async def regenerate_relationship_analysis_route(
+    workspace_id: uuid.UUID,
+    analysis_id: uuid.UUID,
+    response: Response,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db, scope="function"),
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+    settings: Settings = Depends(get_settings_dep),
+) -> RelationshipAnalysisOut:
+    """Explicit user action: a NEW analysis linked to a flagged one (the original stays as
+    it is). Same job path, beta gate, consent checks and quota as a fresh analysis;
+    repeated clicks return the one existing version (200) instead of creating another."""
+    _job, analysis, created = await regenerate_relationship_analysis_job(
+        db,
+        workspace_id=workspace_id,
+        analysis_id=analysis_id,
+        requester_user_id=user.id,
+        idempotency_key=idempotency_key,
+        settings=settings,
+    )
+    if not created:
+        response.status_code = 200
     return _relationship_analysis_to_out(analysis)
 
 

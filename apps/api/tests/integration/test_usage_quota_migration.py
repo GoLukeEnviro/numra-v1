@@ -31,7 +31,15 @@ def test_single_head_on_top_of_previous() -> None:
         timeout=60,
     )
     heads = [line for line in result.stdout.splitlines() if line.strip()]
-    assert len(heads) == 1 and heads[0].startswith(REV)
+    assert len(heads) == 1
+    history = subprocess.run(
+        [sys.executable, "-m", "alembic", "history"],
+        cwd=API_DIR,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert f"{PREV} -> {REV}" in history.stdout  # still part of the single chain
 
 
 def test_upgrade_only_adds_the_ledger_table(migration_url) -> None:  # noqa: F811
