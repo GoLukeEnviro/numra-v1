@@ -211,3 +211,18 @@ def test_redact_filter_cli(tmp_path):
         check=False,
     )
     assert done.returncode == 0 and "a@b.de" not in done.stdout
+
+
+def test_check_smoke_structural_errors_are_reported_not_raised(tmp_path):
+    naive = make_report(started="2026-01-01T00:00:00", finished="2026-01-01T00:00:01")
+    ok, reason = check(tmp_path, naive)
+    assert not ok and "Zeitzone" in reason
+    for broken in ({"extra": "kein-objekt"}, {"summary": [1, 2]}):
+        ok, reason = check(tmp_path, make_report() | broken)
+        assert not ok and reason
+    path = tmp_path / "liste.json"
+    path.write_text("[1, 2]", encoding="utf-8")
+    ok, reason = report.check_smoke_report(path, "audit", SHA)
+    assert not ok and "ungueltig" in reason
+    ok, reason = check(tmp_path, make_report() | {"schema_version": 1, "kind": ["x"]})
+    assert not ok
