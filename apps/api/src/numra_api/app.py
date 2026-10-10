@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 
 from numra_api.config import Settings, get_settings
 from numra_api.db import build_engine, build_sessionmaker
+from numra_api.middleware.proxy_trust import ProxyTrustMiddleware
 from numra_api.middleware.security import (
     AccessLogMiddleware,
     CorrelationIdMiddleware,
@@ -19,6 +20,7 @@ from numra_api.middleware.security import (
     RequestBodyLimitMiddleware,
     SecurityHeadersMiddleware,
 )
+from numra_api.proxy_trust import ProxyTrust, parse_networks
 from numra_api.rate_limit import InMemoryRateLimiter, RateLimiter, RedisRateLimiter
 from numra_api.repositories.feature_flags import get_all_flags
 from numra_api.routes import (
@@ -112,6 +114,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.add_middleware(AccessLogMiddleware)
     app.add_middleware(
         RequestBodyLimitMiddleware, max_bytes=resolved_settings.request_body_max_bytes
+    )
+    app.add_middleware(
+        ProxyTrustMiddleware,
+        trust=ProxyTrust(
+            secrets=resolved_settings.proxy_secret_values,
+            trusted_networks=parse_networks(resolved_settings.trusted_proxy_cidrs),
+        ),
+        enforced=resolved_settings.proxy_secret_enforced,
+        session_cookie_name=resolved_settings.session_cookie_name,
     )
     app.add_middleware(
         OriginValidationMiddleware, allowed_origins=resolved_settings.cors_allowed_origins

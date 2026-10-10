@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+import { buildUpstreamHeaders, readProxyConfig } from "@/lib/proxy-headers";
+
 /**
  * Same-origin API proxy: the browser only ever calls /api/*; this Route Handler
  * forwards each request to API_INTERNAL_URL (a plain, non-NEXT_PUBLIC_ env var) and
@@ -17,7 +19,6 @@ import type { NextRequest } from "next/server";
  */
 export const dynamic = "force-dynamic";
 
-const HOP_BY_HOP_REQUEST_HEADERS = new Set(["host", "connection", "content-length"]);
 const HOP_BY_HOP_RESPONSE_HEADERS = new Set(["content-encoding", "content-length", "connection"]);
 
 async function proxy(
@@ -29,10 +30,7 @@ async function proxy(
   const path = pathSegments.join("/");
   const targetUrl = new URL(`/${path}${request.nextUrl.search}`, apiInternalUrl);
 
-  const requestHeaders = new Headers();
-  request.headers.forEach((value, key) => {
-    if (!HOP_BY_HOP_REQUEST_HEADERS.has(key.toLowerCase())) requestHeaders.set(key, value);
-  });
+  const requestHeaders = buildUpstreamHeaders(request.headers, readProxyConfig());
 
   const hasBody = !["GET", "HEAD"].includes(request.method);
 

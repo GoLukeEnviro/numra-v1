@@ -85,6 +85,12 @@ services:
       WEB_APP_BASE_URL: ${WEB_APP_BASE_URL:-http://localhost:3000}
       RATE_LIMIT_BACKEND: ${RATE_LIMIT_BACKEND:-redis}
       REDIS_URL: redis://redis:6379/0
+      # Web-BFF <-> API Shared Secret (Platzhalter in .env.example; leer = Funktion aus).
+      # Einführung/Rotation: docs/ops/2026-10-10-proxy-secret-rollout.md
+      INTERNAL_PROXY_SHARED_SECRET: ${INTERNAL_PROXY_SHARED_SECRET:-}
+      INTERNAL_PROXY_SHARED_SECRET_PREVIOUS: ${INTERNAL_PROXY_SHARED_SECRET_PREVIOUS:-}
+      PROXY_SECRET_ENFORCED: ${PROXY_SECRET_ENFORCED:-false}
+      TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS:-}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     volumes:
       - numra_exports_data:/app/data/exports
@@ -231,6 +237,10 @@ services:
       # into the client bundle — see next.config.mjs's rewrites(). The browser only
       # ever calls same-origin /api/*.
       API_INTERNAL_URL: http://api:8000
+      # Nur serverseitig (kein NEXT_PUBLIC_): Secret für X-Numra-Proxy-Auth, Zahl der
+      # vertrauenswürdigen Reverse-Proxys vor dem Web-Server (0 = keine Client-IP weitergeben).
+      INTERNAL_PROXY_SHARED_SECRET: ${INTERNAL_PROXY_SHARED_SECRET:-}
+      TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-0}
     depends_on:
       - api
     ports:
