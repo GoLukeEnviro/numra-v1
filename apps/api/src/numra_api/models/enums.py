@@ -345,3 +345,12 @@ class CorrelationTarget(StrEnum):
     PERSONAL_DAY = "PERSONAL_DAY"
     PERSONAL_MONTH = "PERSONAL_MONTH"
     PERSONAL_YEAR = "PERSONAL_YEAR"
+
+
+class ContentFlag(StrEnum):
+    """D6: server-side verdict on a stored, generated text. ``unresolved_template_tokens``
+    means the strict detector finds an internal template token in it; the text itself is
+    never altered."""
+
+    NONE = "none"
+    UNRESOLVED_TEMPLATE_TOKENS = "unresolved_template_tokens"

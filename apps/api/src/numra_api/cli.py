@@ -5,6 +5,7 @@
     uv run python -m numra_api.cli flags init [--profile <name>] [--dry-run]
     uv run python -m numra_api.cli beta inventory [--since-days N]
     uv run python -m numra_api.cli beta backfill [--since-days N] [--apply]
+    uv run python -m numra_api.cli content-flags scan [--list-ids]
 
 Stdlib `argparse` only -- no new dependency, no new pyproject entrypoint (keeps this
 release's footprint minimal). Reuses the app's existing Settings/engine/sessionmaker
@@ -30,6 +31,7 @@ from numra_api.models.enums import AuditAction, UserRole
 from numra_api.repositories.audit import record_audit_event
 from numra_api.repositories.users import get_user_by_email, set_user_role
 from numra_api.services.beta_inventory import UsageRow, backfill_beta_access, collect_usage
+from numra_api.services.content_flag_scan import scan_stored_content
 from numra_api.services.feature_flag_bootstrap import ProfileRequiredError, bootstrap_flags
 
 
@@ -172,6 +174,27 @@ async def beta_backfill(since_days: int | None, apply: bool) -> int:
         await engine.dispose()
 
 
+async def content_flags_scan(list_ids: bool) -> int:
+    """Read-only (D6): counts stored results the strict detector flags -- no text, no write,
+    nothing started. Identifiers only with ``--list-ids``."""
+    settings = get_settings()
+    engine = build_engine(settings.database_url)
+    sessionmaker = build_sessionmaker(engine)
+    try:
+        async with sessionmaker() as db:
+            scans = await scan_stored_content(db)
+            await db.rollback()
+        for kind, scan in scans.items():
+            print(f"{kind}: checked={scan.checked} flagged={scan.flagged}")
+            if list_ids:
+                for flagged_id in scan.flagged_ids:
+                    print(f"  {flagged_id}")
+        print("read-only: nothing written, nothing regenerated")
+        return 0
+    finally:
+        await engine.dispose()
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="numra_api.cli")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -213,6 +236,19 @@ def build_parser() -> argparse.ArgumentParser:
         "--apply", action="store_true", help="write the grants (default: dry-run)"
     )
 
+    flags_scan_parser = subparsers.add_parser(
+        "content-flags", help="stored results with unresolved template tokens (D6)"
+    )
+    flags_scan_subparsers = flags_scan_parser.add_subparsers(
+        dest="content_flags_command", required=True
+    )
+    scan_parser = flags_scan_subparsers.add_parser(
+        "scan", help="read-only counters (no content, nothing is regenerated)"
+    )
+    scan_parser.add_argument(
+        "--list-ids", action="store_true", help="also print the identifiers of flagged rows"
+    )
+
     return parser
 
 
@@ -231,6 +267,9 @@ def main() -> int:
         return asyncio.run(beta_inventory(args.since_days))
     if args.command == "beta" and args.beta_command == "backfill":
         return asyncio.run(beta_backfill(args.since_days, args.apply))
+
+    if args.command == "content-flags" and args.content_flags_command == "scan":
+        return asyncio.run(content_flags_scan(args.list_ids))
 
     parser.print_help()
     return 1

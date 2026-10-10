@@ -1,6 +1,7 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
+import { ContentFlagNotice } from "@/components/ui/content-flag-notice";
 import type { RelationshipAnalysisResult } from "@/api/analysis-content";
 import { humanizeSnakeCase } from "@/lib/analysis-status";
 import { splitParagraphs } from "@/lib/prose";
@@ -16,11 +17,18 @@ import { AnalysisMetaFooter } from "@/components/workspaces/dynamics/analysis-me
  * returned — no text is generated, shortened or re-ordered, and there is no
  * compatibility score anywhere.
  */
-export function RelationshipAnalysisView({ result }: { result: RelationshipAnalysisResult }) {
+export function RelationshipAnalysisView({
+  result,
+  contentFlag,
+}: {
+  result: RelationshipAnalysisResult;
+  contentFlag?: string;
+}) {
   const { t } = useLocale();
 
   return (
     <div className="animate-fade-in">
+      <ContentFlagNotice flag={contentFlag} className="mb-6" />
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant="master">{humanizeSnakeCase(result.relationship_type)}</Badge>
         <Badge variant="neutral">

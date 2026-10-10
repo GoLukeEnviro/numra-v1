@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { AiDisclosure } from "@/components/ui/ai-disclosure";
 import { NumericWheel } from "@/components/layout/numeric-wheel";
+import { ContentFlagNotice } from "@/components/ui/content-flag-notice";
+import { useLocale } from "@/i18n/context";
 import type { ReportOut } from "@/api/client";
 import {
   orderedSections,
@@ -97,10 +99,13 @@ export function ReportReader({
   report: ReportOut;
   content: StructuredReport;
 }) {
+  const { t } = useLocale();
   const sections = orderedSections(content);
+  const flaggedSections = new Set(report.flagged_section_ids ?? []);
 
   return (
     <article className="animate-fade-in">
+      <ContentFlagNotice flag={report.content_flag} className="mb-6" />
       <header className="relative overflow-hidden rounded-xl border border-white/10 bg-surface p-8 shadow-elevated sm:p-10">
         <NumericWheel className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 opacity-[0.14]" />
         <div className="relative">
@@ -171,8 +176,11 @@ export function ReportReader({
               id={sectionAnchor(section.section_id)}
               className="mb-14 max-w-reading scroll-mt-8 last:mb-0"
             >
-              <p className="mb-2 font-mono text-xs text-bronze">
+              <p className="mb-2 flex items-center gap-2 font-mono text-xs text-bronze">
                 {String(index + 1).padStart(2, "0")}
+                {flaggedSections.has(section.section_id) && (
+                  <Badge variant="diagnostic">{t("app.contentFlag.sectionBadge")}</Badge>
+                )}
               </p>
               <h2 className="font-serif text-2xl text-ivory sm:text-[1.75rem]">{section.title}</h2>
 

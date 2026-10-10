@@ -29,6 +29,7 @@ from numra_api.schemas.relationship_analysis import (
     ShadowDynamicsAnalysisOut,
 )
 from numra_api.services.beta_gate import require_beta_access
+from numra_api.services.content_flag import analysis_flag
 from numra_api.services.errors import NotFoundError
 from numra_api.services.feature_flags import require_v2_phase
 from numra_api.services.relationship_analysis_service import (
@@ -85,6 +86,7 @@ def _relationship_analysis_to_out(analysis: RelationshipAnalysis) -> Relationshi
         result=analysis.result_json,
         generated_at=analysis.generated_at,
         created_at=analysis.created_at,
+        content_flag=analysis_flag(analysis),
     )
 
 

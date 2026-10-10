@@ -7,10 +7,10 @@ import { LocaleProvider } from "@/i18n/context";
 
 const result = asRelationshipAnalysisResult(relationshipAnalysisResult)!;
 
-function renderView() {
+function renderView(contentFlag?: string) {
   return render(
     <LocaleProvider>
-      <RelationshipAnalysisView result={result} />
+      <RelationshipAnalysisView result={result} contentFlag={contentFlag} />
     </LocaleProvider>,
   );
 }
@@ -39,5 +39,16 @@ describe("RelationshipAnalysisView", () => {
     expect(screen.getByText("mock / mock-relationship-1")).toBeInTheDocument();
     expect(within(container).queryByText(/%/)).not.toBeInTheDocument();
     expect(within(container).queryByRole("progressbar")).not.toBeInTheDocument();
+  });
+
+  it("shows the placeholder notice for flagged content and keeps the statements", () => {
+    renderView("unresolved_template_tokens");
+    expect(screen.getByText("Dieser Inhalt enthält technische Platzhalter")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Kommunikation" })).toBeInTheDocument();
+  });
+
+  it("shows no notice for unflagged content", () => {
+    renderView("none");
+    expect(screen.queryByTestId("content-flag-notice")).not.toBeInTheDocument();
   });
 });

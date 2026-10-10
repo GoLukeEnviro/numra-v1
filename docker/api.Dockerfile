@@ -53,7 +53,9 @@ FROM base AS api
 EXPOSE 8000
 HEALTHCHECK --interval=10s --timeout=5s --start-period=15s --retries=5 \
   CMD curl --fail http://127.0.0.1:8000/v1/health/ready || exit 1
-CMD ["uvicorn", "numra_api.app:app", "--host", "0.0.0.0", "--port", "8000"]
+# --no-proxy-headers: uvicorn darf scope["client"] nicht selbst aus X-Forwarded-For
+# umschreiben; die Client-IP-Vertrauensentscheidung trifft allein ProxyTrustMiddleware.
+CMD ["uvicorn", "numra_api.app:app", "--host", "0.0.0.0", "--port", "8000", "--no-proxy-headers"]
 
 FROM base AS worker
 CMD ["python", "-m", "numra_api.worker"]
