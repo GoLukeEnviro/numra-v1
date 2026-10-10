@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import ipaddress
 from functools import lru_cache
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import Field, SecretStr, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, SecretStr, field_validator, model_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+
+_MIN_PROXY_SECRET_LENGTH = 32
 
 LLMProviderName = Literal["ollama", "mock", "disabled"]
 RateLimitBackend = Literal["memory", "redis"]
@@ -17,7 +20,11 @@ class Settings(BaseSettings):
     #: (`SMTP_PORT: ${SMTP_PORT:-}`), and an empty env value must mean "unset"
     #: (fall back to the field default) instead of failing int/bool parsing for
     #: deployments that do not configure SMTP at all.
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore", env_ignore_empty=True)
+    #: `hide_input_in_errors`: ein Validierungsfehler darf den Roh-Eingabewert (z. B. ein
+    #: zu kurzes Secret oder das SMTP-Passwort) nie in Logs/Tracebacks spiegeln.
+    model_config = SettingsConfigDict(
+        env_file=".env", extra="ignore", env_ignore_empty=True, hide_input_in_errors=True
+    )
 
     database_url: str = "postgresql+asyncpg://numra:numra_dev_password@127.0.0.1:5432/numra_dev"
     environment: str = "development"
@@ -104,6 +111,18 @@ class Settings(BaseSettings):
 
     request_body_max_bytes: int = 2 * 1024 * 1024
 
+    #: Gemeinsames Secret zwischen Web-BFF und API (Header `X-Numra-Proxy-Auth`). Nur
+    #: serverseitig; `SecretStr`, damit es nie in repr()/Logs erscheint. `_previous` ist
+    #: der Rotations-/Rückrollpfad: beide Werte sind gleichzeitig gültig.
+    internal_proxy_shared_secret: SecretStr | None = None
+    internal_proxy_shared_secret_previous: SecretStr | None = None
+    #: false = Übergangsmodus (Header optional, ungültiger Header wird ignoriert);
+    #: true = Behauptete Proxy-Identität und Cookie-Sessions brauchen ein gültiges Secret.
+    proxy_secret_enforced: bool = False
+    #: Peer-Adressen (CIDR, kommagetrennt), von denen eine weitergeleitete Client-IP
+    #: akzeptiert wird -- zusätzlich zum gültigen Secret. Leer = nie.
+    trusted_proxy_cidrs: Annotated[list[str], NoDecode] = []
+
     #: Deliberately a Settings field (unlike routes/public.py's former APP_NAME
     #: constant) -- branding is not a security-relevant value like
     #: `allow_self_signup`, so letting a deployment configure it carries none of the
@@ -150,6 +169,61 @@ class Settings(BaseSettings):
     #: `smtp_starttls` -- see `_forbid_conflicting_smtp_tls_modes`.
     smtp_use_tls: bool = False
     smtp_timeout_seconds: float = 10.0
+
+    @field_validator("trusted_proxy_cidrs", mode="before")
+    @classmethod
+    def _split_trusted_proxy_cidrs(cls, value: object) -> object:
+        if isinstance(value, str):
+            return [part.strip() for part in value.split(",") if part.strip()]
+        return value
+
+    @field_validator("trusted_proxy_cidrs")
+    @classmethod
+    def _validate_trusted_proxy_cidrs(cls, value: list[str]) -> list[str]:
+        for cidr in value:
+            try:
+                ipaddress.ip_network(cidr, strict=False)
+            except ValueError:
+                raise ValueError(
+                    f"TRUSTED_PROXY_CIDRS enthält keine gültige CIDR: {cidr!r}"
+                ) from None
+        return value
+
+    @model_validator(mode="after")
+    def _validate_proxy_secrets(self) -> Settings:
+        current = self.internal_proxy_shared_secret
+        previous = self.internal_proxy_shared_secret_previous
+        for name, secret in (
+            ("INTERNAL_PROXY_SHARED_SECRET", current),
+            ("INTERNAL_PROXY_SHARED_SECRET_PREVIOUS", previous),
+        ):
+            if secret is not None and len(secret.get_secret_value()) < _MIN_PROXY_SECRET_LENGTH:
+                raise ValueError(
+                    f"{name} muss mindestens {_MIN_PROXY_SECRET_LENGTH} Zeichen haben."
+                )
+        if previous is not None and current is None:
+            raise ValueError(
+                "INTERNAL_PROXY_SHARED_SECRET_PREVIOUS erfordert INTERNAL_PROXY_SHARED_SECRET."
+            )
+        if (
+            previous is not None
+            and current is not None
+            and previous.get_secret_value() == current.get_secret_value()
+        ):
+            raise ValueError(
+                "INTERNAL_PROXY_SHARED_SECRET_PREVIOUS darf nicht dem aktuellen Secret entsprechen."
+            )
+        if self.proxy_secret_enforced and current is None:
+            raise ValueError("PROXY_SECRET_ENFORCED=true erfordert INTERNAL_PROXY_SHARED_SECRET.")
+        return self
+
+    @property
+    def proxy_secret_values(self) -> list[str]:
+        return [
+            s.get_secret_value()
+            for s in (self.internal_proxy_shared_secret, self.internal_proxy_shared_secret_previous)
+            if s is not None
+        ]
 
     @property
     def cookies_secure(self) -> bool:
