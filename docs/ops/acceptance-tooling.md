@@ -45,6 +45,8 @@ python3 scripts/acceptance/numra_smoke.py --target prod --target-sha <SHA> \
 - **Mail-Sicherheit:** `EMAIL_BACKEND` des Ziel-Containers wird geprüft (`disabled`/`logging` ok,
   `smtp` nur mit `--allow-smtp-synthetic`; die EMAIL-Einladungsschritte der Acceptance werden bei `smtp`
   trotzdem übersprungen). Die frühere Quelltext-Regex entfällt.
+- Ist der Container nicht erreichbar, bricht der Mail-Check ab; ein nicht gesetztes `EMAIL_BACKEND` gilt als Default `disabled`.
+- **Abnahmeart (Absicht):** Die Marker-Phase akzeptiert für `audit` einen `smoke`- **oder** `acceptance`-Bericht, für `prod` nur `smoke`. Der volle Acceptance-Lauf ist für Audit eine gleichwertige oder stärkere Abnahme und deshalb zugelassen; die Zuordnung steht in `phase_marker` von `numra-release.sh` (Variable `kinds`) und ist bewusst nicht per Konfiguration änderbar.
 - Basis-URLs müssen http-Loopback sein.
   Docker wird nur gegen diese Container aufgerufen (Guard), Datenbankzugriff ist auf die
   Container-`psql`-Abfragen beschränkt (Smoke: nur `SELECT`).

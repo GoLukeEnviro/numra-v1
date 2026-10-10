@@ -641,8 +641,21 @@ def s2_journey():
 
 
 def mail_backend():
-    rc, out = sh(["docker", "exec", CONTAINERS["api"], "printenv", "EMAIL_BACKEND"])
-    return out.strip() if rc == 0 else ""
+    """EMAIL_BACKEND des Containers; nicht erreichbar = Abbruch, nicht gesetzt = Default disabled."""
+    rc, out = sh(
+        [
+            "docker",
+            "exec",
+            CONTAINERS["api"],
+            *["sh", "-c", 'printf "%s" "${EMAIL_BACKEND-__unset__}"'],
+        ]
+    )
+    if rc != 0:
+        raise SystemExit(
+            "VERWEIGERT: EMAIL_BACKEND im API-Container nicht lesbar (Container erreichbar?)"
+        )
+    value = out.strip()
+    return "disabled" if value == "__unset__" else value
 
 
 def mail_risk():

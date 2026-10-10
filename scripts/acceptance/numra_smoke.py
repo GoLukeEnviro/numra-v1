@@ -432,10 +432,21 @@ def preflight(cfg):
         cors = [x.strip() for x in out.split(",")]
     if cfg.origin not in cors:
         raise Refusal("Preflight: --origin steht nicht in CORS_ALLOWED_ORIGINS des API-Containers")
-    rc, out = sh(["docker", "exec", cfg.api_container, "printenv", "EMAIL_BACKEND"])
+    rc, out = sh(
+        [
+            "docker",
+            "exec",
+            cfg.api_container,
+            *["sh", "-c", 'printf "%s" "${EMAIL_BACKEND-__unset__}"'],
+        ]
+    )
+    if rc != 0:
+        raise Refusal(
+            "Preflight: EMAIL_BACKEND im API-Container nicht lesbar (Container erreichbar?)"
+        )
     try:
         ST["mail_backend"] = stack_config.check_mail_backend(
-            out if rc == 0 else "", cfg.allow_smtp_synthetic
+            "" if out.strip() == "__unset__" else out, cfg.allow_smtp_synthetic
         )
     except stack_config.StackRefusalError as exc:
         raise Refusal(f"Preflight: {exc}") from exc

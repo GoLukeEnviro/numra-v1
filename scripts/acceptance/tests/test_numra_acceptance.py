@@ -195,6 +195,12 @@ def configured_acc(tmp_path, monkeypatch, **answers):
     return args
 
 
+def test_acceptance_unset_mail_backend_means_default_disabled(tmp_path, monkeypatch):
+    args = configured_acc(tmp_path, monkeypatch, EMAIL_BACKEND=(0, "__unset__"))
+    acc.preflight(args)
+    assert acc.ST["mail_backend"] == "disabled"
+
+
 def test_acceptance_preflight_ok(tmp_path, monkeypatch):
     args = configured_acc(tmp_path, monkeypatch)
     assert acc.preflight(args) == SHA
@@ -209,6 +215,7 @@ def test_acceptance_preflight_ok(tmp_path, monkeypatch):
         ({"rev-parse": (0, "d" * 40 + "\n")}, "HEAD"),
         ({"rev-parse": (128, "")}, "HEAD"),
         ({"EMAIL_BACKEND": (0, "smtp\n")}, "EMAIL_BACKEND"),
+        ({"EMAIL_BACKEND": (1, "Error: No such container")}, "EMAIL_BACKEND"),
     ],
 )
 def test_acceptance_preflight_aborts(tmp_path, monkeypatch, answers, needle):
@@ -406,7 +413,7 @@ def fake_smoke_sh(**answers):
 
     def fake(args, stdin=None, timeout=60):
         for needle, value in table.items():
-            if needle in args:
+            if any(needle in a for a in args):
                 return value
         return (0, "0\n")
 
@@ -419,6 +426,7 @@ def fake_smoke_sh(**answers):
         ({"ENVIRONMENT": (1, "")}, "ENVIRONMENT"),
         ({"rev-parse": (0, "e" * 40)}, "HEAD"),
         ({"EMAIL_BACKEND": (0, "smtp")}, "EMAIL_BACKEND"),
+        ({"EMAIL_BACKEND": (1, "Error: No such container")}, "EMAIL_BACKEND"),
     ],
 )
 def test_smoke_preflight_refusals(tmp_path, monkeypatch, answers, needle):
