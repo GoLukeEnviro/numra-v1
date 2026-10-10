@@ -10,6 +10,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from numra_api.auth.passwords import dummy_password_hash
 from numra_api.config import Settings, get_settings
 from numra_api.db import build_engine, build_sessionmaker
 from numra_api.middleware.proxy_trust import ProxyTrustMiddleware
@@ -79,6 +80,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.engine = engine
         app.state.sessionmaker = build_sessionmaker(engine)
         app.state.settings = resolved_settings
+        # Argon2 dummy hash used by login for unknown addresses: compute once at start,
+        # not inside the first login request.
+        dummy_password_hash()
 
         async def _load_feature_flags() -> dict[str, bool]:
             async with app.state.sessionmaker() as session:

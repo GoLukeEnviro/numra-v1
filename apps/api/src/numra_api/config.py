@@ -7,6 +7,8 @@ from typing import Annotated, Literal
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
+from numra_api.rate_limit.policies import DEFAULT_POLICIES, parse_policy_spec
+
 _MIN_PROXY_SECRET_LENGTH = 32
 
 LLMProviderName = Literal["ollama", "mock", "disabled"]
@@ -78,6 +80,9 @@ class Settings(BaseSettings):
     #: Not permitted when ENVIRONMENT=production (see the validator below).
     rate_limit_backend: RateLimitBackend = "memory"
     redis_url: str = "redis://localhost:6379/0"
+    #: Überschreibt Auth-Rate-Limit-Policies (siehe rate_limit/policies.py), z. B.
+    #: RATE_LIMIT_OVERRIDES='{"auth:login:target": "30/900"}'.
+    rate_limit_overrides: dict[str, str] = {}
 
     log_level: str = "INFO"
     report_max_words: int = 30_000
@@ -216,6 +221,23 @@ class Settings(BaseSettings):
         if self.proxy_secret_enforced and current is None:
             raise ValueError("PROXY_SECRET_ENFORCED=true erfordert INTERNAL_PROXY_SHARED_SECRET.")
         return self
+
+    @field_validator("rate_limit_overrides")
+    @classmethod
+    def _validate_rate_limit_overrides(cls, value: dict[str, str]) -> dict[str, str]:
+        for policy, spec in value.items():
+            if policy not in DEFAULT_POLICIES:
+                raise ValueError(f"RATE_LIMIT_OVERRIDES: unbekannte Policy {policy!r}")
+            try:
+                parse_policy_spec(spec)
+            except ValueError as exc:
+                raise ValueError(f"RATE_LIMIT_OVERRIDES[{policy!r}]: {exc}") from None
+        return value
+
+    def rate_limit_policy(self, policy: str) -> tuple[int, int]:
+        """(limit, window_seconds) einer benannten Policy, Override vor Default."""
+        override = self.rate_limit_overrides.get(policy)
+        return parse_policy_spec(override) if override else DEFAULT_POLICIES[policy]
 
     @property
     def proxy_secret_values(self) -> list[str]:

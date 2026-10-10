@@ -98,3 +98,59 @@ async def test_redis_limiter_window_expires(redis_client) -> None:
     assert not (await limiter.check(key=key, limit=1, window_seconds=1)).allowed
     await asyncio.sleep(1.2)
     assert (await limiter.check(key=key, limit=1, window_seconds=1)).allowed
+
+
+async def test_redis_limiter_repairs_a_counter_without_ttl(redis_client) -> None:
+    """Ein Schluessel ohne TTL (Absturz zwischen INCR und EXPIRE im frueheren
+    Zwei-Schritt-Ablauf) wuerde den Zaehler dauerhaft sperren; check() repariert ihn."""
+    limiter = RedisRateLimiter(redis_client)
+    await redis_client.set("test:no-ttl", 5)
+    assert await redis_client.ttl("test:no-ttl") == -1
+    result = await limiter.check(key="test:no-ttl", limit=3, window_seconds=60)
+    assert not result.allowed
+    assert 0 < await redis_client.ttl("test:no-ttl") <= 60
+    assert 0 < result.retry_after_seconds <= 60
+
+
+async def test_redis_limiter_sets_ttl_atomically_on_first_increment(redis_client) -> None:
+    limiter = RedisRateLimiter(redis_client)
+    await limiter.check(key="test:atomic", limit=3, window_seconds=60)
+    assert 0 < await redis_client.ttl("test:atomic") <= 60
+    await limiter.check(key="test:atomic", limit=3, window_seconds=60)
+    assert await redis_client.get("test:atomic") == b"2"
+
+
+@pytest.mark.parametrize("backend", ["memory", "redis"])
+async def test_reset_clears_the_counter(backend: str, redis_client) -> None:
+    limiter = InMemoryRateLimiter() if backend == "memory" else RedisRateLimiter(redis_client)
+    key = f"test:reset-{backend}"
+    await limiter.check(key=key, limit=1, window_seconds=60)
+    assert not (await limiter.check(key=key, limit=1, window_seconds=60)).allowed
+    await limiter.reset(key=key)
+    assert (await limiter.check(key=key, limit=1, window_seconds=60)).allowed
+
+
+@pytest.mark.parametrize("backend", ["memory", "redis"])
+async def test_parallel_checks_allow_exactly_the_limit(backend: str, redis_client) -> None:
+    """Beweis der Atomaritaet direkt am Limiter (ohne HTTP/Argon2-Serialisierung):
+    50 gleichzeitige check() bei Limit 5 -> genau 5 erlaubt."""
+    limiter = InMemoryRateLimiter() if backend == "memory" else RedisRateLimiter(redis_client)
+    key = f"test:parallel-{backend}"
+    results = await asyncio.gather(
+        *(limiter.check(key=key, limit=5, window_seconds=60) for _ in range(50))
+    )
+    assert sum(r.allowed for r in results) == 5
+    if backend == "redis":
+        assert 0 < await redis_client.ttl(key) <= 60
+
+
+@pytest.mark.parametrize("backend", ["memory", "redis"])
+async def test_reset_only_clears_its_own_key(backend: str, redis_client) -> None:
+    limiter = InMemoryRateLimiter() if backend == "memory" else RedisRateLimiter(redis_client)
+    for key in (f"test:own-{backend}", f"test:other-{backend}"):
+        await limiter.check(key=key, limit=1, window_seconds=60)
+    await limiter.reset(key=f"test:own-{backend}")
+    assert (await limiter.check(key=f"test:own-{backend}", limit=1, window_seconds=60)).allowed
+    assert not (
+        await limiter.check(key=f"test:other-{backend}", limit=1, window_seconds=60)
+    ).allowed

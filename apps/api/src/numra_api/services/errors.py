@@ -198,6 +198,13 @@ class RateLimitExceeded(ApplicationError):
         self.retry_after_seconds = retry_after_seconds
 
 
+class RateLimitUnavailable(ApplicationError):
+    """The rate-limit counter backend (Redis) is unreachable. Fail-closed, generic text."""
+
+    code = "RATE_LIMIT_UNAVAILABLE"
+    status_code = 503
+
+
 class InvitationNotFound(ApplicationError):
     """IDOR-safe 404 for a missing/foreign `ConnectionInvitation` -- never a 403 (see
     PR-V2-03 blueprint: IDOR responses are always 404)."""

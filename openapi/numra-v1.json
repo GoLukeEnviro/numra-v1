@@ -7481,7 +7481,7 @@
     },
     "/v1/auth/request-email-verification": {
       "post": {
-        "description": "V2: (re-)sends a verification link to the signed-in user's own email address.\nInvalidates any verification token requested earlier before issuing a new one --\nsee services/auth_recovery_service.request_email_verification.",
+        "description": "V2: (re-)sends a verification link to the signed-in user's own email address.\nInvalidates any verification token requested earlier before issuing a new one --\nsee services/auth_recovery_service.request_email_verification.\n\nLimits: per `user.id` (dependency) and per target address (the user's own e-mail).\nDeliberately no per-IP limit here: after login the key is the user id, and at\n`TRUSTED_PROXY_HOPS=0` an IP bucket would be shared by every web user.",
         "operationId": "request_email_verification_v1_auth_request_email_verification_post",
         "parameters": [
           {

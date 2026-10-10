@@ -7,10 +7,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from numra_api.auth.csrf import CSRF_COOKIE_NAME, generate_csrf_token
-from numra_api.auth.passwords import hash_password, verify_password
+from numra_api.auth.passwords import dummy_password_hash, hash_password, verify_password
 from numra_api.auth.sessions import generate_session_token, hash_session_token
 from numra_api.config import Settings
 from numra_api.deps import (
+    clear_target_failures,
+    enforce_target_rate_limit,
     get_current_bearer_session,
     get_current_bearer_user,
     get_current_session,
@@ -60,6 +62,21 @@ from numra_api.services.errors import (
     InvalidCredentials,
     SelfSignupDisabled,
 )
+
+#: Counter shared by web and mobile login (one target address = one counter). The attempt
+#: is reserved atomically BEFORE the password check (INCR) and the counter is cleared on
+#: success, so only failures accumulate and parallel guesses cannot overshoot the limit.
+LOGIN_TARGET_POLICY = "auth:login:target"
+
+
+def _authenticated_user(user: User | None, password: str) -> User | None:
+    """Argon2 always runs: against a dummy hash (same parameters) for an unknown address, so
+    unknown and known addresses are not distinguishable by response time."""
+    password_ok = verify_password(
+        user.password_hash if user is not None else dummy_password_hash(), password
+    )
+    return user if user is not None and password_ok and user.is_active else None
+
 
 router = APIRouter(prefix="/v1/auth", tags=["auth"])
 
@@ -116,10 +133,11 @@ async def _issue_authenticated_session(
     "/register",
     response_model=UserOut,
     status_code=201,
-    dependencies=[Depends(rate_limit_by_ip("auth:register", limit=5, window_seconds=3600))],
+    dependencies=[Depends(rate_limit_by_ip("auth:register"))],
 )
 async def register(
     body: RegisterRequest,
+    request: Request,
     response: Response,
     db: AsyncSession = Depends(get_db, scope="function"),
     settings: Settings = Depends(get_settings_dep),
@@ -128,6 +146,7 @@ async def register(
     `login`, no server-side redirect -- the client decides where to go next). Role and
     is_active come exclusively from the model defaults; `RegisterRequest`'s
     `extra="forbid"` is what stops a "role": "ADMIN" body from ever reaching here."""
+    await enforce_target_rate_limit(request, policy="auth:register:target", target=body.email)
     if not settings.allow_self_signup:
         raise SelfSignupDisabled("self-signup is disabled (ALLOW_SELF_SIGNUP=false)")
     if not body.age_confirmed:
@@ -164,22 +183,26 @@ async def register(
 @router.post(
     "/login",
     response_model=UserOut,
-    dependencies=[Depends(rate_limit_by_ip("auth:login", limit=10, window_seconds=60))],
+    dependencies=[Depends(rate_limit_by_ip("auth:login"))],
 )
 async def login(
     body: LoginRequest,
+    request: Request,
     response: Response,
     db: AsyncSession = Depends(get_db, scope="function"),
     settings: Settings = Depends(get_settings_dep),
 ) -> UserOut:
-    user = await get_user_by_email(db, email=body.email)
-    if user is None or not verify_password(user.password_hash, body.password) or not user.is_active:
+    await enforce_target_rate_limit(request, policy=LOGIN_TARGET_POLICY, target=body.email)
+    candidate = await get_user_by_email(db, email=body.email)
+    user = _authenticated_user(candidate, body.password)
+    if user is None:
         # Deliberately identical error for wrong-password, unknown-email, and
         # disabled-account -- a disabled account must never be distinguishable from
         # a simple login failure (see get_current_user's matching anti-enumeration
         # behavior for the session path).
         raise InvalidCredentials("invalid email or password")
 
+    await clear_target_failures(request, policy=LOGIN_TARGET_POLICY, target=body.email)
     await _issue_authenticated_session(response=response, db=db, settings=settings, user=user)
     return UserOut(
         id=str(user.id),
@@ -205,18 +228,22 @@ def _user_out(user: User) -> UserOut:
 @router.post(
     "/mobile/login",
     response_model=MobileSessionOut,
-    dependencies=[Depends(rate_limit_by_ip("auth:mobile-login", limit=10, window_seconds=60))],
+    dependencies=[Depends(rate_limit_by_ip("auth:mobile-login"))],
 )
 async def mobile_login(
     body: LoginRequest,
+    request: Request,
     response: Response,
     db: AsyncSession = Depends(get_db, scope="function"),
     settings: Settings = Depends(get_settings_dep),
 ) -> MobileSessionOut:
-    user = await get_user_by_email(db, email=body.email)
-    if user is None or not verify_password(user.password_hash, body.password) or not user.is_active:
+    await enforce_target_rate_limit(request, policy=LOGIN_TARGET_POLICY, target=body.email)
+    candidate = await get_user_by_email(db, email=body.email)
+    user = _authenticated_user(candidate, body.password)
+    if user is None:
         raise InvalidCredentials("invalid email or password")
 
+    await clear_target_failures(request, policy=LOGIN_TARGET_POLICY, target=body.email)
     token = generate_session_token()
     expires_at = dt.datetime.now(dt.UTC) + dt.timedelta(hours=settings.session_ttl_hours)
     await create_session(
@@ -371,12 +398,11 @@ async def revoke_other_sessions(
     status_code=204,
     dependencies=[
         Depends(require_csrf),
-        Depends(
-            rate_limit_by_user("auth:request_email_verification", limit=5, window_seconds=3600)
-        ),
+        Depends(rate_limit_by_user("auth:request_email_verification")),
     ],
 )
 async def request_email_verification(
+    request: Request,
     user: User = Depends(get_current_user),
     settings: Settings = Depends(get_settings_dep),
     email_sender: EmailSender = Depends(get_email_sender),
@@ -384,7 +410,14 @@ async def request_email_verification(
 ) -> None:
     """V2: (re-)sends a verification link to the signed-in user's own email address.
     Invalidates any verification token requested earlier before issuing a new one --
-    see services/auth_recovery_service.request_email_verification."""
+    see services/auth_recovery_service.request_email_verification.
+
+    Limits: per `user.id` (dependency) and per target address (the user's own e-mail).
+    Deliberately no per-IP limit here: after login the key is the user id, and at
+    `TRUSTED_PROXY_HOPS=0` an IP bucket would be shared by every web user."""
+    await enforce_target_rate_limit(
+        request, policy="auth:request_email_verification:target", target=user.email
+    )
     await auth_recovery_service.request_email_verification(
         db, user=user, settings=settings, email_sender=email_sender
     )
@@ -393,7 +426,7 @@ async def request_email_verification(
 @router.post(
     "/verify-email",
     status_code=204,
-    dependencies=[Depends(rate_limit_by_ip("auth:verify_email", limit=10, window_seconds=3600))],
+    dependencies=[Depends(rate_limit_by_ip("auth:verify_email"))],
 )
 async def verify_email(
     body: VerifyEmailRequest,
@@ -409,10 +442,11 @@ async def verify_email(
 @router.post(
     "/forgot-password",
     status_code=202,
-    dependencies=[Depends(rate_limit_by_ip("auth:forgot_password", limit=5, window_seconds=3600))],
+    dependencies=[Depends(rate_limit_by_ip("auth:forgot_password"))],
 )
 async def forgot_password(
     body: ForgotPasswordRequest,
+    request: Request,
     settings: Settings = Depends(get_settings_dep),
     email_sender: EmailSender = Depends(get_email_sender),
     db: AsyncSession = Depends(get_db, scope="function"),
@@ -420,6 +454,9 @@ async def forgot_password(
     """V2: always answers 202 with no body, whether or not `body.email` belongs to an
     account -- anti-enumeration (see services/auth_recovery_service.forgot_password,
     which only touches the database/sends anything on an actual match)."""
+    await enforce_target_rate_limit(
+        request, policy="auth:forgot_password:target", target=body.email
+    )
     await auth_recovery_service.forgot_password(
         db, email=body.email, settings=settings, email_sender=email_sender
     )
@@ -428,7 +465,7 @@ async def forgot_password(
 @router.post(
     "/reset-password",
     status_code=204,
-    dependencies=[Depends(rate_limit_by_ip("auth:reset_password", limit=10, window_seconds=3600))],
+    dependencies=[Depends(rate_limit_by_ip("auth:reset_password"))],
 )
 async def reset_password(
     body: ResetPasswordRequest,

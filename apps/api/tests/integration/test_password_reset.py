@@ -195,13 +195,15 @@ async def test_forgot_password_invalidates_previous_reset_token(
 
 
 async def test_forgot_password_is_rate_limited(client) -> None:
-    for _ in range(5):
+    # Per-IP limit (5/h): distinct addresses, so the per-target limit (3/h) is not the
+    # one being exercised -- see test_auth_rate_limit_keys.py for that.
+    for index in range(5):
         response = await client.post(
-            "/v1/auth/forgot-password", json={"email": "whoever@example.com"}
+            "/v1/auth/forgot-password", json={"email": f"whoever{index}@example.com"}
         )
         assert response.status_code == 202
 
-    blocked = await client.post("/v1/auth/forgot-password", json={"email": "whoever@example.com"})
+    blocked = await client.post("/v1/auth/forgot-password", json={"email": "whoever9@example.com"})
     assert blocked.status_code == 429
     assert blocked.json()["code"] == "RATE_LIMIT_EXCEEDED"
 
