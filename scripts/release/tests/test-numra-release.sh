@@ -664,6 +664,7 @@ t_project_directory_for_staged_compose() {
   bad=$(grep 'compose.new.yml' "$W/calls.log" | grep -vc -- "--project-directory $T " || true)
   expect "prep: neue Compose wird verwendet (config, dry-run, build)" $((staged >= 3 ? 0 : 1))
   expect "prep: jeder Aufruf mit der Staging-Compose traegt --project-directory <Verzeichnis der Live-Compose>" $((bad == 0 ? 0 : 1))
+  # shellcheck disable=SC2016
   expect "prep: Sicherung enthaelt fingerprint.txt (Image-IDs, alembic, Invariante)" "$(b bash -c 'compgen -G "$1" > /dev/null' _ "$T/rb/*/fingerprint.txt")"
 }
 
