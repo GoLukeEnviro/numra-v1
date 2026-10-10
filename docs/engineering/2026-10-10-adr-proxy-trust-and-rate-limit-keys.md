@@ -172,3 +172,18 @@ Ein nicht zählendes `peek` gibt es nicht mehr (Quelle der Race-Condition).
 
 **Grenzen:** Fixed-Window (Randburst bleibt), Missbrauchsschutz statt Sicherheitsgrenze. Ein globales
 IP-Limit für nicht authentisierte Nicht-Auth-Routen existiert weiterhin nicht (vorher auch nicht).
+
+### Weitere Restrisiken (Review #320)
+
+- **Sperre gegen fremde Adresse:** Das Login-Ziel-Limit (20 Fehlversuche/15 min) erlaubt es
+  Dritten, Logins für eine fremde Adresse dauerhaft zu stören (siehe Risikobewertung oben); das
+  Limit senkt den Aufwand für diesen Angriff nicht, sondern begrenzt Brute-Force.
+- **/64-Bündelung:** IPv6-Clients teilen einen Bucket je /64. Hosting- oder NAT64-Netze, in denen
+  viele unabhängige Nutzer ein Präfix teilen, können sich dadurch gegenseitig drosseln.
+- **Kein Ziel-Zähler für `verify_email` und `reset_password`:** Beide Endpunkte tragen ein Token
+  statt einer Adresse im Body; begrenzt wird nur pro IP (10/h). Token-Raten durch verteilte IPs
+  bleiben durch die Token-Entropie, nicht durch einen Zähler, geschützt.
+- **Atomaritätsnachweis:** direkt am Limiter (`test_parallel_checks_allow_exactly_the_limit`,
+  50 parallele `check` bei Limit 5, auch gegen echtes Redis); der HTTP-Parallel-Test wird durch das
+  blockierende Argon2 teilweise serialisiert und beweist die Atomarität allein nicht. Die
+  Reservierung vor der Passwortprüfung belegt ein Test mit gespiegeltem `verify_password`.

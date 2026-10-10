@@ -403,3 +403,48 @@ async def test_ipv6_clients_share_one_bucket_per_slash_64(make_client) -> None:
         other_prefix = await _login(c, "v6@example.com", _via("2001:db8:1:3::1"))
     assert same_prefix == [401, 401, 429]
     assert other_prefix == 401
+
+
+async def test_successful_login_resets_only_its_own_target_counter(make_client) -> None:
+    async with make_client(overrides={"auth:login:target": "2/60"}) as c:
+        await _seed(c, "one@example.com")
+        await _seed(c, "two@example.com")
+        assert await _login(c, "one@example.com", _via("203.0.113.1")) == 401
+        assert await _login(c, "two@example.com", _via("203.0.113.1")) == 401
+        ok = await c.post(
+            "/v1/auth/login",
+            json={"email": "one@example.com", "password": PASSWORD},
+            headers=_via("203.0.113.2"),
+        )
+        assert ok.status_code == 200
+        # one: zurueckgesetzt (zwei weitere Fehlversuche erlaubt); two: Zaehler blieb bei 1.
+        one = [await _login(c, "one@example.com", _via("203.0.113.3")) for _ in range(3)]
+        two = [await _login(c, "two@example.com", _via("203.0.113.4")) for _ in range(2)]
+    assert one == [401, 401, 429]
+    assert two == [401, 429]
+
+
+@pytest.mark.parametrize("path", ["/v1/auth/login", "/v1/auth/mobile/login"])
+async def test_target_slot_is_reserved_before_the_password_check(
+    make_client, monkeypatch: pytest.MonkeyPatch, path: str
+) -> None:
+    from numra_api.routes import auth as auth_routes
+
+    verified: list[str] = []
+    real = auth_routes.verify_password
+
+    def spy(password_hash: str, plain: str) -> bool:
+        verified.append(plain)
+        return real(password_hash, plain)
+
+    monkeypatch.setattr(auth_routes, "verify_password", spy)
+    async with make_client(overrides={"auth:login:target": "2/60"}) as c:
+        await _seed(c, "early@example.com")
+        body = {"email": "early@example.com", "password": "wrong-password-123"}
+        codes = [
+            (await c.post(path, json=body, headers=_via(f"203.0.113.{n}"))).status_code
+            for n in range(1, 5)
+        ]
+    assert codes == [401, 401, 429, 429]
+    # Bei erreichtem Limit wird Argon2 gar nicht erst ausgefuehrt.
+    assert len(verified) == 2
