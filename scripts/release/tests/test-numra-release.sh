@@ -175,6 +175,8 @@ case "$1" in
       stop) mut compose stop "$@" ;;
       run)
         if [ "$dry" = 1 ]; then
+          # Compose v2/v5 verweigert einen nicht losgeloesten run im Dry-Run (Exit 1)
+          [[ " $* " == *" -d "* ]] || { echo "interactive run is not supported in dry-run mode" >&2; exit 1; }
           echo " Container numra-test-migrate-run Created"
           [ -z "${FAKE_DRYRUN_MIGRATE_TOUCHES:-}" ] || echo " Container numra-test-redis-1 Recreate"
           exit 0
