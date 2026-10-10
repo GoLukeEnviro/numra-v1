@@ -26,8 +26,14 @@ import uuid
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from numra_api.config import Settings
 from numra_api.models import ChatMessage, ChatThread
-from numra_api.models.enums import ChatMessageRole, ChatMessageStatus, ThreadScope
+from numra_api.models.enums import (
+    BetaFeature,
+    ChatMessageRole,
+    ChatMessageStatus,
+    ThreadScope,
+)
 from numra_api.repositories.copilot import (
     archive_thread,
     create_context_snapshot,
@@ -41,6 +47,7 @@ from numra_api.repositories.copilot import (
     list_messages_for_thread,
     update_message,
 )
+from numra_api.repositories.usage_quota import release_reservation, settle_reservation
 from numra_api.repositories.workspaces import get_workspace_member
 from numra_api.services.copilot_context_builder import (
     BuiltCopilotContext,
@@ -52,6 +59,7 @@ from numra_api.services.copilot_context_builder import (
 from numra_api.services.errors import ApplicationError, NotFoundError, ThreadArchiveForbidden
 from numra_api.services.llm_generation_log import RecordingLLMProvider
 from numra_api.services.persistence_gate import assert_no_unresolved_tokens
+from numra_api.services.usage_quota import reserve
 from numra_api.services.workspace_guard import assert_workspace_active_by_id
 from numra_interpretation.llm.errors import LLMProviderError
 from numra_interpretation.llm.types import LLMProvider
@@ -322,6 +330,7 @@ async def post_personal_message(
     requester_user_id: uuid.UUID,
     content: str,
     llm: LLMProvider,
+    settings: Settings,
 ) -> tuple[ChatMessage, ChatMessage]:
     """Personal-scope counterpart of `post_message`: the owner-scoped IDOR gate, then
     the shared generation tail. Skips both workspace-only preconditions on purpose --
@@ -337,6 +346,7 @@ async def post_personal_message(
         requester_user_id=requester_user_id,
         content=content,
         llm=llm,
+        settings=settings,
     )
 
 
@@ -386,6 +396,60 @@ async def _build_context(
 
 
 async def _persist_message_pair(
+    db: AsyncSession,
+    *,
+    thread: ChatThread,
+    workspace_id: uuid.UUID | None,
+    requester_user_id: uuid.UUID,
+    content: str,
+    llm: LLMProvider,
+    settings: Settings,
+) -> tuple[ChatMessage, ChatMessage]:
+    """Quota envelope around `_generate_message_pair` (D4). One Copilot message is one
+    unit. The unit is reserved and COMMITTED before the (slow) LLM call so the advisory
+    lock is not held for its duration and a parallel message sees it as in flight; a
+    FAILED reply or an exception hands it back, a COMPLETE reply settles it. At this
+    point the request transaction has only read, so the early commit persists nothing
+    else. Without configured limits `reserve` is a no-op and nothing commits here."""
+    ref_id = uuid.uuid4()
+    reserved = await reserve(
+        db,
+        settings=settings,
+        user_id=requester_user_id,
+        feature=BetaFeature.COPILOT,
+        ref_id=ref_id,
+    )
+    if reserved:
+        await db.commit()
+    try:
+        user_message, assistant_message = await _generate_message_pair(
+            db,
+            thread=thread,
+            workspace_id=workspace_id,
+            requester_user_id=requester_user_id,
+            content=content,
+            llm=llm,
+        )
+    except BaseException:
+        if reserved:
+            try:
+                await db.rollback()
+                await release_reservation(db, feature=BetaFeature.COPILOT, ref_id=ref_id)
+                await db.commit()
+            except Exception:  # noqa: BLE001 - never mask the original exception
+                logger.exception(
+                    "copilot quota release failed (ref=%s); stale-timeout applies", ref_id
+                )
+        raise
+    if reserved:
+        if assistant_message.status == ChatMessageStatus.COMPLETE:
+            await settle_reservation(db, feature=BetaFeature.COPILOT, ref_id=ref_id)
+        else:
+            await release_reservation(db, feature=BetaFeature.COPILOT, ref_id=ref_id)
+    return user_message, assistant_message
+
+
+async def _generate_message_pair(
     db: AsyncSession,
     *,
     thread: ChatThread,
@@ -505,6 +569,7 @@ async def post_message(
     requester_user_id: uuid.UUID,
     content: str,
     llm: LLMProvider,
+    settings: Settings,
 ) -> tuple[ChatMessage, ChatMessage]:
     """Persists the USER `ChatMessage` synchronously, then SYNCHRONOUSLY (no job/
     worker -- interactive chat latency) runs context-build -> pipeline -> validate
@@ -545,4 +610,5 @@ async def post_message(
         requester_user_id=requester_user_id,
         content=content,
         llm=llm,
+        settings=settings,
     )

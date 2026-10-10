@@ -6,6 +6,7 @@
 --
 --   psql -v salt="$(openssl rand -hex 8)" -f scripts/ops/beta_inventory.sql
 --
+-- Musteranalysen (muster) werden nur angezeigt: rein rechnerisch, kein LLM, kein Nutzungskriterium.
 -- Das Gegenstück im Anwendungscode ist `python -m numra_api.cli beta inventory`
 -- (HMAC-Pseudonyme mit dem Session-Secret, identische Zählweise); dieses Skript
 -- funktioniert auch VOR dem Deploy, weil es nur bestehende Tabellen liest.
@@ -22,7 +23,7 @@ WITH reports AS (
   FROM chat_messages WHERE role = 'USER' AND author_user_id IS NOT NULL GROUP BY 1
 ), used AS (
   SELECT user_id FROM reports UNION SELECT user_id FROM analyses
-  UNION SELECT user_id FROM patterns UNION SELECT user_id FROM copilot
+  UNION SELECT user_id FROM copilot
 )
 SELECT substr(md5(u.user_id::text || :'salt'), 1, 8) AS konto,
        coalesce(r.n, 0) AS reports,

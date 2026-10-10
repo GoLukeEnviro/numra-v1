@@ -65,14 +65,6 @@ def _entry_points() -> list[tuple[str, dict]]:
         ("/v1/reports", {"calculation_id": RANDOM, "report_type": "QUICK"}),
         (f"/v1/workspaces/{RANDOM}/relationship-analysis", {}),
         (f"/v1/workspaces/{RANDOM}/shadow-dynamics", {}),
-        (
-            f"/v1/people/{RANDOM}/pattern-analyses",
-            {
-                "metric_key": "mood",
-                "correlation_target": "PERSONAL_DAY",
-                "correlation_target_value": 1,
-            },
-        ),
         (f"/v1/workspaces/{RANDOM}/copilot/threads/{RANDOM}/messages", {"content": "hallo"}),
         (f"/v1/me/copilot/threads/{RANDOM}/messages", {"content": "hallo"}),
     ]
