@@ -106,6 +106,19 @@ export const deAdmin = {
   "admin.userDetail.disableSuccess": "Das Konto wurde deaktiviert.",
   "admin.userDetail.enableSuccess": "Das Konto wurde aktiviert.",
   "admin.userDetail.revokeSuccess": "Alle Sessions wurden widerrufen.",
+  "admin.userDetail.betaAccess": "Beta-Zugang",
+  "admin.userDetail.betaOn": "Freigeschaltet",
+  "admin.userDetail.betaOff": "Nicht freigeschaltet",
+  "admin.userDetail.betaGrant": "Beta-Zugang erteilen",
+  "admin.userDetail.betaRevoke": "Beta-Zugang entziehen",
+  "admin.userDetail.betaGrantConfirmTitle": "Beta-Zugang erteilen?",
+  "admin.userDetail.betaGrantConfirmBody":
+    "Das Konto darf danach Berichte, Analysen und den Copilot starten. Die Änderung wird im Audit-Log protokolliert.",
+  "admin.userDetail.betaRevokeConfirmTitle": "Beta-Zugang entziehen?",
+  "admin.userDetail.betaRevokeConfirmBody":
+    "Das Konto kann danach keine neuen Berichte, Analysen oder Copilot-Nachrichten starten. Bereits erzeugte Inhalte bleiben lesbar.",
+  "admin.userDetail.betaGrantSuccess": "Der Beta-Zugang wurde erteilt.",
+  "admin.userDetail.betaRevokeSuccess": "Der Beta-Zugang wurde entzogen.",
 
   // Dialog
   "admin.dialog.confirm": "Bestätigen",

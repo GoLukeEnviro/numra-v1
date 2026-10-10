@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from numra_api.deps import get_current_user, get_db, rate_limit_by_user, require_csrf
 from numra_api.models import AnalysisJob, RelationshipAnalysis, ShadowDynamicsAnalysis, User
+from numra_api.models.enums import BetaFeature
 from numra_api.repositories.analysis import (
     get_analysis_job_for_user,
     get_latest_relationship_analysis_for_workspace,
@@ -20,6 +21,7 @@ from numra_api.schemas.relationship_analysis import (
     RelationshipAnalysisOut,
     ShadowDynamicsAnalysisOut,
 )
+from numra_api.services.beta_gate import require_beta_access
 from numra_api.services.errors import NotFoundError
 from numra_api.services.feature_flags import require_v2_phase
 from numra_api.services.relationship_analysis_service import (
@@ -102,6 +104,7 @@ def _shadow_dynamics_to_out(analysis: ShadowDynamicsAnalysis) -> ShadowDynamicsA
     status_code=201,
     dependencies=[
         Depends(require_csrf),
+        Depends(require_beta_access(BetaFeature.ANALYSIS)),
         Depends(rate_limit_by_user("relationship-analysis:create", limit=30, window_seconds=3600)),
     ],
 )
@@ -157,6 +160,7 @@ async def get_relationship_analysis_route(
     status_code=201,
     dependencies=[
         Depends(require_csrf),
+        Depends(require_beta_access(BetaFeature.ANALYSIS)),
         Depends(rate_limit_by_user("shadow-dynamics:create", limit=30, window_seconds=3600)),
     ],
 )

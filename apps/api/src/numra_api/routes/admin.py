@@ -21,6 +21,12 @@ from numra_api.repositories.admin import (
     list_users_paginated,
 )
 from numra_api.repositories.audit import list_audit_events_paginated, record_audit_event
+from numra_api.repositories.entitlements import (
+    BETA_ACCESS_SET_KEY,
+    grant_beta_access,
+    has_beta_grant,
+    revoke_beta_access,
+)
 from numra_api.repositories.feature_flags import get_all_flags_with_metadata, set_flag
 from numra_api.repositories.sessions import revoke_all_sessions_for_user
 from numra_api.repositories.users import get_user_by_id, set_user_active
@@ -29,6 +35,7 @@ from numra_api.schemas.admin import (
     AdminUserListOut,
     AdminUserOut,
     AuditEventListOut,
+    BetaAccessOut,
     FeatureFlagListOut,
     FeatureFlagOut,
     FeatureFlagUpdateIn,
@@ -161,6 +168,71 @@ async def revoke_user_sessions(
         action=AuditAction.USER_SESSIONS_REVOKED,
         target_user_id=target.id,
     )
+
+
+@router.get("/users/{user_id}/beta-access", response_model=BetaAccessOut)
+async def get_beta_access(
+    user_id: uuid.UUID, db: AsyncSession = Depends(get_db, scope="function")
+) -> BetaAccessOut:
+    if await get_user_by_id(db, user_id=user_id) is None:
+        raise NotFoundError(f"user {user_id} not found")
+    return BetaAccessOut(user_id=str(user_id), granted=await has_beta_grant(db, user_id=user_id))
+
+
+@router.put(
+    "/users/{user_id}/beta-access",
+    response_model=BetaAccessOut,
+    dependencies=[
+        Depends(require_csrf),
+        Depends(rate_limit_by_user("admin:beta_access", limit=120, window_seconds=3600)),
+    ],
+)
+async def grant_user_beta_access(
+    user_id: uuid.UUID,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db, scope="function"),
+) -> BetaAccessOut:
+    """Idempotent: only the call that creates the grant writes an audit event."""
+    if await get_user_by_id(db, user_id=user_id) is None:
+        raise NotFoundError(f"user {user_id} not found")
+    changed = await grant_beta_access(db, user_id=user_id)
+    if changed:
+        await record_audit_event(
+            db,
+            actor_user_id=admin.id,
+            action=AuditAction.BETA_ACCESS_GRANTED,
+            target_user_id=user_id,
+            safe_metadata={"entitlement_set": BETA_ACCESS_SET_KEY, "source": "admin_api"},
+        )
+    return BetaAccessOut(user_id=str(user_id), granted=True, changed=changed)
+
+
+@router.delete(
+    "/users/{user_id}/beta-access",
+    response_model=BetaAccessOut,
+    dependencies=[
+        Depends(require_csrf),
+        Depends(rate_limit_by_user("admin:beta_access", limit=120, window_seconds=3600)),
+    ],
+)
+async def revoke_user_beta_access(
+    user_id: uuid.UUID,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db, scope="function"),
+) -> BetaAccessOut:
+    """Idempotent: only the call that removes the grant writes an audit event."""
+    if await get_user_by_id(db, user_id=user_id) is None:
+        raise NotFoundError(f"user {user_id} not found")
+    changed = await revoke_beta_access(db, user_id=user_id)
+    if changed:
+        await record_audit_event(
+            db,
+            actor_user_id=admin.id,
+            action=AuditAction.BETA_ACCESS_REVOKED,
+            target_user_id=user_id,
+            safe_metadata={"entitlement_set": BETA_ACCESS_SET_KEY, "source": "admin_api"},
+        )
+    return BetaAccessOut(user_id=str(user_id), granted=False, changed=changed)
 
 
 @router.get("/flags", response_model=FeatureFlagListOut)

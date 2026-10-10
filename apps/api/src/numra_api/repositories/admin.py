@@ -21,6 +21,7 @@ from numra_api.models.tables import (
     RelationshipWorkspace,
     UserConnection,
 )
+from numra_api.repositories.entitlements import has_beta_grant
 from numra_api.schemas.admin import AdminStatsOut, AdminUserOut, V2HealthOut
 
 
@@ -80,6 +81,7 @@ async def _to_admin_user_out(db: AsyncSession, *, user: User, now: dt.datetime) 
         calculation_count=calculation_count,
         report_count=report_count,
         relationship_count=relationship_count,
+        beta_access=await has_beta_grant(db, user_id=user.id),
     )
 
 

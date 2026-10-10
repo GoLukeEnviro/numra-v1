@@ -35,7 +35,7 @@ from numra_api.deps import (
     require_csrf,
 )
 from numra_api.models import ChatMessage, ChatThread, User
-from numra_api.models.enums import ThreadScope
+from numra_api.models.enums import BetaFeature, ThreadScope
 from numra_api.schemas.copilot import (
     ChatMessageOut,
     ChatThreadOut,
@@ -43,6 +43,7 @@ from numra_api.schemas.copilot import (
     MessagePairOut,
     PersonalThreadCreateRequest,
 )
+from numra_api.services.beta_gate import require_beta_access
 from numra_api.services.copilot_service import (
     archive_personal_thread_route,
     get_or_create_personal_thread,
@@ -147,6 +148,7 @@ async def list_personal_messages_route(
     status_code=201,
     dependencies=[
         Depends(require_csrf),
+        Depends(require_beta_access(BetaFeature.COPILOT)),
         Depends(rate_limit_by_user("copilot:message", limit=30, window_seconds=3600)),
     ],
 )

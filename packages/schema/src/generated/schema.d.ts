@@ -157,6 +157,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/users/{user_id}/beta-access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Beta Access */
+        get: operations["get_beta_access_v1_admin_users__user_id__beta_access_get"];
+        /**
+         * Grant User Beta Access
+         * @description Idempotent: only the call that creates the grant writes an audit event.
+         */
+        put: operations["grant_user_beta_access_v1_admin_users__user_id__beta_access_put"];
+        post?: never;
+        /**
+         * Revoke User Beta Access
+         * @description Idempotent: only the call that removes the grant writes an audit event.
+         */
+        delete: operations["revoke_user_beta_access_v1_admin_users__user_id__beta_access_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/users/{user_id}/disable": {
         parameters: {
             query?: never;
@@ -1954,6 +1979,8 @@ export interface components {
         AdminUserOut: {
             /** Active Session Count */
             active_session_count: number;
+            /** Beta Access */
+            beta_access: boolean;
             /** Calculation Count */
             calculation_count: number;
             /**
@@ -2040,7 +2067,7 @@ export interface components {
          * AuditAction
          * @enum {string}
          */
-        AuditAction: "USER_DISABLED" | "USER_ENABLED" | "USER_SESSIONS_REVOKED" | "ADMIN_PROMOTED" | "FEATURE_FLAG_CHANGED" | "AGE_CONFIRMED";
+        AuditAction: "USER_DISABLED" | "USER_ENABLED" | "USER_SESSIONS_REVOKED" | "ADMIN_PROMOTED" | "FEATURE_FLAG_CHANGED" | "AGE_CONFIRMED" | "BETA_ACCESS_GRANTED" | "BETA_ACCESS_REVOKED";
         /** AuditEventListOut */
         AuditEventListOut: {
             /** Items */
@@ -2071,6 +2098,22 @@ export interface components {
             };
             /** Target User Id */
             target_user_id: string | null;
+        };
+        /**
+         * BetaAccessOut
+         * @description State of one account's individual beta grant. `changed` is true only on the
+         *     PUT/DELETE call that actually flipped it (false for an idempotent repeat).
+         */
+        BetaAccessOut: {
+            /**
+             * Changed
+             * @default false
+             */
+            changed: boolean;
+            /** Granted */
+            granted: boolean;
+            /** User Id */
+            user_id: string;
         };
         /**
          * BirthPlace
@@ -2801,10 +2844,19 @@ export interface components {
          *     /v1/me/entitlements) -- either their explicit assignment or the seeded
          *     "beta_default" fallback (see repositories/entitlements.py). `max_connections`/
          *     `max_workspaces` of ``None`` means unlimited.
+         *
+         *     D4: `relationship_copilot`, `advanced_relationship_analysis` and `premium_reports`
+         *     are the EFFECTIVE values -- while `beta_gate_enforced` is true they are false for an
+         *     account without a beta grant. `beta_access` says whether the account holds one
+         *     (independent of whether the gate is currently enforced).
          */
         EntitlementSetOut: {
             /** Advanced Relationship Analysis */
             advanced_relationship_analysis: boolean;
+            /** Beta Access */
+            beta_access: boolean;
+            /** Beta Gate Enforced */
+            beta_gate_enforced: boolean;
             /** Connections */
             connections: boolean;
             /** Life Tracking */
@@ -4585,6 +4637,107 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminUserOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_beta_access_v1_admin_users__user_id__beta_access_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BetaAccessOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    grant_user_beta_access_v1_admin_users__user_id__beta_access_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                user_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BetaAccessOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_user_beta_access_v1_admin_users__user_id__beta_access_delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+            };
+            path: {
+                user_id: string;
+            };
+            cookie?: {
+                numra_csrf?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BetaAccessOut"];
                 };
             };
             /** @description Validation Error */

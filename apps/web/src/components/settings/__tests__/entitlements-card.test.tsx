@@ -11,6 +11,8 @@ vi.mock("@/api/client", async () => {
 
 const entitlements: EntitlementSetOut = {
   advanced_relationship_analysis: true,
+  beta_access: true,
+  beta_gate_enforced: false,
   connections: true,
   life_tracking: false,
   max_connections: 5,
