@@ -1713,6 +1713,15 @@
         "title": "ConsentScope",
         "type": "string"
       },
+      "ContentFlag": {
+        "description": "D6: server-side verdict on a stored, generated text. ``unresolved_template_tokens``\nmeans the strict detector finds an internal template token in it; the text itself is\nnever altered.",
+        "enum": [
+          "none",
+          "unresolved_template_tokens"
+        ],
+        "title": "ContentFlag",
+        "type": "string"
+      },
       "CorrelationTarget": {
         "description": "PR-V2-11 -- which canonical timing metric an `EvidenceResult`/\n`PatternAnalysis` correlates a Life Tracking metric against.",
         "enum": [
@@ -3878,6 +3887,10 @@
             "title": "Calculation Version",
             "type": "string"
           },
+          "content_flag": {
+            "$ref": "#/components/schemas/ContentFlag",
+            "default": "none"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -4445,10 +4458,22 @@
             ],
             "title": "Content"
           },
+          "content_flag": {
+            "$ref": "#/components/schemas/ContentFlag",
+            "default": "none"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
             "type": "string"
+          },
+          "flagged_section_ids": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Flagged Section Ids",
+            "type": "array"
           },
           "generated_at": {
             "anyOf": [
