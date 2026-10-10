@@ -115,6 +115,15 @@ def get_llm_provider(request: Request) -> LLMProvider:
     return provider
 
 
+def client_ip_of(request: Request) -> str:
+    """Vertrauenswürdig ermittelte Client-IP (siehe ProxyTrustMiddleware); ohne
+    Middleware-Ergebnis die rohe Peer-Adresse. Nie aus Request-Headern gelesen."""
+    ip = request.scope.get("state", {}).get("client_ip")
+    if isinstance(ip, str):
+        return ip
+    return request.client.host if request.client else "unknown"
+
+
 async def _enforce_rate_limit(
     *,
     raw_identity: str,
@@ -142,7 +151,7 @@ def rate_limit_by_ip(
         settings: Settings = Depends(get_settings_dep),
         limiter: RateLimiter = Depends(get_rate_limiter),
     ) -> None:
-        raw_ip = request.client.host if request.client else "unknown"
+        raw_ip = client_ip_of(request)
         await _enforce_rate_limit(
             raw_identity=raw_ip,
             scope=scope,
