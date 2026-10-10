@@ -328,10 +328,23 @@ const USER_FACING_MESSAGES: Record<string, string> = {
     "Diese Funktion ist aktuell nur für freigeschaltete Beta-Konten verfügbar. Dein Konto ist noch nicht freigeschaltet.",
 };
 
+/** QUOTA_EXCEEDED carries `retry_after_seconds`; name the wait in plain German. */
+function quotaMessage(retryAfter: unknown): string {
+  const base = "Du hast dein Nutzungslimit für diese Funktion erreicht.";
+  if (typeof retryAfter !== "number" || retryAfter <= 0) return `${base} Bitte versuche es später erneut.`;
+  const minutes = Math.ceil(retryAfter / 60);
+  if (minutes <= 1) return `${base} Bitte versuche es in etwa einer Minute erneut.`;
+  if (minutes < 120) return `${base} Bitte versuche es in etwa ${minutes} Minuten erneut.`;
+  return `${base} Bitte versuche es in etwa ${Math.ceil(minutes / 60)} Stunden erneut.`;
+}
+
 function extractError(payload: unknown, status: number): [string, string, number] {
   if (payload && typeof payload === "object") {
     const obj = payload as Record<string, unknown>;
     if (typeof obj.code === "string" && typeof obj.message === "string") {
+      if (obj.code === "QUOTA_EXCEEDED") {
+        return [quotaMessage(obj.retry_after_seconds), obj.code, status];
+      }
       return [USER_FACING_MESSAGES[obj.code] ?? obj.message, obj.code, status];
     }
     if (Array.isArray(obj.detail) && obj.detail.length > 0) {

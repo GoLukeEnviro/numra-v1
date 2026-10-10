@@ -34,9 +34,11 @@ umask 077; openssl rand -base64 48 | tr -d '\n' > /root/.new_proxy_secret   # da
 3. **Client-IP aktivieren:** `TRUSTED_PROXY_HOPS=1` am Web; neu starten. Prüfen: zwei Nutzer
    mit verschiedener IP teilen keinen Login-Zähler mehr (z. B. eigener Test-Account, Login-Fehlversuche
    von zwei Quellen); kein `forwarded client ip not accepted`-Warn-Log.
-4. **Erzwingen:** `PROXY_SECRET_ENFORCED=true`, API neu starten. Prüfen: Browser-Login ok,
-   Mobile-Login (Bearer) ok, Host-Healthcheck und Uptime-Probe ok;
-   `curl -H 'Cookie: …'` direkt gegen die API ohne Header → `403 PROXY_AUTH_FAILED`.
+4. **Erzwingen:** `PROXY_SECRET_ENFORCED=true`, API neu starten. Erzwungen wird nur für Cookie-Sessions
+   und Requests mit `X-Numra-Proxy-Auth`. Prüfen: Browser-Login ok; Mobile-Login (Bearer) ok; Host-Healthcheck
+   (`curl http://127.0.0.1:<API-Port>/v1/health/ready`, kein Header nötig) und Uptime-Probe ok –
+   auch wenn der Ingress `X-Forwarded-For` anhängt (wird ignoriert, nicht abgelehnt);
+   `curl -H @<Datei-mit-Cookie-Header> http://127.0.0.1:<API-Port>/v1/auth/me` ohne Proxy-Header → `403 PROXY_AUTH_FAILED`.
 
 Rückfall in jedem Schritt: Variable zurücksetzen und den betroffenen Dienst neu starten
 (Schritt 4 → `PROXY_SECRET_ENFORCED=false`).
@@ -66,4 +68,4 @@ Nach Schritt 3 gibt es kein Rückrollfenster: dann Rotation mit einem frischen S
   Secret selbst wird nirgends geloggt (Test `test_secret_never_appears_in_logs_or_responses`).
 - Reihenfolge-Verstoß erkennen: sendet das Web ein Secret, das die API (noch) nicht kennt, erscheint
   nur ein `proxy auth rejected`-Warn-Log und die Peer-IP gilt (kein Ausfall, solange `enforced=false`);
-  mit `enforced=true` wäre es ein `403`. Deshalb API immer zuerst.
+  mit `enforced=true` wäre es für Cookie-Requests ein `403`. Deshalb API immer zuerst.

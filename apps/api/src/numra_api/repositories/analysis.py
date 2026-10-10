@@ -20,7 +20,13 @@ from numra_api.models import (
     ShadowDynamicsAnalysis,
     WorkspaceMember,
 )
-from numra_api.models.enums import AnalysisJobStatus, AnalysisType, WorkspaceMemberStatus
+from numra_api.models.enums import (
+    AnalysisJobStatus,
+    AnalysisType,
+    BetaFeature,
+    WorkspaceMemberStatus,
+)
+from numra_api.repositories.usage_quota import release_reservation, settle_reservation
 
 #: Same rationale as `repositories.reports._RECLAIMABLE_STATUSES` -- crashed-worker
 #: recovery via lease expiry, not just fresh QUEUED jobs.
@@ -143,6 +149,10 @@ async def mark_job_status(
     if status in (AnalysisJobStatus.COMPLETE, AnalysisJobStatus.FAILED):
         job.lease_until = None
     await db.flush()
+    if status == AnalysisJobStatus.COMPLETE:
+        await settle_reservation(db, feature=BetaFeature.ANALYSIS, ref_id=job.id)
+    elif status == AnalysisJobStatus.FAILED:
+        await release_reservation(db, feature=BetaFeature.ANALYSIS, ref_id=job.id)
 
 
 async def requeue_job_for_retry(
@@ -169,6 +179,7 @@ async def fail_job_terminally(
     job.error_code = error_code[:60]
     job.last_error_at = now
     await db.flush()
+    await release_reservation(db, feature=BetaFeature.ANALYSIS, ref_id=job.id)
 
 
 async def create_pending_relationship_analysis(

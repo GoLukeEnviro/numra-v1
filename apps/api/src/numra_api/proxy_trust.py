@@ -15,14 +15,6 @@ from typing import Literal
 
 PROXY_AUTH_HEADER = "x-numra-proxy-auth"
 FORWARDED_FOR_HEADER = "x-forwarded-for"
-#: Header, mit denen ein Aufrufer eine Proxy-Identität behauptet. Ohne gültiges Secret
-#: werden sie ignoriert (und unter `proxy_secret_enforced` abgelehnt).
-FORWARDING_CLAIM_HEADERS = (
-    FORWARDED_FOR_HEADER,
-    "x-real-ip",
-    "forwarded",
-    PROXY_AUTH_HEADER,
-)
 
 IpAddress = ipaddress.IPv4Address | ipaddress.IPv6Address
 IpNetwork = ipaddress.IPv4Network | ipaddress.IPv6Network

@@ -6104,6 +6104,13 @@ export interface operations {
                     "application/json": components["schemas"]["MessagePairOut"];
                 };
             };
+            /** @description BETA_ACCESS_REQUIRED: no individual beta grant (gate enforced) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -6112,6 +6119,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+            /** @description QUOTA_EXCEEDED: per-user limit reached; see Retry-After and retry_after_seconds */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -7611,6 +7625,13 @@ export interface operations {
                     "application/json": components["schemas"]["ReportOut"];
                 };
             };
+            /** @description BETA_ACCESS_REQUIRED: no individual beta grant (gate enforced) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -7619,6 +7640,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+            /** @description QUOTA_EXCEEDED: per-user limit reached; see Retry-After and retry_after_seconds */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -8514,6 +8542,13 @@ export interface operations {
                     "application/json": components["schemas"]["MessagePairOut"];
                 };
             };
+            /** @description BETA_ACCESS_REQUIRED: no individual beta grant (gate enforced) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -8522,6 +8557,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+            /** @description QUOTA_EXCEEDED: per-user limit reached; see Retry-After and retry_after_seconds */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -8581,6 +8623,13 @@ export interface operations {
                     "application/json": components["schemas"]["RelationshipAnalysisOut"];
                 };
             };
+            /** @description BETA_ACCESS_REQUIRED: no individual beta grant (gate enforced) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -8589,6 +8638,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+            /** @description QUOTA_EXCEEDED: per-user limit reached; see Retry-After and retry_after_seconds */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -9042,6 +9098,13 @@ export interface operations {
                     "application/json": components["schemas"]["ShadowDynamicsAnalysisOut"];
                 };
             };
+            /** @description BETA_ACCESS_REQUIRED: no individual beta grant (gate enforced) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -9050,6 +9113,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+            /** @description QUOTA_EXCEEDED: per-user limit reached; see Retry-After and retry_after_seconds */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

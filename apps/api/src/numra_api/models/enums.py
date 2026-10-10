@@ -58,6 +58,12 @@ class AuditAction(StrEnum):
     BETA_ACCESS_REVOKED = "BETA_ACCESS_REVOKED"
 
 
+class UsageReservationState(StrEnum):
+    ACTIVE = "active"  # job queued/running or message in flight; counts for window + concurrency
+    SETTLED = "settled"  # finished successfully; counts for the window only
+    RELEASED = "released"  # failed/cancelled; quota given back
+
+
 class BetaFeature(StrEnum):
     """The cost-intensive feature groups behind the D4 beta gate and quotas."""
 

@@ -25,10 +25,20 @@ export interface ProxyConfig {
   trustedHops: number;
 }
 
+const MIN_SECRET_LENGTH = 32;
+
 export function readProxyConfig(env: NodeJS.ProcessEnv = process.env): ProxyConfig {
   const hops = Number.parseInt(env.TRUSTED_PROXY_HOPS ?? "0", 10);
+  const secret = env.INTERNAL_PROXY_SHARED_SECRET || undefined;
+  // Same floor as the API's Settings; a padded/short secret is a deployment error that
+  // must be loud (every proxied request fails), never silently weak or silently unsent.
+  if (secret !== undefined && (secret !== secret.trim() || secret.length < MIN_SECRET_LENGTH)) {
+    throw new Error(
+      `INTERNAL_PROXY_SHARED_SECRET must be at least ${MIN_SECRET_LENGTH} characters without surrounding whitespace`,
+    );
+  }
   return {
-    secret: env.INTERNAL_PROXY_SHARED_SECRET || undefined,
+    secret,
     trustedHops: Number.isInteger(hops) && hops > 0 ? hops : 0,
   };
 }

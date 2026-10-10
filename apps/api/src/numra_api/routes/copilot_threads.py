@@ -13,10 +13,12 @@ import uuid
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from numra_api.config import Settings
 from numra_api.deps import (
     get_current_user,
     get_db,
     get_llm_provider,
+    get_settings_dep,
     rate_limit_by_user,
     require_csrf,
 )
@@ -41,6 +43,7 @@ from numra_api.services.copilot_service import (
 )
 from numra_api.services.errors import ApplicationError
 from numra_api.services.feature_flags import require_v2_phase
+from numra_api.services.usage_quota import GATED_RESPONSES
 from numra_interpretation.llm.types import LLMProvider
 
 router = APIRouter(
@@ -146,6 +149,7 @@ async def list_messages_route(
     "/threads/{thread_id}/messages",
     response_model=MessagePairOut,
     status_code=201,
+    responses=GATED_RESPONSES,
     dependencies=[
         Depends(require_csrf),
         Depends(require_beta_access(BetaFeature.COPILOT)),
@@ -159,6 +163,7 @@ async def post_message_route(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db, scope="function"),
     llm: LLMProvider = Depends(get_llm_provider),
+    settings: Settings = Depends(get_settings_dep),
 ) -> MessagePairOut:
     user_message, assistant_message = await post_message(
         db,
@@ -167,6 +172,7 @@ async def post_message_route(
         requester_user_id=user.id,
         content=body.content,
         llm=llm,
+        settings=settings,
     )
     return MessagePairOut(
         user_message=_message_out(user_message), assistant_message=_message_out(assistant_message)

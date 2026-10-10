@@ -46,7 +46,7 @@ class UsageRow:
 
     @property
     def total(self) -> int:
-        return self.reports + self.analyses + self.patterns + self.copilot_messages
+        return self.reports + self.analyses + self.copilot_messages
 
 
 @dataclass(frozen=True)
@@ -93,7 +93,8 @@ async def collect_usage(
         if user_id is not None
     }
 
-    used = set(reports) | set(analyses) | set(patterns) | set(copilot)
+    # Pattern analyses are pure computation (no LLM): shown, but not a usage criterion.
+    used = set(reports) | set(analyses) | set(copilot)
     if not used:
         return []
     granted = set((await db.execute(select(EntitlementAssignment.user_id))).scalars().all())

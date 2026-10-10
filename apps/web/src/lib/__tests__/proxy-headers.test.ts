@@ -90,6 +90,19 @@ describe("readProxyConfig", () => {
     ).toEqual({ secret: SECRET, trustedHops: 0 });
     expect(readProxyConfig({ TRUSTED_PROXY_HOPS: "2" } as never).trustedHops).toBe(2);
   });
+
+  it("rejects a short or whitespace-padded secret loudly, without echoing it", () => {
+    for (const bad of ["short", `${SECRET} `, `	${SECRET}`]) {
+      let message = "";
+      try {
+        readProxyConfig({ INTERNAL_PROXY_SHARED_SECRET: bad } as never);
+      } catch (error) {
+        message = (error as Error).message;
+      }
+      expect(message).toContain("at least 32");
+      expect(message).not.toContain(bad.trim() || "x");
+    }
+  });
 });
 
 describe("API proxy route handler", () => {
