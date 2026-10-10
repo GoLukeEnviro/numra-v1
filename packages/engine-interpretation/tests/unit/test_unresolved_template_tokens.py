@@ -152,8 +152,8 @@ def test_the_returned_token_is_short_and_never_carries_surrounding_prose() -> No
 
 
 def test_check_is_linear_in_the_input_length() -> None:
-    sample = "Über José: [Anmerkung] Ѕystem prófile straße a:b. " * 3_800
-    assert 150_000 < len(sample) <= MAX_CHECKED_TEXT_CHARS
+    sample = "Über José: [Anmerkung] Ѕystem prófile straße a:b. " * 570
+    assert 25_000 < len(sample) <= MAX_CHECKED_TEXT_CHARS
     start = time.perf_counter()
     assert find_unresolved_template_token(sample) is None
     assert time.perf_counter() - start < 5.0

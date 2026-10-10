@@ -19,9 +19,6 @@ from pydantic import BaseModel, ConfigDict
 
 from numra_interpretation.knowledge_loader import KnowledgeBase
 from numra_interpretation.llm.rendering_guard import (
-    canonical_for_check as _canonical_for_check,
-)
-from numra_interpretation.llm.rendering_guard import (
     contains_prompt_scaffolding,
     find_unresolved_template_token,
     find_unresolved_token_in_payload,
@@ -312,7 +309,7 @@ def _validate_and_resolve_text(
     malformed/unresolved placeholder marker is left over. Raises
     `InvalidAnalysisSection` on any of them — the caller's existing one-repair-attempt
     pattern catches it."""
-    if contains_prompt_scaffolding(text) or contains_prompt_scaffolding(_canonical_for_check(text)):
+    if contains_prompt_scaffolding(text):
         raise InvalidAnalysisSection(
             "PromptScaffoldingRejected: provider returned its own prompt scaffolding "
             "instead of rendered text (never rendered or persisted)"

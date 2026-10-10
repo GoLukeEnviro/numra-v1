@@ -17,7 +17,10 @@ from pathlib import Path
 import pytest
 
 from numra_interpretation.knowledge_loader import load_knowledge_base
-from numra_interpretation.llm.rendering_guard import contains_prompt_scaffolding
+from numra_interpretation.llm.rendering_guard import (
+    canonical_for_check,
+    contains_prompt_scaffolding,
+)
 from numra_interpretation.llm.types import (
     ContextBlock,
     GenerationRequest,
@@ -305,7 +308,7 @@ def test_check_form_is_linear_in_the_input_length() -> None:
     sample = "Über José: [Anmerkung] \u0405ystem pro\u0301file straße. " * 22_000  # ~1 Mio.
     assert len(sample) > 1_000_000
     start = time.perf_counter()
-    pipeline._canonical_for_check(sample)
+    canonical_for_check(sample)
     assert time.perf_counter() - start < 5.0
 
 

@@ -18,7 +18,7 @@ _SPEC.loader.exec_module(audit_stored_tokens)
 pytestmark = pytest.mark.unit
 
 
-def _line(kind: str, payload: object, bucket: str = "v1") -> str:
+def _line(kind: str, payload: object, bucket: str = "numra-report-v2/COMPLETE") -> str:
     return json.dumps({"kind": kind, "bucket": bucket, "payload": payload})
 
 
@@ -64,7 +64,7 @@ def test_legacy_matches_that_the_detector_leaves_as_prose_are_counted_by_shape_o
     }
 
 
-def test_output_never_contains_a_text_an_id_or_a_bucket_value_of_the_input() -> None:
+def test_output_never_contains_a_text_an_id_or_an_unlisted_bucket_of_the_input() -> None:
     secret = "Vertraulich Anna Berger"
     result = audit_stored_tokens.audit(
         [_line("chat", f"{secret} {{0}} und [a:geheim_id]", bucket="prompt-secret-v9")]
@@ -73,6 +73,8 @@ def test_output_never_contains_a_text_an_id_or_a_bucket_value_of_the_input() -> 
 
     assert "Vertraulich" not in rendered and "Anna" not in rendered
     assert "geheim_id" not in rendered
+    assert "prompt-secret" not in rendered
+    assert result["kinds"]["chat"]["by_bucket"] == {"other": {"documents": 1, "with_hit": 1}}
     assert result["kinds"]["chat"]["documents_with_hit"] == 1
 
 
@@ -91,7 +93,7 @@ def test_strings_are_found_in_nested_payloads_and_keys() -> None:
     report = result["kinds"]["report"]
     assert report["strings_with_hit"] == 2
     assert report["hit_strings_by_field"] == {"knowledge_refs": 1, "other": 1}
-    assert report["by_bucket"] == {"v1": {"documents": 1, "with_hit": 1}}
+    assert report["by_bucket"] == {"numra-report-v2/COMPLETE": {"documents": 1, "with_hit": 1}}
 
 
 @pytest.mark.parametrize(

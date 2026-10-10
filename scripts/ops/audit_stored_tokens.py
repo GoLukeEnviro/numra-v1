@@ -52,6 +52,15 @@ _REPORTED_FIELDS = frozenset(
 )
 
 
+#: ``prompt_version/status`` as the queries build it; anything else is reported as "other" so
+#: that a bucket value from the input can never carry content into the output.
+_BUCKET = re.compile(r"numra-[a-z]+-v[0-9]+/(?:COMPLETE|FAILED|PENDING|GENERATING)")
+
+
+def _safe_bucket(value: object) -> str:
+    return value if isinstance(value, str) and _BUCKET.fullmatch(value) else "other"
+
+
 def iter_fields(payload: object) -> Iterator[tuple[str, str]]:
     """``(Feld, Zeichenkette)`` fuer jede Zeichenkette (Werte und Schluessel) eines
     JSON-Dokuments, ohne Rekursion. Das Feld ist der naechste Objektschluessel ueber dem
@@ -129,7 +138,7 @@ def audit(lines: Iterable[str]) -> dict[str, object]:
         try:
             record = json.loads(line)
             kind = str(record["kind"])
-            bucket = str(record.get("bucket") or "-")
+            bucket = _safe_bucket(record.get("bucket"))
             payload = record["payload"]
         except (ValueError, KeyError, TypeError):
             invalid += 1

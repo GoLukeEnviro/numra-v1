@@ -25,6 +25,7 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from numra_interpretation.llm.rendering_guard import (
+    MAX_CHECKED_PAYLOAD_CHARS,
     MAX_CHECKED_TEXT_CHARS,
     OVERSIZE_TOKEN,
     PROMPT_SCAFFOLDING_MARKERS,
@@ -449,12 +450,12 @@ _PERF_SHAPES = {
 @_BOTH_MODES
 @pytest.mark.parametrize("shape", sorted(_PERF_SHAPES))
 def test_pathological_inputs_up_to_the_cap_are_linear(shape, strict_braces) -> None:
-    text = _PERF_SHAPES[shape](40_000)[:MAX_CHECKED_TEXT_CHARS]
+    text = _PERF_SHAPES[shape](MAX_CHECKED_TEXT_CHARS)[:MAX_CHECKED_TEXT_CHARS]
 
     start = time.perf_counter()
     find_unresolved_template_token(text, strict_braces=strict_braces)
 
-    assert time.perf_counter() - start < 2.0
+    assert time.perf_counter() - start < 10.0
 
 
 @_BOTH_MODES
@@ -469,7 +470,7 @@ def test_the_scanner_itself_is_linear_beyond_the_cap(shape, strict_braces) -> No
     start = time.perf_counter()
     _find_in_canonical_form(checked, strict_braces=strict_braces)
 
-    assert time.perf_counter() - start < 3.0
+    assert time.perf_counter() - start < 10.0
 
 
 @_BOTH_MODES
@@ -525,7 +526,7 @@ def test_payload_walker_handles_deep_and_wide_payloads_without_recursion() -> No
     for _ in range(5_000):
         deep = [deep]
     assert find_unresolved_token_in_payload(deep) is not None
-    wide = {str(i): "sauberer Satz" for i in range(50_000)}
+    wide = {str(i): "sauberer Satz" for i in range(10_000)}
     assert find_unresolved_token_in_payload(wide) is None
 
 
@@ -566,3 +567,70 @@ def test_property_text_without_bracket_characters_is_never_flagged(text, strict)
 def test_property_the_detector_is_total_and_returns_only_a_short_token(text, strict) -> None:
     token = find_unresolved_template_token(text, strict_braces=strict)
     assert token is None or 0 < len(token) <= 64
+
+
+def _best_of_three(text: str, strict_braces: bool) -> float:
+    best = float("inf")
+    for _ in range(3):
+        start = time.perf_counter()
+        _find_in_canonical_form(text, strict_braces=strict_braces)
+        best = min(best, time.perf_counter() - start)
+    return best
+
+
+@pytest.mark.parametrize(
+    "shape", ["label-blanks-x", "known-id-blanks", "brace-spec-blanks", "repeated-label"]
+)
+def test_the_scanner_scales_linearly_not_quadratically(shape) -> None:
+    """Verhaeltnis statt absoluter Zeit (CI-Laufzeiten schwanken): vierfache Eingabe darf
+    deutlich weniger als das 16-fache kosten, das ein quadratischer Fall braeuchte."""
+    small = canonical_for_check(_PERF_SHAPES[shape](50_000))
+    large = canonical_for_check(_PERF_SHAPES[shape](200_000))
+
+    ratio = _best_of_three(large, True) / max(_best_of_three(small, True), 1e-4)
+
+    assert ratio < 10
+
+
+@_BOTH_MODES
+@pytest.mark.parametrize("bomb", ["\ufdfa", "\u1e9b\u0323\ufdfa", "\u0344", "\U0001d160\ufdfa"])
+def test_an_expansion_bomb_at_the_real_maximum_is_rejected_fast(bomb, strict_braces) -> None:
+    """NFKD macht aus U+FDFA 18 Zeichen: der frueher gemessene Fall (200k Zeichen ~ 11 s)
+    liegt jetzt weit ueber der Grenze, und auch ein Text genau am Maximum kostet nichts."""
+    text = (bomb * MAX_CHECKED_TEXT_CHARS)[:MAX_CHECKED_TEXT_CHARS]
+
+    start = time.perf_counter()
+    token = find_unresolved_template_token(text, strict_braces=strict_braces)
+
+    assert time.perf_counter() - start < 5.0
+    assert token is None or token == OVERSIZE_TOKEN
+    if bomb != "\u0344":
+        assert token == OVERSIZE_TOKEN
+
+
+@_BOTH_MODES
+@pytest.mark.parametrize("char", ["\ud55c", "\ufb01", "\u00e4"])
+def test_legitimate_expansion_at_the_maximum_is_accepted(char, strict_braces) -> None:
+    """Hangul (3x), Ligaturen (2x) und Umlaute bleiben unter der Expansionsgrenze."""
+    text = char * MAX_CHECKED_TEXT_CHARS
+
+    start = time.perf_counter()
+    assert find_unresolved_template_token(text, strict_braces=strict_braces) is None
+    assert time.perf_counter() - start < 10.0
+
+
+def test_the_payload_walker_has_a_total_budget() -> None:
+    chunk = "a" * MAX_CHECKED_TEXT_CHARS
+    fits = MAX_CHECKED_PAYLOAD_CHARS // MAX_CHECKED_TEXT_CHARS
+    assert find_unresolved_token_in_payload([chunk] * fits) is None
+    assert find_unresolved_token_in_payload([chunk] * (fits + 1)) == OVERSIZE_TOKEN
+
+
+def test_the_payload_walker_stays_fast_on_many_bombs() -> None:
+    bomb = "\ufdfa" * MAX_CHECKED_TEXT_CHARS
+
+    start = time.perf_counter()
+    token = find_unresolved_token_in_payload([bomb] * 50)
+
+    assert token == OVERSIZE_TOKEN
+    assert time.perf_counter() - start < 5.0

@@ -61,6 +61,7 @@ from collections.abc import Mapping
 from numra_interpretation.llm.validator import KNOWN_FACT_IDS
 
 __all__ = [
+    "MAX_CHECKED_PAYLOAD_CHARS",
     "MAX_CHECKED_TEXT_CHARS",
     "OVERSIZE_TOKEN",
     "PROMPT_SCAFFOLDING_MARKERS",
@@ -93,7 +94,15 @@ PROMPT_SCAFFOLDING_MARKERS: tuple[str, ...] = (
 #: Longest text `find_unresolved_template_token` looks at. A report section or a Copilot reply
 #: is a few thousand characters; the limit only exists so that an unbounded provider answer
 #: is rejected instead of being NFKD-expanded (up to 18x) and scanned.
-MAX_CHECKED_TEXT_CHARS = 200_000
+MAX_CHECKED_TEXT_CHARS = 30_000
+
+#: Total of all strings `find_unresolved_token_in_payload` looks at (a complete report
+#: is well below it).
+MAX_CHECKED_PAYLOAD_CHARS = 300_000
+
+#: NFKD may expand a string at most this much (Hangul syllables 3x, ligatures 2x); more
+#: is an expansion bomb (U+FDFA: 18x) and is rejected before the per-character pass.
+_MAX_EXPANSION = 3
 
 #: What `find_unresolved_template_token` returns for a text above the limit.
 OVERSIZE_TOKEN = "<oversize>"
@@ -122,7 +131,9 @@ def contains_prompt_scaffolding(text: str) -> bool:
         return True
     if len(text) > MAX_CHECKED_TEXT_CHARS:
         return False  # not scanned; `find_unresolved_template_token` rejects it as oversize
-    checked = canonical_for_check(text)
+    checked = _canonical(text, bounded=True)
+    if checked is None:
+        return True  # expansion bomb: fail closed
     return any(marker in checked for marker in PROMPT_SCAFFOLDING_MARKERS)
 
 
@@ -219,10 +230,10 @@ _IGNORED_CATEGORIES = frozenset({"Cf", "Mn", "Mc", "Me", "Co", "Cs", "Cn"})
 _KEPT_CONTROLS = frozenset("\t\n\v\f\r")
 
 #: Letters and symbols that render as nothing (Hangul fillers, Braille blank).
-_BLANK_LOOKING = frozenset("ᅟᅠㅤﾠ⠀")
+_BLANK_LOOKING = frozenset("\u115f\u1160\u3164\uffa0\u2800")
 
 
-def canonical_for_check(text: str) -> str:
+def _canonical(text: str, *, bounded: bool) -> str | None:
     """The form of ``text`` every token check looks at: NFKD (full-width
     ``［profile_fact：a:x］`` -> ``[profile_fact:a:x]``, ``é`` -> ``e`` + U+0301),
     case-folded (so upper-case Cyrillic/Greek look-alikes such as ``Ѕ`` or ``К`` reach the
@@ -237,9 +248,10 @@ def canonical_for_check(text: str) -> str:
     script is unaffected apart from being checked with ``ä`` read as ``a``. ``casefold``
     can itself emit combining characters (``İ``), hence the second NFKD before the
     filter."""
-    folded = unicodedata.normalize(
-        "NFKD", unicodedata.normalize("NFKD", text.translate(_PRE_CASEFOLD)).casefold()
-    )
+    decomposed = unicodedata.normalize("NFKD", text.translate(_PRE_CASEFOLD))
+    if bounded and len(decomposed) > _MAX_EXPANSION * len(text) + 1_000:
+        return None
+    folded = unicodedata.normalize("NFKD", decomposed.casefold())
     visible: list[str] = []
     for char in folded:
         category = unicodedata.category(char)
@@ -253,6 +265,14 @@ def canonical_for_check(text: str) -> str:
         else:
             visible.append(char)
     return "".join(visible).translate(_CONFUSABLES)
+
+
+def canonical_for_check(text: str) -> str:
+    """The check view of ``text`` (see `_canonical`), without any size limit; the
+    detectors use the bounded variant and fail closed on an expansion bomb."""
+    view = _canonical(text, bounded=False)
+    assert view is not None
+    return view
 
 
 def _short_label_alternatives() -> str:
@@ -401,7 +421,10 @@ def find_unresolved_template_token(text: str, *, strict_braces: bool = True) -> 
     and failing closed is cheaper than normalising an unbounded input."""
     if len(text) > MAX_CHECKED_TEXT_CHARS:
         return OVERSIZE_TOKEN
-    token = _find_in_canonical_form(canonical_for_check(text), strict_braces=strict_braces)
+    checked = _canonical(text, bounded=True)
+    if checked is None:
+        return OVERSIZE_TOKEN
+    token = _find_in_canonical_form(checked, strict_braces=strict_braces)
     return None if token is None else token[:_MAX_TOKEN_CHARS]
 
 
@@ -411,9 +434,13 @@ def find_unresolved_token_in_payload(payload: object, *, strict_braces: bool = T
     is persisted, independent of which field a pipeline remembered to check. Iterative, so
     neither depth nor width of the payload can exhaust the stack."""
     pending: list[object] = [payload]
+    budget = MAX_CHECKED_PAYLOAD_CHARS
     while pending:
         node = pending.pop()
         if isinstance(node, str):
+            budget -= len(node)
+            if budget < 0:
+                return OVERSIZE_TOKEN
             token = find_unresolved_template_token(node, strict_braces=strict_braces)
             if token is not None:
                 return token

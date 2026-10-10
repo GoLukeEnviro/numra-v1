@@ -139,8 +139,8 @@ _NEW_FORMS = (
     "Ein Satz mit [a:does_not_exist_ɡ] im Text.",  # Look-alike ɡ im Bezeichner
     "Ein Satz mit [a:does_not_exist_һ] im Text.",  # Cyrillic һ
     "Ein Satz mit [profile_faᴄt:a:expression] im Text.",  # Kapitaelchen-c im Marker
-    "Ein Satz mit [profㅤile_fact:a:expression] im Text.",  # Hangul-Filler im Marker
-    "Ein Satz mit [prof⠀ile_fact:a:expression] im Text.",  # Braille-Blank
+    "Ein Satz mit [prof\u3164ile_fact:a:expression] im Text.",  # Hangul-Filler im Marker
+    "Ein Satz mit [prof\u2800ile_fact:a:expression] im Text.",  # Braille-Blank
     "Ein Satz mit [prof\x07ile_fact:a:expression] im Text.",  # Steuerzeichen
     "Ein Satz mit [prof\u202eile_fact:a:expression] im Text.",  # BiDi-Override
     "Ein Satz mit [a:life_pa\ue000th] im Text.",  # Private Use im Bezeichner
@@ -246,7 +246,7 @@ async def _copilot(text: str):
         "Dein Lebenspfad ist {name!r} und traegt dich.",
         "Dein Lebenspfad ist {:>10} und traegt dich.",
         "Dein Lebenspfad ist {0.attr} und traegt dich.",
-        "Dein Lebenspfad wird durch [profㅤile_fact:requester] beschrieben.",
+        "Dein Lebenspfad wird durch [prof\u3164ile_fact:requester] beschrieben.",
         "Dein Lebenspfad wird durch [profile_faᴄt:requester] beschrieben.",
         "Dein Lebenspfad wird durch [a:life_path_ɡ] beschrieben.",
         "Dein Lebenspfad wird durch [a:life_pa\x1bth] beschrieben.",
