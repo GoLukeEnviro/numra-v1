@@ -62,7 +62,6 @@ def make_client(settings: Settings, db_engine) -> Callable[..., object]:
                     recorder.append(key)
                     return await inner.check(key=key, limit=limit, window_seconds=window_seconds)
 
-                peek = inner.peek
                 reset = inner.reset
 
             app.state.rate_limiter = Recording()
@@ -303,3 +302,18 @@ async def test_secret_never_appears_in_logs_or_responses(make_client, caplog) ->
     for secret in (CURRENT, PREVIOUS, "wrong-" + "w" * 40):
         assert secret not in haystack
     assert "secret_mismatch" in caplog.text
+
+
+async def test_multiple_forwarded_for_lines_use_the_rightmost_entry_of_the_last_line(
+    make_client,
+) -> None:
+    async with make_client(internal_proxy_shared_secret=CURRENT) as c:
+        response = await c.get(
+            "/__test/ip",
+            headers=[
+                (HEADER, CURRENT),
+                ("X-Forwarded-For", "6.6.6.6"),
+                ("X-Forwarded-For", "7.7.7.7, 203.0.113.9"),
+            ],
+        )
+    assert response.json() == {"ip": "203.0.113.9"}

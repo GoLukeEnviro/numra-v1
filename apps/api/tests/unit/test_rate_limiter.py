@@ -121,13 +121,10 @@ async def test_redis_limiter_sets_ttl_atomically_on_first_increment(redis_client
 
 
 @pytest.mark.parametrize("backend", ["memory", "redis"])
-async def test_peek_does_not_count_and_reset_clears(backend: str, redis_client) -> None:
+async def test_reset_clears_the_counter(backend: str, redis_client) -> None:
     limiter = InMemoryRateLimiter() if backend == "memory" else RedisRateLimiter(redis_client)
-    key = f"test:peek-{backend}"
-    assert (await limiter.peek(key=key, limit=2, window_seconds=60)).allowed
-    assert (await limiter.peek(key=key, limit=2, window_seconds=60)).remaining == 2
-    await limiter.check(key=key, limit=2, window_seconds=60)
-    await limiter.check(key=key, limit=2, window_seconds=60)
-    assert not (await limiter.peek(key=key, limit=2, window_seconds=60)).allowed
+    key = f"test:reset-{backend}"
+    await limiter.check(key=key, limit=1, window_seconds=60)
+    assert not (await limiter.check(key=key, limit=1, window_seconds=60)).allowed
     await limiter.reset(key=key)
-    assert (await limiter.peek(key=key, limit=2, window_seconds=60)).allowed
+    assert (await limiter.check(key=key, limit=1, window_seconds=60)).allowed

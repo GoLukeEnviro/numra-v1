@@ -457,6 +457,10 @@ export interface paths {
          * @description V2: (re-)sends a verification link to the signed-in user's own email address.
          *     Invalidates any verification token requested earlier before issuing a new one --
          *     see services/auth_recovery_service.request_email_verification.
+         *
+         *     Limits: per `user.id` (dependency) and per target address (the user's own e-mail).
+         *     Deliberately no per-IP limit here: after login the key is the user id, and at
+         *     `TRUSTED_PROXY_HOPS=0` an IP bucket would be shared by every web user.
          */
         post: operations["request_email_verification_v1_auth_request_email_verification_post"];
         delete?: never;

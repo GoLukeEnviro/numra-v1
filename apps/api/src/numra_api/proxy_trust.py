@@ -90,3 +90,15 @@ def _last_forwarded_ip(header: str | None) -> str | None:
     if not header:
         return None
     return normalize_ip(header.split(",")[-1])
+
+
+def rate_limit_identity(ip: str) -> str:
+    """IPv6 clients rotate freely inside their /64; one bucket per /64 stops an attacker
+    from minting unlimited buckets. IPv4 and unparsable values are used as-is."""
+    try:
+        parsed = ipaddress.ip_address(ip)
+    except ValueError:
+        return ip
+    if isinstance(parsed, ipaddress.IPv6Address):
+        return str(ipaddress.ip_network(f"{parsed}/64", strict=False))
+    return ip

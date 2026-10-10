@@ -7,13 +7,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from numra_api.auth.csrf import CSRF_COOKIE_NAME, generate_csrf_token
-from numra_api.auth.passwords import hash_password, verify_password
+from numra_api.auth.passwords import dummy_password_hash, hash_password, verify_password
 from numra_api.auth.sessions import generate_session_token, hash_session_token
 from numra_api.config import Settings
 from numra_api.deps import (
     clear_target_failures,
     enforce_target_rate_limit,
-    ensure_target_not_blocked,
     get_current_bearer_session,
     get_current_bearer_user,
     get_current_session,
@@ -23,7 +22,6 @@ from numra_api.deps import (
     get_settings_dep,
     rate_limit_by_ip,
     rate_limit_by_user,
-    record_target_failure,
     require_csrf,
 )
 from numra_api.email.sender import EmailSender
@@ -65,8 +63,20 @@ from numra_api.services.errors import (
     SelfSignupDisabled,
 )
 
-#: Failure-only counter shared by web and mobile login (one target address = one counter).
+#: Counter shared by web and mobile login (one target address = one counter). The attempt
+#: is reserved atomically BEFORE the password check (INCR) and the counter is cleared on
+#: success, so only failures accumulate and parallel guesses cannot overshoot the limit.
 LOGIN_TARGET_POLICY = "auth:login:target"
+
+
+def _authenticated_user(user: User | None, password: str) -> User | None:
+    """Argon2 always runs: against a dummy hash (same parameters) for an unknown address, so
+    unknown and known addresses are not distinguishable by response time."""
+    password_ok = verify_password(
+        user.password_hash if user is not None else dummy_password_hash(), password
+    )
+    return user if user is not None and password_ok and user.is_active else None
+
 
 router = APIRouter(prefix="/v1/auth", tags=["auth"])
 
@@ -182,10 +192,10 @@ async def login(
     db: AsyncSession = Depends(get_db, scope="function"),
     settings: Settings = Depends(get_settings_dep),
 ) -> UserOut:
-    await ensure_target_not_blocked(request, policy=LOGIN_TARGET_POLICY, target=body.email)
-    user = await get_user_by_email(db, email=body.email)
-    if user is None or not verify_password(user.password_hash, body.password) or not user.is_active:
-        await record_target_failure(request, policy=LOGIN_TARGET_POLICY, target=body.email)
+    await enforce_target_rate_limit(request, policy=LOGIN_TARGET_POLICY, target=body.email)
+    candidate = await get_user_by_email(db, email=body.email)
+    user = _authenticated_user(candidate, body.password)
+    if user is None:
         # Deliberately identical error for wrong-password, unknown-email, and
         # disabled-account -- a disabled account must never be distinguishable from
         # a simple login failure (see get_current_user's matching anti-enumeration
@@ -227,10 +237,10 @@ async def mobile_login(
     db: AsyncSession = Depends(get_db, scope="function"),
     settings: Settings = Depends(get_settings_dep),
 ) -> MobileSessionOut:
-    await ensure_target_not_blocked(request, policy=LOGIN_TARGET_POLICY, target=body.email)
-    user = await get_user_by_email(db, email=body.email)
-    if user is None or not verify_password(user.password_hash, body.password) or not user.is_active:
-        await record_target_failure(request, policy=LOGIN_TARGET_POLICY, target=body.email)
+    await enforce_target_rate_limit(request, policy=LOGIN_TARGET_POLICY, target=body.email)
+    candidate = await get_user_by_email(db, email=body.email)
+    user = _authenticated_user(candidate, body.password)
+    if user is None:
         raise InvalidCredentials("invalid email or password")
 
     await clear_target_failures(request, policy=LOGIN_TARGET_POLICY, target=body.email)

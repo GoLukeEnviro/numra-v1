@@ -108,7 +108,7 @@ Alle Schlüssel sind mit `SESSION_SECRET` pseudonymisiert (keine Klartext-IP/-Ad
 | Policy (Default Anzahl/Sekunden) | Schlüsselart | Zählt | Endpunkte |
 |---|---|---|---|
 | `auth:login` 10/60 · `auth:mobile-login` 10/60 | IP | jeden Versuch | `/login`, `/mobile/login` |
-| `auth:login:target` 20/900 | Ziel-Adresse | **nur Fehlversuche**; Erfolg setzt zurück | `/login` und `/mobile/login` teilen den Zähler |
+| `auth:login:target` 20/900 | Ziel-Adresse | Versuch wird **atomar vor der Passwortprüfung** reserviert (INCR); Erfolg setzt zurück → es sammeln sich nur Fehlversuche | `/login` und `/mobile/login` teilen den Zähler |
 | `auth:register` 5/3600 · `auth:register:target` 3/3600 | IP · Ziel-Adresse | jeden Versuch | `/register` |
 | `auth:forgot_password` 5/3600 · `…:target` 3/3600 | IP · Ziel-Adresse | jeden Versuch | `/forgot-password` |
 | `auth:reset_password` 10/3600 · `auth:verify_email` 10/3600 | IP | jeden Versuch | `/reset-password`, `/verify-email` (Token statt Adresse im Body) |
@@ -122,7 +122,10 @@ Bewusst **kein** IP-Limit auf der authentisierten Verifikations-Route: nach der 
 unverändert (bereits Nutzer-ID-basiert).
 
 **Keine Enumeration:** Die Ziel-Adress-Zähler greifen vor jeder Kontoprüfung; ein Fehlversuch
-(falsches Passwort, unbekannte Adresse, deaktiviertes Konto) zählt gleich. 429-Antwort, Body und
+(falsches Passwort, unbekannte Adresse, deaktiviertes Konto) zählt gleich. Beim Login läuft Argon2
+immer: für eine unbekannte Adresse gegen einen Dummy-Hash mit denselben Parametern
+(`dummy_password_hash`), damit Antwortzeit (~5 ms vs. ~118 ms) die Existenz nicht verrät (Test prüft
+den Dummy-Pfad per Aufrufspur, kein Timing-Test; Restunschärfe: DB-Lookup und Jitter). 429-Antwort, Body und
 Verlauf sind für registrierte und unbekannte Adressen identisch (Test vergleicht beide). Das
 bestehende `409 EMAIL_ALREADY_REGISTERED` bei `/register` ist eine **vorhandene** Enumerationsfläche
 und nicht Teil dieses ADR (bewusst unverändert).
@@ -131,7 +134,7 @@ und nicht Teil dieses ADR (bewusst unverändert).
 
 Ein Ziel-Limit kann von Dritten missbraucht werden, um Logins für ein Konto (auch Admins) zu
 verhindern. Maßnahmen und Restrisiko:
-- Gezählt werden **nur Fehlversuche**; erfolgreiche Logins zählen nicht und setzen zurück. Legitime
+- Der Versuch wird atomar **vor** der Passwortprüfung reserviert (kein getrenntes Prüfen/Zählen: 40 parallele Fehlversuche bei Limit 5 lassen genau 5 durch, für Web und Mobile, Memory und Redis getestet); ein erfolgreicher Login setzt den Zähler zurück, es sammeln sich also nur Fehlversuche. Legitime
   Nutzer mit Tippfehlern erreichen 20 Fehlversuche/15 min nicht.
 - Davor liegt das IP-Limit (10/min je vertrauenswürdiger IP); Fehlversuche aus gesperrten IPs
   erreichen den Ziel-Zähler gar nicht.
@@ -162,6 +165,10 @@ nicht möglich (bereits vorher so, nur als 500). `/v1/health/*` ist nicht ratenb
 
 **Atomarität:** `RedisRateLimiter.check` führt INCR und EXPIRE als ein Lua-Skript aus; ein Schlüssel
 ohne TTL (z. B. aus dem früheren Zwei-Schritt-Ablauf) wird repariert statt dauerhaft zu sperren.
+Ein nicht zählendes `peek` gibt es nicht mehr (Quelle der Race-Condition).
+
+**IPv6:** IP-Schlüssel werden für IPv6 auf das /64-Präfix normalisiert (ein Bucket je /64).
+**X-Forwarded-For:** Mehrere Header-Zeilen werden zusammengeführt; es zählt der rechteste Eintrag der letzten Zeile.
 
 **Grenzen:** Fixed-Window (Randburst bleibt), Missbrauchsschutz statt Sicherheitsgrenze. Ein globales
 IP-Limit für nicht authentisierte Nicht-Auth-Routen existiert weiterhin nicht (vorher auch nicht).

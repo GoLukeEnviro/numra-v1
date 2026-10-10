@@ -4,8 +4,9 @@ Schlüsselart je Policy:
 - ohne Suffix: Client-IP (vor Anmeldung, aus vertrauenswürdig ermittelter Quelle) bzw.
   Nutzer-ID (`auth:request_email_verification`, nach Anmeldung, aus der Session);
 - `:target`: normalisierte Ziel-Adresse, unabhängig davon, ob ein Konto existiert
-  (keine Enumeration über Limits). `auth:login:target` zählt nur FEHLGESCHLAGENE Versuche
-  (Erfolg setzt zurück); alle anderen Zähler zählen jeden Versuch.
+  (keine Enumeration über Limits). `auth:login:target` reserviert den Versuch atomar vor der
+  Passwortprüfung und wird bei Erfolg zurückgesetzt (es sammeln sich nur Fehlversuche);
+  alle anderen Zähler zählen jeden Versuch.
 
 Überschreibbar über `RATE_LIMIT_OVERRIDES` (JSON-Objekt `{"<policy>": "<anzahl>/<sekunden>"}`).
 """
@@ -35,9 +36,13 @@ DEFAULT_POLICIES: dict[str, tuple[int, int]] = {
 }
 
 
+def _is_ascii_number(text: str) -> bool:
+    return text.isascii() and text.isdigit()
+
+
 def parse_policy_spec(spec: str) -> tuple[int, int]:
     limit_text, separator, window_text = spec.partition("/")
-    if not separator or not limit_text.isdigit() or not window_text.isdigit():
+    if not separator or not _is_ascii_number(limit_text) or not _is_ascii_number(window_text):
         raise ValueError("erwartet '<anzahl>/<sekunden>'")
     limit, window = int(limit_text), int(window_text)
     if not (1 <= limit <= MAX_LIMIT and 1 <= window <= MAX_WINDOW_SECONDS):

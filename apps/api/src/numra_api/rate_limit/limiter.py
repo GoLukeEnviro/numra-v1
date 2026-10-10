@@ -31,11 +31,6 @@ class RateLimiter(Protocol):
         increments — callers only call this once per request they want counted."""
         ...
 
-    async def peek(self, *, key: str, limit: int, window_seconds: int) -> RateLimitResult:
-        """Report whether another attempt is still allowed (`count < limit`) WITHOUT
-        incrementing — for counters that only count failures (see `record`/`reset`)."""
-        ...
-
     async def reset(self, *, key: str) -> None:
         """Clear the counter for ``key`` (e.g. after a successful login)."""
         ...
@@ -61,17 +56,6 @@ class InMemoryRateLimiter:
         retry_after = max(0, int(window_seconds - (now - window_start)))
         return RateLimitResult(
             allowed=count <= limit, remaining=max(0, limit - count), retry_after_seconds=retry_after
-        )
-
-    async def peek(self, *, key: str, limit: int, window_seconds: int) -> RateLimitResult:
-        now = time.monotonic()
-        async with self._lock:
-            count, window_start = self._counts.get(key, (0, now))
-            if now - window_start >= window_seconds:
-                count, window_start = 0, now
-        retry_after = max(0, int(window_seconds - (now - window_start)))
-        return RateLimitResult(
-            allowed=count < limit, remaining=max(0, limit - count), retry_after_seconds=retry_after
         )
 
     async def reset(self, *, key: str) -> None:
@@ -107,15 +91,6 @@ class RedisRateLimiter:
         retry_after = ttl if ttl > 0 else window_seconds
         return RateLimitResult(
             allowed=count <= limit, remaining=max(0, limit - count), retry_after_seconds=retry_after
-        )
-
-    async def peek(self, *, key: str, limit: int, window_seconds: int) -> RateLimitResult:
-        raw = await self._client.get(key)
-        count = int(raw) if raw is not None else 0
-        ttl = await self._client.ttl(key)
-        retry_after = ttl if isinstance(ttl, int) and ttl > 0 else window_seconds
-        return RateLimitResult(
-            allowed=count < limit, remaining=max(0, limit - count), retry_after_seconds=retry_after
         )
 
     async def reset(self, *, key: str) -> None:

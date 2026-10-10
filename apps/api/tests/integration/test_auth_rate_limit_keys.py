@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
@@ -292,7 +293,7 @@ async def test_limiter_backend_outage_fails_closed_without_leaking_details(make_
         async def _boom(self, **_: object) -> object:
             raise ConnectionError("redis://:s3cr3t-pass@redis:6379/0 refused")
 
-        check = peek = reset = _boom
+        check = reset = _boom
 
     async with make_client() as c:
         c._transport.app.state.rate_limiter = Broken()  # type: ignore[attr-defined]
@@ -330,7 +331,75 @@ async def test_unknown_override_policy_and_bad_spec_are_rejected_at_startup() ->
     with pytest.raises(ValidationError, match="unbekannte Policy"):
         Settings(database_url=db, environment="test", rate_limit_overrides={"nope": "1/1"})
     with pytest.raises(ValidationError, match="erwartet"):
+        Settings(
+            database_url=db, environment="test", rate_limit_overrides={"auth:login": "１０/60"}
+        )
+    with pytest.raises(ValidationError, match="erwartet"):
         Settings(database_url=db, environment="test", rate_limit_overrides={"auth:login": "10"})
     for bad in ("0/60", "10001/60", "10/604801", "10/0"):
         with pytest.raises(ValidationError, match="muss 1"):
             Settings(database_url=db, environment="test", rate_limit_overrides={"auth:login": bad})
+
+
+@pytest.mark.parametrize("path", ["/v1/auth/login", "/v1/auth/mobile/login"])
+@pytest.mark.parametrize("backend", ["memory", "redis"])
+async def test_parallel_failed_logins_never_exceed_the_target_limit(
+    make_client, path: str, backend: str
+) -> None:
+    extra: dict[str, object] = {}
+    redis_client = None
+    if backend == "redis":
+        redis_client = from_url(TEST_REDIS_URL)
+        await redis_client.flushdb()
+        extra = {"rate_limit_backend": "redis", "redis_url": TEST_REDIS_URL}
+    try:
+        async with make_client(overrides={"auth:login:target": "5/60"}, **extra) as c:
+            await _seed(c, "race@example.com")
+            body = {"email": "race@example.com", "password": "wrong-password-123"}
+            responses = await asyncio.gather(
+                *(c.post(path, json=body, headers=_via(f"203.0.113.{n % 200}")) for n in range(40))
+            )
+    finally:
+        if redis_client is not None:
+            await redis_client.flushdb()
+            await redis_client.aclose()
+    codes = [r.status_code for r in responses]
+    assert codes.count(401) == 5
+    assert codes.count(429) == 35
+
+
+@pytest.mark.parametrize("path", ["/v1/auth/login", "/v1/auth/mobile/login"])
+async def test_unknown_address_still_runs_password_verification_against_a_dummy_hash(
+    make_client, monkeypatch: pytest.MonkeyPatch, path: str
+) -> None:
+    from numra_api.auth.passwords import dummy_password_hash
+    from numra_api.routes import auth as auth_routes
+
+    calls: list[str] = []
+    real = auth_routes.verify_password
+
+    def spy(password_hash: str, plain: str) -> bool:
+        calls.append(password_hash)
+        return real(password_hash, plain)
+
+    monkeypatch.setattr(auth_routes, "verify_password", spy)
+    async with make_client() as c:
+        await _seed(c, "exists@example.com")
+        body = {"password": "wrong-password-123"}
+        unknown = await c.post(path, json={"email": "nobody@example.com", **body}, headers=PROXY)
+        known = await c.post(path, json={"email": "exists@example.com", **body}, headers=PROXY)
+    assert unknown.status_code == known.status_code == 401
+    assert unknown.json() == known.json()
+    assert len(calls) == 2
+    assert calls[0] == dummy_password_hash()
+    assert calls[1] != dummy_password_hash()
+
+
+async def test_ipv6_clients_share_one_bucket_per_slash_64(make_client) -> None:
+    async with make_client(overrides={"auth:login": "2/60"}) as c:
+        same_prefix = [
+            await _login(c, "v6@example.com", _via(f"2001:db8:1:2::{n}")) for n in (1, 2, 3)
+        ]
+        other_prefix = await _login(c, "v6@example.com", _via("2001:db8:1:3::1"))
+    assert same_prefix == [401, 401, 429]
+    assert other_prefix == 401

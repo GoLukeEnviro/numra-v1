@@ -18,6 +18,7 @@ from numra_api.email.sender import EmailSender
 from numra_api.models import Session as SessionModel
 from numra_api.models import User
 from numra_api.models.enums import UserRole
+from numra_api.proxy_trust import rate_limit_identity
 from numra_api.rate_limit import RateLimiter, pseudonymous_key
 from numra_api.repositories.sessions import get_active_session_by_token_hash
 from numra_api.repositories.users import get_user_by_id, normalize_email
@@ -169,7 +170,7 @@ def rate_limit_by_ip(
         limiter: RateLimiter = Depends(get_rate_limiter),
     ) -> None:
         await _enforce_rate_limit(
-            raw_identity=client_ip_of(request),
+            raw_identity=rate_limit_identity(client_ip_of(request)),
             scope=scope,
             limit=limit,
             window_seconds=window_seconds,
@@ -236,23 +237,6 @@ async def enforce_target_rate_limit(request: Request, *, policy: str, target: st
         window_seconds=None,
         settings=request.app.state.settings,
         limiter=request.app.state.rate_limiter,
-    )
-
-
-async def ensure_target_not_blocked(request: Request, *, policy: str, target: str) -> None:
-    """Failure-only counters, step 1: reject when the target already has `limit` recorded
-    failures in the window. Does not count the attempt itself."""
-    args = _target_args(request, policy, target)
-    result = await _limiter_call(policy, request.app.state.rate_limiter.peek(**args))
-    if not result.allowed:
-        raise RateLimitExceeded(retry_after_seconds=result.retry_after_seconds)
-
-
-async def record_target_failure(request: Request, *, policy: str, target: str) -> None:
-    """Failure-only counters, step 2: a failed attempt (wrong password, unknown address,
-    disabled account -- indistinguishable by design) counts."""
-    await _limiter_call(
-        policy, request.app.state.rate_limiter.check(**_target_args(request, policy, target))
     )
 
 

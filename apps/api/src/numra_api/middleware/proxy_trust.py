@@ -45,7 +45,7 @@ class ProxyTrustMiddleware:
         context = self.trust.evaluate(
             peer=peer,
             presented_secret=headers.get(PROXY_AUTH_HEADER),
-            forwarded_for=headers.get(FORWARDED_FOR_HEADER),
+            forwarded_for=",".join(headers.getlist(FORWARDED_FOR_HEADER)) or None,
         )
 
         if context.auth_state == "invalid":
