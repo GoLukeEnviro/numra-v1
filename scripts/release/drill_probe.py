@@ -64,7 +64,11 @@ def main() -> int:
         results.append((name, code, expected))
 
     probe("ready", call("GET", "/v1/health/ready"), (200,))
-    probe("register", call("POST", "/v1/auth/register", creds), (201,))
+    # D2: neuer Code verlangt age_confirmed, Code davor lehnt das unbekannte Feld ab (extra=forbid) -> 422, dann ohne.
+    status = call("POST", "/v1/auth/register", {**creds, "age_confirmed": True})
+    if status == 422:
+        status = call("POST", "/v1/auth/register", creds)
+    probe("register", status, (201,))
     probe("login", call("POST", "/v1/auth/login", creds), (200,))
     probe("me", call("GET", "/v1/auth/me"), (200,))
     probe("sessions", call("GET", "/v1/auth/sessions"), (200,))
