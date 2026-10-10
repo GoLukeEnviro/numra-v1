@@ -30,6 +30,7 @@ Prüfungen wiederholbar, abbrechend und nachweisbar.
   nie gelesen oder ausgegeben. Der Drill erzeugt Passwörter pro Lauf in 0600-Dateien und
   übergibt sie per `--env-file`, nicht als Argument. xtrace ist abgeschaltet; nicht mit
   `bash -x` starten. Berichte laufen durch `redact` (Mails, UUID-Reste, lange Tokens).
+- **Konfigurationsvertrauen:** Die Konfigurationsdatei wird als Shell gelesen. Sie muss dem aufrufenden Benutzer oder root gehören und darf für Gruppe/Andere nicht schreibbar sein (Exit 2). `SUDO_CMD` gilt nur aus dieser Datei, nie aus der Umgebung. `release.log` und Berichte werden redigiert (zusätzlich Werte der in `REDACT_ENV` genannten Umgebungsvariablen).
 - **Dry-Run:** `--dry-run` führt nur die lesenden Voraussetzungen aus, gibt den Plan als
   `SKIP plan:...` aus und mutiert nichts. Geschrieben wird ausschließlich `REPORT_DIR`
   (Bericht, Log).
@@ -58,11 +59,11 @@ Exit-Codes: `0` ok, `1` Prüfung oder Schritt fehlgeschlagen, `2` Aufruf/Verweig
 
 | Phase | Mutiert | Prüfungen (Abbruch bei Fehler) |
 |---|---|---|
-| `baseline` | Baseline-Datei | Fingerabdruck aus Container-Image-IDs/StartedAt, Compose-Hash, alembic, optionale Invariante (`INVARIANT_SQL`) |
+| `baseline` | Baseline-Datei | Fingerabdruck aus Container-Image-IDs/StartedAt, Compose-Hash, alembic, optionale Invariante (`INVARIANT_SQL`); leere Werte oder fehlende Dienste = Fehler; Überschreiben nur mit `--rebaseline` (prod zusätzlich `--i-am-sure-prod`) |
 | `pre` | nein | Compose gültig, Drift gegen Baseline, Marker und HEAD == `--old-sha`, **Backup-Frische** (`BACKUP_MAX_AGE_S`) und sha256, Platz, Readiness; protokolliert alembic-Revision und Image-IDs |
-| `prep` | Sicherungen, Tags, Checkout, Build | Sicherung von Compose/Marker/Konfig; **Rollback-Tag == laufende Image-ID** je Dienst; Checkout == `--new-sha` (bei Abbruch zurück auf `--old-sha`); Compose-Diff berührt keine Volumes/Netze/unveränderlichen Dienste; `compose --dry-run` betrifft nur Schreiber; Build; Drift und Unverändertheit von Postgres/Redis/PDF |
-| `switch` | Fenster | Voraussetzungen, Timer und Schreiber stoppen, frischer Pre-Deploy-Dump (`FRESH_DUMP_MAX_AGE_S`) + sha256, Compose ersetzen, Migration, **alembic vorher/nachher** und `== --expect-revision`, Invariante unverändert, Recreate, **laufendes Image == in `prep` gebautes Image**, unveränderliche Dienste, Readiness, keine Tracebacks |
-| `marker` | Marker | `switch` abgeschlossen, HEAD und Readiness, **Abnahmebericht**: echter (kein Dry-Run) PASS-Bericht für genau dieses Ziel und diese SHA, jünger als `MAX_SMOKE_AGE_S`; Marker **atomar** (temp-Datei im selben Verzeichnis, Besitzer/Modus vom alten, `mv -f`) |
+| `prep` | Sicherungen, Tags, Checkout, Build | Sicherung von Compose/Marker/Konfig; **Rollback-Tag == laufende Image-ID** je Dienst; Checkout == `--new-sha` (bei Abbruch zurück auf `--old-sha`); Compose-Diff berührt keine Volumes/Netze/unveränderlichen Dienste; `compose --dry-run` betrifft nur Schreiber, ebenso der Trockenlauf von `run --rm --no-deps migrate` (migrate nutzt die laufende Datenbank, `--no-deps` verhindert das Anfassen von Abhängigkeiten, wie im bewährten Host-Skript); ein `diff`-Fehler ist fail-closed; State bindet `--old-sha`/`--new-sha`; Build; Drift und Unverändertheit von Postgres/Redis/PDF |
+| `switch` | Fenster | Voraussetzungen, Timer und Schreiber stoppen, Pre-Deploy-Dump **nach** dem Schreiber-Stopp (mtime ≥ Stoppzeit, `BACKUP_SERVICE` Pflicht, `systemctl start` einer oneshot-Unit ist synchron) + sha256, Compose ersetzen, Migration, **alembic vorher/nachher** und `== --expect-revision`, Invariante unverändert, Recreate, **laufendes Image == in `prep` gebautes Image**, unveränderliche Dienste, Readiness, nach `POST_SWITCH_WAIT_S` keine Tracebacks und `RestartCount` 0; State/SHAs müssen zu `prep` passen; setzt `SWITCH_DONE_AT` |
+| `marker` | Marker | `switch` abgeschlossen (State-SHAs == Parameter, `rollback` löscht `SWITCH_OK`), HEAD, Marker == `--old-sha` (nie überschreiben), laufende Images == in `prep` gebaute, Readiness; **Abnahmebericht**: Art `smoke` (prod) bzw. `smoke`/`acceptance` (audit) vom passenden Skript, echter PASS (kein Dry-Run, nicht PARTIAL, kein `skip_llm`), mindestens `MIN_SMOKE_PASS` bestandene Prüfungen, genau Ziel und SHA, jünger als `MAX_SMOKE_AGE_S` und **nach dem switch gestartet**; eigene Release-/Drill-Berichte zählen nie; Marker **atomar** (temp-Datei im selben Verzeichnis, Besitzer/Modus vom alten, `mv -f`) |
 | `rollback` | Rückweg | Rollback-Tags und Compose-Sicherung vor dem Stoppen prüfen; Tags nach `:latest`, Compose/Checkout/Marker zurück, Recreate ohne Build; **laufendes Image == Rollback-Tag-ID** je Dienst (Abweichung = Fehler), Readiness |
 
 ## Drill

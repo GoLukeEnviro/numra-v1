@@ -77,6 +77,7 @@ def build_report(
     steps: list[dict[str, str]],
     limitations: list[str],
     dry_run: bool = False,
+    partial: bool = False,
     extra: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     for step in steps:
@@ -84,6 +85,10 @@ def build_report(
             raise ValueError(f"unbekannter Status: {step['status']}")
     summary = summarize(steps)
     result = "PASS" if summary["FAIL"] == 0 and (summary["PASS"] > 0 or dry_run) else "FAIL"
+    if result == "PASS" and partial:
+        result = (
+            "PARTIAL"  # bewusst uebersprungene Abschnitte: nie als vollstaendige Abnahme gueltig
+        )
     return {
         "schema_version": SCHEMA_VERSION,
         "kind": kind,
@@ -159,32 +164,68 @@ def write_report(report: dict[str, Any], out_dir: Path, stem: str) -> tuple[Path
     return json_path, md_path
 
 
+KNOWN_SCRIPTS = {"smoke": "numra_smoke.py", "acceptance": "numra_acceptance.py"}
+
+
 def check_smoke_report(
-    path: Path, target: str, sha: str, max_age_s: int = 3600, now: dt.datetime | None = None
+    path: Path,
+    target: str,
+    sha: str,
+    max_age_s: int = 3600,
+    now: dt.datetime | None = None,
+    kinds: tuple[str, ...] = ("smoke", "acceptance"),
+    min_pass: int = 1,
+    after: str | None = None,
 ) -> tuple[bool, str]:
-    """Ist `path` ein frischer, echter PASS-Bericht fuer genau dieses Ziel und diese SHA?"""
+    """Ist `path` ein echter, vollstaendiger Abnahmebericht fuer genau dieses Ziel und diese SHA?
+
+    Akzeptiert werden nur Berichte der Art `kinds` (Release-, Drill- und Dry-Run-Berichte nie),
+    vom passenden Skript, mit Ergebnis PASS (nicht PARTIAL), ohne uebersprungene LLM-Abschnitte,
+    mit mindestens `min_pass` bestandenen Pruefungen, nicht aelter als `max_age_s` und - wenn
+    `after` gesetzt ist - gestartet nach diesem Zeitpunkt (z. B. Ende des switch).
+    """
     try:
         report = json.loads(path.read_text(encoding="utf-8"))
         finished = dt.datetime.fromisoformat(report["finished"])
+        started = dt.datetime.fromisoformat(report["started"])
+        after_dt = dt.datetime.fromisoformat(after) if after is not None else None
+        if after is not None and not after:
+            raise ValueError("after leer")
     except (OSError, ValueError, KeyError) as exc:
-        return False, f"Bericht nicht lesbar: {type(exc).__name__}"
+        return False, f"Bericht oder Zeitangabe nicht lesbar: {type(exc).__name__}"
     if report.get("schema_version") != SCHEMA_VERSION:
         return False, "Schema-Version unbekannt"
+    kind = report.get("kind")
+    if kind not in kinds:
+        return (
+            False,
+            f"Berichtsart {kind} ist keine Abnahme fuer dieses Ziel (erlaubt: {', '.join(kinds)})",
+        )
+    if report.get("script") != KNOWN_SCRIPTS.get(str(kind)):
+        return False, "Bericht stammt nicht vom erwarteten Abnahmeskript"
     if report.get("dry_run") is not False:
         return False, "Dry-Run-Bericht zaehlt nicht als Abnahme"
-    if report.get("result") != "PASS" or report.get("summary", {}).get("FAIL", 1) != 0:
+    summary = report.get("summary", {})
+    if report.get("result") != "PASS" or summary.get("FAIL", 1) != 0:
         return False, f"Ergebnis nicht PASS ({report.get('result')})"
+    if report.get("extra", {}).get("skip_llm") not in (None, False, "False", "false", "0"):
+        return False, "Bericht mit uebersprungenen LLM-Abschnitten (skip_llm)"
+    if summary.get("PASS", 0) < min_pass:
+        return False, f"zu wenige bestandene Pruefungen ({summary.get('PASS', 0)} < {min_pass})"
     if report.get("target") != target:
         return False, "Ziel des Berichts passt nicht"
     if report.get("target_sha") != sha:
         return False, "Ziel-SHA des Berichts passt nicht"
-    age = ((now or dt.datetime.now(dt.UTC)) - finished).total_seconds()
+    current = now or dt.datetime.now(dt.UTC)
+    age = (current - finished).total_seconds()
     if age < 0 or age > max_age_s:
         return False, f"Bericht zu alt oder aus der Zukunft (alter_s={int(age)})"
+    if after_dt is not None and started < after_dt:
+        return False, "Bericht wurde vor dem Ende des switch gestartet"
     return True, "ok"
 
 
-def _records(path: Path) -> list[dict[str, str]]:
+def _records(path: Path, secrets: tuple[str, ...] = ()) -> list[dict[str, str]]:
     steps = []
     for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
         if not line.strip():
@@ -193,10 +234,10 @@ def _records(path: Path) -> list[dict[str, str]]:
         step_id, _, detail = rest.partition("\t")
         steps.append(
             {
-                "id": step_id or str(number),
+                "id": redact(step_id or str(number), secrets, limit=80),
                 "status": status,
-                "name": step_id,
-                "evidence": redact(detail),
+                "name": redact(step_id, secrets, limit=120),
+                "evidence": redact(detail, secrets),
             }
         )
     return steps
@@ -206,7 +247,12 @@ def _lines(path: str | None) -> list[str]:
     return Path(path).read_text(encoding="utf-8").splitlines() if path else []
 
 
+def _env_secrets(names: list[str]) -> tuple[str, ...]:
+    return tuple(v for v in (os.environ.get(n, "") for n in names) if len(v) >= 4)
+
+
 def _cmd_render(args: argparse.Namespace) -> int:
+    secrets = _env_secrets(args.redact_env)
     extra = dict(item.split("=", 1) for item in args.extra)
     report = build_report(
         kind=args.kind,
@@ -216,10 +262,11 @@ def _cmd_render(args: argparse.Namespace) -> int:
         script_version=args.script_version,
         started=args.started,
         finished=now_iso(),
-        scope=_lines(args.scope_file),
-        steps=_records(Path(args.records)),
-        limitations=_lines(args.limitations_file),
+        scope=[redact(x, secrets, limit=300) for x in _lines(args.scope_file)],
+        steps=_records(Path(args.records), secrets),
+        limitations=[redact(x, secrets, limit=300) for x in _lines(args.limitations_file)],
         dry_run=args.dry_run,
+        partial=args.partial,
         extra=extra,
     )
     stem = f"{args.kind}-{args.target}-{extra.get('phase', 'run')}-" + re.sub(
@@ -232,9 +279,24 @@ def _cmd_render(args: argparse.Namespace) -> int:
 
 
 def _cmd_check_smoke(args: argparse.Namespace) -> int:
-    ok, reason = check_smoke_report(Path(args.report), args.target, args.sha, args.max_age_s)
+    ok, reason = check_smoke_report(
+        Path(args.report),
+        args.target,
+        args.sha,
+        args.max_age_s,
+        kinds=tuple(args.kinds.split(",")),
+        min_pass=args.min_pass,
+        after=args.after,
+    )
     print(("OK: " if ok else "ABGELEHNT: ") + reason)
     return 0 if ok else 1
+
+
+def _cmd_redact(args: argparse.Namespace) -> int:
+    secrets = _env_secrets(args.redact_env)
+    for line in sys.stdin:
+        print(redact(line.rstrip("\n"), secrets, limit=2000))
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -248,13 +310,23 @@ def main(argv: list[str] | None = None) -> int:
     render.add_argument("--limitations-file")
     render.add_argument("--extra", action="append", default=[], metavar="KEY=VALUE")
     render.add_argument("--dry-run", action="store_true")
+    render.add_argument("--partial", action="store_true")
+    render.add_argument("--redact-env", action="append", default=[], metavar="VAR")
     render.set_defaults(func=_cmd_render)
     smoke = sub.add_parser("check-smoke")
     smoke.add_argument("--report", required=True)
     smoke.add_argument("--target", required=True)
     smoke.add_argument("--sha", required=True)
     smoke.add_argument("--max-age-s", type=int, default=3600)
+    smoke.add_argument("--kinds", default="smoke,acceptance")
+    smoke.add_argument("--min-pass", type=int, default=1)
+    smoke.add_argument(
+        "--after", default=None, help="ISO-Zeitpunkt; Bericht muss danach gestartet sein"
+    )
     smoke.set_defaults(func=_cmd_check_smoke)
+    redact_cmd = sub.add_parser("redact")
+    redact_cmd.add_argument("--redact-env", action="append", default=[], metavar="VAR")
+    redact_cmd.set_defaults(func=_cmd_redact)
     args = parser.parse_args(argv)
     return int(args.func(args))
 

@@ -18,10 +18,10 @@ def make_report(**overrides):
         {"id": "2", "name": "zwei", "status": "SKIP", "evidence": "n/a"},
     ]
     data = {
-        "kind": "acceptance",
+        "kind": "smoke",
         "target": "audit",
         "target_sha": SHA,
-        "script": "t.py",
+        "script": "numra_smoke.py",
         "script_version": "1",
         "started": "2026-01-01T00:00:00+00:00",
         "finished": report.now_iso(),
@@ -122,8 +122,8 @@ def test_cli_render_and_check(tmp_path):
     records.write_text("PASS\tcheck\tok mail=a@b.de\nINFO\tnote\tx\n", encoding="utf-8")
     base = [sys.executable, str(script), "render", "--records", str(records)]
     args = [
-        "--out-dir", str(tmp_path / "o"), "--kind", "acceptance", "--target", "audit",
-        "--target-sha", SHA, "--script", "s", "--script-version", "1",
+        "--out-dir", str(tmp_path / "o"), "--kind", "smoke", "--target", "audit",
+        "--target-sha", SHA, "--script", "numra_smoke.py", "--script-version", "1",
         "--started", "2026-01-01T00:00:00+00:00", "--extra", "phase=x",
     ]  # fmt: skip
     done = subprocess.run(base + args, capture_output=True, text=True, check=False)
@@ -138,3 +138,76 @@ def test_cli_render_and_check(tmp_path):
         check + ["--target", "audit", "--sha", "c" * 40], capture_output=True, check=False
     )
     assert ok.returncode == 0 and wrong.returncode == 1
+
+
+def check(tmp_path, data, **kwargs):
+    return report.check_smoke_report(write_json(tmp_path, data), "audit", SHA, **kwargs)
+
+
+@pytest.mark.parametrize("kind", ["release", "drill"])
+def test_check_smoke_rejects_foreign_report_kinds(tmp_path, kind):
+    """Eigene Release-/Drill-Berichte tragen dieselbe SHA, sind aber keine Abnahme."""
+    data = make_report(kind=kind, script="numra-release.sh")
+    ok, reason = check(tmp_path, data)
+    assert not ok and "Berichtsart" in reason
+
+
+def test_check_smoke_kind_restriction_for_prod(tmp_path):
+    acceptance = make_report(kind="acceptance", script="numra_acceptance.py")
+    assert check(tmp_path, acceptance)[0]
+    ok, reason = check(tmp_path, acceptance, kinds=("smoke",))
+    assert not ok and "Berichtsart" in reason
+
+
+def test_check_smoke_script_must_match_kind(tmp_path):
+    ok, reason = check(tmp_path, make_report(script="numra-release.sh"))
+    assert not ok and "Abnahmeskript" in reason
+
+
+def test_check_smoke_min_pass(tmp_path):
+    assert not check(tmp_path, make_report(), min_pass=2)[0]
+    assert check(tmp_path, make_report(), min_pass=1)[0]
+
+
+def test_check_smoke_must_start_after_switch(tmp_path):
+    data = make_report(started="2026-01-01T00:00:00+00:00")
+    ok, reason = check(tmp_path, data, after="2026-01-01T00:00:05+00:00")
+    assert not ok and "switch" in reason
+    assert check(tmp_path, data, after="2026-01-01T00:00:00+00:00")[0]
+    assert not check(tmp_path, data, after="")[0]
+
+
+def test_partial_and_skip_llm_are_not_acceptance(tmp_path):
+    partial = make_report(partial=True)
+    assert partial["result"] == "PARTIAL"
+    assert not check(tmp_path, partial)[0]
+    skipped = make_report(extra={"skip_llm": True})
+    assert not check(tmp_path, skipped)[0]
+
+
+def test_render_redacts_id_name_and_env_secrets(tmp_path, monkeypatch):
+    monkeypatch.setenv("TEST_SECRET_VAR", "supergeheim99")
+    records = tmp_path / "r.tsv"
+    records.write_text("PASS\tid-supergeheim99\tdetail supergeheim99\n", encoding="utf-8")
+    code = report.main(
+        [
+            "render", "--records", str(records), "--out-dir", str(tmp_path / "o"),
+            "--kind", "release", "--target", "audit", "--target-sha", SHA, "--script", "s",
+            "--script-version", "1", "--started", "2026-01-01T00:00:00+00:00",
+            "--redact-env", "TEST_SECRET_VAR",
+        ]
+    )  # fmt: skip
+    assert code == 0
+    text = "".join(p.read_text(encoding="utf-8") for p in (tmp_path / "o").iterdir())
+    assert "supergeheim99" not in text and "<secret>" in text
+
+
+def test_redact_filter_cli(tmp_path):
+    done = subprocess.run(
+        [sys.executable, str(Path(report.__file__)), "redact"],
+        input="pw=abc mail=a@b.de\n",
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert done.returncode == 0 and "a@b.de" not in done.stdout

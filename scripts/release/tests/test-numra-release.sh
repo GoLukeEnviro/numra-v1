@@ -94,7 +94,10 @@ DISK_PATH=/
 SUDO_CMD=$BIN/sudo
 HEALTHY_WAIT_ROUNDS=2
 HEALTHY_WAIT_S=0
+MIN_SMOKE_PASS=1
+POST_SWITCH_WAIT_S=0
 EOF
+  chmod 600 "$T/release.env"
   export PATH="$BIN:$PATH" FAKE_WORLD="$W" MUT_LOG PGPASSWORD="$SENTINEL"
 }
 
@@ -116,6 +119,7 @@ case "$1" in
     img=$(cat "$W/containers/$4.image")
     case "$3" in
       '{{.Image}}') echo "$img" ;;
+      '{{.RestartCount}}') echo "${FAKE_RESTARTS:-0}" ;;
       *) echo "$img $(cat "$W/containers/$4.started")" ;;
     esac ;;
   image)
@@ -153,7 +157,10 @@ case "$1" in
           [ -z "${FAKE_DRYRUN_TOUCHES_PG:-}" ] || echo " Container numra-test-postgres-1 Recreate"
         else
           mut compose up "$@"
+          # Wie Compose: ohne --force-recreate bleibt ein laufender Container mit gleicher Konfiguration unveraendert
+          [[ " $* " == *" --force-recreate "* ]] || continue_without_recreate=1
           for s in "${svcs[@]}"; do
+            [ -z "${continue_without_recreate:-}" ] || continue
             if [ -n "${FAKE_UP_WRONG_IMAGE:-}" ]; then echo "sha256:wrong" > "$W/containers/numra-test-$s-1.image"
             else cp "$W/tags/numra-test-${s}_latest" "$W/containers/numra-test-$s-1.image"; fi
             date +%s%N > "$W/containers/numra-test-$s-1.started"
@@ -164,6 +171,11 @@ case "$1" in
         for s in "${svcs[@]}"; do echo "sha256:new-$s" > "$W/tags/numra-test-${s}_latest"; done ;;
       stop) mut compose stop "$@" ;;
       run)
+        if [ "$dry" = 1 ]; then
+          echo " Container numra-test-migrate-run Created"
+          [ -z "${FAKE_DRYRUN_MIGRATE_TOUCHES:-}" ] || echo " Container numra-test-redis-1 Recreate"
+          exit 0
+        fi
         mut compose run "$@"
         [ -z "${FAKE_MIGRATE_TO:-}" ] || echo "$FAKE_MIGRATE_TO" > "$W/alembic" ;;
     esac ;;
@@ -199,7 +211,7 @@ EOF
   cat > "$BIN/systemctl" <<'EOF'
 #!/usr/bin/env bash
 printf 'systemctl %s\n' "$*" >> "$MUT_LOG"
-if [ "$1" = start ] && [ "$2" = numra-backup.service ]; then
+if [ "$1" = start ] && [ "$2" = numra-backup.service ] && [ -z "${FAKE_NO_NEW_DUMP:-}" ]; then
   touch "$(dirname "$MUT_LOG")/backups/numra-1.dump"
 fi
 EOF
@@ -207,6 +219,13 @@ EOF
 #!/usr/bin/env bash
 case "$1" in install | cp | mv | tee | chown | chmod) printf 'sudo %s\n' "$*" >> "$MUT_LOG" ;; esac
 exec "$@"
+EOF
+  local real_diff
+  real_diff=$(command -v diff)
+  cat > "$BIN/diff" <<EOF
+#!/usr/bin/env bash
+if [ -n "\${FAKE_DIFF_FAIL:-}" ] && [[ "\$*" == *compose.new* ]]; then exit 2; fi
+exec "$real_diff" "\$@"
 EOF
   chmod +x "$BIN"/*
 }
@@ -235,15 +254,16 @@ full_to_switch() {
   FAKE_MIGRATE_TO=$REV_NEW phase switch --expect-revision "$REV_NEW"
 }
 
-make_smoke() { # make_smoke FILE STATUS SHA [dry]
+make_smoke() { # make_smoke FILE STATUS SHA [dry] [STARTED]
   printf 'PASS\tcheck\tok\n' > "$T/rec"
   [ "$2" != FAIL ] || printf 'FAIL\tcheck2\tkaputt\n' >> "$T/rec"
   local extra=()
   [ "${4:-}" != dry ] || extra=(--dry-run)
-  python3 "$REPORT_PY" render --records "$T/rec" --out-dir "$T/smoke" --kind acceptance --target audit \
-    --target-sha "$3" --script numra_acceptance.py --script-version t --started "$(date -u +%Y-%m-%dT%H:%M:%S+00:00)" \
+  python3 "$REPORT_PY" render --records "$T/rec" --out-dir "$T/smoke" --kind smoke --target audit \
+    --target-sha "$3" --script numra_smoke.py --script-version t \
+    --started "${5:-$(date -u +%Y-%m-%dT%H:%M:%S+00:00)}" \
     "${extra[@]}" > /dev/null || true
-  cp "$T"/smoke/acceptance-audit-*.json "$1"
+  cp "$T"/smoke/smoke-audit-*.json "$1"
   rm -f "$T"/smoke/*
 }
 
@@ -454,6 +474,184 @@ t_no_secrets() {
   expect "Secrets (Env-Datei-Inhalt, PGPASSWORD) tauchen weder in Berichten, Logs noch docker/git-Argumenten auf" $leaks
 }
 
+t_marker_gate_not_bypassable() {
+  new_world; full_to_switch
+  local own
+  for own in switch prep pre; do
+    cp "$REPORTS"/release-audit-"$own"-*.json "$T/own.json"
+    phase marker --smoke-report "$T/own.json"
+    expect "marker: eigener $own-Release-Bericht wird NICHT als Abnahme akzeptiert" "$(b rc_marker 1 "$OLD")"
+  done
+  make_smoke "$T/early.json" PASS "$NEW" "" "2020-01-01T00:00:00+00:00"
+  phase marker --smoke-report "$T/early.json"
+  expect "marker: Bericht aelter als das Ende des switch (Startzeit vor switch) -> abgelehnt" "$(b rc_marker 1 "$OLD")"
+  sed -i 's/^MIN_SMOKE_PASS=1/MIN_SMOKE_PASS=5/' "$T/release.env"
+  make_smoke "$T/ok.json" PASS "$NEW"
+  phase marker --smoke-report "$T/ok.json"
+  expect "marker: zu wenige bestandene Pruefungen (Mindestumfang) -> abgelehnt" "$(b rc_marker 1 "$OLD")"
+  sed -i 's/^MIN_SMOKE_PASS=5/MIN_SMOKE_PASS=1/' "$T/release.env"
+  phase marker --smoke-report "$T/ok.json"
+  expect "marker: echter Smoke-Bericht nach dem switch -> Marker gesetzt" "$(b marker_is "$NEW")"
+  phase marker --smoke-report "$T/ok.json"
+  expect "marker: zweiter Lauf verweigert (Marker != old-sha)" $((RC == 1 ? 0 : 1))
+}
+
+t_marker_bound_to_run() {
+  new_world; full_to_switch
+  make_smoke "$T/ok.json" PASS "$NEW"
+  release --target audit --old-sha "$OLD" --new-sha "$OLD" --phase marker --smoke-report "$T/ok.json"
+  expect "marker: fremde SHA -> Exit 1, Marker unveraendert" "$(b rc_marker 1 "$OLD")"
+  phase rollback
+  phase marker --smoke-report "$T/ok.json"
+  expect "marker nach rollback: SWITCH_OK geloescht -> Exit 1, Marker unveraendert" "$(b rc_marker 1 "$OLD")"
+  new_world; full_to_switch
+  echo "sha256:fremd" > "$W/containers/numra-test-api-1.image"
+  make_smoke "$T/ok.json" PASS "$NEW"
+  phase marker --smoke-report "$T/ok.json"
+  expect "marker: laufendes Image weicht vom gebauten ab -> Exit 1" "$(b rc_marker 1 "$OLD")"
+}
+
+dry_after_real() { # dry_after_real STATE-LABEL PHASES... : Dry-Run darf nach echtem Zustand nichts mutieren
+  local label=$1; shift
+  : > "$MUT_LOG"
+  local before after p
+  before=$(snapshot_fs)
+  for p in "$@"; do
+    phase "$p" --dry-run --expect-revision "$REV_NEW" --smoke-report "$T/ok.json"
+    expect "dry-run $p ($label): Exit 0" $((RC == 0 ? 0 : 1))
+  done
+  expect "dry-run ($label): kein mutierender Aufruf" "$(b log_empty)"
+  after=$(snapshot_fs)
+  expect "dry-run ($label): Dateisystem unveraendert" "$(b test "$before" = "$after")"
+}
+
+t_dry_run_after_real_phases() {
+  new_world
+  phase baseline; phase pre; phase prep
+  make_smoke "$T/ok.json" PASS "$NEW"
+  dry_after_real "nach echtem prep" switch rollback marker
+  FAKE_MIGRATE_TO=$REV_NEW phase switch --expect-revision "$REV_NEW"
+  make_smoke "$T/ok.json" PASS "$NEW"
+  dry_after_real "nach echtem switch" marker rollback
+}
+
+mutated_script() { # mutated_script OUT PHASE : Dry-Run-Absicherung der Phase aushebeln
+  mkdir -p "$T/release"
+  awk -v ph="phase_$2() {" '
+    index($0, ph) == 1 { inph = 1 }
+    inph && !done && /^  if \[ "\$DRY_RUN" = 1 \]; then$/ { sub(/DRY_RUN" = 1/, "DRY_RUN\" = 99"); done = 1 }
+    { print }' "$RELEASE" > "$1"
+  cp -r "$SCRIPT_DIR/../../ops_report" "$T/ops_report" 2> /dev/null || true
+  ! cmp -s "$RELEASE" "$1"
+}
+
+t_dry_run_detector_each_phase() {
+  local ph
+  for ph in switch rollback; do
+    new_world
+    phase baseline; phase pre; phase prep
+    if [ "$ph" = rollback ]; then FAKE_MIGRATE_TO=$REV_NEW phase switch --expect-revision "$REV_NEW"; fi
+    : > "$MUT_LOG"
+    mutated_script "$T/release/numra-release.sh" "$ph" || { bad "Mutationstest $ph: Mutation nicht angewendet"; continue; }
+    RC=0
+    bash "$T/release/numra-release.sh" --config "$T/release.env" --target audit --old-sha "$OLD" --new-sha "$NEW" \
+      --phase "$ph" --expect-revision "$REV_NEW" --dry-run > /dev/null 2>&1 || RC=$?
+    expect "Mutationstest: kaputte Dry-Run-Absicherung in $ph wird vom Detektor erkannt" "$(b log_nonempty)"
+  done
+}
+
+t_force_recreate_required() {
+  local ph script
+  for ph in switch rollback; do
+    new_world
+    phase baseline; phase pre; phase prep
+    if [ "$ph" = rollback ]; then FAKE_MIGRATE_TO=$REV_NEW phase switch --expect-revision "$REV_NEW"; fi
+    mkdir -p "$T/release"; script="$T/release/numra-release.sh"
+    cp -r "$SCRIPT_DIR/../../ops_report" "$T/ops_report" 2> /dev/null || true
+    sed "/phase_$ph() {/,/^}/ s/ --force-recreate//" "$RELEASE" > "$script"
+    cmp -s "$RELEASE" "$script" && { bad "force-recreate-Mutation ($ph) nicht angewendet"; continue; }
+    RC=0
+    FAKE_MIGRATE_TO=$REV_NEW bash "$script" --config "$T/release.env" --target audit --old-sha "$OLD" --new-sha "$NEW" \
+      --phase "$ph" --expect-revision "$REV_NEW" > /dev/null 2>&1 || RC=$?
+    expect "ohne --force-recreate wechselt das Image nicht -> $ph schlaegt fehl" $((RC == 1 ? 0 : 1))
+  done
+}
+
+t_fingerprint_and_drift() {
+  new_world
+  : > "$W/alembic"
+  phase baseline
+  expect "baseline: leere alembic-Revision -> Exit 1" $((RC == 1 ? 0 : 1))
+  new_world
+  rm -f "$W"/containers/*
+  phase baseline
+  expect "baseline ohne Container -> Exit 1" $((RC == 1 ? 0 : 1))
+  new_world; phase baseline
+  : > "$W/alembic"
+  phase pre
+  expect "pre: leere alembic-Revision (Fehler im Fingerprint) -> Exit 1, kein 'leer == leer' PASS" $((RC == 1 ? 0 : 1))
+  new_world; phase baseline
+  : > "$T/state/baseline-audit.txt"
+  phase pre
+  expect "pre: leere Baseline -> Exit 1" $((RC == 1 ? 0 : 1))
+  new_world; phase baseline
+  rm -f "$W/containers/numra-test-redis-1".*
+  phase pre
+  expect "pre: fehlender Dienst-Container -> Exit 1" $((RC == 1 ? 0 : 1))
+}
+
+t_baseline_overwrite() {
+  new_world
+  phase baseline
+  phase baseline
+  expect "baseline: Ueberschreiben ohne --rebaseline -> Exit 1" $((RC == 1 ? 0 : 1))
+  phase baseline --rebaseline
+  expect "baseline --rebaseline -> Exit 0" $((RC == 0 ? 0 : 1))
+  sed -i 's/^CONFIG_TARGET=audit/CONFIG_TARGET=prod/' "$T/release.env"
+  release --target prod --old-sha "$OLD" --phase baseline
+  release --target prod --old-sha "$OLD" --phase baseline --rebaseline
+  expect "baseline --rebaseline gegen prod ohne --i-am-sure-prod -> Exit 1" $((RC == 1 ? 0 : 1))
+}
+
+t_predeploy_dump() {
+  new_world; phase baseline; phase pre; phase prep
+  FAKE_NO_NEW_DUMP=1 FAKE_MIGRATE_TO=$REV_NEW phase switch --expect-revision "$REV_NEW"
+  expect "switch: Backup-Service erzeugt keinen neuen Dump (mtime < Schreiber-Stopp) -> Exit 1" $((RC == 1 ? 0 : 1))
+  new_world; phase baseline; phase pre; phase prep
+  sed -i 's/^BACKUP_SERVICE=.*/BACKUP_SERVICE=/' "$T/release.env"
+  FAKE_MIGRATE_TO=$REV_NEW phase switch --expect-revision "$REV_NEW"
+  expect "switch: BACKUP_SERVICE leer -> Exit 1" $((RC == 1 ? 0 : 1))
+}
+
+t_prep_and_switch_hardening() {
+  new_world; phase baseline; phase pre
+  FAKE_DIFF_FAIL=1 phase prep
+  expect "prep: diff-Fehler (rc>1) ist fail-closed -> Exit 1, Checkout zurueck" "$(b rc_head 1 "$OLD")"
+  new_world; phase baseline; phase pre
+  FAKE_DRYRUN_MIGRATE_TOUCHES=1 phase prep
+  expect "prep: migrate-Trockenlauf beruehrt redis -> Exit 1, Checkout zurueck" "$(b rc_head 1 "$OLD")"
+  new_world; phase baseline; phase pre; phase prep
+  FAKE_RESTARTS=2 FAKE_MIGRATE_TO=$REV_NEW phase switch --expect-revision "$REV_NEW"
+  expect "switch: RestartCount > 0 -> Exit 1" $((RC == 1 ? 0 : 1))
+  new_world; phase baseline; phase pre
+  release --target audit --old-sha "$OLD" --new-sha "$NEW" --phase prep
+  grep -q "migrate-Trockenlauf" <<< "$OUT" || grep -q "compose-new" <<< "$OUT"
+  expect "prep: Compose- und migrate-Trockenlauf werden ausgefuehrt" $?
+}
+
+t_config_trust() {
+  new_world
+  chmod 666 "$T/release.env"
+  phase baseline
+  expect "Konfig mit Schreibrecht fuer Andere -> Exit 2" $((RC == 2 ? 0 : 1))
+  chmod 600 "$T/release.env"
+  sed -i '/^SUDO_CMD=/d' "$T/release.env"
+  printf '#!/usr/bin/env bash\ntouch "%s/evil-called"\nexec "$@"\n' "$T" > "$BIN/evil"
+  chmod +x "$BIN/evil"
+  SUDO_CMD="$BIN/evil" phase baseline
+  expect "SUDO_CMD aus der Umgebung wird ignoriert" "$(b test ! -e "$T/evil-called")"
+}
+
 t_static() {
   grep -q '^set -euo pipefail' "$RELEASE"
   expect "statisch: set -euo pipefail" $?
@@ -472,7 +670,9 @@ t_static() {
 }
 
 for t in t_usage_refusals t_pre_report t_pre_failures t_dry_run t_dry_run_detector_catches_broken_guard \
-  t_full_cycle t_marker_refusals t_switch_failures t_rollback t_no_secrets t_static; do
+  t_full_cycle t_marker_refusals t_marker_gate_not_bypassable t_marker_bound_to_run t_dry_run_after_real_phases \
+  t_dry_run_detector_each_phase t_force_recreate_required t_fingerprint_and_drift t_baseline_overwrite \
+  t_predeploy_dump t_prep_and_switch_hardening t_config_trust t_switch_failures t_rollback t_no_secrets t_static; do
   printf '# %s\n' "$t"
   "$t"
 done

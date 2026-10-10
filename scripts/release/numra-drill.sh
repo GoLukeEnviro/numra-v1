@@ -43,6 +43,14 @@ case "$TARGET" in
   *) usage_error "--target audit|prod ist Pflicht (kein Default)" ;;
 esac
 { [ -n "$CONFIG" ] && [ -r "$CONFIG" ]; } || usage_error "--config FILE fehlt oder ist nicht lesbar"
+# Konfig wird als Shell gelesen: nur eigene/root-eigene Dateien ohne Schreibrecht fuer Gruppe/Andere;
+# SUDO_CMD kommt nie aus der Umgebung.
+cfg_mode=$(stat -c %a "$CONFIG")
+cfg_owner=$(stat -c %u "$CONFIG")
+if [ $((8#$cfg_mode & 8#022)) -ne 0 ] || { [ "$cfg_owner" != "$(id -u)" ] && [ "$cfg_owner" != "0" ]; }; then
+  usage_error "Konfig $CONFIG muss dem aufrufenden Benutzer oder root gehoeren und darf fuer Gruppe/Andere nicht schreibbar sein (empfohlen 0600)"
+fi
+unset SUDO_CMD
 # shellcheck source=/dev/null
 . "$CONFIG"
 for name in CONFIG_TARGET BACKUP_DIR BACKUP_GLOB BACKUP_MAX_AGE_S REPORT_DIR DRILL_WORKDIR \
