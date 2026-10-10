@@ -9,6 +9,7 @@ import { LoadingState, ErrorState } from "@/components/ui/states";
 import { ReportReader } from "@/components/reports/report-reader";
 import { ReportProgressView, ReportFailedView } from "@/components/reports/report-progress-view";
 import { ExportPanel } from "@/components/reports/export-panel";
+import { RegenerateControl } from "@/components/ui/regenerate-control";
 import { api, ApiError, type ReportOut } from "@/api/client";
 import { asStructuredReport } from "@/api/report-content";
 import { useReportProgress } from "@/lib/use-report-progress";
@@ -122,8 +123,30 @@ function ReportContent({ reportId }: { reportId: string }) {
   return (
     <>
       <BackToAnalysis calculationId={progress.report.calculation_id} />
+      {progress.report.regenerated_from_id && (
+        <p className="mb-4 text-sm text-muted">
+          {t("app.regenerate.replaces")}{" "}
+          <Link
+            href={`/reports/${progress.report.regenerated_from_id}`}
+            className="text-gold underline-offset-4 hover:underline"
+          >
+            {t("app.regenerate.openOriginal")}
+          </Link>
+        </p>
+      )}
       <ErrorBoundary>
-        <ReportReader report={progress.report} content={content} />
+        <ReportReader
+          report={progress.report}
+          content={content}
+          flagAction={
+            <RegenerateControl
+              loadPreview={() => api.reports.regeneratePreview(progress.report.id)}
+              start={(key) => api.reports.regenerate(progress.report.id, key)}
+              onStarted={(started) => router.push(`/reports/${started.id}`)}
+              onOpenExisting={(id) => router.push(`/reports/${id}`)}
+            />
+          }
+        />
       </ErrorBoundary>
       <div className="mt-12 max-w-reading">
         <ExportPanel reportId={progress.report.id} />

@@ -248,6 +248,16 @@ class RelationshipComparison(Base):
 
 class Report(Base):
     __tablename__ = "reports"
+    __table_args__ = (
+        # D6: at most one live (PENDING or COMPLETE) regeneration per original -- the
+        # database-level guard behind the row lock in `regenerate_report_job`.
+        Index(
+            "uq_reports_live_regeneration",
+            "regenerated_from_id",
+            unique=True,
+            postgresql_where=text("regenerated_from_id IS NOT NULL AND status <> 'FAILED'"),
+        ),
+    )
 
     id: Mapped[uuid.UUID] = _uuid_pk()
     user_id: Mapped[uuid.UUID] = mapped_column(
@@ -272,6 +282,11 @@ class Report(Base):
     generated_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[dt.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
+    )
+    #: D6: the report this one is a regeneration of. The original is never modified;
+    #: SET NULL so that removing it cannot take the newer version with it.
+    regenerated_from_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("reports.id", ondelete="SET NULL"), nullable=True
     )
 
     sections: Mapped[list[ReportSection]] = relationship(
@@ -843,6 +858,14 @@ class RelationshipAnalysis(Base):
     `Report.report_type` snapshotting `report_type` independent of later changes."""
 
     __tablename__ = "relationship_analyses"
+    __table_args__ = (
+        Index(
+            "uq_relationship_analyses_live_regeneration",
+            "regenerated_from_id",
+            unique=True,
+            postgresql_where=text("regenerated_from_id IS NOT NULL AND status <> 'FAILED'"),
+        ),
+    )
 
     id: Mapped[uuid.UUID] = _uuid_pk()
     workspace_id: Mapped[uuid.UUID] = mapped_column(
@@ -872,6 +895,10 @@ class RelationshipAnalysis(Base):
     generated_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[dt.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
+    )
+    #: D6: see `Report.regenerated_from_id`.
+    regenerated_from_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("relationship_analyses.id", ondelete="SET NULL"), nullable=True
     )
 
 
