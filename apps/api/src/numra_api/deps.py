@@ -6,6 +6,7 @@ import time
 from collections.abc import AsyncIterator, Awaitable, Callable
 
 from fastapi import Cookie, Depends, Header, Request
+from redis.exceptions import RedisError
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,12 +19,13 @@ from numra_api.models import User
 from numra_api.models.enums import UserRole
 from numra_api.rate_limit import RateLimiter, pseudonymous_key
 from numra_api.repositories.sessions import get_active_session_by_token_hash
-from numra_api.repositories.users import get_user_by_id
+from numra_api.repositories.users import get_user_by_id, normalize_email
 from numra_api.services.errors import (
     CsrfValidationFailed,
     Forbidden,
     NotAuthenticated,
     RateLimitExceeded,
+    RateLimitUnavailable,
 )
 from numra_api.services.feature_flag_cache import FeatureFlagCache
 from numra_api.services.pdf_client import PdfServiceClient
@@ -31,6 +33,7 @@ from numra_api.storage.exports import ExportStorage
 from numra_interpretation.llm.types import LLMProvider
 
 _ci_diag_log = logging.getLogger("numra_api.ci_diag")
+_rate_limit_log = logging.getLogger("numra_api.rate_limit")
 
 
 def _ci_diag_enabled(request: Request) -> bool:
@@ -128,32 +131,45 @@ async def _enforce_rate_limit(
     *,
     raw_identity: str,
     scope: str,
-    limit: int,
-    window_seconds: int,
+    limit: int | None,
+    window_seconds: int | None,
     settings: Settings,
     limiter: RateLimiter,
 ) -> None:
+    """`limit`/`window_seconds` None = benannte Policy `scope` (Default oder Override
+    aus `RATE_LIMIT_OVERRIDES`, siehe rate_limit/policies.py).
+
+    Backend-Ausfall (Redis nicht erreichbar): fail-closed mit 503 RATE_LIMIT_UNAVAILABLE.
+    Ein ausgefallener Zähler darf Login-/Reset-Versuche und kostenintensive Endpunkte
+    nicht unbegrenzt freigeben (vorher: ungefangene Exception -> 500, ebenfalls gesperrt)."""
+    if limit is None or window_seconds is None:
+        limit, window_seconds = settings.rate_limit_policy(scope)
     key = f"{scope}:{pseudonymous_key(raw_identity, secret=settings.session_secret)}"
-    result = await limiter.check(key=key, limit=limit, window_seconds=window_seconds)
+    try:
+        result = await limiter.check(key=key, limit=limit, window_seconds=window_seconds)
+    except (RedisError, OSError):
+        _rate_limit_log.error("rate limiter backend unavailable (scope=%s)", scope)
+        raise RateLimitUnavailable("rate limiter unavailable") from None
     if not result.allowed:
         raise RateLimitExceeded(retry_after_seconds=result.retry_after_seconds)
 
 
 def rate_limit_by_ip(
-    scope: str, *, limit: int, window_seconds: int
+    scope: str, *, limit: int | None = None, window_seconds: int | None = None
 ) -> Callable[..., Awaitable[None]]:
     """A FastAPI dependency limiting requests per client IP — for unauthenticated
-    endpoints (login, register) where there is no user id yet to key on. The IP itself
-    is never used as the counter key directly (see `pseudonymous_key`)."""
+    endpoints (login, register) where there is no user id yet to key on. The IP is the
+    trusted one from `client_ip_of` (never a free-form header) and is never used as the
+    counter key directly (see `pseudonymous_key`). Without explicit `limit`/
+    `window_seconds`, `scope` names a configurable policy."""
 
     async def _dependency(
         request: Request,
         settings: Settings = Depends(get_settings_dep),
         limiter: RateLimiter = Depends(get_rate_limiter),
     ) -> None:
-        raw_ip = client_ip_of(request)
         await _enforce_rate_limit(
-            raw_identity=raw_ip,
+            raw_identity=client_ip_of(request),
             scope=scope,
             limit=limit,
             window_seconds=window_seconds,
@@ -165,11 +181,13 @@ def rate_limit_by_ip(
 
 
 def rate_limit_by_user(
-    scope: str, *, limit: int, window_seconds: int
+    scope: str, *, limit: int | None = None, window_seconds: int | None = None
 ) -> Callable[..., Awaitable[None]]:
     """A FastAPI dependency limiting requests per authenticated user — for endpoints
     that dispatch expensive work (report generation, PDF rendering) an attacker with
-    one valid session could otherwise hammer."""
+    one valid session could otherwise hammer. The key is `user.id` from the server-side
+    session, never a header. Without explicit `limit`/`window_seconds`, `scope` names a
+    configurable policy."""
 
     async def _dependency(
         user: User = Depends(get_current_user),
@@ -186,6 +204,20 @@ def rate_limit_by_user(
         )
 
     return _dependency
+
+
+async def enforce_target_rate_limit(request: Request, *, policy: str, target: str) -> None:
+    """Limit per target address (normalised e-mail), called at the top of a handler once
+    the body is parsed. Applied identically whether or not an account exists, so neither
+    the limit nor its error reveals which addresses are registered."""
+    await _enforce_rate_limit(
+        raw_identity=normalize_email(target),
+        scope=policy,
+        limit=None,
+        window_seconds=None,
+        settings=request.app.state.settings,
+        limiter=request.app.state.rate_limiter,
+    )
 
 
 async def get_current_session(

@@ -88,3 +88,43 @@ definiertes Fallback).
   den Header mitsenden (`curl -H @-` aus stdin/Datei, **nicht** als Argument).
 - Per-Account-Limits (PR 2) erlauben theoretisch gezieltes Sperren eines Kontos durch
   Fremde; gemildert durch hohe Schwellen und das IP-Limit davor.
+
+## Rate-Limit-Schlüssel und Limits (PR 2)
+
+| Phase | Schlüssel | Quelle |
+|---|---|---|
+| vor Anmeldung | HMAC(Client-IP) | `client_ip_of`: weitergeleitete IP nur bei gültigem Secret + vertrauenswürdigem Peer, sonst Peer |
+| nach Anmeldung | HMAC(`user.id`) | serverseitig aus der Session (`get_current_user`), nie aus Headern |
+| Ziel-Adresse | HMAC(`normalize_email(email)`) | Request-Body, **vor** dem Konto-Lookup, für bekannte und unbekannte Adressen gleich |
+
+Alle Schlüssel sind mit `SESSION_SECRET` pseudonymisiert (keine Klartext-IP/-Adresse in Redis).
+
+| Policy (Default Anzahl/Sekunden) | Schlüsselart | Endpunkte |
+|---|---|---|
+| `auth:login` 10/60 · `auth:mobile-login` 10/60 | IP | `/login`, `/mobile/login` |
+| `auth:login:target` 20/900 | Ziel-Adresse | `/login` und `/mobile/login` teilen den Zähler |
+| `auth:register` 5/3600 · `auth:register:target` 3/3600 | IP · Ziel-Adresse | `/register` |
+| `auth:forgot_password` 5/3600 · `…:target` 3/3600 | IP · Ziel-Adresse | `/forgot-password` |
+| `auth:reset_password` 10/3600 · `auth:verify_email` 10/3600 | IP | `/reset-password`, `/verify-email` (Token statt Adresse im Body) |
+| `auth:request_email_verification` 5/3600 · `…:ip` 20/3600 | Nutzer · IP | `/request-email-verification` (Mail-Versand an das eigene Konto) |
+
+Überschreibbar per `RATE_LIMIT_OVERRIDES` (JSON, validiert beim Start; unbekannte Policy oder
+ungültiges Format verhindern den Start). Bestehende Nutzer-Limits anderer Router bleiben
+unverändert (bereits Nutzer-ID-basiert).
+
+**Keine Enumeration:** Die Ziel-Adress-Limits zählen vor jeder Kontoprüfung; 429-Antwort,
+Body und Zähler sind für registrierte und unbekannte Adressen identisch (Test vergleicht beide
+Verläufe Schritt für Schritt). Das bestehende `409 EMAIL_ALREADY_REGISTERED` bei `/register`
+ist eine **vorhandene** Enumerationsfläche und nicht Teil dieses ADR (bewusst unverändert).
+
+**Zähler-Ausfall (Redis nicht erreichbar):** fail-closed. Das ist die dokumentierte Fassung des
+bisherigen Verhaltens (ungefangene Exception → 500): jetzt `503 RATE_LIMIT_UNAVAILABLE` mit
+generischem Text, ohne Verbindungsdetails; Log nur mit Policy-Name. Begründung: Login-/Reset-
+Versuche und kostenintensive Endpunkte dürfen bei Zählerausfall nicht unbegrenzt freigegeben
+werden. Folge: Redis-Ausfall = Anmeldung nicht möglich (bereits vorher so, nur als 500).
+`/v1/health/*` ist nicht ratenbegrenzt und meldet den Zustand unabhängig davon.
+
+**Grenzen:** Fixed-Window (Randburst bleibt), Missbrauchsschutz statt Sicherheitsgrenze.
+Ein Ziel-Adress-Limit kann von Fremden genutzt werden, um Login-Versuche für ein Konto zeitweise
+zu blockieren (Schwelle 20 pro 15 min bewusst hoch, IP-Limit davor). Ein globales
+IP-Limit für nicht authentisierte Nicht-Auth-Routen existiert weiterhin nicht (vorher auch nicht).

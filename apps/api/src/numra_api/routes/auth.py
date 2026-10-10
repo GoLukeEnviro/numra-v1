@@ -11,6 +11,7 @@ from numra_api.auth.passwords import hash_password, verify_password
 from numra_api.auth.sessions import generate_session_token, hash_session_token
 from numra_api.config import Settings
 from numra_api.deps import (
+    enforce_target_rate_limit,
     get_current_bearer_session,
     get_current_bearer_user,
     get_current_session,
@@ -116,10 +117,11 @@ async def _issue_authenticated_session(
     "/register",
     response_model=UserOut,
     status_code=201,
-    dependencies=[Depends(rate_limit_by_ip("auth:register", limit=5, window_seconds=3600))],
+    dependencies=[Depends(rate_limit_by_ip("auth:register"))],
 )
 async def register(
     body: RegisterRequest,
+    request: Request,
     response: Response,
     db: AsyncSession = Depends(get_db, scope="function"),
     settings: Settings = Depends(get_settings_dep),
@@ -128,6 +130,7 @@ async def register(
     `login`, no server-side redirect -- the client decides where to go next). Role and
     is_active come exclusively from the model defaults; `RegisterRequest`'s
     `extra="forbid"` is what stops a "role": "ADMIN" body from ever reaching here."""
+    await enforce_target_rate_limit(request, policy="auth:register:target", target=body.email)
     if not settings.allow_self_signup:
         raise SelfSignupDisabled("self-signup is disabled (ALLOW_SELF_SIGNUP=false)")
     if not body.age_confirmed:
@@ -164,14 +167,16 @@ async def register(
 @router.post(
     "/login",
     response_model=UserOut,
-    dependencies=[Depends(rate_limit_by_ip("auth:login", limit=10, window_seconds=60))],
+    dependencies=[Depends(rate_limit_by_ip("auth:login"))],
 )
 async def login(
     body: LoginRequest,
+    request: Request,
     response: Response,
     db: AsyncSession = Depends(get_db, scope="function"),
     settings: Settings = Depends(get_settings_dep),
 ) -> UserOut:
+    await enforce_target_rate_limit(request, policy="auth:login:target", target=body.email)
     user = await get_user_by_email(db, email=body.email)
     if user is None or not verify_password(user.password_hash, body.password) or not user.is_active:
         # Deliberately identical error for wrong-password, unknown-email, and
@@ -205,14 +210,16 @@ def _user_out(user: User) -> UserOut:
 @router.post(
     "/mobile/login",
     response_model=MobileSessionOut,
-    dependencies=[Depends(rate_limit_by_ip("auth:mobile-login", limit=10, window_seconds=60))],
+    dependencies=[Depends(rate_limit_by_ip("auth:mobile-login"))],
 )
 async def mobile_login(
     body: LoginRequest,
+    request: Request,
     response: Response,
     db: AsyncSession = Depends(get_db, scope="function"),
     settings: Settings = Depends(get_settings_dep),
 ) -> MobileSessionOut:
+    await enforce_target_rate_limit(request, policy="auth:login:target", target=body.email)
     user = await get_user_by_email(db, email=body.email)
     if user is None or not verify_password(user.password_hash, body.password) or not user.is_active:
         raise InvalidCredentials("invalid email or password")
@@ -371,9 +378,8 @@ async def revoke_other_sessions(
     status_code=204,
     dependencies=[
         Depends(require_csrf),
-        Depends(
-            rate_limit_by_user("auth:request_email_verification", limit=5, window_seconds=3600)
-        ),
+        Depends(rate_limit_by_user("auth:request_email_verification")),
+        Depends(rate_limit_by_ip("auth:request_email_verification:ip")),
     ],
 )
 async def request_email_verification(
@@ -393,7 +399,7 @@ async def request_email_verification(
 @router.post(
     "/verify-email",
     status_code=204,
-    dependencies=[Depends(rate_limit_by_ip("auth:verify_email", limit=10, window_seconds=3600))],
+    dependencies=[Depends(rate_limit_by_ip("auth:verify_email"))],
 )
 async def verify_email(
     body: VerifyEmailRequest,
@@ -409,10 +415,11 @@ async def verify_email(
 @router.post(
     "/forgot-password",
     status_code=202,
-    dependencies=[Depends(rate_limit_by_ip("auth:forgot_password", limit=5, window_seconds=3600))],
+    dependencies=[Depends(rate_limit_by_ip("auth:forgot_password"))],
 )
 async def forgot_password(
     body: ForgotPasswordRequest,
+    request: Request,
     settings: Settings = Depends(get_settings_dep),
     email_sender: EmailSender = Depends(get_email_sender),
     db: AsyncSession = Depends(get_db, scope="function"),
@@ -420,6 +427,9 @@ async def forgot_password(
     """V2: always answers 202 with no body, whether or not `body.email` belongs to an
     account -- anti-enumeration (see services/auth_recovery_service.forgot_password,
     which only touches the database/sends anything on an actual match)."""
+    await enforce_target_rate_limit(
+        request, policy="auth:forgot_password:target", target=body.email
+    )
     await auth_recovery_service.forgot_password(
         db, email=body.email, settings=settings, email_sender=email_sender
     )
@@ -428,7 +438,7 @@ async def forgot_password(
 @router.post(
     "/reset-password",
     status_code=204,
-    dependencies=[Depends(rate_limit_by_ip("auth:reset_password", limit=10, window_seconds=3600))],
+    dependencies=[Depends(rate_limit_by_ip("auth:reset_password"))],
 )
 async def reset_password(
     body: ResetPasswordRequest,
