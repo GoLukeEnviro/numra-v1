@@ -47,6 +47,11 @@ class SelfSignupDisabled(ApplicationError):
     status_code = 403
 
 
+class AgeConfirmationRequired(ApplicationError):
+    code = "AGE_CONFIRMATION_REQUIRED"
+    status_code = 422
+
+
 class EmailAlreadyRegistered(ApplicationError):
     code = "EMAIL_ALREADY_REGISTERED"
     status_code = 409

@@ -44,7 +44,7 @@ function Probe() {
       </button>
       <button
         onClick={() => {
-          void register("ada@example.com", "a-strong-password").catch(() => {
+          void register("ada@example.com", "a-strong-password", true).catch(() => {
             /* see login: the error is surfaced through the provider's error state */
           });
         }}

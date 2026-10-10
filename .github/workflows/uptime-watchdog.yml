@@ -1,0 +1,69 @@
+name: Uptime Watchdog
+
+# Meldet den Ausfall des Monitors selbst: Hat der Uptime-Probe seit STALE_MINUTES keinen
+# abgeschlossenen Schedule-Lauf (success oder failure) mehr, entsteht ein eigenes
+# Alarm-Issue. Der Probe-Lauf muss nicht gruen sein -- ein roter Lauf bei Dienstausfall
+# belegt, dass der Monitor arbeitet. Grenze: Watchdog und Probe sind beide GitHub-Schedules
+# desselben Repositories; deaktiviert GitHub Schedules (60 Tage ohne Repository-Aktivitaet),
+# stehen beide still. Details: docs/ops/numra-monitoring.md.
+
+on:
+  schedule:
+    - cron: "47 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  actions: read
+
+concurrency:
+  group: uptime-watchdog
+  cancel-in-progress: false
+
+jobs:
+  watchdog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      ALERT_TITLE: "ALARM: Uptime-Probe laeuft nicht (Monitor veraltet)"
+      ALERT_LABEL: uptime-alert
+      # Beobachtete Schedule-Taktung des Probes: ca. 30 Minuten statt 15 (verzoegerte
+      # und ausgefallene Laeufe); 120 Minuten lassen vier Taktungen Spielraum.
+      STALE_MINUTES: "120"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: scripts/ops
+          persist-credentials: false
+
+      - name: Letzte Probe-Laeufe abrufen
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -uo pipefail
+          # Ein nicht abrufbarer Lauf-Index ergibt eine leere Datei und damit monitor_error.
+          gh api "repos/$GH_REPO/actions/workflows/uptime-probe.yml/runs?event=schedule&status=completed&per_page=20" \
+            > "$RUNNER_TEMP/runs.json" || : > "$RUNNER_TEMP/runs.json"
+
+      - name: Heartbeat bewerten
+        id: heartbeat
+        env:
+          RUNS_FILE: ${{ runner.temp }}/runs.json
+        run: python3 scripts/ops/uptime_probe.py watchdog
+
+      - name: Alarm-Issue pflegen
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PROBE_OK: ${{ steps.heartbeat.outputs.ok }}
+          PROBE_CATEGORY: ${{ steps.heartbeat.outputs.category }}
+          PROBE_CODE: "0"
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          REMIND_HOURS: "24"
+        run: bash scripts/ops/uptime_alert.sh
+
+      - name: Lauf bei Fehlschlag rot markieren
+        if: steps.heartbeat.outputs.ok != 'true'
+        run: exit 1

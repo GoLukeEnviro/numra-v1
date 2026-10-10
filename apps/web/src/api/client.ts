@@ -345,6 +345,9 @@ export const api = {
       request<UserOut>("/v1/auth/register", { method: "POST", body }),
     logout: () => request<void>("/v1/auth/logout", { method: "POST" }),
     me: () => request<UserOut>("/v1/auth/me"),
+    /** D2: nachtraegliche 18+-Bestaetigung fuer Bestandskonten (idempotent). */
+    confirmAge: () =>
+      request<UserOut>("/v1/auth/confirm-age", { method: "POST", body: { age_confirmed: true } }),
     /** V1.5 Epic N. Revokes every other active session; the caller's own session
      *  stays valid, so this never signs the caller themselves out. */
     changePassword: (body: ChangePasswordRequest) =>
