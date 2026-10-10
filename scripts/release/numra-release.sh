@@ -460,7 +460,7 @@ phase_prep() {
       # Wie im bewaehrten Host-Skript: `run --rm --no-deps` startet/erstellt keine Abhaengigkeiten.
       # migrate braucht die bereits laufende Datenbank; `--no-deps` verhindert, dass Compose
       # postgres/redis/pdf anfasst. Der Trockenlauf belegt das vor dem Fenster.
-      out=$(DC_FILE="$stage/compose.new.yml" dc --dry-run run --rm --no-deps -T "$MIGRATE_SERVICE" true 2>&1) \
+      out=$(DC_FILE="$stage/compose.new.yml" dc --dry-run run -d --rm --no-deps -T "$MIGRATE_SERVICE" true 2>&1) \
         || die "compose --dry-run (migrate) fehlgeschlagen"
       for u in $UNTOUCHED_SERVICES; do
         if [ "$u" != "$PG_SERVICE" ] && grep -Eiq "(^|[^a-z])${u}([^a-z]|$)" <<< "$out"; then die "migrate-Trockenlauf beruehrt $u"; fi
