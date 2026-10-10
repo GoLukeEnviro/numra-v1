@@ -672,12 +672,20 @@ def s3_g3():
     A, C, U = ST["cl"]["a"], ST["cl"]["c"], ST["cl"]["u"]
     ids = ST["ids"]
     risky, detail = mail_risk()
-    check(
-        "3.0",
-        "Mail-Sicherheit: EMAIL_BACKEND des api-Containers versendet keine echten Mails",
-        not risky,
-        f"EMAIL_BACKEND={detail}",
-    )
+    if risky:
+        # smtp ist hier nur mit --allow-smtp-synthetic angekommen (Preflight); die EMAIL-Schritte unten entfallen
+        info(
+            "3.0",
+            "Mail-Sicherheit: EMAIL_BACKEND=smtp ausdruecklich erlaubt, EMAIL-Einladungsschritte werden uebersprungen",
+            f"EMAIL_BACKEND={detail}",
+        )
+    else:
+        check(
+            "3.0",
+            "Mail-Sicherheit: EMAIL_BACKEND des api-Containers versendet keine echten Mails",
+            True,
+            f"EMAIL_BACKEND={detail}",
+        )
     r = U.post("/v1/connections/invitations", {"method": "LINK"})
     check(
         "3.1",

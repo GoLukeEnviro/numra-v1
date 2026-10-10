@@ -565,3 +565,15 @@ def test_no_proxy_header_without_flag(monkeypatch, module):
     with pytest.raises(RuntimeError):
         module.Client("http://127.0.0.1:1").get("/v1/health/ready")
     assert "X-Numra-Proxy-Auth" not in HeaderSpy.sent[0]
+
+
+def test_smtp_allowed_by_flag_is_info_not_fail_in_g3(monkeypatch):
+    # --allow-smtp-synthetic laesst den Preflight zu; Schritt 3.0 darf den Lauf dann nicht auf FAIL setzen,
+    # sonst ist fuer ein smtp-Ziel nie ein markerfaehiger Bericht moeglich.
+    acc.STEPS.clear()
+    monkeypatch.setitem(acc.ST, "mail_backend", "smtp")
+    monkeypatch.setitem(acc.ST, "cl", {k: FakeClient(k, 500) for k in ("a", "c", "u")})
+    acc.s3_g3()
+    step = next(s for s in acc.STEPS if s["id"] == "3.0")
+    assert step["status"] == "INFO"
+    assert "smtp" in step["evidence"]
