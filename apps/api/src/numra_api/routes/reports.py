@@ -30,6 +30,7 @@ from numra_api.schemas.report import (
 from numra_api.services.beta_gate import require_beta_access
 from numra_api.services.errors import NotFoundError
 from numra_api.services.report_service import create_report_job
+from numra_api.services.usage_quota import GATED_RESPONSES
 
 router = APIRouter(prefix="/v1", tags=["reports"])
 
@@ -87,6 +88,7 @@ def _job_to_out(job: ReportJob) -> ReportJobOut:
     "/reports",
     response_model=ReportOut,
     status_code=201,
+    responses=GATED_RESPONSES,
     dependencies=[
         Depends(require_csrf),
         Depends(require_beta_access(BetaFeature.REPORT)),

@@ -14,10 +14,9 @@ import uuid
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from numra_api.config import Settings
-from numra_api.deps import get_current_user, get_db, get_settings_dep, require_csrf
+from numra_api.deps import get_current_user, get_db, require_csrf
 from numra_api.models import PatternAnalysis, User
-from numra_api.models.enums import BetaFeature, CorrelationTarget
+from numra_api.models.enums import CorrelationTarget
 from numra_api.repositories.evidence import (
     delete_pattern_analysis,
     get_pattern_analysis_for_user,
@@ -29,14 +28,12 @@ from numra_api.schemas.evidence import (
     PatternAnalysisCreateRequest,
     PatternAnalysisOut,
 )
-from numra_api.services.beta_gate import require_beta_access
 from numra_api.services.errors import NotFoundError
 from numra_api.services.evidence_service import (
     compute_evidence_result_for_person,
     save_pattern_analysis,
 )
 from numra_api.services.feature_flags import require_v2_phase
-from numra_api.services.usage_quota import reserve
 
 router = APIRouter(
     prefix="/v1",
@@ -87,14 +84,13 @@ async def get_evidence_result_route(
     "/people/{person_id}/pattern-analyses",
     response_model=PatternAnalysisOut,
     status_code=201,
-    dependencies=[Depends(require_csrf), Depends(require_beta_access(BetaFeature.ANALYSIS))],
+    dependencies=[Depends(require_csrf)],
 )
 async def create_pattern_analysis_route(
     person_id: uuid.UUID,
     body: PatternAnalysisCreateRequest,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db, scope="function"),
-    settings: Settings = Depends(get_settings_dep),
 ) -> PatternAnalysisOut:
     person = await get_person(db, person_id=person_id, user_id=user.id)
     if person is None:
@@ -107,14 +103,6 @@ async def create_pattern_analysis_route(
         metric_key=body.metric_key,
         correlation_target=body.correlation_target,
         correlation_target_value=body.correlation_target_value,
-    )
-    await reserve(
-        db,
-        settings=settings,
-        user_id=user.id,
-        feature=BetaFeature.ANALYSIS,
-        ref_id=analysis.id,
-        settle_now=True,
     )
     return _to_analysis_out(analysis)
 

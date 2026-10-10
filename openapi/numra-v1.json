@@ -8906,6 +8906,9 @@
             },
             "description": "Successful Response"
           },
+          "403": {
+            "description": "BETA_ACCESS_REQUIRED: no individual beta grant (gate enforced)"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -8915,6 +8918,9 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "description": "QUOTA_EXCEEDED: per-user limit reached; see Retry-After and retry_after_seconds"
           }
         },
         "summary": "Post Personal Message Route",
@@ -11860,6 +11866,9 @@
             },
             "description": "Successful Response"
           },
+          "403": {
+            "description": "BETA_ACCESS_REQUIRED: no individual beta grant (gate enforced)"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -11869,6 +11878,9 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "description": "QUOTA_EXCEEDED: per-user limit reached; see Retry-After and retry_after_seconds"
           }
         },
         "summary": "Create Report Route",
@@ -13506,6 +13518,9 @@
             },
             "description": "Successful Response"
           },
+          "403": {
+            "description": "BETA_ACCESS_REQUIRED: no individual beta grant (gate enforced)"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -13515,6 +13530,9 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "description": "QUOTA_EXCEEDED: per-user limit reached; see Retry-After and retry_after_seconds"
           }
         },
         "summary": "Post Message Route",
@@ -13638,6 +13656,9 @@
             },
             "description": "Successful Response"
           },
+          "403": {
+            "description": "BETA_ACCESS_REQUIRED: no individual beta grant (gate enforced)"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -13647,6 +13668,9 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "description": "QUOTA_EXCEEDED: per-user limit reached; see Retry-After and retry_after_seconds"
           }
         },
         "summary": "Create Relationship Analysis Route",
@@ -14616,6 +14640,9 @@
             },
             "description": "Successful Response"
           },
+          "403": {
+            "description": "BETA_ACCESS_REQUIRED: no individual beta grant (gate enforced)"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -14625,6 +14652,9 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "description": "QUOTA_EXCEEDED: per-user limit reached; see Retry-After and retry_after_seconds"
           }
         },
         "summary": "Create Shadow Dynamics Route",

@@ -35,6 +35,7 @@ from numra_api.services.relationship_analysis_service import (
     create_relationship_analysis_job,
     create_shadow_dynamics_job,
 )
+from numra_api.services.usage_quota import GATED_RESPONSES
 
 
 async def _require_membership(
@@ -109,6 +110,7 @@ def _shadow_dynamics_to_out(analysis: ShadowDynamicsAnalysis) -> ShadowDynamicsA
     "/workspaces/{workspace_id}/relationship-analysis",
     response_model=RelationshipAnalysisOut,
     status_code=201,
+    responses=GATED_RESPONSES,
     dependencies=[
         Depends(require_csrf),
         Depends(require_beta_access(BetaFeature.ANALYSIS)),
@@ -170,6 +172,7 @@ async def get_relationship_analysis_route(
     "/workspaces/{workspace_id}/shadow-dynamics",
     response_model=ShadowDynamicsAnalysisOut,
     status_code=201,
+    responses=GATED_RESPONSES,
     dependencies=[
         Depends(require_csrf),
         Depends(require_beta_access(BetaFeature.ANALYSIS)),

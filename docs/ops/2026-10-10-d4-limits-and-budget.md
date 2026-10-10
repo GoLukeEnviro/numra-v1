@@ -20,7 +20,7 @@ längste Jobdauer (Prod-Maximum bisher 1688 s). Die Variablen liest nur der `api
 (Worker settlen/geben nur zurück); leer oder ungesetzt = unbegrenzt.
 
 Eine "Einheit" ist: ein Berichts-Job, ein Analyse-Job (Beziehung ODER Schatten, gemeinsames
-Budget `analysis`), eine gespeicherte Musteranalyse (gleiches Budget), eine Copilot-Nachricht
+Budget `analysis`), eine Copilot-Nachricht
 (geteilt/privat/persönlich, gemeinsames Budget `copilot`).
 
 ## 2. Warum Postgres statt Redis-Lua
@@ -29,7 +29,8 @@ Die Reservierung muss mit der Job-/Nachrichtenzeile gemeinsam committen oder zur
 und ein gescheiterter Job muss seine Einheit genau einmal zurückgeben. Das ist mit der
 Datenbank-Transaktion trivial; ein Redis-Zähler wäre davon entkoppelt (zurückgerollter Job =
 aufgeblähter Zähler, Absturz zwischen INCR und Insert = Drift). Der vorhandene Redis-Rate-Limiter
-(`rate_limit_by_user`) bleibt als grobe Request-Drossel unverändert bestehen.
+(`rate_limit_by_user`, z. B. 30 Anfragen/h) bleibt als grobe Burst-Bremse unverändert bestehen;
+er begrenzt Anfragen, nicht Kontingent-Einheiten.
 
 Mechanik (`services/usage_quota.py`, `repositories/usage_quota.py`, Tabelle
 `usage_reservations`):
@@ -82,7 +83,6 @@ Beta-Gate (403) -> Rate-Limit -> Fachprüfungen (404/409/422) -> Quote (429).
 | Bericht (inkl. Neuerzeugung) | `POST /v1/reports` | `report_service.create_report_job` (nach Idempotenz-Early-Return, `ref=job.id`) | `repositories/reports.py::mark_job_status`, `fail_job_terminally` |
 | Beziehungsanalyse | `POST /v1/workspaces/{id}/relationship-analysis` | `relationship_analysis_service.create_relationship_analysis_job` | `repositories/analysis.py::mark_job_status`, `fail_job_terminally` |
 | Schattendynamik | `POST /v1/workspaces/{id}/shadow-dynamics` | `create_shadow_dynamics_job` | wie oben |
-| Musteranalyse | `POST /v1/people/{id}/pattern-analyses` | `routes/evidence.py` (synchron, direkt `settled`) | entfällt |
 | Copilot geteilt/privat | `POST /v1/workspaces/{id}/copilot/threads/{tid}/messages` | `copilot_service._persist_message_pair` | dort |
 | Copilot persönlich | `POST /v1/me/copilot/threads/{tid}/messages` | `copilot_service._persist_message_pair` | dort |
 | Worker-Jobstart Bericht | `worker.run_one_cycle` | (Reservierung besteht seit dem Enqueue) | Gate-Recheck, bei Fehlschlag `released` |
@@ -90,8 +90,9 @@ Beta-Gate (403) -> Rate-Limit -> Fachprüfungen (404/409/422) -> Quote (429).
 
 Es gibt keinen separaten Regenerations-Endpunkt: "Neu erzeugen" ist ein neuer `POST`
 (Quote) bzw. derselbe `POST` mit gleichem `Idempotency-Key` (keine Quote). Bewusst NICHT
-begrenzt: Lesen, Thread-Anlage, Exporte (PDF, kein LLM), `GET .../evidence-results`
-(reine Berechnung), Check-in-Auswertung (deterministisch, kein LLM).
+begrenzt und ohne Gate: Lesen, Thread-Anlage, Exporte (PDF, kein LLM), `GET .../evidence-results`
+und `POST .../pattern-analyses` (rein rechnerisch, kein LLM, keine Kosten), Check-in-Auswertung
+(deterministisch, kein LLM).
 
 Jobs, die VOR dem Einschalten der Limits eingereiht wurden, haben keine Reservierung;
 Settle/Release sind dort wirkungslose No-ops. Das Einschalten zählt ab Null (Altnutzung
@@ -148,8 +149,8 @@ hinterlegt und wird hier nicht angenommen.
 | Funktion | Einheiten je 24 h | gleichzeitig | Begründung |
 |---|---:|---:|---|
 | Bericht | 3 | 1 | beobachtete Spitze 5/Tag (alle Konten zusammen), 10 in 7 Wochen je Konto; ein langer Job (bis 28 min) soll keinen zweiten parallel starten |
-| Analyse (Beziehung, Schatten, Muster) | 2 | 1 | bisher 1 Job insgesamt; Jobdauer 138 s bei 2 Versuchen |
-| Copilot-Nachricht | 30 | 1 | passt zur bestehenden HTTP-Drossel (30/h); 1 Aufruf je Nachricht, ~ 4 s |
+| Analyse (Beziehung, Schatten) | 2 | 1 | bisher 1 Job insgesamt; Jobdauer 138 s bei 2 Versuchen |
+| Copilot-Nachricht | 30 | 1 | deutlich strenger als die bestehende HTTP-Drossel (30 Anfragen/h, rechnerisch bis zu 720/Tag), die nur eine Burst-Bremse ist und kein Tagesbudget; 1 Aufruf je Nachricht, ~ 4 s |
 
 Daraus ergibt sich die Obergrenze an Provider-Aufrufen und Tokens pro Tag und Konto:
 

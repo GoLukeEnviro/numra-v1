@@ -11,19 +11,19 @@ in der ein Deploy keine bestehenden Nutzer aussperrt.
 | Globales Feature-Flag (`copilot`, `relationship_workspaces`, `evidence_layer`, `v2_master`) | Betreiber, `/v1/admin/flags` | `feature_flags` | Kill-Switch für alle |
 | Individuelle Beta-Berechtigung | Admin je Konto | `entitlement_assignments` -> `entitlement_sets` | nur wer sie hat, darf kostenintensive Funktionen starten |
 
-Kostenintensive Funktionen brauchen serverseitig BEIDES (nur wenn
+Kostenintensive Funktionen (LLM-Aufrufe) brauchen serverseitig BEIDES (nur wenn
 `BETA_GATE_ENFORCED=true`):
 
 | Funktionsgruppe | Berechtigungsspalte (`entitlement_sets`) | Einstiegspunkte |
 |---|---|---|
 | `report` | `premium_reports` | `POST /v1/reports`; Worker-Start (`worker.py`) |
-| `analysis` | `advanced_relationship_analysis` | `POST /v1/workspaces/{id}/relationship-analysis`, `POST /v1/workspaces/{id}/shadow-dynamics`, `POST /v1/people/{id}/pattern-analyses`; Worker-Start (`analysis_worker.py`) |
+| `analysis` | `advanced_relationship_analysis` | `POST /v1/workspaces/{id}/relationship-analysis`, `POST /v1/workspaces/{id}/shadow-dynamics`; Worker-Start (`analysis_worker.py`) |
 | `copilot` | `relationship_copilot` | `POST /v1/workspaces/{id}/copilot/threads/{tid}/messages`, `POST /v1/me/copilot/threads/{tid}/messages` |
 
 Lesezugriffe (bereits erzeugte Berichte/Analysen/Threads ansehen, Threads anlegen,
 Exporte) bleiben offen: ein Entzug sperrt nur das Auslösen neuer Kosten.
-`GET /v1/people/{id}/evidence-results` ist reine Berechnung ohne LLM und ohne
-Persistenz und bleibt ungeschützt.
+`GET /v1/people/{id}/evidence-results` und `POST /v1/people/{id}/pattern-analyses` sind reine
+Berechnung ohne LLM (Musteranalysen speichern nur das Ergebnis) und bleiben ohne Gate und ohne Quote.
 
 Bestand der Tabellen (Prod, 2026-10-09, nur gezählt): `entitlement_sets` = 1 Zeile
 (`beta_default`, alle Funktionen true, keine Limits), `entitlement_assignments` = 0
@@ -86,8 +86,9 @@ Ziel: Der Deploy sperrt niemanden aus. Reihenfolge verbindlich:
      (read-only-Transaktion, Konten als Kurz-Hash, nur Zähler);
    - nach Deploy: `python -m numra_api.cli beta inventory [--since-days N]`
      (HMAC-Pseudonyme, gleiche Zählweise).
-   Gezählt werden je Konto Berichte, Analyse-Jobs (Beziehung/Schatten),
-   gespeicherte Musteranalysen, Copilot-Nachrichten des Nutzers.
+   Gezählt werden je Konto Berichte, Analyse-Jobs (Beziehung/Schatten) und
+   Copilot-Nachrichten des Nutzers als Nutzungskriterium; gespeicherte Musteranalysen werden
+   nur angezeigt (kein LLM).
 3. **Backfill, ausdrücklich ausgelöst.** Weder Migration noch Start-Hook schalten
    frei. `python -m numra_api.cli beta backfill [--since-days N]` ist Dry-run und
    listet nur Pseudonyme; erst `--apply` schreibt. Kandidaten: aktive Konten mit

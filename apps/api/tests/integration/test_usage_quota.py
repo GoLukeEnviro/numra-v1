@@ -7,6 +7,9 @@ import asyncio
 
 import pytest
 from sqlalchemy import func, select
+from test_copilot_threads import _connect as _copilot_connect
+from test_copilot_threads import _create_thread as _copilot_thread
+from test_copilot_threads import _post_message as _copilot_post
 from test_evidence_results import _create_person, _login
 from test_personal_copilot_threads import (
     _create_personal_thread,
@@ -14,7 +17,7 @@ from test_personal_copilot_threads import (
     _post_personal_message,
 )
 from test_relationship_analysis import _set_up_partner_workspace
-from test_report_retry import _FlakyProvider
+from test_report_retry import _clear_backoff, _FlakyProvider, _ScaffoldingProvider
 
 from numra_api.models import Report, UsageReservation
 from numra_api.worker import run_one_cycle
@@ -261,10 +264,11 @@ async def test_relationship_and_shadow_share_the_analysis_budget(
     assert len(await _rows(sessionmaker, "analysis")) == 1
 
 
-async def test_pattern_analysis_counts_against_the_analysis_budget(
+async def test_pattern_analysis_is_free_of_gate_and_quota(
     client, sessionmaker, lukas_payload, limits
 ) -> None:
-    limits(quota_analysis_max=1)
+    """Rein rechnerisch (kein LLM): weder Beta-Gate noch Analyse-Budget."""
+    limits(quota_analysis_max=1, beta_gate_enforced=True)
     headers = await _login(client, sessionmaker, "q-pattern@example.com")
     person_id = await _create_person(client, headers, lukas_payload)
     body = {
@@ -272,14 +276,46 @@ async def test_pattern_analysis_counts_against_the_analysis_budget(
         "correlation_target": "PERSONAL_DAY",
         "correlation_target_value": 1,
     }
-    first = await client.post(
-        f"/v1/people/{person_id}/pattern-analyses", json=body, headers=headers
+    for _ in range(3):
+        response = await client.post(
+            f"/v1/people/{person_id}/pattern-analyses", json=body, headers=headers
+        )
+        assert response.status_code == 201
+    assert await _rows(sessionmaker, "analysis") == []
+
+
+async def test_window_slides_old_units_stop_counting(
+    client, sessionmaker, lukas_payload, limits
+) -> None:
+    limits(quota_report_max=1, quota_report_window_seconds=3600)
+    headers = await _login(client, sessionmaker, "q-slide@example.com")
+    calc_id = await _calculation_id(client, headers, lukas_payload)
+    assert (await _post_report(client, headers, calc_id)).status_code == 201
+    denied = await _post_report(client, headers, calc_id)
+    assert denied.status_code == 429
+
+    from sqlalchemy import text
+
+    async with sessionmaker() as db:
+        await db.execute(
+            text("UPDATE usage_reservations SET created_at = now() - interval '2 hours'")
+        )
+        await db.commit()
+
+    assert (await _post_report(client, headers, calc_id)).status_code == 201
+
+
+async def test_workspace_copilot_route_is_limited(client, sessionmaker, limits) -> None:
+    limits(quota_copilot_max=1)
+    workspace_id, _connection_id = await _copilot_connect(
+        client, sessionmaker, "q-wschat-a@example.com", "q-wschat-b@example.com"
     )
-    second = await client.post(
-        f"/v1/people/{person_id}/pattern-analyses", json=body, headers=headers
-    )
+    headers = {"x-csrf-token": client.cookies["numra_csrf"]}
+    thread = await _copilot_thread(client, workspace_id, headers, "RELATIONSHIP_SHARED")
+    first = await _copilot_post(client, workspace_id, thread["id"], headers, "Hallo?")
+    second = await _copilot_post(client, workspace_id, thread["id"], headers, "Nochmal?")
     assert (first.status_code, second.status_code) == (201, 429)
-    assert [r.state for r in await _rows(sessionmaker, "analysis")] == ["settled"]
+    assert second.json()["feature"] == "copilot"
 
 
 async def test_copilot_messages_are_limited_and_parallel_safe(client, sessionmaker, limits) -> None:
@@ -315,3 +351,25 @@ async def test_failed_copilot_reply_hands_the_unit_back(client, sessionmaker, li
     assert (
         await _post_personal_message(client, thread["id"], headers, "Und noch")
     ).status_code == 429
+
+
+async def test_persistence_gate_rejection_hands_the_unit_back(
+    client, sessionmaker, lukas_payload, limits
+) -> None:
+    """#315's persistence gate rejects scaffolding output as a retryable generation error;
+    once the attempts are used up the job fails terminally and the unit comes back."""
+    limits(quota_report_max=1)
+    headers = await _login(client, sessionmaker, "q-gate-reject@example.com")
+    calc_id = await _calculation_id(client, headers, lukas_payload)
+    job_id = (await _post_report(client, headers, calc_id)).json()["job_id"]
+    assert (await _post_report(client, headers, calc_id)).status_code == 429
+
+    provider = _ScaffoldingProvider()
+    for _ in range(5):
+        await run_one_cycle(sessionmaker, llm=provider)
+        await _clear_backoff(sessionmaker, job_id)
+        if [r.state for r in await _rows(sessionmaker, "report")] != ["active"]:
+            break
+
+    assert [r.state for r in await _rows(sessionmaker, "report")] == ["released"]
+    assert (await _post_report(client, headers, calc_id)).status_code == 201

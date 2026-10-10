@@ -40,7 +40,16 @@ from numra_api.repositories.usage_quota import (
 )
 from numra_api.services.errors import QuotaExceeded
 
-__all__ = ["QuotaLimits", "limits_for", "reserve"]
+__all__ = ["GATED_RESPONSES", "QuotaLimits", "limits_for", "reserve"]
+
+#: OpenAPI `responses=` for every route that starts cost-intensive work.
+GATED_RESPONSES: dict[int | str, dict[str, str]] = {
+    403: {"description": "BETA_ACCESS_REQUIRED: no individual beta grant (gate enforced)"},
+    429: {
+        "description": "QUOTA_EXCEEDED: per-user limit reached; "
+        "see Retry-After and retry_after_seconds"
+    },
+}
 
 #: Retry hint when the concurrency limit (not the window) is what blocked the request.
 CONCURRENT_RETRY_AFTER_SECONDS = 30
@@ -73,11 +82,10 @@ async def reserve(
     user_id: uuid.UUID,
     feature: BetaFeature,
     ref_id: uuid.UUID,
-    settle_now: bool = False,
 ) -> bool:
     """Reserve one unit or raise `QuotaExceeded` (429). Returns True iff this call
     consumed a unit. Caller owns the transaction; on `QuotaExceeded` nothing was written.
-    ``settle_now`` is for synchronous work without a failure path to hand back."""
+    """
     limits = limits_for(settings, feature)
     if not limits.enabled:
         return False
@@ -119,7 +127,11 @@ async def reserve(
                 retry_after_seconds=CONCURRENT_RETRY_AFTER_SECONDS,
             )
 
-    state = UsageReservationState.SETTLED if settle_now else UsageReservationState.ACTIVE
     return await insert_reservation(
-        db, user_id=user_id, feature=feature, ref_id=ref_id, state=state, now=now
+        db,
+        user_id=user_id,
+        feature=feature,
+        ref_id=ref_id,
+        state=UsageReservationState.ACTIVE,
+        now=now,
     )

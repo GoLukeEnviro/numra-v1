@@ -14,17 +14,14 @@ chooses which knowledge entry or which shadow-interaction rule applies.
 from __future__ import annotations
 
 import re
-from collections.abc import Iterable
 
 from pydantic import BaseModel, ConfigDict
 
 from numra_interpretation.knowledge_loader import KnowledgeBase
 from numra_interpretation.llm.rendering_guard import (
-    canonical_for_check as _canonical_for_check,
-)
-from numra_interpretation.llm.rendering_guard import (
     contains_prompt_scaffolding,
     find_unresolved_template_token,
+    find_unresolved_token_in_payload,
     grounding_prose,
 )
 from numra_interpretation.llm.types import ContextBlock, StructuredGenerationRequest
@@ -212,23 +209,24 @@ def _repair_short_form_labels(text: str, context_blocks: tuple[ContextBlock, ...
     return _SHORT_FORM_LABEL_PATTERN.sub(_replace, text)
 
 
-def _assert_no_unresolved_tokens(texts: Iterable[str]) -> None:
-    """Last line of defence over everything that is about to become a result: no text
-    may still carry prompt scaffolding or an unresolved template token. The per-statement
-    gate already guarantees this for rendered prose; this also covers the deterministic
-    parts (micro tasks) and makes "never assembled, never persisted" independent of the
-    order of the gates above.
+def _assert_no_unresolved_tokens(payload: object) -> None:
+    """Last line of defence over everything that is about to become a result: no string
+    anywhere in it -- rendered prose, micro tasks, provenance refs, ids -- may still carry
+    prompt scaffolding or an unresolved template token. The per-statement gate already
+    guarantees this for rendered prose; checking the complete dumped result also covers
+    every deterministic field and makes "never assembled, never persisted" independent of
+    which field a gate above remembered.
 
     The ``ANALYSIS_VALIDATION_FAILED`` prefix is the log category shared with every other
     pipeline rejection; the stored job ``error_code`` is not taken from the message but
     from the exception class (always ``ANALYSIS_GENERATION_ERROR``, see
-    `numra_api.services.relationship_analysis_service`)."""
-    for text in texts:
-        if find_unresolved_template_token(text) is not None:
-            raise AnalysisGenerationError(
-                f"ANALYSIS_VALIDATION_FAILED: result text carries an unresolved token: "
-                f"{text[:80]!r}"
-            )
+    `numra_api.services.relationship_analysis_service`). The message carries the offending
+    token only, never the surrounding prose."""
+    token = find_unresolved_token_in_payload(payload)
+    if token is not None:
+        raise AnalysisGenerationError(
+            f"ANALYSIS_VALIDATION_FAILED: result carries an unresolved token {token!r}"
+        )
 
 
 def _resolve_placeholders(
@@ -311,7 +309,7 @@ def _validate_and_resolve_text(
     malformed/unresolved placeholder marker is left over. Raises
     `InvalidAnalysisSection` on any of them — the caller's existing one-repair-attempt
     pattern catches it."""
-    if contains_prompt_scaffolding(text) or contains_prompt_scaffolding(_canonical_for_check(text)):
+    if contains_prompt_scaffolding(text):
         raise InvalidAnalysisSection(
             "PromptScaffoldingRejected: provider returned its own prompt scaffolding "
             "instead of rendered text (never rendered or persisted)"
@@ -515,11 +513,8 @@ async def generate_relationship_analysis(
                 ) from retry_exc
         dimensions.append(DimensionThemes(dimension_id=dimension_id, statements=(statement,)))
 
-    _assert_no_unresolved_tokens(
-        statement.text for dimension in dimensions for statement in dimension.statements
-    )
     health = await llm.health()
-    return RelationshipAnalysisResult(
+    result = RelationshipAnalysisResult(
         relationship_type=relationship_type,
         dimensions=tuple(dimensions),
         calculation_version=profile_a.calculation_version,
@@ -528,6 +523,8 @@ async def generate_relationship_analysis(
         model_provider=health.provider,
         model_name="mock-v1" if health.provider == "mock" else health.provider,
     )
+    _assert_no_unresolved_tokens(result.model_dump(mode="json"))
+    return result
 
 
 async def _generate_shadow_statement(
@@ -736,18 +733,8 @@ async def generate_shadow_dynamics(
     )
 
     micro_tasks = _recommended_micro_tasks(shadow_context)
-    _assert_no_unresolved_tokens(
-        (
-            user_a_statement.text,
-            user_b_statement.text,
-            interaction_statement.text,
-            escalation_statement.text,
-            deescalation_statement.text,
-            *micro_tasks,
-        )
-    )
     health = await llm.health()
-    return ShadowDynamicsResult(
+    result = ShadowDynamicsResult(
         user_a_shadow_themes=(user_a_statement,),
         user_b_shadow_themes=(user_b_statement,),
         interaction_pattern=interaction_statement,
@@ -761,3 +748,5 @@ async def generate_shadow_dynamics(
         model_provider=health.provider,
         model_name="mock-v1" if health.provider == "mock" else health.provider,
     )
+    _assert_no_unresolved_tokens(result.model_dump(mode="json"))
+    return result

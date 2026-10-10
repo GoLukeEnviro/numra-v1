@@ -25,6 +25,7 @@ from numra_api.repositories.reports import (
 )
 from numra_api.services.errors import NotFoundError
 from numra_api.services.llm_generation_log import RecordingLLMProvider
+from numra_api.services.persistence_gate import assert_no_unresolved_tokens
 from numra_api.services.usage_quota import reserve
 from numra_interpretation.errors import InvalidReportSection
 from numra_interpretation.knowledge_loader import load_knowledge_base
@@ -158,8 +159,6 @@ async def run_report_job(
             }
             for section in structured_report.sections
         ]
-        await persist_report_sections(db, report=report, sections=sections_payload)
-
         content_json = {
             "report_type": structured_report.report_type,
             "language": structured_report.language,
@@ -171,6 +170,13 @@ async def run_report_job(
             "total_word_count": structured_report.total_word_count,
             "sections": sections_payload,
         }
+        assert_no_unresolved_tokens(
+            content_json,
+            strict_braces=False,
+            error=ReportGenerationError,
+            code="REPORT_VALIDATION_FAILED",
+        )
+        await persist_report_sections(db, report=report, sections=sections_payload)
         await finalize_report(
             db, report=report, content_json=content_json, generated_at=dt.datetime.now(dt.UTC)
         )

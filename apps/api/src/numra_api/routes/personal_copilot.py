@@ -56,6 +56,7 @@ from numra_api.services.copilot_service import (
 )
 from numra_api.services.errors import ApplicationError
 from numra_api.services.feature_flags import require_v2_phase
+from numra_api.services.usage_quota import GATED_RESPONSES
 from numra_interpretation.llm.types import LLMProvider
 
 router = APIRouter(
@@ -148,6 +149,7 @@ async def list_personal_messages_route(
     "/threads/{thread_id}/messages",
     response_model=MessagePairOut,
     status_code=201,
+    responses=GATED_RESPONSES,
     dependencies=[
         Depends(require_csrf),
         Depends(require_beta_access(BetaFeature.COPILOT)),

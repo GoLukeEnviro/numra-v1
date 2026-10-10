@@ -58,6 +58,7 @@ from numra_api.services.copilot_context_builder import (
 )
 from numra_api.services.errors import ApplicationError, NotFoundError, ThreadArchiveForbidden
 from numra_api.services.llm_generation_log import RecordingLLMProvider
+from numra_api.services.persistence_gate import assert_no_unresolved_tokens
 from numra_api.services.usage_quota import reserve
 from numra_api.services.workspace_guard import assert_workspace_active_by_id
 from numra_interpretation.llm.errors import LLMProviderError
@@ -431,9 +432,14 @@ async def _persist_message_pair(
         )
     except BaseException:
         if reserved:
-            await db.rollback()
-            await release_reservation(db, feature=BetaFeature.COPILOT, ref_id=ref_id)
-            await db.commit()
+            try:
+                await db.rollback()
+                await release_reservation(db, feature=BetaFeature.COPILOT, ref_id=ref_id)
+                await db.commit()
+            except Exception:  # noqa: BLE001 - never mask the original exception
+                logger.exception(
+                    "copilot quota release failed (ref=%s); stale-timeout applies", ref_id
+                )
         raise
     if reserved:
         if assistant_message.status == ChatMessageStatus.COMPLETE:
@@ -508,6 +514,12 @@ async def _generate_message_pair(
             grounding_profiles=built.grounding_profiles,
         )
 
+        assert_no_unresolved_tokens(
+            result.text,
+            strict_braces=False,
+            error=AnalysisGenerationError,
+            code="PROMPT_SCAFFOLDING_REJECTED",
+        )
         assistant_message = await update_message(
             db,
             message=assistant_message,
