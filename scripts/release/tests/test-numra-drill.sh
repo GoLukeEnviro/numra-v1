@@ -67,6 +67,7 @@ DRILL_NEW_API_IMAGE=api:new
 DRILL_MIGRATE_IMAGE=mig:new
 SUDO_CMD=$BIN/sudo
 CFG
+  chmod 600 "$T/drill.env"
   export PATH="$BIN:$PATH" FAKE_WORLD="$W"
 }
 
