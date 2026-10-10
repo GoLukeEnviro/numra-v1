@@ -62,6 +62,9 @@ def make_client(settings: Settings, db_engine) -> Callable[..., object]:
                     recorder.append(key)
                     return await inner.check(key=key, limit=limit, window_seconds=window_seconds)
 
+                peek = inner.peek
+                reset = inner.reset
+
             app.state.rate_limiter = Recording()
         transport = ASGITransport(app=app, client=(peer, 50000))
         async with AsyncClient(transport=transport, base_url="http://testserver") as ac:

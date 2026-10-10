@@ -31,6 +31,15 @@ class RateLimiter(Protocol):
         increments — callers only call this once per request they want counted."""
         ...
 
+    async def peek(self, *, key: str, limit: int, window_seconds: int) -> RateLimitResult:
+        """Report whether another attempt is still allowed (`count < limit`) WITHOUT
+        incrementing — for counters that only count failures (see `record`/`reset`)."""
+        ...
+
+    async def reset(self, *, key: str) -> None:
+        """Clear the counter for ``key`` (e.g. after a successful login)."""
+        ...
+
 
 class InMemoryRateLimiter:
     """Process-local fixed-window counter. Correct for a single instance (matches its
@@ -54,6 +63,35 @@ class InMemoryRateLimiter:
             allowed=count <= limit, remaining=max(0, limit - count), retry_after_seconds=retry_after
         )
 
+    async def peek(self, *, key: str, limit: int, window_seconds: int) -> RateLimitResult:
+        now = time.monotonic()
+        async with self._lock:
+            count, window_start = self._counts.get(key, (0, now))
+            if now - window_start >= window_seconds:
+                count, window_start = 0, now
+        retry_after = max(0, int(window_seconds - (now - window_start)))
+        return RateLimitResult(
+            allowed=count < limit, remaining=max(0, limit - count), retry_after_seconds=retry_after
+        )
+
+    async def reset(self, *, key: str) -> None:
+        async with self._lock:
+            self._counts.pop(key, None)
+
+
+#: INCR + EXPIRE als eine atomare Einheit. Ein Schlüssel ohne TTL (TTL == -1, z. B. nach
+#: einem Absturz zwischen INCR und EXPIRE im früheren Zwei-Schritt-Ablauf) bekäme sonst nie ein
+#: Ende und würde den Zähler dauerhaft sperren; er wird hier repariert.
+_INCR_WITH_TTL = """
+local count = redis.call('INCR', KEYS[1])
+local ttl = redis.call('TTL', KEYS[1])
+if count == 1 or ttl < 0 then
+  redis.call('EXPIRE', KEYS[1], ARGV[1])
+  ttl = tonumber(ARGV[1])
+end
+return {count, ttl}
+"""
+
 
 class RedisRateLimiter:
     """Shared fixed-window counter backed by Redis (`INCR` + a one-time `EXPIRE` on the
@@ -62,13 +100,23 @@ class RedisRateLimiter:
 
     def __init__(self, client: Redis) -> None:
         self._client = client
+        self._incr = client.register_script(_INCR_WITH_TTL)
 
     async def check(self, *, key: str, limit: int, window_seconds: int) -> RateLimitResult:
-        count = await self._client.incr(key)
-        if count == 1:
-            await self._client.expire(key, window_seconds)
-        ttl = await self._client.ttl(key)
-        retry_after = ttl if isinstance(ttl, int) and ttl > 0 else window_seconds
+        count, ttl = await self._incr(keys=[key], args=[window_seconds])
+        retry_after = ttl if ttl > 0 else window_seconds
         return RateLimitResult(
             allowed=count <= limit, remaining=max(0, limit - count), retry_after_seconds=retry_after
         )
+
+    async def peek(self, *, key: str, limit: int, window_seconds: int) -> RateLimitResult:
+        raw = await self._client.get(key)
+        count = int(raw) if raw is not None else 0
+        ttl = await self._client.ttl(key)
+        retry_after = ttl if isinstance(ttl, int) and ttl > 0 else window_seconds
+        return RateLimitResult(
+            allowed=count < limit, remaining=max(0, limit - count), retry_after_seconds=retry_after
+        )
+
+    async def reset(self, *, key: str) -> None:
+        await self._client.delete(key)

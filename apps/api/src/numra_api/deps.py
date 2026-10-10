@@ -4,6 +4,7 @@ import datetime as dt
 import logging
 import time
 from collections.abc import AsyncIterator, Awaitable, Callable
+from typing import TypeVar
 
 from fastapi import Cookie, Depends, Header, Request
 from redis.exceptions import RedisError
@@ -34,6 +35,7 @@ from numra_interpretation.llm.types import LLMProvider
 
 _ci_diag_log = logging.getLogger("numra_api.ci_diag")
 _rate_limit_log = logging.getLogger("numra_api.rate_limit")
+T = TypeVar("T")
 
 
 def _ci_diag_enabled(request: Request) -> bool:
@@ -145,11 +147,9 @@ async def _enforce_rate_limit(
     if limit is None or window_seconds is None:
         limit, window_seconds = settings.rate_limit_policy(scope)
     key = f"{scope}:{pseudonymous_key(raw_identity, secret=settings.session_secret)}"
-    try:
-        result = await limiter.check(key=key, limit=limit, window_seconds=window_seconds)
-    except (RedisError, OSError):
-        _rate_limit_log.error("rate limiter backend unavailable (scope=%s)", scope)
-        raise RateLimitUnavailable("rate limiter unavailable") from None
+    result = await _limiter_call(
+        scope, limiter.check(key=key, limit=limit, window_seconds=window_seconds)
+    )
     if not result.allowed:
         raise RateLimitExceeded(retry_after_seconds=result.retry_after_seconds)
 
@@ -206,10 +206,29 @@ def rate_limit_by_user(
     return _dependency
 
 
+def _target_args(request: Request, policy: str, target: str) -> dict[str, object]:
+    settings: Settings = request.app.state.settings
+    limit, window_seconds = settings.rate_limit_policy(policy)
+    secret = settings.session_secret
+    return {
+        "key": f"{policy}:{pseudonymous_key(normalize_email(target), secret=secret)}",
+        "limit": limit,
+        "window_seconds": window_seconds,
+    }
+
+
+async def _limiter_call(scope: str, call: Awaitable[T]) -> T:
+    try:
+        return await call
+    except (RedisError, OSError):
+        _rate_limit_log.error("rate limiter backend unavailable (scope=%s)", scope)
+        raise RateLimitUnavailable("rate limiter unavailable") from None
+
+
 async def enforce_target_rate_limit(request: Request, *, policy: str, target: str) -> None:
-    """Limit per target address (normalised e-mail), called at the top of a handler once
-    the body is parsed. Applied identically whether or not an account exists, so neither
-    the limit nor its error reveals which addresses are registered."""
+    """Count every attempt per target address (normalised e-mail), called at the top of a
+    handler once the body is parsed. Applied identically whether or not an account
+    exists, so neither the limit nor its error reveals which addresses are registered."""
     await _enforce_rate_limit(
         raw_identity=normalize_email(target),
         scope=policy,
@@ -218,6 +237,29 @@ async def enforce_target_rate_limit(request: Request, *, policy: str, target: st
         settings=request.app.state.settings,
         limiter=request.app.state.rate_limiter,
     )
+
+
+async def ensure_target_not_blocked(request: Request, *, policy: str, target: str) -> None:
+    """Failure-only counters, step 1: reject when the target already has `limit` recorded
+    failures in the window. Does not count the attempt itself."""
+    args = _target_args(request, policy, target)
+    result = await _limiter_call(policy, request.app.state.rate_limiter.peek(**args))
+    if not result.allowed:
+        raise RateLimitExceeded(retry_after_seconds=result.retry_after_seconds)
+
+
+async def record_target_failure(request: Request, *, policy: str, target: str) -> None:
+    """Failure-only counters, step 2: a failed attempt (wrong password, unknown address,
+    disabled account -- indistinguishable by design) counts."""
+    await _limiter_call(
+        policy, request.app.state.rate_limiter.check(**_target_args(request, policy, target))
+    )
+
+
+async def clear_target_failures(request: Request, *, policy: str, target: str) -> None:
+    """Failure-only counters, step 3: a successful login resets the target's counter."""
+    key = str(_target_args(request, policy, target)["key"])
+    await _limiter_call(policy, request.app.state.rate_limiter.reset(key=key))
 
 
 async def get_current_session(

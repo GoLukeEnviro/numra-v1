@@ -196,34 +196,78 @@ async def test_forgot_password_limits_are_uniform_for_known_and_unknown_addresse
     assert len(sender.sent) == 2
 
 
-async def test_verification_send_has_user_and_ip_limits(make_client) -> None:
-    async with make_client(
-        overrides={
-            "auth:request_email_verification": "2/3600",
-            "auth:request_email_verification:ip": "3/3600",
-        }
-    ) as c:
+async def test_verification_send_is_limited_per_user_not_per_ip(make_client) -> None:
+    from numra_api.rate_limit.policies import DEFAULT_POLICIES
+
+    assert "auth:request_email_verification:ip" not in DEFAULT_POLICIES
+    async with make_client(overrides={"auth:request_email_verification": "2/3600"}) as c:
         await _seed(c, "ver@example.com")
         await _seed(c, "ver2@example.com")
-        login = await c.post(
-            "/v1/auth/login",
-            json={"email": "ver@example.com", "password": PASSWORD},
-            headers=_via("203.0.113.1"),
-        )
-        assert login.status_code == 200
-        csrf = {"x-csrf-token": c.cookies["numra_csrf"]}
 
-        # Nutzer-Zähler greift unabhängig von der IP: dieselbe Session, wechselnde Quellen.
+        async def send_three(email: str) -> list[int]:
+            c.cookies.clear()
+            login = await c.post(
+                "/v1/auth/login",
+                json={"email": email, "password": PASSWORD},
+                headers=_via("203.0.113.1"),
+            )
+            assert login.status_code == 200
+            csrf = {"x-csrf-token": c.cookies["numra_csrf"]}
+            return [
+                (
+                    await c.post(
+                        "/v1/auth/request-email-verification",
+                        headers={**csrf, **_via(f"203.0.113.{n}")},
+                    )
+                ).status_code
+                for n in range(1, 4)
+            ]
+
+        first = await send_three("ver@example.com")
+        # Gleiche IP, anderer Nutzer: eigener Zähler (kein gemeinsamer IP-Bucket).
+        second = await send_three("ver2@example.com")
+    assert first == second == [204, 204, 429]
+
+
+async def test_verification_target_limit_applies_to_the_users_own_address(make_client) -> None:
+    overrides = {
+        "auth:request_email_verification": "10/3600",
+        "auth:request_email_verification:target": "1/3600",
+    }
+    async with make_client(overrides=overrides) as c:
+        await _seed(c, "tgt@example.com")
+        await c.post(
+            "/v1/auth/login", json={"email": "tgt@example.com", "password": PASSWORD}, headers=PROXY
+        )
+        csrf = {"x-csrf-token": c.cookies["numra_csrf"], **PROXY}
         codes = [
-            (
-                await c.post(
-                    "/v1/auth/request-email-verification",
-                    headers={**csrf, **_via(f"203.0.113.{n}")},
-                )
-            ).status_code
-            for n in range(1, 4)
+            (await c.post("/v1/auth/request-email-verification", headers=csrf)).status_code
+            for _ in range(2)
         ]
-    assert codes == [204, 204, 429]
+    assert codes == [204, 429]
+
+
+async def test_login_target_counts_only_failures_and_success_resets(make_client) -> None:
+    async with make_client(overrides={"auth:login:target": "3/60"}) as c:
+        await _seed(c, "reset@example.com")
+        good = {"email": "reset@example.com", "password": PASSWORD}
+        bad = {"email": "reset@example.com", "password": "wrong-password-123"}
+
+        async def post(body: dict, n: int) -> int:
+            return (
+                await c.post("/v1/auth/login", json=body, headers=_via(f"203.0.113.{n}"))
+            ).status_code
+
+        # Viele erfolgreiche Logins sperren nie (zaehlen nicht).
+        assert [await post(good, n) for n in range(1, 7)] == [200] * 6
+        # Zwei Fehlversuche, dann Erfolg setzt den Zaehler zurueck ...
+        assert [await post(bad, 1), await post(bad, 2), await post(good, 3)] == [401, 401, 200]
+        # ... und danach sind wieder drei Fehlversuche erlaubt, der vierte wird gesperrt.
+        assert [await post(bad, n) for n in range(1, 5)] == [401, 401, 401, 429]
+        # Gesperrt: auch das richtige Passwort wird abgewiesen (Brute-Force-Schutz).
+        assert await post(good, 9) == 429
+        mobile = await c.post("/v1/auth/mobile/login", json=good, headers=_via("203.0.113.8"))
+        assert mobile.status_code == 429
 
 
 async def test_user_bucket_ignores_spoofed_user_header(make_client) -> None:
@@ -245,8 +289,10 @@ async def test_user_bucket_ignores_spoofed_user_header(make_client) -> None:
 
 async def test_limiter_backend_outage_fails_closed_without_leaking_details(make_client) -> None:
     class Broken:
-        async def check(self, **_: object) -> object:
+        async def _boom(self, **_: object) -> object:
             raise ConnectionError("redis://:s3cr3t-pass@redis:6379/0 refused")
+
+        check = peek = reset = _boom
 
     async with make_client() as c:
         c._transport.app.state.rate_limiter = Broken()  # type: ignore[attr-defined]
@@ -285,5 +331,6 @@ async def test_unknown_override_policy_and_bad_spec_are_rejected_at_startup() ->
         Settings(database_url=db, environment="test", rate_limit_overrides={"nope": "1/1"})
     with pytest.raises(ValidationError, match="erwartet"):
         Settings(database_url=db, environment="test", rate_limit_overrides={"auth:login": "10"})
-    with pytest.raises(ValidationError, match=">= 1"):
-        Settings(database_url=db, environment="test", rate_limit_overrides={"auth:login": "0/60"})
+    for bad in ("0/60", "10001/60", "10/604801", "10/0"):
+        with pytest.raises(ValidationError, match="muss 1"):
+            Settings(database_url=db, environment="test", rate_limit_overrides={"auth:login": bad})

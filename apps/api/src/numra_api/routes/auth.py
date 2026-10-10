@@ -11,7 +11,9 @@ from numra_api.auth.passwords import hash_password, verify_password
 from numra_api.auth.sessions import generate_session_token, hash_session_token
 from numra_api.config import Settings
 from numra_api.deps import (
+    clear_target_failures,
     enforce_target_rate_limit,
+    ensure_target_not_blocked,
     get_current_bearer_session,
     get_current_bearer_user,
     get_current_session,
@@ -21,6 +23,7 @@ from numra_api.deps import (
     get_settings_dep,
     rate_limit_by_ip,
     rate_limit_by_user,
+    record_target_failure,
     require_csrf,
 )
 from numra_api.email.sender import EmailSender
@@ -61,6 +64,9 @@ from numra_api.services.errors import (
     InvalidCredentials,
     SelfSignupDisabled,
 )
+
+#: Failure-only counter shared by web and mobile login (one target address = one counter).
+LOGIN_TARGET_POLICY = "auth:login:target"
 
 router = APIRouter(prefix="/v1/auth", tags=["auth"])
 
@@ -176,15 +182,17 @@ async def login(
     db: AsyncSession = Depends(get_db, scope="function"),
     settings: Settings = Depends(get_settings_dep),
 ) -> UserOut:
-    await enforce_target_rate_limit(request, policy="auth:login:target", target=body.email)
+    await ensure_target_not_blocked(request, policy=LOGIN_TARGET_POLICY, target=body.email)
     user = await get_user_by_email(db, email=body.email)
     if user is None or not verify_password(user.password_hash, body.password) or not user.is_active:
+        await record_target_failure(request, policy=LOGIN_TARGET_POLICY, target=body.email)
         # Deliberately identical error for wrong-password, unknown-email, and
         # disabled-account -- a disabled account must never be distinguishable from
         # a simple login failure (see get_current_user's matching anti-enumeration
         # behavior for the session path).
         raise InvalidCredentials("invalid email or password")
 
+    await clear_target_failures(request, policy=LOGIN_TARGET_POLICY, target=body.email)
     await _issue_authenticated_session(response=response, db=db, settings=settings, user=user)
     return UserOut(
         id=str(user.id),
@@ -219,11 +227,13 @@ async def mobile_login(
     db: AsyncSession = Depends(get_db, scope="function"),
     settings: Settings = Depends(get_settings_dep),
 ) -> MobileSessionOut:
-    await enforce_target_rate_limit(request, policy="auth:login:target", target=body.email)
+    await ensure_target_not_blocked(request, policy=LOGIN_TARGET_POLICY, target=body.email)
     user = await get_user_by_email(db, email=body.email)
     if user is None or not verify_password(user.password_hash, body.password) or not user.is_active:
+        await record_target_failure(request, policy=LOGIN_TARGET_POLICY, target=body.email)
         raise InvalidCredentials("invalid email or password")
 
+    await clear_target_failures(request, policy=LOGIN_TARGET_POLICY, target=body.email)
     token = generate_session_token()
     expires_at = dt.datetime.now(dt.UTC) + dt.timedelta(hours=settings.session_ttl_hours)
     await create_session(
@@ -379,10 +389,10 @@ async def revoke_other_sessions(
     dependencies=[
         Depends(require_csrf),
         Depends(rate_limit_by_user("auth:request_email_verification")),
-        Depends(rate_limit_by_ip("auth:request_email_verification:ip")),
     ],
 )
 async def request_email_verification(
+    request: Request,
     user: User = Depends(get_current_user),
     settings: Settings = Depends(get_settings_dep),
     email_sender: EmailSender = Depends(get_email_sender),
@@ -390,7 +400,14 @@ async def request_email_verification(
 ) -> None:
     """V2: (re-)sends a verification link to the signed-in user's own email address.
     Invalidates any verification token requested earlier before issuing a new one --
-    see services/auth_recovery_service.request_email_verification."""
+    see services/auth_recovery_service.request_email_verification.
+
+    Limits: per `user.id` (dependency) and per target address (the user's own e-mail).
+    Deliberately no per-IP limit here: after login the key is the user id, and at
+    `TRUSTED_PROXY_HOPS=0` an IP bucket would be shared by every web user."""
+    await enforce_target_rate_limit(
+        request, policy="auth:request_email_verification:target", target=user.email
+    )
     await auth_recovery_service.request_email_verification(
         db, user=user, settings=settings, email_sender=email_sender
     )

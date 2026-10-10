@@ -98,3 +98,36 @@ async def test_redis_limiter_window_expires(redis_client) -> None:
     assert not (await limiter.check(key=key, limit=1, window_seconds=1)).allowed
     await asyncio.sleep(1.2)
     assert (await limiter.check(key=key, limit=1, window_seconds=1)).allowed
+
+
+async def test_redis_limiter_repairs_a_counter_without_ttl(redis_client) -> None:
+    """Ein Schluessel ohne TTL (Absturz zwischen INCR und EXPIRE im frueheren
+    Zwei-Schritt-Ablauf) wuerde den Zaehler dauerhaft sperren; check() repariert ihn."""
+    limiter = RedisRateLimiter(redis_client)
+    await redis_client.set("test:no-ttl", 5)
+    assert await redis_client.ttl("test:no-ttl") == -1
+    result = await limiter.check(key="test:no-ttl", limit=3, window_seconds=60)
+    assert not result.allowed
+    assert 0 < await redis_client.ttl("test:no-ttl") <= 60
+    assert 0 < result.retry_after_seconds <= 60
+
+
+async def test_redis_limiter_sets_ttl_atomically_on_first_increment(redis_client) -> None:
+    limiter = RedisRateLimiter(redis_client)
+    await limiter.check(key="test:atomic", limit=3, window_seconds=60)
+    assert 0 < await redis_client.ttl("test:atomic") <= 60
+    await limiter.check(key="test:atomic", limit=3, window_seconds=60)
+    assert await redis_client.get("test:atomic") == b"2"
+
+
+@pytest.mark.parametrize("backend", ["memory", "redis"])
+async def test_peek_does_not_count_and_reset_clears(backend: str, redis_client) -> None:
+    limiter = InMemoryRateLimiter() if backend == "memory" else RedisRateLimiter(redis_client)
+    key = f"test:peek-{backend}"
+    assert (await limiter.peek(key=key, limit=2, window_seconds=60)).allowed
+    assert (await limiter.peek(key=key, limit=2, window_seconds=60)).remaining == 2
+    await limiter.check(key=key, limit=2, window_seconds=60)
+    await limiter.check(key=key, limit=2, window_seconds=60)
+    assert not (await limiter.peek(key=key, limit=2, window_seconds=60)).allowed
+    await limiter.reset(key=key)
+    assert (await limiter.peek(key=key, limit=2, window_seconds=60)).allowed

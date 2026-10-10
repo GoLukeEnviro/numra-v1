@@ -105,32 +105,63 @@ definiertes Fallback).
 
 Alle Schlüssel sind mit `SESSION_SECRET` pseudonymisiert (keine Klartext-IP/-Adresse in Redis).
 
-| Policy (Default Anzahl/Sekunden) | Schlüsselart | Endpunkte |
-|---|---|---|
-| `auth:login` 10/60 · `auth:mobile-login` 10/60 | IP | `/login`, `/mobile/login` |
-| `auth:login:target` 20/900 | Ziel-Adresse | `/login` und `/mobile/login` teilen den Zähler |
-| `auth:register` 5/3600 · `auth:register:target` 3/3600 | IP · Ziel-Adresse | `/register` |
-| `auth:forgot_password` 5/3600 · `…:target` 3/3600 | IP · Ziel-Adresse | `/forgot-password` |
-| `auth:reset_password` 10/3600 · `auth:verify_email` 10/3600 | IP | `/reset-password`, `/verify-email` (Token statt Adresse im Body) |
-| `auth:request_email_verification` 5/3600 · `…:ip` 20/3600 | Nutzer · IP | `/request-email-verification` (Mail-Versand an das eigene Konto) |
+| Policy (Default Anzahl/Sekunden) | Schlüsselart | Zählt | Endpunkte |
+|---|---|---|---|
+| `auth:login` 10/60 · `auth:mobile-login` 10/60 | IP | jeden Versuch | `/login`, `/mobile/login` |
+| `auth:login:target` 20/900 | Ziel-Adresse | **nur Fehlversuche**; Erfolg setzt zurück | `/login` und `/mobile/login` teilen den Zähler |
+| `auth:register` 5/3600 · `auth:register:target` 3/3600 | IP · Ziel-Adresse | jeden Versuch | `/register` |
+| `auth:forgot_password` 5/3600 · `…:target` 3/3600 | IP · Ziel-Adresse | jeden Versuch | `/forgot-password` |
+| `auth:reset_password` 10/3600 · `auth:verify_email` 10/3600 | IP | jeden Versuch | `/reset-password`, `/verify-email` (Token statt Adresse im Body) |
+| `auth:request_email_verification` 5/3600 · `…:target` 5/3600 | Nutzer-ID · eigene Adresse | jeden Versuch | `/request-email-verification` |
 
-Überschreibbar per `RATE_LIMIT_OVERRIDES` (JSON, validiert beim Start; unbekannte Policy oder
-ungültiges Format verhindern den Start). Bestehende Nutzer-Limits anderer Router bleiben
+Bewusst **kein** IP-Limit auf der authentisierten Verifikations-Route: nach der Anmeldung zählt die
+`user.id`; bei `TRUSTED_PROXY_HOPS=0` würde ein IP-Bucket von allen Web-Nutzern geteilt.
+
+Überschreibbar per `RATE_LIMIT_OVERRIDES` (JSON, beim Start validiert: bekannte Policy, Anzahl
+1..10000, Fenster 1..604800 s; sonst Startfehler). Bestehende Nutzer-Limits anderer Router bleiben
 unverändert (bereits Nutzer-ID-basiert).
 
-**Keine Enumeration:** Die Ziel-Adress-Limits zählen vor jeder Kontoprüfung; 429-Antwort,
-Body und Zähler sind für registrierte und unbekannte Adressen identisch (Test vergleicht beide
-Verläufe Schritt für Schritt). Das bestehende `409 EMAIL_ALREADY_REGISTERED` bei `/register`
-ist eine **vorhandene** Enumerationsfläche und nicht Teil dieses ADR (bewusst unverändert).
+**Keine Enumeration:** Die Ziel-Adress-Zähler greifen vor jeder Kontoprüfung; ein Fehlversuch
+(falsches Passwort, unbekannte Adresse, deaktiviertes Konto) zählt gleich. 429-Antwort, Body und
+Verlauf sind für registrierte und unbekannte Adressen identisch (Test vergleicht beide). Das
+bestehende `409 EMAIL_ALREADY_REGISTERED` bei `/register` ist eine **vorhandene** Enumerationsfläche
+und nicht Teil dieses ADR (bewusst unverändert).
+
+### Risikobewertung: Sperren fremder Konten (Login)
+
+Ein Ziel-Limit kann von Dritten missbraucht werden, um Logins für ein Konto (auch Admins) zu
+verhindern. Maßnahmen und Restrisiko:
+- Gezählt werden **nur Fehlversuche**; erfolgreiche Logins zählen nicht und setzen zurück. Legitime
+  Nutzer mit Tippfehlern erreichen 20 Fehlversuche/15 min nicht.
+- Davor liegt das IP-Limit (10/min je vertrauenswürdiger IP); Fehlversuche aus gesperrten IPs
+  erreichen den Ziel-Zähler gar nicht.
+- **Restrisiko (akzeptiert):** Ein Angreifer mit wechselnden IPs hält ein Konto mit ~1,4
+  Fehlversuchen/min dauerhaft gesperrt (während der Sperre wird auch das richtige Passwort
+  abgewiesen – das ist der Brute-Force-Schutz). Das Konto bleibt über „Passwort vergessen“ erreichbar
+  (eigener Zähler), setzt aber den Login-Zähler nicht zurück. Abhilfe im Betrieb: Fenster/Schwelle per
+  `RATE_LIMIT_OVERRIDES` anpassen oder den Schlüssel `auth:login:target:<hmac>` in Redis löschen
+  (Operator). Eine IP-gebundene Entsperrung („bekannte Geräte“) ist bewusst nicht Teil dieser Stufe.
+- Admin-Konten sind dadurch nicht stärker betroffen als andere; `/v1/admin/*` bleibt zusätzlich hinter
+  Session, Rolle, CSRF und Origin.
+
+**`forgot_password:target` (3/h) bleibt** als Schutz gegen Mail-Bomben auf eine fremde Adresse.
+Trade-off: Ein Angreifer kann dem Opfer für bis zu eine Stunde das Anfordern einer Reset-Mail
+verwehren (die Anforderung des Opfers erhält denselben 429 wie jede andere gesperrte Adresse).
+
+**Mobile:** Mobile-Clients rufen die API ohne BFF auf; ohne Secret ist ihr IP-Schlüssel der Peer des
+Ingress → **alle Mobile-Nutzer teilen sich 10 Logins/min** (`auth:mobile-login`). Restrisiko, Empfehlung:
+Mobile-Ingress messen (welche Hops, welche `X-Forwarded-For`-Form) und dafür einen vertrauenswürdigen
+Proxy-Pfad mit Hops definieren, danach das Limit je Client-IP erlauben. Mobile- und Web-Login teilen
+bewusst `auth:login:target` (ein Konto = ein Fehlversuchszähler, sonst wäre der Ziel-Schutz über den
+jeweils anderen Kanal umgehbar).
 
 **Zähler-Ausfall (Redis nicht erreichbar):** fail-closed. Das ist die dokumentierte Fassung des
 bisherigen Verhaltens (ungefangene Exception → 500): jetzt `503 RATE_LIMIT_UNAVAILABLE` mit
-generischem Text, ohne Verbindungsdetails; Log nur mit Policy-Name. Begründung: Login-/Reset-
-Versuche und kostenintensive Endpunkte dürfen bei Zählerausfall nicht unbegrenzt freigegeben
-werden. Folge: Redis-Ausfall = Anmeldung nicht möglich (bereits vorher so, nur als 500).
-`/v1/health/*` ist nicht ratenbegrenzt und meldet den Zustand unabhängig davon.
+generischem Text, ohne Verbindungsdetails; Log nur mit Policy-Name. Folge: Redis-Ausfall = Anmeldung
+nicht möglich (bereits vorher so, nur als 500). `/v1/health/*` ist nicht ratenbegrenzt.
 
-**Grenzen:** Fixed-Window (Randburst bleibt), Missbrauchsschutz statt Sicherheitsgrenze.
-Ein Ziel-Adress-Limit kann von Fremden genutzt werden, um Login-Versuche für ein Konto zeitweise
-zu blockieren (Schwelle 20 pro 15 min bewusst hoch, IP-Limit davor). Ein globales
+**Atomarität:** `RedisRateLimiter.check` führt INCR und EXPIRE als ein Lua-Skript aus; ein Schlüssel
+ohne TTL (z. B. aus dem früheren Zwei-Schritt-Ablauf) wird repariert statt dauerhaft zu sperren.
+
+**Grenzen:** Fixed-Window (Randburst bleibt), Missbrauchsschutz statt Sicherheitsgrenze. Ein globales
 IP-Limit für nicht authentisierte Nicht-Auth-Routen existiert weiterhin nicht (vorher auch nicht).
