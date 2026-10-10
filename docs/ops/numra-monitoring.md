@@ -217,14 +217,17 @@ auch der Timer nicht mehr. Ergänzend prüft deshalb der GitHub-Actions-Workflow
 Hosts**. Er braucht keine Secrets und keinen Zugang zum Host; es entsteht keine neue
 öffentliche Erreichbarkeit (nur ausgehende GETs gegen eine bereits öffentliche URL).
 
-**Was geprüft wird.** `GET https://avenyth.de/api/v1/health/ready` (`curl -sS -m 15`,
-bis zu 3 Versuche mit 20 s Pause). Ergebnis OK nur bei HTTP 200 **und** JSON-Feld
-`status` = `healthy` **und** `database` = `healthy`. Das entspricht der API-Semantik:
-der Gesamtstatus ist nur von der Datenbank abhängig. `llm`, `pdf` und
-`numerology_engine` erzeugen bei Abweichung (außer `disabled`) nur eine Warnung im
-Lauf-Log, keinen Alarm — wie bei den optionalen Diensten im Host-Healthcheck
-(„Alarmsemantik pro Dienst“). Das Log enthält weder Header noch Cookies noch den
-Response-Body, nur Statuscode und die bereinigten Feldwerte.
+**Was geprüft wird.** `GET https://avenyth.de/api/v1/health/ready` (Timeout 15 s, bis zu
+3 Versuche mit 20 s Pause). Bewertung in `scripts/ops/uptime_probe.py` mit denselben
+Sollwerten wie der Host-Healthcheck (`EXPECTED_DEPENDENCIES`): **alle vier** Dienste
+(`database`, `numerology_engine`, `llm`, `pdf`) müssen `healthy` melden. `degraded` ist nur
+eine Warnung (Lauf bleibt grün, ein offenes Alarm-Issue wird dadurch weder kommentiert noch
+geschlossen), `disabled` bei einem Pflichtdienst ist eine Konfigurationsabweichung und
+alarmiert, alles andere (`unhealthy`, fehlendes oder ungültiges Feld) ebenso. Der
+Gesamtstatus der API hängt nur von der Datenbank ab; deshalb wertet der Probe die vier
+Felder einzeln aus. HTTP 200 und 503 werden mit Body gelesen, jeder andere Code, ein
+Verbindungsfehler/Timeout oder eine ungültige Antwort alarmiert. Das Lauf-Log enthält weder
+Header noch Cookies noch den Response-Body, nur HTTP-Status und Kategorie.
 
 **Intervall und Verzögerung.** Zeitplan `*/15 * * * *`. GitHub startet geplante Läufe
 häufig verspätet (teils mehrere Minuten, besonders zu Stundenbeginn), einzelne Läufe
@@ -236,13 +239,52 @@ Der Actions-Tab ist deshalb im Betriebsablauf regelmäßig zu prüfen, ob der Wo
 aktiv ist und zuletzt gelaufen ist.
 
 **Alarmweg.** Bei Fehlschlag legt der Lauf ein Issue mit Label `uptime-alert` und dem
-festen Titel `ALARM: avenyth.de Readiness nicht erreichbar/unhealthy` an (das Label
-wird bei Bedarf erzeugt) und endet rot. Ist bereits ein offenes Issue mit diesem Titel
-vorhanden, wird nur ein Kommentar mit Zeitstempel und Statuscode ergänzt. Bei Erholung
-kommentiert der nächste OK-Lauf „Wiederhergestellt“ mit Zeitstempel und schließt das
-Issue. Die Alarm-Schritte nutzen `gh` mit dem eingebauten `GITHUB_TOKEN`
-(`contents: read`, `issues: write`); der Probe-Schritt selbst nutzt `curl` und `jq`. Es
-werden keine Fremd-Actions verwendet.
+festen, generischen Titel `ALARM: Oeffentliche Readiness gestoert` an (bewusst ohne Hostnamen; Watchdog-Issue: `ALARM: Uptime-Probe laeuft nicht (Monitor veraltet)`) und endet rot. Der
+Issue-Text ist bewusst generisch (Repository ist öffentlich): Zeitpunkt (UTC), HTTP-Status,
+Kategorie (`unreachable`, `http_error`, `invalid_response`, `readiness`, `database`,
+`dependency`, `config_deviation`) und Link auf den Lauf. Keine Hostnamen, Dienstnamen,
+Bodies oder Diagnosedaten.
+
+*Flatterschutz:* wie beim Host-Healthcheck (`FAIL_THRESHOLD`) alarmiert ein einzelner
+Fehllauf nicht. Das Issue entsteht erst, wenn auch der **vorherige abgeschlossene Lauf**
+rot war (Schritt „Vorlauf-Status“; nicht abrufbar zählt als rot). Die 3 Versuche innerhalb
+eines Laufs dauern nur etwa 40 s und zählen deshalb nicht als Wiederholung über Zeit. Bei
+der tatsächlichen Taktung von etwa 30 Minuten (Cron 15) entsteht der Alarm daher nach
+rund 30 bis 60 Minuten. Sofort alarmieren Konfigurationsabweichung (`disabled` bei einem
+Pflichtdienst, wie im Host-Healthcheck) und Monitorfehler. Ein manueller Testlauf zählt
+als Vorlauf: für einen Fehlertest (siehe unten) sind zwei Fehl-Dispatches nacheinander nötig.
+
+*Absturz des Probes:* Der Alarm-Schritt läuft mit `if: always()`. Fehlende oder
+unbekannte Ausgaben des Probe-Schritts (Absturz, nicht erlaubte URL) gelten als
+`monitor_error` und alarmieren sofort, nie als „ok“. Scheitert schon der Checkout, legt ein
+Minimal-Schritt ohne Skripte das Issue an. Die Issue-Suche arbeitet ohne Label-Filter,
+damit ein entferntes Label nicht zu einem neuen Issue je Lauf führt.
+
+*Wiederholungen begrenzt:* es gibt höchstens ein offenes Issue je Titel. Ein weiterer
+Kommentar entsteht nur bei **Kategoriewechsel** oder wenn der letzte Kommentar älter als
+`REMIND_HOURS` (6) ist. Ein Dauerausfall erzeugt damit rund vier Kommentare pro Tag statt
+einen je Lauf. *Erholung:* der nächste gesunde Lauf kommentiert „Wiederhergestellt“ und
+schließt das Issue. Die Logik steckt in `scripts/ops/uptime_probe.py` (`decide`) und
+`scripts/ops/uptime_alert.sh` (nutzt `gh` mit dem eingebauten `GITHUB_TOKEN`,
+`contents: read`, `issues: write`). Einzige Fremd-Action ist `actions/checkout` (nur
+`scripts/ops`, ohne gespeicherte Zugangsdaten).
+
+**Ausfall des Monitors selbst.** `.github/workflows/uptime-watchdog.yml` läuft stündlich
+(Minute 47) und fragt die letzten abgeschlossenen Schedule-Läufe des Probes ab. Liegt der
+jüngste Lauf mit Ergebnis `success` oder `failure` länger als `STALE_MINUTES` (120)
+zurück, entsteht ein eigenes Issue `ALARM: Uptime-Probe laeuft nicht (Monitor veraltet)`
+(Label `uptime-alert`, Erinnerung alle 24 h, Schließen bei Erholung). Ein roter Probe-Lauf
+zählt als Lebenszeichen, sonst würde jeder Dienstausfall zusätzlich den Watchdog auslösen;
+ein abgestürzter Probe-Lauf wird dagegen vom Alarm-Schritt selbst gemeldet (`monitor_error`).
+Ein nicht lesbarer Lauf-Index oder ein Skriptfehler im Probe wird als `monitor_error`
+gemeldet, nie als „alles gut“. Beim allerersten Lauf des Watchdogs ohne jede Probe-Historie (leerer Lauf-Index) meldet er
+ein falsches `monitor_stale`; im Repository besteht die Historie seit 2026-10-08, der Fall
+tritt hier nicht auf. Die 120 Minuten folgen der beobachteten Taktung (35 Läufe in
+rund 17,5 Stunden, also etwa alle 30 Minuten statt 15); die Erkennungszeit liegt damit bei
+bis zu etwa drei Stunden. *Restrisiko:* Watchdog und Probe sind Schedules desselben
+Repositories. Deaktiviert GitHub Schedules (60 Tage ohne Repository-Aktivität), stehen beide
+still; das fängt nur die regelmäßige Sichtprüfung im Actions-Tab oder ein Heartbeat von
+außerhalb von GitHub (siehe „Backup-Frische und Jobfehler“).
 
 **Benachrichtigung.** Belegt ist nur, dass das Issue erstellt, kommentiert und
 geschlossen wird. Ob und wie GitHub dies als E-Mail oder Push an eine Person zustellt,
@@ -253,13 +295,13 @@ Empfängerliste ist im Workflow bewusst nicht hinterlegt.
 
 **Grenzen.**
 
-- Geprüft wird nur die Erreichbarkeit über Cloudflare/Tunnel und die in der öffentlichen
-  Readiness enthaltenen Dienststatus; nicht jeder Dienst, nicht die Job-Pipeline, keine
-  Sicherungen.
+- Geprüft wird nur die Erreichbarkeit über Cloudflare/Tunnel und die vier in der
+  öffentlichen Readiness enthaltenen Dienststatus; nicht die Job-Pipeline, keine
+  Sicherungen (siehe „Backup-Frische und Jobfehler“).
 - Die öffentliche Readiness kann kurzzeitig zwischengespeichert sein (serverseitiger
   Cache); sehr kurze Ausfälle bleiben unsichtbar.
-- Ein einzelner fehlgeschlagener Lauf (nach 3 Versuchen) alarmiert sofort; es gibt hier
-  keinen Schwellwert über mehrere Läufe wie beim Host-Healthcheck.
+- Der Schwellwert ist fest 2 aufeinanderfolgende Fehlläufe (siehe „Flatterschutz“), nicht
+  konfigurierbar wie `FAIL_THRESHOLD` im Host-Healthcheck.
 - Ein manueller Lauf mit abweichender `target_url` nutzt dasselbe Alarm-Issue: ein
   erfolgreicher Testlauf schließt ein offenes, echtes Alarm-Issue.
 - Einen manuellen Dispatch darf nur auslösen, wer Schreibrechte im Repository hat. Ein
@@ -268,12 +310,19 @@ Empfängerliste ist im Workflow bewusst nicht hinterlegt.
 - Der Probe ersetzt keinen Pager: Zustellung und Reaktion hängen an GitHub und an der
   Person, die das Repo beobachtet.
 
+**Tests.** `scripts/ops/tests/test_uptime_probe.py` (pytest: ok, 503, jeder ehemals
+optionale Dienst down/disabled/fehlend, degraded, Timeout, Erholung innerhalb der Versuche,
+URL-Allowlist, Alarm-Begrenzung, Watchdog) und `scripts/ops/tests/test-uptime-alert.sh`
+(Mock-`gh`: Anlegen, kein Spam, Kategoriewechsel, Erinnerung, Schließen, Issue-Text ohne
+interne Details) laufen im CI-Job `engine-unit-property`. `actionlint` ist für die
+Workflows sauber durchgelaufen.
+
 **Testverfahren.** `target_url` ist auf `https://avenyth.de/...` beschränkt
 (Allowlist, Eingabe nur über `env`, nie direkt in `run:`), sodass der Dispatch nicht
 als Proxy für andere Ziele dient.
 
 ```bash
-# Fehlerfall: 404 -> Alarm-Issue wird erstellt, Lauf ist rot
+# Fehlerfall (zweimal nacheinander, da Schwellwert 2): 404 -> Alarm-Issue, Läufe sind rot
 gh workflow run uptime-probe.yml -f target_url=https://avenyth.de/api/v1/health/does-not-exist
 # Erholung/Normalfall: Standard-URL -> Kommentar "Wiederhergestellt", Issue geschlossen
 gh workflow run uptime-probe.yml
@@ -282,9 +331,41 @@ gh run list --workflow uptime-probe.yml --limit 5
 
 Das Test-Issue danach mit Hinweis „Kontrollierter Test“ schließen (nicht löschen).
 
-**Rückbau.** `.github/workflows/uptime-probe.yml` löschen (und optional das Label
+**Rückbau.** `.github/workflows/uptime-probe.yml` und `uptime-watchdog.yml` löschen (und optional das Label
 `uptime-alert`). Es bleiben keine Ressourcen außerhalb von GitHub zurück.
 
+
+## Backup-Frische und Jobfehler
+
+Beide Alarme entstehen auf dem Host (`numra-healthcheck.sh`: Dump älter als 26 h,
+neue/hängende Jobs, Jobabfrage nicht lesbar) und sind **von außen nicht sichtbar**: die
+öffentliche Readiness enthält weder Sicherungsalter noch Jobzähler, und die Statusdatei ist
+bewusst nicht öffentlich. Sie sind getrennt zu behandeln, weil sie verschiedene Ausfälle
+fangen: Jobfehler sind Laufzeitereignisse (sofort relevant, Zuwachs-basiert), Backup-Frische
+ist ein Alter (träge, 26-h-Schwelle, fängt auch einen nicht gelaufenen Timer).
+
+Ohne Hostzugriff umgesetzt ist nur der Teil, der keine neue Kommunikationsrichtung braucht
+(Monitor-Ausfall, vollständige Dienstprüfung). Für die Zustellung der Host-Alarme ist
+**nichts eingerichtet**; Vorschlag, in der Reihenfolge des geringsten neuen Zugangs
+(Entscheidung beim Betreiber):
+
+1. *Statusdatei als Heartbeat, Pull-Variante ohne neues Secret:* nicht möglich, solange
+   die Datei nicht öffentlich ist. Veröffentlichen verbietet sich (interne Details).
+2. *`OnFailure=`-Unit am Healthcheck mit bereits vorhandenem Zugang:* auf Agent0 ist `gh`
+   für den Benutzer `hermes` angemeldet; eine `OnFailure=`-Unit könnte ein generisches Issue
+   (Kategorie `backup` bzw. `jobs`, Zeitpunkt, keine Details) im Repository anlegen. Das
+   nutzt einen vorhandenen Zugang, nimmt aber dessen Token in den Alarmpfad auf
+   (Rechteumfang vorher prüfen, Token mit Issue-Schreibrecht ist enger als der aktuelle
+   Login) und widerspricht der bisherigen Zusage „kein Zugangsdaten-Zugriff im Skript“;
+   deshalb als eigene, getrennte Unit statt im Skript.
+3. *Vorhandener Messaging-Gateway:* auf Agent0 läuft `hermes-gateway.service`. Ob und
+   welcher Kanal dort für Betreiber-Benachrichtigungen vorgesehen ist, wurde nicht geprüft.
+4. *SMTP:* auf dem Host sind weder `mail` noch `sendmail` noch `msmtp` installiert; erst
+   mit PWA-05 (siehe „Bewusste Grenzen“).
+
+Belegt ist für keinen dieser Wege eine Zustellung. Bis zu einer Entscheidung bleibt es
+bei: lokal sichtbar (`systemctl --failed`, Journal, Statusdatei) und Hostausfall über den
+externen Probe.
 
 ## Was belegt ist / was nicht
 
@@ -307,7 +388,10 @@ Das Test-Issue danach mit Hinweis „Kontrollierter Test“ schließen (nicht l�
 - Dass GitHub-Benachrichtigungen (E-Mail/Push) zu `uptime-alert`-Issues beim Betreiber
   ankommen.
 - Ein externer Alarmkanal für Jobfehler und Backup-Frische: Diese Alarme bleiben lokal
-  (Statusdatei plus `systemctl --failed`).
+  (Statusdatei plus `systemctl --failed`); Vorschläge siehe „Backup-Frische und Jobfehler“.
+- Die überarbeiteten Workflows (Pflicht für alle vier Dienste, Alarm-Begrenzung, Watchdog)
+  sind erst nach Merge im echten Schedule belegt; lokal und im CI laufen nur die Tests
+  mit Attrappen.
 - Hostausfall wird nur vom externen Probe (Issue) erkannt; der Host-Healthcheck kann ihn
   nicht melden.
 - Ein Fehlertest gegen die echten Stacks wurde nicht durchgeführt (nur isolierte

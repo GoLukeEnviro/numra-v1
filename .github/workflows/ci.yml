@@ -66,6 +66,10 @@ jobs:
           uv run --locked coverage report \
             --include="packages/engine-numerology/src/numra_numerology/*" \
             --fail-under=90
+      - name: Uptime-Probe-Logik und Alarm-Skript (ohne Netzwerk)
+        run: |
+          uv run --locked pytest scripts/ops/tests -q
+          PYTHON_BIN="$(uv run --locked python -c 'import sys; print(sys.executable)')" bash scripts/ops/tests/test-uptime-alert.sh
 
   api-integration:
     runs-on: ubuntu-latest
