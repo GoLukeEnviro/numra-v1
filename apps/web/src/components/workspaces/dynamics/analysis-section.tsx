@@ -160,7 +160,14 @@ export function AnalysisSection({
     );
     if (kind === "relationship") {
       const result = asRelationshipAnalysisResult(progress.analysis.result);
-      return result ? <RelationshipAnalysisView result={result} /> : unreadable;
+      return result ? (
+        <RelationshipAnalysisView
+          result={result}
+          contentFlag={"content_flag" in progress.analysis ? progress.analysis.content_flag : undefined}
+        />
+      ) : (
+        unreadable
+      );
     }
     const result = asShadowDynamicsResult(progress.analysis.result);
     return result ? <ShadowDynamicsView result={result} /> : unreadable;

@@ -186,6 +186,12 @@ export const enApp: Record<keyof typeof deApp, string> = {
   "app.reportDetail.errorTitle": "Could not load this report",
   "app.reportDetail.unreadableTitle": "Unreadable report",
 
+  // D6: flag for stored content with technical placeholders
+  "app.contentFlag.title": "This content contains technical placeholders",
+  "app.contentFlag.body":
+    "Internal placeholders were left in the text when it was generated. The text is shown unchanged, but do not rely on individual passages. The original is kept.",
+  "app.contentFlag.sectionBadge": "Contains placeholders",
+
   // Analysis
   "app.analysis.eyebrow": "Calculation",
   "app.analysis.asOf": "As of",
