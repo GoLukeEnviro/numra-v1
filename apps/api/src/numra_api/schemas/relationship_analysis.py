@@ -36,6 +36,8 @@ class RelationshipAnalysisOut(BaseModel):
     generated_at: dt.datetime | None
     created_at: dt.datetime
     content_flag: ContentFlag = ContentFlag.NONE
+    #: D6: set on a regeneration -- the (unchanged) analysis it replaces.
+    regenerated_from_id: uuid.UUID | None = None
 
 
 class ShadowDynamicsAnalysisOut(BaseModel):

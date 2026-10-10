@@ -192,6 +192,24 @@ export const enApp: Record<keyof typeof deApp, string> = {
     "Internal placeholders were left in the text when it was generated. The text is shown unchanged, but do not rely on individual passages. The original is kept.",
   "app.contentFlag.sectionBadge": "Contains placeholders",
 
+  // D6: explicitly triggered, linked regeneration
+  "app.regenerate.action": "Regenerate",
+  "app.regenerate.loading": "Loading preview…",
+  "app.regenerate.previewLlm": "A new text is generated with the language model.",
+  "app.regenerate.previewUsage": "This uses one unit of your limit.",
+  "app.regenerate.previewQuota": "Already used: {used} of {limit} in the current period.",
+  "app.regenerate.previewOriginal":
+    "The original stays unchanged and available; the new version is linked to it.",
+  "app.regenerate.exceeded": "Your limit is currently reached. Please try again later.",
+  "app.regenerate.confirm": "Regenerate now",
+  "app.regenerate.confirming": "Starting…",
+  "app.regenerate.cancel": "Cancel",
+  "app.regenerate.already": "A regenerated version already exists.",
+  "app.regenerate.openExisting": "Open new version",
+  "app.regenerate.notFlagged": "This content no longer contains technical placeholders.",
+  "app.regenerate.replaces": "Regenerated version. The original is kept.",
+  "app.regenerate.openOriginal": "View original",
+
   // Analysis
   "app.analysis.eyebrow": "Calculation",
   "app.analysis.asOf": "As of",

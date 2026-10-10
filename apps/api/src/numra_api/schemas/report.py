@@ -30,6 +30,8 @@ class ReportOut(BaseModel):
     #: itself is returned unchanged.
     content_flag: ContentFlag = ContentFlag.NONE
     flagged_section_ids: list[str] = []
+    #: D6: set on a regeneration -- the (unchanged) report it replaces.
+    regenerated_from_id: str | None = None
 
 
 class ReportSummaryOut(BaseModel):

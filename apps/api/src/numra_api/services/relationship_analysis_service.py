@@ -38,6 +38,7 @@ from numra_api.models.enums import (
     AnalysisType,
     BetaFeature,
     ConsentScope,
+    ContentFlag,
     WorkspaceMemberStatus,
 )
 from numra_api.repositories.analysis import (
@@ -51,7 +52,9 @@ from numra_api.repositories.analysis import (
     finalize_relationship_analysis,
     finalize_shadow_dynamics_analysis,
     get_analysis_job_by_idempotency_key,
+    get_live_relationship_regeneration,
     get_relationship_analysis_for_job,
+    get_relationship_analysis_in_workspace,
     get_shadow_dynamics_analysis_for_job,
     mark_job_status,
     requeue_job_for_retry,
@@ -64,7 +67,10 @@ from numra_api.repositories.workspaces import (
     list_workspace_members,
 )
 from numra_api.services.consent_service import assert_consent
+from numra_api.services.content_flag import analysis_flag
 from numra_api.services.errors import (
+    ContentNotFlagged,
+    IdempotencyKeyConflict,
     KnowledgeFrameNotAvailable,
     NotFoundError,
     RelationshipTypeNotSet,
@@ -72,7 +78,8 @@ from numra_api.services.errors import (
 )
 from numra_api.services.llm_generation_log import RecordingLLMProvider
 from numra_api.services.persistence_gate import assert_no_unresolved_tokens
-from numra_api.services.usage_quota import reserve
+from numra_api.services.regeneration import RegenerationPreview
+from numra_api.services.usage_quota import reserve, snapshot
 from numra_api.services.workspace_guard import assert_workspace_active
 from numra_interpretation.knowledge_loader import load_knowledge_base
 from numra_interpretation.llm.errors import LLMProviderError
@@ -223,6 +230,30 @@ async def create_relationship_analysis_job(
         user_b_id=preconditions.member_b_user_id,
     )
 
+    return await _enqueue_relationship_analysis(
+        db,
+        workspace_id=workspace_id,
+        requester_user_id=requester_user_id,
+        preconditions=preconditions,
+        idempotency_key=idempotency_key,
+        settings=settings,
+        regenerated_from_id=None,
+    )
+
+
+async def _enqueue_relationship_analysis(
+    db: AsyncSession,
+    *,
+    workspace_id: uuid.UUID,
+    requester_user_id: uuid.UUID,
+    preconditions: _WorkspacePreconditions,
+    idempotency_key: str | None,
+    settings: Settings,
+    regenerated_from_id: uuid.UUID | None,
+) -> tuple[AnalysisJob, RelationshipAnalysis]:
+    """The part of a start that fresh generations and regenerations share (after the
+    precondition and consent gates): the latest calculations of both members, the QUEUED
+    job, one reserved unit of quota and the PENDING analysis."""
     calculation_a = await get_latest_calculation_for_person(
         db, person_id=preconditions.person_a_id, user_id=preconditions.member_a_user_id
     )
@@ -261,8 +292,123 @@ async def create_relationship_analysis_job(
         calculation_version=calculation_a.calculation_version,
         knowledge_version=knowledge_version,
         prompt_version=PROMPT_VERSION,
+        regenerated_from_id=regenerated_from_id,
     )
     return job, analysis
+
+
+async def _guard_relationship_regeneration(
+    db: AsyncSession,
+    *,
+    workspace_id: uuid.UUID,
+    analysis_id: uuid.UUID,
+    requester_user_id: uuid.UUID,
+    for_update: bool,
+) -> tuple[_WorkspacePreconditions, RelationshipAnalysis]:
+    """The access checks every regeneration step shares: workspace membership (404 for
+    non-members), an active workspace, the analysis belonging to this workspace, the
+    relationship frame and the CURRENT mutual consent -- a revoked consent closes preview
+    and regeneration even though the old analysis stays readable."""
+    preconditions = await _check_workspace_preconditions(
+        db, workspace_id=workspace_id, requester_user_id=requester_user_id
+    )
+    original = await get_relationship_analysis_in_workspace(
+        db, analysis_id=analysis_id, workspace_id=workspace_id, for_update=for_update
+    )
+    if original is None:
+        raise NotFoundError(f"relationship analysis {analysis_id} not found")
+    if load_relationship_frame(KNOWLEDGE_ROOT, preconditions.relationship_type) is None:
+        raise KnowledgeFrameNotAvailable(
+            f"no relationship-frame knowledge for relationship_type="
+            f"{preconditions.relationship_type!r}"
+        )
+    await _assert_mutual_relationship_consent(
+        db,
+        workspace_id=workspace_id,
+        user_a_id=preconditions.member_a_user_id,
+        user_b_id=preconditions.member_b_user_id,
+    )
+    return preconditions, original
+
+
+async def preview_relationship_regeneration(
+    db: AsyncSession,
+    *,
+    workspace_id: uuid.UUID,
+    analysis_id: uuid.UUID,
+    requester_user_id: uuid.UUID,
+    settings: Settings,
+) -> RegenerationPreview:
+    """Read-only: what regenerating this analysis would do (same gates as the start)."""
+    _preconditions, original = await _guard_relationship_regeneration(
+        db,
+        workspace_id=workspace_id,
+        analysis_id=analysis_id,
+        requester_user_id=requester_user_id,
+        for_update=False,
+    )
+    successor = await get_live_relationship_regeneration(db, analysis_id=original.id)
+    return RegenerationPreview(
+        content_flag=analysis_flag(original),
+        feature=BetaFeature.ANALYSIS,
+        existing_regeneration_id=None if successor is None else successor.id,
+        quota=await snapshot(
+            db, settings=settings, user_id=requester_user_id, feature=BetaFeature.ANALYSIS
+        ),
+    )
+
+
+async def regenerate_relationship_analysis_job(
+    db: AsyncSession,
+    *,
+    workspace_id: uuid.UUID,
+    analysis_id: uuid.UUID,
+    requester_user_id: uuid.UUID,
+    idempotency_key: str | None,
+    settings: Settings,
+) -> tuple[AnalysisJob, RelationshipAnalysis, bool]:
+    """Start a NEW analysis linked to a flagged one; the original is never changed. Same
+    contract as `report_service.regenerate_report_job`: returns ``(job, analysis,
+    created)`` and, for a double click or a replayed key, the existing version instead of
+    a second one. It analyses the workspace as it is now (latest calculations, current
+    relationship type), exactly like a fresh analysis would."""
+    preconditions, original = await _guard_relationship_regeneration(
+        db,
+        workspace_id=workspace_id,
+        analysis_id=analysis_id,
+        requester_user_id=requester_user_id,
+        for_update=True,
+    )
+
+    if idempotency_key is not None:
+        existing = await get_analysis_job_by_idempotency_key(
+            db, user_id=requester_user_id, idempotency_key=idempotency_key
+        )
+        if existing is not None:
+            replayed = await get_relationship_analysis_for_job(db, job_id=existing.id)
+            if replayed is None or replayed.regenerated_from_id != original.id:
+                raise IdempotencyKeyConflict("Idempotency-Key belongs to a different request")
+            return existing, replayed, False
+
+    successor = await get_live_relationship_regeneration(db, analysis_id=original.id)
+    if successor is not None:
+        job = await db.get(AnalysisJob, successor.job_id)
+        assert job is not None
+        return job, successor, False
+
+    if analysis_flag(original) is ContentFlag.NONE:
+        raise ContentNotFlagged(f"analysis {analysis_id} has no unresolved template tokens")
+
+    job, analysis = await _enqueue_relationship_analysis(
+        db,
+        workspace_id=workspace_id,
+        requester_user_id=requester_user_id,
+        preconditions=preconditions,
+        idempotency_key=idempotency_key,
+        settings=settings,
+        regenerated_from_id=original.id,
+    )
+    return job, analysis, True
 
 
 async def create_shadow_dynamics_job(
