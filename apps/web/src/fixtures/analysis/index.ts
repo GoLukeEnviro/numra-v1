@@ -136,6 +136,7 @@ export const relationshipAnalysisComplete: RelationshipAnalysisOut = {
   workspace_id: "workspace-1",
   job_id: "rel-job-1",
   status: "COMPLETE",
+  content_flag: "none",
   relationship_type: "PARTNER",
   result: relationshipAnalysisResult as unknown as Record<string, unknown>,
   created_at: "2026-09-01T09:00:00Z",

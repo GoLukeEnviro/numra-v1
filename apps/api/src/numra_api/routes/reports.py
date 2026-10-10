@@ -28,6 +28,7 @@ from numra_api.schemas.report import (
     ReportSummaryOut,
 )
 from numra_api.services.beta_gate import require_beta_access
+from numra_api.services.content_flag import report_flags
 from numra_api.services.errors import NotFoundError
 from numra_api.services.report_service import create_report_job
 from numra_api.services.usage_quota import GATED_RESPONSES
@@ -36,6 +37,7 @@ router = APIRouter(prefix="/v1", tags=["reports"])
 
 
 def _report_to_out(report: Report, job_id: uuid.UUID) -> ReportOut:
+    flags = report_flags(report)
     return ReportOut(
         id=str(report.id),
         calculation_id=str(report.calculation_id),
@@ -48,6 +50,8 @@ def _report_to_out(report: Report, job_id: uuid.UUID) -> ReportOut:
         generated_at=report.generated_at,
         created_at=report.created_at,
         job_id=str(job_id),
+        content_flag=flags.content_flag,
+        flagged_section_ids=list(flags.flagged_section_ids),
     )
 
 
