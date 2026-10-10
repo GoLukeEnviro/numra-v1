@@ -6,7 +6,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from numra_api.models.enums import AnalysisJobStatus, AnalysisType
+from numra_api.models.enums import AnalysisJobStatus, AnalysisType, ContentFlag
 
 
 class AnalysisJobOut(BaseModel):
@@ -35,6 +35,7 @@ class RelationshipAnalysisOut(BaseModel):
     result: dict[str, Any] | None
     generated_at: dt.datetime | None
     created_at: dt.datetime
+    content_flag: ContentFlag = ContentFlag.NONE
 
 
 class ShadowDynamicsAnalysisOut(BaseModel):

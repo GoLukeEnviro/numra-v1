@@ -184,6 +184,12 @@ export const deApp = {
   "app.reportDetail.errorTitle": "Dieser Bericht konnte nicht geladen werden",
   "app.reportDetail.unreadableTitle": "Unlesbarer Bericht",
 
+  // D6: Kennzeichnung gespeicherter Inhalte mit technischen Platzhaltern
+  "app.contentFlag.title": "Dieser Inhalt enthält technische Platzhalter",
+  "app.contentFlag.body":
+    "Beim Erzeugen sind interne Platzhalter im Text stehen geblieben. Der Text wird unverändert angezeigt, du solltest dich aber nicht auf einzelne Stellen verlassen. Das Original bleibt erhalten.",
+  "app.contentFlag.sectionBadge": "Enthält Platzhalter",
+
   // Analyse
   "app.analysis.eyebrow": "Berechnung",
   "app.analysis.asOf": "Zum Stichtag",
