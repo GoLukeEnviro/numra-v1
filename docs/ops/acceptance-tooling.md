@@ -42,6 +42,10 @@ python3 scripts/acceptance/numra_smoke.py --target prod --target-sha <SHA> \
   ausgeführt). `CONFIG_TARGET` muss zu `--target` passen, Container heißen `<PROJECT>-<dienst>-1`,
   `--api-base` muss auf den Port der `READY_URL` zeigen. Ein audit-Lauf gegen Prod-Konfig oder
   Prod-Port bricht ab. `ENVIRONMENT` im API-Container muss lesbar sein (sonst Abbruch).
+- **Proxy-Secret:** Unter `PROXY_SECRET_ENFORCED=true` lehnt die API jeden Cookie-Request ohne
+  `X-Numra-Proxy-Auth` mit `403 PROXY_AUTH_FAILED` ab; die Skripte sprechen die API direkt an.
+  `--send-proxy-secret` liest `INTERNAL_PROXY_SHARED_SECRET` aus `ENV_FILE` der Stack-Konfig und sendet es nur an
+  die API (nie an den Web-Proxy, nie in Ausgaben oder Berichte). Ohne gesetztes Secret: Exit 2.
 - **Mail-Sicherheit:** `EMAIL_BACKEND` des Ziel-Containers wird geprüft (`disabled`/`logging` ok,
   `smtp` nur mit `--allow-smtp-synthetic`; die EMAIL-Einladungsschritte der Acceptance werden bei `smtp`
   trotzdem übersprungen). Die frühere Quelltext-Regex entfällt.

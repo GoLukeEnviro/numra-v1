@@ -507,3 +507,61 @@ def test_smoke_register_sends_age_confirmed(monkeypatch):
     path, body = RecordingClient.bodies[0]
     assert path == "/v1/auth/register"
     assert body["age_confirmed"] is True
+
+
+# ---------------------------------------------------------------- Proxy-Secret (PROXY_SECRET_ENFORCED=true)
+
+
+def test_proxy_secret_read_from_env_file(tmp_path):
+    env_file = tmp_path / "stack.env"
+    env_file.write_text("OTHER=1\nINTERNAL_PROXY_SHARED_SECRET='abc123'\n")
+    stack = {"ENV_FILE": str(env_file)}
+    assert stack_config.proxy_secret(stack) == "abc123"
+
+
+@pytest.mark.parametrize("content", ["OTHER=1\n", "INTERNAL_PROXY_SHARED_SECRET=\n"])
+def test_proxy_secret_missing_or_empty_is_refused(tmp_path, content):
+    env_file = tmp_path / "stack.env"
+    env_file.write_text(content)
+    with pytest.raises(stack_config.StackRefusalError):
+        stack_config.proxy_secret({"ENV_FILE": str(env_file)})
+    with pytest.raises(stack_config.StackRefusalError):
+        stack_config.proxy_secret({})
+
+
+class HeaderSpy:
+    sent: list = []
+
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def request(self, method, path, body=None, headers=None):
+        HeaderSpy.sent.append(dict(headers or {}))
+        raise RuntimeError("stop")
+
+    def close(self):
+        pass
+
+
+@pytest.mark.parametrize("module", [acc, smoke])
+def test_proxy_header_only_on_direct_api_clients(monkeypatch, module):
+    monkeypatch.setattr(http.client, "HTTPConnection", HeaderSpy)
+    monkeypatch.setitem(module.PROXY_SECRET, "v", "s3cret-value")
+    HeaderSpy.sent = []
+    for prefix in ("", "/api"):
+        client = module.Client("http://127.0.0.1:1", prefix=prefix)
+        with pytest.raises(RuntimeError):
+            client.get("/v1/health/ready")
+    direct, via_web = HeaderSpy.sent
+    assert direct["X-Numra-Proxy-Auth"] == "s3cret-value"
+    assert "X-Numra-Proxy-Auth" not in via_web
+
+
+@pytest.mark.parametrize("module", [acc, smoke])
+def test_no_proxy_header_without_flag(monkeypatch, module):
+    monkeypatch.setattr(http.client, "HTTPConnection", HeaderSpy)
+    monkeypatch.setitem(module.PROXY_SECRET, "v", "")
+    HeaderSpy.sent = []
+    with pytest.raises(RuntimeError):
+        module.Client("http://127.0.0.1:1").get("/v1/health/ready")
+    assert "X-Numra-Proxy-Auth" not in HeaderSpy.sent[0]

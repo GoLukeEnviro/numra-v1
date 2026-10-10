@@ -53,6 +53,7 @@ REPORT_BAD_PATTERNS = content_checks.PLACEHOLDERS + content_checks.SCAFFOLDING
 UA = "numra-smoke/2.0"
 
 
+PROXY_SECRET = {"v": ""}  # X-Numra-Proxy-Auth fuer direkte API-Requests (nur mit --send-proxy-secret)
 SECRETS = set()
 LOCK = {"on": False}
 COUNTERS = {"http": 0, "docker": 0}
@@ -154,9 +155,11 @@ def validate(args):
     args.public_base = args.public_base.rstrip("/") if args.public_base else None
     args.api_base, args.web_base = args.api_base.rstrip("/"), args.web_base.rstrip("/")
     try:
-        args.container_prefix = stack_config.bind(
-            args.target, args.api_base, stack_config.load(args.stack_config)
-        )
+        stack = stack_config.load(args.stack_config)
+        args.container_prefix = stack_config.bind(args.target, args.api_base, stack)
+        if args.send_proxy_secret:
+            PROXY_SECRET["v"] = stack_config.proxy_secret(stack)
+            SECRETS.add(PROXY_SECRET["v"])
     except stack_config.StackRefusalError as exc:
         raise Refusal(str(exc)) from exc
     args.pg_container = f"{args.container_prefix}postgres-1"
@@ -320,6 +323,8 @@ class Client:
         elif isinstance(csrf, str):
             h["x-csrf-token"] = csrf
         h.update(headers or {})
+        if PROXY_SECRET["v"] and not self.prefix:
+            h.setdefault("X-Numra-Proxy-Auth", PROXY_SECRET["v"])
         if self.scheme == "https":
             c = http.client.HTTPSConnection(
                 self.host, self.port, timeout=timeout, context=ssl.create_default_context()
@@ -1015,6 +1020,11 @@ def build_parser():
     ap.add_argument("--report-dir", required=True)
     ap.add_argument("--repo-dir", required=True, help="Checkout; HEAD muss --target-sha sein")
     ap.add_argument("--allow-smtp-synthetic", action="store_true")
+    ap.add_argument(
+        "--send-proxy-secret",
+        action="store_true",
+        help="sendet INTERNAL_PROXY_SHARED_SECRET (aus ENV_FILE der Stack-Konfig) als X-Numra-Proxy-Auth an die API; noetig bei PROXY_SECRET_ENFORCED=true",
+    )
     ap.add_argument("--pg-user", default="numra")
     ap.add_argument("--pg-db", default="numra")
     ap.add_argument("--llm-timeout", type=int, default=600)
