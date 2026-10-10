@@ -62,6 +62,30 @@ class Forbidden(ApplicationError):
     status_code = 403
 
 
+class BetaAccessRequired(ApplicationError):
+    """D4: the feature flag is on, but the account has no individual beta grant."""
+
+    code = "BETA_ACCESS_REQUIRED"
+    status_code = 403
+
+
+class QuotaExceeded(ApplicationError):
+    """D4: a per-user limit (units per window, or units in flight) is reached."""
+
+    code = "QUOTA_EXCEEDED"
+    status_code = 429
+
+    def __init__(self, *, feature: str, kind: str, limit: int, retry_after_seconds: int) -> None:
+        super().__init__(f"quota exceeded for {feature} ({kind} limit {limit})")
+        self.retry_after_seconds = retry_after_seconds
+        self.response_extras = {
+            "feature": feature,
+            "limit_kind": kind,
+            "limit": limit,
+            "retry_after_seconds": retry_after_seconds,
+        }
+
+
 class CsrfValidationFailed(ApplicationError):
     code = "CSRF_VALIDATION_FAILED"
     status_code = 403

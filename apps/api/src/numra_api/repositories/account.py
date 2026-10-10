@@ -36,6 +36,7 @@ from numra_api.models import (
     Report,
     ReportJob,
     Session,
+    UsageReservation,
     User,
     WorkspaceMember,
 )
@@ -57,6 +58,7 @@ async def delete_private_reports_and_exports(db: AsyncSession, *, user_id: uuid.
     await db.execute(delete(ReportJob).where(ReportJob.user_id == user_id))
     await db.execute(delete(Report).where(Report.user_id == user_id))
     await db.execute(delete(Export).where(Export.user_id == user_id))
+    await db.execute(delete(UsageReservation).where(UsageReservation.user_id == user_id))
 
 
 async def delete_private_content(db: AsyncSession, *, user_id: uuid.UUID) -> None:

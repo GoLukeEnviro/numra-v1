@@ -7,8 +7,9 @@ from pathlib import Path
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from numra_api.config import Settings
 from numra_api.models import Report, ReportJob
-from numra_api.models.enums import ReportJobStatus, ReportType
+from numra_api.models.enums import BetaFeature, ReportJobStatus, ReportType
 from numra_api.repositories.calculations import get_calculation_for_user
 from numra_api.repositories.reports import (
     MAX_ATTEMPTS,
@@ -24,6 +25,8 @@ from numra_api.repositories.reports import (
 )
 from numra_api.services.errors import NotFoundError
 from numra_api.services.llm_generation_log import RecordingLLMProvider
+from numra_api.services.persistence_gate import assert_no_unresolved_tokens
+from numra_api.services.usage_quota import reserve
 from numra_interpretation.errors import InvalidReportSection
 from numra_interpretation.knowledge_loader import load_knowledge_base
 from numra_interpretation.llm.errors import LLMProviderError
@@ -49,6 +52,7 @@ async def create_report_job(
     calculation_id: uuid.UUID,
     report_type: ReportType,
     idempotency_key: str | None,
+    settings: Settings,
 ) -> tuple[Report, ReportJob]:
     if idempotency_key is not None:
         existing_job = await get_report_job_by_idempotency_key(
@@ -82,6 +86,8 @@ async def create_report_job(
         report_schema_version=REPORT_SCHEMA_VERSION,
         idempotency_key=idempotency_key,
     )
+    # After the idempotency early-return above: a retry with the same key never gets here.
+    await reserve(db, settings=settings, user_id=user_id, feature=BetaFeature.REPORT, ref_id=job.id)
     return report, job
 
 
@@ -153,8 +159,6 @@ async def run_report_job(
             }
             for section in structured_report.sections
         ]
-        await persist_report_sections(db, report=report, sections=sections_payload)
-
         content_json = {
             "report_type": structured_report.report_type,
             "language": structured_report.language,
@@ -166,6 +170,13 @@ async def run_report_job(
             "total_word_count": structured_report.total_word_count,
             "sections": sections_payload,
         }
+        assert_no_unresolved_tokens(
+            content_json,
+            strict_braces=False,
+            error=ReportGenerationError,
+            code="REPORT_VALIDATION_FAILED",
+        )
+        await persist_report_sections(db, report=report, sections=sections_payload)
         await finalize_report(
             db, report=report, content_json=content_json, generated_at=dt.datetime.now(dt.UTC)
         )

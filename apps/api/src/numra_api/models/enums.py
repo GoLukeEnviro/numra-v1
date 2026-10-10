@@ -54,6 +54,22 @@ class AuditAction(StrEnum):
     ADMIN_PROMOTED = "ADMIN_PROMOTED"
     FEATURE_FLAG_CHANGED = "FEATURE_FLAG_CHANGED"
     AGE_CONFIRMED = "AGE_CONFIRMED"
+    BETA_ACCESS_GRANTED = "BETA_ACCESS_GRANTED"
+    BETA_ACCESS_REVOKED = "BETA_ACCESS_REVOKED"
+
+
+class UsageReservationState(StrEnum):
+    ACTIVE = "active"  # job queued/running or message in flight; counts for window + concurrency
+    SETTLED = "settled"  # finished successfully; counts for the window only
+    RELEASED = "released"  # failed/cancelled; quota given back
+
+
+class BetaFeature(StrEnum):
+    """The cost-intensive feature groups behind the D4 beta gate and quotas."""
+
+    REPORT = "report"
+    ANALYSIS = "analysis"
+    COPILOT = "copilot"
 
 
 class PersonalTaskStatus(StrEnum):

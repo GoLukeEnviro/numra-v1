@@ -44,6 +44,7 @@ export type SystemInfoOut = components["schemas"]["SystemInfoOut"];
 export type UserRole = components["schemas"]["UserRole"];
 export type AdminStatsOut = components["schemas"]["AdminStatsOut"];
 export type AdminUserOut = components["schemas"]["AdminUserOut"];
+export type BetaAccessOut = components["schemas"]["BetaAccessOut"];
 export type AdminUserListOut = components["schemas"]["AdminUserListOut"];
 export type AuditAction = components["schemas"]["AuditAction"];
 export type AuditEventOut = components["schemas"]["AuditEventOut"];
@@ -319,11 +320,32 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   return payload as T;
 }
 
+/** Server messages are English diagnostics; these codes reach end users in every
+ *  feature that starts cost-intensive work, so they get one understandable German
+ *  text here instead of 30 call sites each translating them. */
+const USER_FACING_MESSAGES: Record<string, string> = {
+  BETA_ACCESS_REQUIRED:
+    "Diese Funktion ist aktuell nur für freigeschaltete Beta-Konten verfügbar. Dein Konto ist noch nicht freigeschaltet.",
+};
+
+/** QUOTA_EXCEEDED carries `retry_after_seconds`; name the wait in plain German. */
+function quotaMessage(retryAfter: unknown): string {
+  const base = "Du hast dein Nutzungslimit für diese Funktion erreicht.";
+  if (typeof retryAfter !== "number" || retryAfter <= 0) return `${base} Bitte versuche es später erneut.`;
+  const minutes = Math.ceil(retryAfter / 60);
+  if (minutes <= 1) return `${base} Bitte versuche es in etwa einer Minute erneut.`;
+  if (minutes < 120) return `${base} Bitte versuche es in etwa ${minutes} Minuten erneut.`;
+  return `${base} Bitte versuche es in etwa ${Math.ceil(minutes / 60)} Stunden erneut.`;
+}
+
 function extractError(payload: unknown, status: number): [string, string, number] {
   if (payload && typeof payload === "object") {
     const obj = payload as Record<string, unknown>;
     if (typeof obj.code === "string" && typeof obj.message === "string") {
-      return [obj.message, obj.code, status];
+      if (obj.code === "QUOTA_EXCEEDED") {
+        return [quotaMessage(obj.retry_after_seconds), obj.code, status];
+      }
+      return [USER_FACING_MESSAGES[obj.code] ?? obj.message, obj.code, status];
     }
     if (Array.isArray(obj.detail) && obj.detail.length > 0) {
       const first = obj.detail[0] as { msg?: string; loc?: (string | number)[] };
@@ -635,6 +657,10 @@ export const api = {
         request<void>(`/v1/admin/users/${userId}/enable`, { method: "POST" }),
       revokeSessions: (userId: string) =>
         request<void>(`/v1/admin/users/${userId}/revoke-sessions`, { method: "POST" }),
+      grantBetaAccess: (userId: string) =>
+        request<BetaAccessOut>(`/v1/admin/users/${userId}/beta-access`, { method: "PUT" }),
+      revokeBetaAccess: (userId: string) =>
+        request<BetaAccessOut>(`/v1/admin/users/${userId}/beta-access`, { method: "DELETE" }),
     },
     audit: {
       list: (params: AdminAuditListParams = {}) =>

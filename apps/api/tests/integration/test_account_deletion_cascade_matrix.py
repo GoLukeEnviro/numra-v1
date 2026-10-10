@@ -16,6 +16,7 @@ sowohl eine vergessene Privat-Tabelle als auch ein dangling ForeignKey auf.
 from __future__ import annotations
 
 import datetime as dt
+import uuid
 
 import pytest
 from sqlalchemy import func, select
@@ -46,6 +47,7 @@ from numra_api.models import (
     ReportJob,
     Session,
     ThreadContextSnapshot,
+    UsageReservation,
     User,
     UserConnection,
     WorkspaceMember,
@@ -81,6 +83,7 @@ MUST_BE_EMPTY = [
     ("reports", "user_id"),
     ("report_jobs", "user_id"),
     ("exports", "user_id"),
+    ("usage_reservations", "user_id"),
     ("sessions", "user_id"),
     ("email_verification_tokens", "user_id"),
     ("password_reset_tokens", "user_id"),
@@ -302,6 +305,7 @@ async def _seed_private_rows(sessionmaker, *, workspace_id, owner_id) -> None:
         await db.flush()
         db.add(ReportJob(report_id=report.id, user_id=owner_id))
         db.add(Export(user_id=owner_id, report_id=report.id, export_type="PDF"))
+        db.add(UsageReservation(user_id=owner_id, feature="report", ref_id=uuid.uuid4()))
         db.add(Session(user_id=owner_id, token_hash="deadbeef", expires_at=_expiry()))
         db.add(
             EmailVerificationToken(user_id=owner_id, token_hash="deadbeef", expires_at=_expiry())

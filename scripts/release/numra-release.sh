@@ -110,7 +110,10 @@ SUDO_CMD=${SUDO_CMD-sudo}
 REDACT_ENV=${REDACT_ENV:-PGPASSWORD}
 MIN_SMOKE_PASS=${MIN_SMOKE_PASS:-10}
 POST_SWITCH_WAIT_S=${POST_SWITCH_WAIT_S:-20}
-PROJECT_DIR=${PROJECT_DIR:-}
+# Relative Pfade (Build-Kontexte, Binds) loesen sich gegen --project-directory auf. Die neue Compose
+# liegt im Staging-Ordner; ohne festes Verzeichnis wuerden sie dagegen aufgeloest. Default ist daher
+# das Verzeichnis der Live-Compose (wie `--project-directory /opt/numra` im bewaehrten Host-Skript).
+PROJECT_DIR=${PROJECT_DIR:-$(dirname "$COMPOSE_FILE")}
 COMPOSE_SRC_IN_REPO=${COMPOSE_SRC_IN_REPO:-}
 COMPOSE_EXTRA_FILES=${COMPOSE_EXTRA_FILES:-}
 MIGRATE_SERVICE=${MIGRATE_SERVICE:-}
@@ -206,7 +209,7 @@ priv() { if [ -n "$SUDO_CMD" ]; then $SUDO_CMD "$@"; else "$@"; fi; }
 DCA=()
 build_dca() {
   DCA=(compose -p "$PROJECT" --env-file "$ENV_FILE")
-  [ -z "$PROJECT_DIR" ] || DCA+=(--project-directory "$PROJECT_DIR")
+  DCA+=(--project-directory "$PROJECT_DIR")
   DCA+=(-f "${DC_FILE:-$COMPOSE_FILE}")
   local extra
   for extra in $COMPOSE_EXTRA_FILES; do DCA+=(-f "$extra"); done
@@ -404,6 +407,7 @@ phase_prep() {
   priv cp -p "$MARKER_FILE" "$rb/marker" || die "Sicherung Marker"
   for f in $BACKUP_FILES; do priv cp -p "$f" "$rb/" || die "Sicherung $f"; done
   git -C "$REPO_DIR" rev-parse HEAD | priv tee "$rb/repo_head" > /dev/null
+  fingerprint | priv tee "$rb/fingerprint.txt" > /dev/null
   chk PASS backup-release "Sicherung in $rb"
   for svc in $WRITER_SERVICES; do
     cid=$(image_of "$(container "$svc")") || die "Container $svc fehlt"
@@ -625,6 +629,7 @@ phase_rollback() {
     die "kein prep-State ($STATE_FILE)"
   fi
   rb="$RELEASE_BACKUP_ROOT/$ts"
+  [ "$(get_state OLD_SHA)" = "$OLD_SHA" ] || die "--old-sha passt nicht zum prep-State (Rollback eines anderen Releases?)"
   for svc in $WRITER_SERVICES $MIGRATE_SERVICE; do
     docker image inspect "${IMAGE_PREFIX}${svc}:rollback-$ts" > /dev/null 2>&1 || die "Rollback-Tag fehlt: $svc (vor dem Stoppen abgebrochen)"
   done

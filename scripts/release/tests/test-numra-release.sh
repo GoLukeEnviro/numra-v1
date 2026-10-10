@@ -96,6 +96,7 @@ HEALTHY_WAIT_ROUNDS=2
 HEALTHY_WAIT_S=0
 MIN_SMOKE_PASS=1
 POST_SWITCH_WAIT_S=0
+FLAGS_INIT_SERVICE=flags-init
 EOF
   chmod 600 "$T/release.env"
   export PATH="$BIN:$PATH" FAKE_WORLD="$W" MUT_LOG PGPASSWORD="$SENTINEL"
@@ -157,6 +158,8 @@ case "$1" in
           [ -z "${FAKE_DRYRUN_TOUCHES_PG:-}" ] || echo " Container numra-test-postgres-1 Recreate"
         else
           mut compose up "$@"
+          [[ " $* " == *" --no-deps "* ]] || { echo "fake compose: up ohne --no-deps" >&2; exit 1; }
+          [ -z "${FAKE_UP_TOUCHES_PG:-}" ] || date +%s%N > "$W/containers/numra-test-postgres-1.started"
           # Wie Compose: ohne --force-recreate bleibt ein laufender Container mit gleicher Konfiguration unveraendert
           [[ " $* " == *" --force-recreate "* ]] || continue_without_recreate=1
           for s in "${svcs[@]}"; do
@@ -177,6 +180,8 @@ case "$1" in
           exit 0
         fi
         mut compose run "$@"
+        [[ " $* " == *" --no-deps "* ]] || { echo "fake compose: run ohne --no-deps" >&2; exit 1; }
+        [ -z "${FAKE_INVARIANT_CHANGE_ON_RUN:-}" ] || echo "inv-changed" > "$W/invariant"
         [ -z "${FAKE_MIGRATE_TO:-}" ] || echo "$FAKE_MIGRATE_TO" > "$W/alembic" ;;
     esac ;;
   *) echo "fake docker: unbekannt $*" >&2; exit 99 ;;
@@ -652,6 +657,73 @@ t_config_trust() {
   expect "SUDO_CMD aus der Umgebung wird ignoriert" "$(b test ! -e "$T/evil-called")"
 }
 
+t_project_directory_for_staged_compose() {
+  new_world; phase baseline; phase pre; phase prep
+  local staged bad
+  staged=$(grep -c 'compose.new.yml' "$W/calls.log" || true)
+  bad=$(grep 'compose.new.yml' "$W/calls.log" | grep -vc -- "--project-directory $T " || true)
+  expect "prep: neue Compose wird verwendet (config, dry-run, build)" $((staged >= 3 ? 0 : 1))
+  expect "prep: jeder Aufruf mit der Staging-Compose traegt --project-directory <Verzeichnis der Live-Compose>" $((bad == 0 ? 0 : 1))
+  # shellcheck disable=SC2016
+  expect "prep: Sicherung enthaelt fingerprint.txt (Image-IDs, alembic, Invariante)" "$(b bash -c 'compgen -G "$1" > /dev/null' _ "$T/rb/*/fingerprint.txt")"
+}
+
+t_no_deps_guard() {
+  local ph script
+  for ph in switch rollback; do
+    new_world; phase baseline; phase pre; phase prep
+    if [ "$ph" = rollback ]; then FAKE_MIGRATE_TO=$REV_NEW phase switch --expect-revision "$REV_NEW"; fi
+    mkdir -p "$T/release"; script="$T/release/numra-release.sh"
+    cp -r "$SCRIPT_DIR/../../ops_report" "$T/ops_report" 2> /dev/null || true
+    sed "/phase_$ph() {/,/^}/ s/ --no-deps//g" "$RELEASE" > "$script"
+    cmp -s "$RELEASE" "$script" && { bad "no-deps-Mutation ($ph) nicht angewendet"; continue; }
+    RC=0
+    FAKE_MIGRATE_TO=$REV_NEW bash "$script" --config "$T/release.env" --target audit --old-sha "$OLD" --new-sha "$NEW" \
+      --phase "$ph" --expect-revision "$REV_NEW" > /dev/null 2>&1 || RC=$?
+    expect "Rueckbau-Schutz: $ph ohne --no-deps bei up/run schlaegt fehl" $((RC == 1 ? 0 : 1))
+  done
+}
+
+t_dump_taken_before_writer_stop() {
+  new_world; phase baseline; phase pre; phase prep
+  touch -d '60 seconds ago' "$T/backups/numra-1.dump"
+  FAKE_NO_NEW_DUMP=1 FAKE_MIGRATE_TO=$REV_NEW phase switch --expect-revision "$REV_NEW"
+  expect "switch: 60 s alter Dump (frisch genug, aber vor dem Schreiber-Stopp) -> Exit 1" $((RC == 1 ? 0 : 1))
+  grep -q "Schreiber-Stopp" <<< "$OUT"
+  expect "switch: Abbruch wegen mtime < Schreiber-Stopp (nicht wegen Alter)" $?
+}
+
+t_invariant_and_untouched_after_switch() {
+  new_world; phase baseline; phase pre; phase prep
+  FAKE_INVARIANT_CHANGE_ON_RUN=1 FAKE_MIGRATE_TO=$REV_NEW phase switch --expect-revision "$REV_NEW"
+  expect "switch: Invariante aendert sich nach migrate/flags-init -> Exit 1" $((RC == 1 ? 0 : 1))
+  grep -q "Invariante" <<< "$OUT"
+  expect "switch: Abbruchgrund nennt die Invariante" $?
+  new_world; phase baseline; phase pre; phase prep
+  FAKE_UP_TOUCHES_PG=1 FAKE_MIGRATE_TO=$REV_NEW phase switch --expect-revision "$REV_NEW"
+  expect "switch: postgres wird beim Recreate veraendert (untouched) -> Exit 1" $((RC == 1 ? 0 : 1))
+  grep -q "unveraenderliche Dienste wurden veraendert" <<< "$OUT"
+  expect "switch: Abbruchgrund nennt die unveraenderlichen Dienste" $?
+}
+
+t_state_binding_and_marker_readiness() {
+  new_world; phase baseline; phase pre; phase prep
+  : > "$MUT_LOG"
+  release --target audit --old-sha "$OLD" --new-sha "$OLD" --phase switch --expect-revision "$REV_NEW"
+  expect "switch mit fremder --new-sha (State gehoert zu anderem Release) -> Exit 1" $((RC == 1 ? 0 : 1))
+  expect "switch mit fremder --new-sha mutiert nichts" "$(b log_empty)"
+  FAKE_MIGRATE_TO=$REV_NEW phase switch --expect-revision "$REV_NEW"
+  make_smoke "$T/ok.json" PASS "$NEW"
+  echo 503 > "$W/ready"
+  phase marker --smoke-report "$T/ok.json"
+  expect "marker: Readiness 503 -> Exit 1, Marker unveraendert" "$(b rc_marker 1 "$OLD")"
+  echo 200 > "$W/ready"
+  : > "$MUT_LOG"
+  release --target audit --old-sha 3333333333333333333333333333333333333333 --new-sha "$NEW" --phase rollback
+  expect "rollback mit fremder --old-sha (State gehoert zu anderem Release) -> Exit 1" $((RC == 1 ? 0 : 1))
+  expect "rollback mit fremder --old-sha mutiert nichts" "$(b log_empty)"
+}
+
 t_static() {
   grep -q '^set -euo pipefail' "$RELEASE"
   expect "statisch: set -euo pipefail" $?
@@ -672,7 +744,9 @@ t_static() {
 for t in t_usage_refusals t_pre_report t_pre_failures t_dry_run t_dry_run_detector_catches_broken_guard \
   t_full_cycle t_marker_refusals t_marker_gate_not_bypassable t_marker_bound_to_run t_dry_run_after_real_phases \
   t_dry_run_detector_each_phase t_force_recreate_required t_fingerprint_and_drift t_baseline_overwrite \
-  t_predeploy_dump t_prep_and_switch_hardening t_config_trust t_switch_failures t_rollback t_no_secrets t_static; do
+  t_predeploy_dump t_prep_and_switch_hardening t_config_trust t_project_directory_for_staged_compose \
+  t_no_deps_guard t_dump_taken_before_writer_stop t_invariant_and_untouched_after_switch \
+  t_state_binding_and_marker_readiness t_switch_failures t_rollback t_no_secrets t_static; do
   printf '# %s\n' "$t"
   "$t"
 done

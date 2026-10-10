@@ -22,6 +22,7 @@ Prüfungen wiederholbar, abbrechend und nachweisbar.
 - **Prod-Schutzschalter:** `prep`, `switch`, `marker`, `rollback` gegen `prod` brauchen
   `--i-am-sure-prod` und `--confirm-sha <erste 8 Zeichen der zu deployenden SHA>`
   (bei `rollback` die der `--old-sha`). Der Drill mit prod-Dump braucht `--i-am-sure-prod`.
+- **Projektverzeichnis:** `PROJECT_DIR` (Standard: Verzeichnis von `COMPOSE_FILE`) wird immer als `--project-directory` übergeben, auch für die im Staging-Ordner liegende neue Compose; relative Build-Kontexte und Binds lösen sich so wie bei der Live-Compose auf (im Host-Skript `--project-directory /opt/numra`). Die Sicherung in `prep` enthält Konfig/Units (`BACKUP_FILES`) und `fingerprint.txt` (Image-IDs, alembic, Invariante).
 - **Alles per Konfiguration:** Pfade, Projektname, Dienste, URLs, Env-Dateien, Image-Präfix.
   Das Skript enthält keine Host-Defaults; fehlende Pflichtwerte führen zu Exit 2.
 - **Fehler brechen ab:** `set -euo pipefail`, jede Prüfung beendet den Lauf mit Exit 1 und

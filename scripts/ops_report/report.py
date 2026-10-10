@@ -185,6 +185,22 @@ def check_smoke_report(
     `after` gesetzt ist - gestartet nach diesem Zeitpunkt (z. B. Ende des switch).
     """
     try:
+        return _check_smoke_report(path, target, sha, max_age_s, now, kinds, min_pass, after)
+    except (TypeError, AttributeError, KeyError, ValueError) as exc:
+        return False, f"Bericht strukturell ungueltig ({type(exc).__name__})"
+
+
+def _check_smoke_report(
+    path: Path,
+    target: str,
+    sha: str,
+    max_age_s: int,
+    now: dt.datetime | None,
+    kinds: tuple[str, ...],
+    min_pass: int,
+    after: str | None,
+) -> tuple[bool, str]:
+    try:
         report = json.loads(path.read_text(encoding="utf-8"))
         finished = dt.datetime.fromisoformat(report["finished"])
         started = dt.datetime.fromisoformat(report["started"])
@@ -193,6 +209,13 @@ def check_smoke_report(
             raise ValueError("after leer")
     except (OSError, ValueError, KeyError) as exc:
         return False, f"Bericht oder Zeitangabe nicht lesbar: {type(exc).__name__}"
+    if not isinstance(report, dict):
+        return False, "Bericht ist kein JSON-Objekt"
+    stamps = [finished, started] + ([after_dt] if after_dt is not None else [])
+    if any(stamp.tzinfo is None for stamp in stamps):
+        return False, "Zeitangaben ohne Zeitzone (naive Zeitstempel)"
+    if not isinstance(report.get("summary"), dict) or not isinstance(report.get("extra"), dict):
+        return False, "summary/extra fehlen oder sind kein Objekt"
     if report.get("schema_version") != SCHEMA_VERSION:
         return False, "Schema-Version unbekannt"
     kind = report.get("kind")
