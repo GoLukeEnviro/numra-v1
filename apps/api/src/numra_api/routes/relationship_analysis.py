@@ -5,8 +5,16 @@ import uuid
 from fastapi import APIRouter, Depends, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from numra_api.deps import get_current_user, get_db, rate_limit_by_user, require_csrf
+from numra_api.config import Settings
+from numra_api.deps import (
+    get_current_user,
+    get_db,
+    get_settings_dep,
+    rate_limit_by_user,
+    require_csrf,
+)
 from numra_api.models import AnalysisJob, RelationshipAnalysis, ShadowDynamicsAnalysis, User
+from numra_api.models.enums import BetaFeature
 from numra_api.repositories.analysis import (
     get_analysis_job_for_user,
     get_latest_relationship_analysis_for_workspace,
@@ -20,12 +28,14 @@ from numra_api.schemas.relationship_analysis import (
     RelationshipAnalysisOut,
     ShadowDynamicsAnalysisOut,
 )
+from numra_api.services.beta_gate import require_beta_access
 from numra_api.services.errors import NotFoundError
 from numra_api.services.feature_flags import require_v2_phase
 from numra_api.services.relationship_analysis_service import (
     create_relationship_analysis_job,
     create_shadow_dynamics_job,
 )
+from numra_api.services.usage_quota import GATED_RESPONSES
 
 
 async def _require_membership(
@@ -100,8 +110,10 @@ def _shadow_dynamics_to_out(analysis: ShadowDynamicsAnalysis) -> ShadowDynamicsA
     "/workspaces/{workspace_id}/relationship-analysis",
     response_model=RelationshipAnalysisOut,
     status_code=201,
+    responses=GATED_RESPONSES,
     dependencies=[
         Depends(require_csrf),
+        Depends(require_beta_access(BetaFeature.ANALYSIS)),
         Depends(rate_limit_by_user("relationship-analysis:create", limit=30, window_seconds=3600)),
     ],
 )
@@ -110,9 +122,14 @@ async def create_relationship_analysis_route(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db, scope="function"),
     idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+    settings: Settings = Depends(get_settings_dep),
 ) -> RelationshipAnalysisOut:
     _job, analysis = await create_relationship_analysis_job(
-        db, workspace_id=workspace_id, requester_user_id=user.id, idempotency_key=idempotency_key
+        db,
+        workspace_id=workspace_id,
+        requester_user_id=user.id,
+        idempotency_key=idempotency_key,
+        settings=settings,
     )
     return _relationship_analysis_to_out(analysis)
 
@@ -155,8 +172,10 @@ async def get_relationship_analysis_route(
     "/workspaces/{workspace_id}/shadow-dynamics",
     response_model=ShadowDynamicsAnalysisOut,
     status_code=201,
+    responses=GATED_RESPONSES,
     dependencies=[
         Depends(require_csrf),
+        Depends(require_beta_access(BetaFeature.ANALYSIS)),
         Depends(rate_limit_by_user("shadow-dynamics:create", limit=30, window_seconds=3600)),
     ],
 )
@@ -165,9 +184,14 @@ async def create_shadow_dynamics_route(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db, scope="function"),
     idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+    settings: Settings = Depends(get_settings_dep),
 ) -> ShadowDynamicsAnalysisOut:
     _job, analysis = await create_shadow_dynamics_job(
-        db, workspace_id=workspace_id, requester_user_id=user.id, idempotency_key=idempotency_key
+        db,
+        workspace_id=workspace_id,
+        requester_user_id=user.id,
+        idempotency_key=idempotency_key,
+        settings=settings,
     )
     return _shadow_dynamics_to_out(analysis)
 

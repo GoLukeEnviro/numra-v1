@@ -24,6 +24,8 @@ vi.mock("@/api/client", async () => {
           disable: vi.fn(),
           enable: vi.fn(),
           revokeSessions: vi.fn(),
+          grantBetaAccess: vi.fn(),
+          revokeBetaAccess: vi.fn(),
         },
       },
     },
@@ -42,6 +44,7 @@ const target: AdminUserOut = {
   calculation_count: 0,
   report_count: 0,
   relationship_count: 0,
+  beta_access: false,
 };
 
 function signedInAs(id: string) {
@@ -98,6 +101,34 @@ describe("Admin user detail", () => {
     expect(await screen.findByText("Das Konto wurde deaktiviert.")).toBeInTheDocument();
     // The record is re-read so the view can never show a stale status.
     await waitFor(() => expect(api.admin.users.get).toHaveBeenCalledTimes(2));
+  });
+
+  it("grants beta access only after confirmation and re-reads the record", async () => {
+    signedInAs("someone-else");
+    vi.mocked(api.admin.users.grantBetaAccess)
+      .mockReset()
+      .mockResolvedValue({ user_id: "u1", granted: true, changed: true });
+    renderPage();
+
+    expect(await screen.findByText("Nicht freigeschaltet")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Beta-Zugang erteilen" }));
+    const dialog = screen.getByRole("dialog");
+    expect(api.admin.users.grantBetaAccess).not.toHaveBeenCalled();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Beta-Zugang erteilen" }));
+
+    await waitFor(() => expect(api.admin.users.grantBetaAccess).toHaveBeenCalledWith("u1"));
+    expect(await screen.findByText("Der Beta-Zugang wurde erteilt.")).toBeInTheDocument();
+    await waitFor(() => expect(api.admin.users.get).toHaveBeenCalledTimes(2));
+  });
+
+  it("offers revoking when beta access is already granted", async () => {
+    signedInAs("someone-else");
+    vi.mocked(api.admin.users.get).mockResolvedValue({ ...target, beta_access: true });
+    renderPage();
+
+    expect(await screen.findByRole("button", { name: "Beta-Zugang entziehen" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Beta-Zugang erteilen" })).not.toBeInTheDocument();
   });
 
   it("closes the dialog on Escape without calling the API", async () => {

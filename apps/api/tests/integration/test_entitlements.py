@@ -46,4 +46,6 @@ async def test_get_entitlements_resolves_beta_default_without_explicit_assignmen
         "premium_reports": True,
         "max_connections": None,
         "max_workspaces": None,
+        "beta_access": False,
+        "beta_gate_enforced": False,
     }

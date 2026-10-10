@@ -9,7 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from numra_api.models import Calculation, Person, Report, ReportJob, ReportSection
-from numra_api.models.enums import ReportJobStatus, ReportType
+from numra_api.models.enums import BetaFeature, ReportJobStatus, ReportType
+from numra_api.repositories.usage_quota import release_reservation, settle_reservation
 
 #: In-flight statuses a crashed worker may have left a job in — these are still
 #: reclaimable once their lease expires, not just QUEUED (restart safety).
@@ -187,6 +188,10 @@ async def mark_job_status(
     if status in (ReportJobStatus.COMPLETE, ReportJobStatus.FAILED, ReportJobStatus.CANCELLED):
         job.lease_until = None
     await db.flush()
+    if status == ReportJobStatus.COMPLETE:
+        await settle_reservation(db, feature=BetaFeature.REPORT, ref_id=job.id)
+    elif status in (ReportJobStatus.FAILED, ReportJobStatus.CANCELLED):
+        await release_reservation(db, feature=BetaFeature.REPORT, ref_id=job.id)
 
 
 async def requeue_job_for_retry(
@@ -219,6 +224,7 @@ async def fail_job_terminally(
     job.error_code = error_code[:80]
     job.last_error_at = now
     await db.flush()
+    await release_reservation(db, feature=BetaFeature.REPORT, ref_id=job.id)
 
 
 async def persist_report_sections(

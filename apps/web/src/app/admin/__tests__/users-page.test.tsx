@@ -22,6 +22,7 @@ function user(overrides: Partial<AdminUserOut> = {}): AdminUserOut {
     calculation_count: 3,
     report_count: 4,
     relationship_count: 5,
+    beta_access: false,
     ...overrides,
   };
 }

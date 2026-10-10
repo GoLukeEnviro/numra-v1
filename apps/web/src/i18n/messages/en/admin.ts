@@ -107,7 +107,20 @@ export const enAdmin: Record<keyof typeof deAdmin, string> = {
     "Every device of this person is signed out. The account itself stays active.",
   "admin.userDetail.disableSuccess": "The account has been disabled.",
   "admin.userDetail.enableSuccess": "The account has been enabled.",
-  "admin.userDetail.revokeSuccess": "All sessions have been revoked.",
+  "admin.userDetail.revokeSuccess": "All sessions were revoked.",
+  "admin.userDetail.betaAccess": "Beta access",
+  "admin.userDetail.betaOn": "Granted",
+  "admin.userDetail.betaOff": "Not granted",
+  "admin.userDetail.betaGrant": "Grant beta access",
+  "admin.userDetail.betaRevoke": "Revoke beta access",
+  "admin.userDetail.betaGrantConfirmTitle": "Grant beta access?",
+  "admin.userDetail.betaGrantConfirmBody":
+    "The account may then start reports, analyses and the Copilot. The change is recorded in the audit log.",
+  "admin.userDetail.betaRevokeConfirmTitle": "Revoke beta access?",
+  "admin.userDetail.betaRevokeConfirmBody":
+    "The account can no longer start new reports, analyses or Copilot messages. Existing content stays readable.",
+  "admin.userDetail.betaGrantSuccess": "Beta access was granted.",
+  "admin.userDetail.betaRevokeSuccess": "Beta access was revoked.",
 
   // Dialog
   "admin.dialog.confirm": "Confirm",

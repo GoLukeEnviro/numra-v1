@@ -49,6 +49,7 @@ async def test_users_list_never_leaks_password_hash(client, sessionmaker) -> Non
             "calculation_count",
             "report_count",
             "relationship_count",
+            "beta_access",
         }
 
 
