@@ -27,6 +27,7 @@ from numra_api.auth.passwords import hash_password
 from numra_api.models import AnalysisJob, RelationshipAnalysis, Report, ReportJob, UsageReservation
 from numra_api.models.enums import UserRole
 from numra_api.repositories.entitlements import grant_beta_access
+from numra_api.repositories.reports import MAX_ATTEMPTS
 from numra_api.repositories.users import create_user, set_user_role
 from numra_api.services import relationship_analysis_service, report_service
 from numra_api.worker import run_one_cycle
@@ -483,6 +484,17 @@ async def test_analysis_regeneration_access_and_consent_matrix(
     assert (await client.get(preview)).status_code == 404
     assert (await client.post(start, headers=outsider)).status_code == 404
 
+    # a (global) admin who is not a member gets nothing either
+    async with sessionmaker() as db:
+        admin = await create_user(
+            db, email="regen-ra-admin@example.com", password_hash=hash_password("password12345")
+        )
+        await set_user_role(db, user=admin, role=UserRole.ADMIN)
+        await db.commit()
+    admin_headers = await _switch_user(client, "regen-ra-admin@example.com")
+    assert (await client.get(preview)).status_code == 404
+    assert (await client.post(start, headers=admin_headers)).status_code == 404
+
     # consent revoked by the partner: the old analysis stays readable, but preview and
     # regeneration are closed and nothing is created
     headers_b = await _switch_user(client, "regen-ra-acl-b@example.com")
@@ -534,9 +546,13 @@ async def test_analysis_defective_result_never_completes(
         await db.execute(
             update(AnalysisJob)
             .where(AnalysisJob.id == uuid.UUID(new["job_id"]))
-            .values(attempt_count=2)
+            .values(next_attempt_at=None, attempt_count=MAX_ATTEMPTS - 1)
         )
         await db.commit()
+    assert await run_analysis_cycle(sessionmaker, llm=llm) is True
+    job = (await client.get(f"/v1/analysis-jobs/{new['job_id']}")).json()
+    assert job["status"] == "FAILED"
+    assert [r.state for r in await _reservations(sessionmaker, "analysis")] == ["released"]
     stored_new = (
         await client.get(f"/v1/workspaces/{workspace_id}/relationship-analysis/{new['id']}")
     ).json()
@@ -546,3 +562,28 @@ async def test_analysis_defective_result_never_completes(
         await client.get(f"/v1/workspaces/{workspace_id}/relationship-analysis/{analysis_id}")
     ).json()
     assert kept["result"] == stored
+
+
+def _find_key(node, key):
+    if isinstance(node, dict):
+        for k, v in node.items():
+            if k == key:
+                yield v
+            yield from _find_key(v, key)
+    elif isinstance(node, list):
+        for item in node:
+            yield from _find_key(item, key)
+
+
+async def test_account_export_carries_the_regeneration_link(
+    client, sessionmaker, llm, lukas_payload
+) -> None:
+    report_id, headers = await _flagged_report(
+        client, sessionmaker, llm, lukas_payload, "regen-export@example.com"
+    )
+    assert (await _regenerate(client, report_id, headers)).status_code == 201
+
+    exported = (await client.get("/v1/account/export")).json()
+
+    links = [v for v in _find_key(exported, "regenerated_from_id") if v]
+    assert links == [report_id]
