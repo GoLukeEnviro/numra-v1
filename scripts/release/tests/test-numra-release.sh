@@ -539,7 +539,7 @@ mutated_script() { # mutated_script OUT PHASE : Dry-Run-Absicherung der Phase au
   mkdir -p "$T/release"
   awk -v ph="phase_$2() {" '
     index($0, ph) == 1 { inph = 1 }
-    inph && !done && /if \[ "\$DRY_RUN" = 1 \]; then/ { sub(/DRY_RUN" = 1/, "DRY_RUN\" = 99"); done = 1 }
+    inph && !done && /^  if \[ "\$DRY_RUN" = 1 \]; then$/ { sub(/DRY_RUN" = 1/, "DRY_RUN\" = 99"); done = 1 }
     { print }' "$RELEASE" > "$1"
   cp -r "$SCRIPT_DIR/../../ops_report" "$T/ops_report" 2> /dev/null || true
   ! cmp -s "$RELEASE" "$1"
@@ -608,6 +608,7 @@ t_baseline_overwrite() {
   phase baseline --rebaseline
   expect "baseline --rebaseline -> Exit 0" $((RC == 0 ? 0 : 1))
   sed -i 's/^CONFIG_TARGET=audit/CONFIG_TARGET=prod/' "$T/release.env"
+  release --target prod --old-sha "$OLD" --phase baseline
   release --target prod --old-sha "$OLD" --phase baseline --rebaseline
   expect "baseline --rebaseline gegen prod ohne --i-am-sure-prod -> Exit 1" $((RC == 1 ? 0 : 1))
 }
