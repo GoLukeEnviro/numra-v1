@@ -12,6 +12,8 @@ import io
 import re
 from dataclasses import dataclass, field
 
+MIN_PDF_BYTES = 20480  # einheitlich fuer Smoke und Acceptance
+
 PLACEHOLDERS = [
     r"\[[a-z_]+:",
     r"\{\{",
@@ -103,20 +105,21 @@ class PdfAnalysis:
 
 
 def analyze_pdf(data: bytes) -> PdfAnalysis:
-    """Liest das PDF mit pypdf; Lesefehler landen in `error`, nie als Ausnahme beim Aufrufer."""
+    """Liest das PDF mit pypdf; jeder Lesefehler landet mit spezifischem Text in `error`."""
     try:
         from pypdf import PdfReader
-        from pypdf.errors import PyPdfError
     except ImportError as exc:
         raise MissingDependencyError(
             "pypdf fehlt: pip install -r scripts/acceptance/requirements.txt"
         ) from exc
     try:
         reader = PdfReader(io.BytesIO(data))
+        if reader.is_encrypted:
+            return PdfAnalysis(error="PDF ist verschluesselt")
         pages = len(reader.pages)
         text = "\n".join(page.extract_text() or "" for page in reader.pages)
-    except (PyPdfError, ValueError, KeyError, OSError) as exc:
-        return PdfAnalysis(error=f"{type(exc).__name__}")
+    except Exception as exc:  # noqa: BLE001 - pypdf wirft je nach Defekt sehr unterschiedliche Typen
+        return PdfAnalysis(error=f"PDF nicht lesbar ({type(exc).__name__})")
     words, de, en = language_ratios(text)
     hits = placeholder_hits([text], PLACEHOLDERS + SCAFFOLDING)
     return PdfAnalysis(pages=pages, text=text, words=words, de=de, en=en, hits=hits)
@@ -127,7 +130,7 @@ def evaluate_pdf(
 ) -> list[tuple[str, str, bool, str]]:
     """Liefert (id-suffix, name, bestanden, evidenz) je Pruefung; Evidenz ohne Dokumenttext."""
     if result.error:
-        return [("9", "PDF lesbar (pypdf)", False, f"Lesefehler {result.error}")]
+        return [("9", "PDF lesbar (pypdf)", False, f"Lesefehler: {result.error}")]
     return [
         (
             "9",
@@ -139,7 +142,7 @@ def evaluate_pdf(
             "10a",
             f"PDF-Text extrahierbar (>= {min_words} Woerter)",
             result.words >= min_words,
-            f"words={result.words}",
+            f"words={result.words}" + (" (kein Text: Bild-PDF?)" if result.words == 0 else ""),
         ),
         (
             "10b",

@@ -75,7 +75,7 @@ Datei).
 
 Markdown und JSON nach `--report-dir` (0600) mit Zeitstempel, Ziel, Ziel-SHA, Skriptversion,
 Prüfumfang, PASS/FAIL/SKIP/INFO je Schritt, Einschränkungen und Gesamtergebnis. Die
-Marker-Phase akzeptiert nur einen echten (kein Dry-Run) PASS-Bericht für genau Ziel und
+Marker-Phase akzeptiert nur einen echten (kein Dry-Run, nicht PARTIAL) PASS-Bericht für genau Ziel und
 SHA, jünger als `MAX_SMOKE_AGE_S`. Berichte enthalten weder Secrets noch Mailadressen.
 
 ## Grenzen
@@ -89,6 +89,6 @@ SHA, jünger als `MAX_SMOKE_AGE_S`. Berichte enthalten weder Secrets noch Mailad
 ## Tests
 
 ```bash
-uv run --no-project --with pytest --with "pypdf>=6.19.0" \
+uv run --no-project --with pytest --with "$(cat scripts/acceptance/requirements.txt)" \
   pytest scripts/ops_report scripts/acceptance -q
 ```

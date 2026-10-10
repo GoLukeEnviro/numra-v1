@@ -16,11 +16,14 @@ Aufruf:
     pip install -r scripts/acceptance/requirements.txt
     python3 scripts/acceptance/numra_acceptance.py --target audit --target-sha <SHA> \
         --api-base http://127.0.0.1:<API-PORT> --web-base http://127.0.0.1:<WEB-PORT> \
-        --container-prefix <PROJEKT>- --report-dir <DIR> [--repo-dir <CHECKOUT>] \
-        [--skip-llm] [--reset-ratelimit] [--llm-timeout 600] [--dry-run]
+        --stack-config <release-audit.env> --repo-dir <CHECKOUT> --report-dir <DIR> \
+        [--skip-llm] [--reset-ratelimit] [--llm-timeout 600] [--allow-smtp-synthetic] [--dry-run]
 
-Container heissen `<container-prefix><dienst>-1` (Compose-Konvention). Exit 0 = kein FAIL,
-1 = mindestens ein FAIL, 2 = Aufruf/Preflight verweigert.
+`--stack-config` ist dieselbe Datei wie fuer numra-release.sh: CONFIG_TARGET muss zu --target passen,
+Container heissen `<PROJECT>-<dienst>-1`, --api-base muss auf den READY_URL-Port zeigen. `--repo-dir`
+ist Pflicht: der Checkout-HEAD muss --target-sha sein. Mit --skip-llm ist das Ergebnis PARTIAL (nie
+als Abnahme fuer den Marker gueltig). Exit 0 = PASS, 1 = mindestens ein FAIL, 2 = Aufruf/Preflight
+verweigert, 3 = PARTIAL.
 """
 
 import argparse
@@ -40,6 +43,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "ops_report"))
 
 import content_checks  # noqa: E402
 import report as ops_report  # noqa: E402
+import stack_config  # noqa: E402
 
 SCRIPT_VERSION = "2.0.0"
 SYNTH_PREFIX = "numra-acc-"
@@ -636,19 +640,15 @@ def s2_journey():
 # ---------------------------------------------------------------- Abschnitt 3: G3 / E-Mail-Verifizierung
 
 
+def mail_backend():
+    rc, out = sh(["docker", "exec", CONTAINERS["api"], "printenv", "EMAIL_BACKEND"])
+    return out.strip() if rc == 0 else ""
+
+
 def mail_risk():
-    code = (
-        "import os,re,numra_api\n"
-        "d=os.path.dirname(numra_api.__file__)\n"
-        "hits=[]\n"
-        "for f in ('routes/connections.py','services/connection_service.py'):\n"
-        "    s=open(os.path.join(d,f)).read()\n"
-        "    if re.search(r'email_sender|EmailSender|get_email_sender|aiosmtplib|\\.send\\(',s): hits.append(f)\n"
-        "print('HITS='+','.join(hits))\n"
-    )
-    rc, out = sh(["docker", "exec", "-i", CONTAINERS["api"], "python", "-"], stdin=code)
-    m = re.search(r"HITS=(.*)", out)
-    return (rc != 0 or not m or bool(m.group(1).strip())), (m.group(1) if m else out)
+    """True, wenn das Ziel echte Mails versenden koennte (EMAIL_BACKEND=smtp)."""
+    backend = ST.get("mail_backend") or mail_backend() or "disabled"
+    return backend == "smtp", backend
 
 
 @section
@@ -658,9 +658,9 @@ def s3_g3():
     risky, detail = mail_risk()
     check(
         "3.0",
-        "Mail-Sicherheit: Einladungs-Code (routes/services) im api-Container ruft keinen E-Mail-Sender",
+        "Mail-Sicherheit: EMAIL_BACKEND des api-Containers versendet keine echten Mails",
         not risky,
-        f"treffer={detail or '-'}",
+        f"EMAIL_BACKEND={detail}",
     )
     r = U.post("/v1/connections/invitations", {"method": "LINK"})
     check(
@@ -694,7 +694,7 @@ def s3_g3():
             ("3.5", "falsche Empfaengeradresse"),
             ("3.6", "Selbsteinladung per EMAIL"),
         ):
-            skip(sid, n, "SKIP: Einladungspfad koennte Mail senden (3.0)")
+            skip(sid, n, "SKIP: EMAIL_BACKEND=smtp, kein Mailversand aus der Abnahme (3.0)")
     else:
         r = A.post(
             "/v1/connections/invitations",
@@ -998,12 +998,12 @@ def llm_eval():
     pdf = d.raw or b""
     check(
         "7.8",
-        "PDF-Download: 200, application/pdf, Magic %PDF, %%EOF, Groesse>2KB",
+        "PDF-Download: 200, application/pdf, Magic %PDF, %%EOF, Groesse>20KB",
         d.code == 200
         and "pdf" in (d.headers.get("Content-Type") or "")
         and pdf[:4] == b"%PDF"
         and b"%%EOF" in pdf[-2048:]
-        and len(pdf) > 2048,
+        and len(pdf) > content_checks.MIN_PDF_BYTES,
         f"{d.code} bytes={len(pdf)} ct={d.headers.get('Content-Type')}",
     )
     analysis = content_checks.analyze_pdf(pdf)
@@ -1642,6 +1642,7 @@ LIMITATIONS = [
     "LLM-Qualitaet wird nur formal geprueft (Platzhalter, Laenge, Sprache); keine inhaltliche Bewertung.",
     "Die Sprachpruefung ist eine Haeufigkeitsheuristik, kein Sprachmodell.",
     "Die Evidenz ist redigiert (keine Secrets, Mails, UUID-Reste); fuer Forensik sind die Container-Logs massgeblich.",
+    "delete-all entfernt Nutzdaten, laesst aber pro Konto eine anonymisierte Tombstone-Zeile in users zurueck; geprueft werden aktive Konten und Nutzdaten, nicht die Gesamtzahl der Zeilen.",
 ]
 
 
@@ -1651,11 +1652,10 @@ def build_parser():
     ap.add_argument("--target-sha", required=True, help="vollstaendige SHA des geprueften Stands")
     ap.add_argument("--api-base", required=True)
     ap.add_argument("--web-base", required=True)
-    ap.add_argument(
-        "--container-prefix", required=True, help="Container heissen <prefix><dienst>-1"
-    )
+    ap.add_argument("--stack-config", required=True, help="Konfig wie fuer numra-release.sh")
     ap.add_argument("--report-dir", required=True)
-    ap.add_argument("--repo-dir", help="Checkout; HEAD wird gegen --target-sha geprueft")
+    ap.add_argument("--repo-dir", required=True, help="Checkout; HEAD muss --target-sha sein")
+    ap.add_argument("--allow-smtp-synthetic", action="store_true")
     ap.add_argument("--skip-llm", action="store_true")
     ap.add_argument(
         "--reset-ratelimit",
@@ -1678,7 +1678,11 @@ def configure(args):
     API, WEB = args.api_base.rstrip("/"), args.web_base.rstrip("/")
     for url in (API, WEB):
         Client(url)
-    p = args.container_prefix
+    try:
+        p = stack_config.bind(args.target, API, stack_config.load(args.stack_config))
+    except stack_config.StackRefusalError as e:
+        raise SystemExit(f"VERWEIGERT: {e}") from e
+    args.container_prefix = p
     CONTAINERS.update(
         api=f"{p}api-1",
         pg=f"{p}postgres-1",
@@ -1690,13 +1694,19 @@ def configure(args):
 
 def preflight(args):
     rc, out = sh(["docker", "exec", CONTAINERS["api"], "printenv", "ENVIRONMENT"])
-    ST["env"] = out.strip() if rc == 0 and out.strip() else "unknown"
-    head = "-"
-    if args.repo_dir:
-        rc, out = sh(["git", "-C", args.repo_dir, "rev-parse", "HEAD"])
-        head = out.strip()
-        if rc != 0 or head != args.target_sha:
-            raise SystemExit("VERWEIGERT: Checkout-HEAD != --target-sha")
+    if rc != 0 or not out.strip():
+        raise SystemExit("VERWEIGERT: ENVIRONMENT im API-Container nicht lesbar (falscher Stack?)")
+    ST["env"] = out.strip()
+    rc, out = sh(["git", "-C", args.repo_dir, "rev-parse", "HEAD"])
+    head = out.strip()
+    if rc != 0 or head != args.target_sha:
+        raise SystemExit("VERWEIGERT: Checkout-HEAD != --target-sha")
+    try:
+        ST["mail_backend"] = stack_config.check_mail_backend(
+            mail_backend(), args.allow_smtp_synthetic
+        )
+    except stack_config.StackRefusalError as e:
+        raise SystemExit(f"VERWEIGERT: {e}") from e
     return head
 
 
@@ -1783,7 +1793,13 @@ def finish(args, started):
         scope=SCOPE,
         steps=STEPS,
         limitations=limitations,
-        extra={"environment": ST.get("env", "unknown"), "container_prefix": args.container_prefix},
+        partial=args.skip_llm,
+        extra={
+            "environment": ST.get("env", "unknown"),
+            "container_prefix": args.container_prefix,
+            "skip_llm": args.skip_llm,
+            "mail_backend": ST.get("mail_backend", "unknown"),
+        },
     )
     stem = f"acceptance-{args.target}-{started.strftime('%Y%m%dT%H%M%SZ')}"
     json_path, md_path = ops_report.write_report(rep, Path(args.report_dir), stem)
@@ -1792,7 +1808,7 @@ def finish(args, started):
         f"\nErgebnis {rep['result']}: PASS {s['PASS']} FAIL {s['FAIL']} SKIP {s['SKIP']} INFO {s['INFO']}"
     )
     print(f"Bericht: {md_path}\nBericht: {json_path}")
-    return 0 if rep["result"] == "PASS" else 1
+    return {"PASS": 0, "PARTIAL": 3}.get(rep["result"], 1)
 
 
 if __name__ == "__main__":

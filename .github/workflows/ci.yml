@@ -155,7 +155,7 @@ jobs:
       - name: Berichtsmodul, Smoke- und Acceptance-Skripte (Unit-Tests, PDF-Pruefung)
         run: |
           uv run --no-project --python ${{ env.PYTHON_VERSION }} --with pytest \
-            --with "pypdf>=6.19.0" \
+            --with "$(cat scripts/acceptance/requirements.txt)" \
             pytest scripts/ops_report scripts/acceptance -q
 
   # Security-Gate: vier getrennte Audit-Jobs + ein Sammel-Job `security-gate`.

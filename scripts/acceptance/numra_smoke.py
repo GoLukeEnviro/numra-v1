@@ -6,13 +6,16 @@ Legt GENAU EIN synthetisches Konto <SYNTH_PREFIX><zufall>@<SYNTH_DOMAIN> an, pru
 (Auth, CSRF, Origin, Proxy, Report+PDF inkl. Inhaltspruefung, DB-Zaehler) und loescht das Konto
 am Ende IMMER per POST /v1/account/delete-all. Das Ziel (`--target audit|prod`) hat keinen Default;
 gegen prod braucht der Lauf zusaetzlich `--i-am-sure-prod` und `--confirm-sha` (erste 8 Zeichen
-von `--target-sha`). Es wird nur SELECT gegen die Datenbank ausgefuehrt.
+von `--target-sha`). Es wird nur SELECT gegen die Datenbank ausgefuehrt. `--stack-config` ist dieselbe
+Datei wie fuer numra-release.sh (CONFIG_TARGET == --target, Container `<PROJECT>-<dienst>-1`,
+--api-base == READY_URL-Port); `--repo-dir`: Checkout-HEAD muss --target-sha sein.
 
 Aufruf:
     pip install -r scripts/acceptance/requirements.txt
     python3 scripts/acceptance/numra_smoke.py --target audit|prod --target-sha <SHA> \
         --api-base http://127.0.0.1:<API-PORT> --web-base http://127.0.0.1:<WEB-PORT> \
-        --container-prefix <PROJEKT>- --origin <ERLAUBTE-ORIGIN> --expect-checkins 401|503 \
+        --stack-config <release-ziel.env> --repo-dir <CHECKOUT> --origin <ERLAUBTE-ORIGIN> \
+        --expect-checkins 401|503 \
         --report-dir <DIR> [--public-base https://<HOST>] [--i-am-sure-prod --confirm-sha <SHA8>] \
         [--dry-run]
 
@@ -40,6 +43,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "ops_report"))
 
 import content_checks  # noqa: E402
 import report as ops_report  # noqa: E402
+import stack_config  # noqa: E402
 
 SCRIPT_VERSION = "2.0.0"
 SYNTH_PREFIX = "numra-smoke-"
@@ -149,6 +153,12 @@ def validate(args):
     args.origin = origin
     args.public_base = args.public_base.rstrip("/") if args.public_base else None
     args.api_base, args.web_base = args.api_base.rstrip("/"), args.web_base.rstrip("/")
+    try:
+        args.container_prefix = stack_config.bind(
+            args.target, args.api_base, stack_config.load(args.stack_config)
+        )
+    except stack_config.StackRefusalError as exc:
+        raise Refusal(str(exc)) from exc
     args.pg_container = f"{args.container_prefix}postgres-1"
     args.api_container = f"{args.container_prefix}api-1"
 
@@ -198,6 +208,12 @@ def sh(args, stdin=None, timeout=60):
     if LOCK["on"]:
         raise RuntimeError("Docker im Dry-Run gesperrt")
     cfg = ST["cfg"]
+    if args[:1] == ["git"]:
+        if args[1:2] != ["-C"] or "rev-parse" not in args:
+            raise Refusal("von git nur rev-parse erlaubt")
+        COUNTERS["docker"] += 1
+        p = subprocess.run(args, input=stdin, capture_output=True, text=True, timeout=timeout)
+        return p.returncode, (p.stdout or "") + (p.stderr or "")
     if not (
         len(args) >= 4
         and args[:2] == ["docker", "exec"]
@@ -403,7 +419,12 @@ def preflight(cfg):
     if rc != 0 or out.strip() != "1":
         raise Refusal("Preflight: DB-Zugriff (select 1) fehlgeschlagen: " + san(out, 120))
     rc, out = sh(["docker", "exec", cfg.api_container, "printenv", "ENVIRONMENT"])
-    ST["env"] = out.strip() if rc == 0 and out.strip() else "unknown"
+    if rc != 0 or not out.strip():
+        raise Refusal("Preflight: ENVIRONMENT im API-Container nicht lesbar (falscher Stack?)")
+    ST["env"] = out.strip()
+    rc, out = sh(["git", "-C", cfg.repo_dir, "rev-parse", "HEAD"])
+    if rc != 0 or out.strip() != cfg.target_sha:
+        raise Refusal("Preflight: Checkout-HEAD != --target-sha")
     rc, out = sh(["docker", "exec", cfg.api_container, "printenv", "CORS_ALLOWED_ORIGINS"])
     try:
         cors = json.loads(out) if rc == 0 else []
@@ -411,20 +432,13 @@ def preflight(cfg):
         cors = [x.strip() for x in out.split(",")]
     if cfg.origin not in cors:
         raise Refusal("Preflight: --origin steht nicht in CORS_ALLOWED_ORIGINS des API-Containers")
-    code = (
-        "import inspect,re\n"
-        "from numra_api.routes import auth\n"
-        "from numra_api.repositories import users\n"
-        "pat=re.compile(r'email_sender|EmailSender|get_email_sender|\\.send\\(|smtp',re.I)\n"
-        "srcs=[inspect.getsource(auth.register),inspect.getsource(users.create_user),inspect.getsource(auth._issue_authenticated_session)]\n"
-        "print('MAILHITS='+str(sum(1 for s in srcs if pat.search(s))))\n"
-    )
-    rc, out = sh(["docker", "exec", "-i", cfg.api_container, "python", "-"], stdin=code)
-    m = re.search(r"MAILHITS=(\d+)", out)
-    if rc != 0 or not m or m.group(1) != "0":
-        raise Refusal(
-            "Preflight: Registrierungspfad nicht als mailfrei verifizierbar: " + san(out, 120)
+    rc, out = sh(["docker", "exec", cfg.api_container, "printenv", "EMAIL_BACKEND"])
+    try:
+        ST["mail_backend"] = stack_config.check_mail_backend(
+            out if rc == 0 else "", cfg.allow_smtp_synthetic
         )
+    except stack_config.StackRefusalError as exc:
+        raise Refusal(f"Preflight: {exc}") from exc
     ST["users_before"] = count("select count(*) from users where deleted_at is null")
     ST["failed_before"] = count(
         "select (select count(*) from report_jobs where status='FAILED') + (select count(*) from analysis_jobs where status='FAILED')"
@@ -796,7 +810,7 @@ def s10_report(cfg):
         and "pdf" in (d.headers.get("Content-Type") or "")
         and pdf[:4] == b"%PDF"
         and b"%%EOF" in pdf[-2048:]
-        and len(pdf) > 20480,
+        and len(pdf) > content_checks.MIN_PDF_BYTES,
         f"{d.code} bytes={len(pdf)} ct={d.headers.get('Content-Type')}",
     )
     for suffix, name, passed, evidence in content_checks.evaluate_pdf(
@@ -957,6 +971,7 @@ def finish(cfg, t0):
             "http_requests": COUNTERS["http"],
             "docker_calls": COUNTERS["docker"],
             "container_prefix": cfg.container_prefix,
+            "mail_backend": ST.get("mail_backend", "unknown"),
         },
     )
     stem = f"smoke-{cfg.target}-{t0.strftime('%Y%m%dT%H%M%SZ')}"
@@ -979,12 +994,12 @@ def build_parser():
     ap.add_argument("--api-base", required=True)
     ap.add_argument("--web-base", required=True)
     ap.add_argument("--public-base")
-    ap.add_argument(
-        "--container-prefix", required=True, help="Container heissen <prefix><dienst>-1"
-    )
+    ap.add_argument("--stack-config", required=True, help="Konfig wie fuer numra-release.sh")
     ap.add_argument("--origin", required=True)
     ap.add_argument("--expect-checkins", type=int, choices=(401, 503), required=True)
     ap.add_argument("--report-dir", required=True)
+    ap.add_argument("--repo-dir", required=True, help="Checkout; HEAD muss --target-sha sein")
+    ap.add_argument("--allow-smtp-synthetic", action="store_true")
     ap.add_argument("--pg-user", default="numra")
     ap.add_argument("--pg-db", default="numra")
     ap.add_argument("--llm-timeout", type=int, default=600)

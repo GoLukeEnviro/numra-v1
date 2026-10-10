@@ -114,6 +114,6 @@ Ein Hash allein gilt nicht als Nachweis. Berichte enthalten keine Secrets oder P
 ```bash
 bash scripts/release/tests/test-numra-release.sh
 bash scripts/release/tests/test-numra-drill.sh
-uv run --no-project --with pytest --with "pypdf>=6.19.0" \
+uv run --no-project --with pytest --with "$(cat scripts/acceptance/requirements.txt)" \
   pytest scripts/ops_report scripts/acceptance -q
 ```

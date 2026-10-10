@@ -72,3 +72,27 @@ def test_text_quality_json_detects_placeholder():
     dirty = {"a": ["Das ist ein ganz normaler Satz mit {{token}} und genug Woertern."]}
     assert cc.text_quality(clean)["hits"] == []
     assert cc.text_quality(dirty)["hits"]
+
+
+def test_encrypted_pdf_fails_with_specific_text():
+    import io
+
+    from pypdf import PdfReader, PdfWriter
+
+    writer = PdfWriter()
+    for page in PdfReader(io.BytesIO(make_pdf([GERMAN]))).pages:
+        writer.add_page(page)
+    writer.encrypt("geheim")
+    buffer = io.BytesIO()
+    writer.write(buffer)
+    result = cc.evaluate_pdf(cc.analyze_pdf(buffer.getvalue()))
+    assert len(result) == 1 and result[0][2] is False and "verschluesselt" in result[0][3]
+
+
+def test_image_only_pdf_fails_text_check_with_hint():
+    result = {i: (ok, ev) for i, _, ok, ev in cc.evaluate_pdf(cc.analyze_pdf(make_pdf([[]])))}
+    assert result["10a"][0] is False and "Bild-PDF" in result["10a"][1]
+
+
+def test_min_pdf_bytes_is_one_constant():
+    assert cc.MIN_PDF_BYTES == 20480
